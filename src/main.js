@@ -24,6 +24,7 @@ const weapons = new Weapons(camera, (i, name) => {
   weaponLabel.textContent = `${i + 1} · ${name}`;
 });
 onDigitKeys((n) => weapons.select(n));
+addEventListener('resize', () => weapons.layout());
 
 const timer = new Timer();
 

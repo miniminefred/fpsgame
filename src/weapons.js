@@ -13,8 +13,13 @@ const WEAPONS = [
   { name: 'Sniper Rifle',  file: 'models/5_sniper.glb',        length: 0.80, flip: false, yaw: 0 },
 ];
 
-// Viewmodel anchor in camera space: right (+x), down (-y), forward (-z).
-const HAND = new THREE.Vector3(0.32, -0.26, -0.5);
+// Viewmodel anchor in camera space. The horizontal offset is computed from the
+// frustum width (see _computeX) so the gun keeps the same relative spot and
+// doesn't clip off-screen in narrow/portrait views; y and z are fixed.
+const HAND_Y = -0.26;
+const HAND_Z = -0.5;
+const X_FRAC = 0.52; // fraction of the horizontal half-frustum to sit from center
+const X_MAX = 0.32;  // cap so wide/ultrawide keeps the (fine) widescreen placement
 
 export class Weapons {
   constructor(camera, onChange) {
@@ -23,6 +28,7 @@ export class Weapons {
     this.rigs = new Array(WEAPONS.length).fill(null);
     this.active = 0;
     this.count = WEAPONS.length;
+    this.handX = this._computeX();
 
     const loader = new GLTFLoader();
     WEAPONS.forEach((w, i) => {
@@ -64,11 +70,25 @@ export class Weapons {
     const barrelLen = Math.max(size.x, size.z) || 1;
     rig.scale.setScalar(cfg.length / barrelLen);
 
-    rig.position.copy(HAND);
+    rig.position.set(this.handX, HAND_Y, HAND_Z);
     rig.visible = i === this.active;
 
     this.camera.add(rig);
     this.rigs[i] = rig;
+  }
+
+  // Horizontal offset as a fraction of the frustum half-width at the gun's
+  // depth, capped so widescreen keeps its placement and narrow views pull in.
+  _computeX() {
+    const vFov = THREE.MathUtils.degToRad(this.camera.fov);
+    const halfWidth = Math.abs(HAND_Z) * Math.tan(vFov / 2) * this.camera.aspect;
+    return Math.min(X_FRAC * halfWidth, X_MAX);
+  }
+
+  // Reposition the viewmodel after an aspect-ratio change (call on resize).
+  layout() {
+    this.handX = this._computeX();
+    for (const rig of this.rigs) if (rig) rig.position.x = this.handX;
   }
 
   select(index) {
