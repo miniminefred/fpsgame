@@ -9,6 +9,14 @@ export function createInput() {
   return keys;
 }
 
+// Fires cb(n) for number keys 1..9 (n is zero-based: '1' -> 0). For weapon slots.
+export function onDigitKeys(cb) {
+  addEventListener('keydown', (e) => {
+    const m = /^(?:Digit|Numpad)([1-9])$/.exec(e.code);
+    if (m) cb(Number(m[1]) - 1);
+  });
+}
+
 function setKey(keys, code, down) {
   switch (code) {
     case 'KeyW': case 'ArrowUp':    keys.forward = down; break;
