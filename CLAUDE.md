@@ -4,16 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 # Alfred — 3D FPS
 
-Browser-based 3D first-person shooter built with **Three.js** (ES modules via CDN import map).
-Entire game lives in a single file: `index.html`. No build step, no bundler, no editor —
-pure code, edited directly by Claude.
+Browser-based 3D first-person shooter built with **Three.js**, bundled by **Vite**.
+The code is split into small ES modules under `src/` — **never let a single file grow
+without bound**; when a module gets large or mixes concerns, split it.
 
-## Why Three.js
+## The one hard rule: AI-only development
 
-Three.js was chosen (June 2026) as the best fit for **pure Claude-based AI development**:
-lightweight (~170 KB), code-first with no scene editor required, and backed by by far the
-largest ecosystem / documentation corpus of any web 3D engine — which is exactly what makes
-it the most reliable target for an AI writing everything by hand.
+This project is developed entirely by Claude writing code — **no visual/scene editor**
+(no Unity, no Godot editor, no Blender-in-the-loop). Build tooling, bundlers, package
+managers, and CLIs are all fair game; a GUI world-builder is not. Everything is expressed
+in code so an AI can author and reason about all of it.
+
+## Why Three.js + Vite
+
+Three.js was chosen (June 2026) as the best fit for pure AI development: code-first with no
+editor required, and backed by by far the largest ecosystem / documentation corpus of any
+web 3D engine — the most reliable target for an AI writing everything by hand. Vite gives us
+real modules, npm dependencies, HMR, and a production build with zero config friction.
 
 ## Rules for every session
 
@@ -27,36 +34,43 @@ One logical change = one commit. Never batch multiple changes into one commit, a
 leave changes uncommitted at the end of a session. This is the rollback safety net.
 
 ### 2. Start the dev server on session start
-Check if already running; start if not, **always using the project venv** (never `python`
-or `pip` directly on the system):
+Check if already running; start if not:
 ```powershell
-.venv\Scripts\python -m http.server 8090
+npm run dev
 ```
-Game served at **http://localhost:8090** (port 8090 so it coexists with the blobgame on
-8080). Auto-reload is baked into `index.html` — it polls `Last-Modified` every second and
-reloads on change.
+Vite serves the game at **http://localhost:8090** (port 8090 so it coexists with the
+blobgame on 8080) and opens the browser automatically. HMR reloads on every save — no
+manual refresh needed.
 
-Then open the browser:
-```powershell
-Start-Process "http://localhost:8090"
-```
-
-> **Never install Python packages system-wide.** All Python tooling must go through `.venv`.
-> If a package is missing, install it with `.venv\Scripts\pip install <pkg>`, never bare
-> `pip install`.
+First time on a fresh clone: `npm install`.
 
 ### 3. Test after every change
-Verify in the browser before considering the task done.
+Verify in the browser before considering the task done. `npm run build` must also stay
+green (it type-checks the bundle and catches import mistakes HMR can hide).
+
+## Project layout
+
+```
+index.html        Thin entry shell (overlay markup + <script src="/src/main.js">)
+vite.config.js    Dev/preview server pinned to port 8090
+src/
+  main.js         Bootstrap: wires modules, runs the render loop
+  scene.js        Renderer, scene, camera, lights, resize handling
+  world.js        Static world geometry (ground plane, grid, reference boxes)
+  input.js        Keyboard state + pointer-lock overlay wiring
+  player.js       Player class: PointerLockControls + movement + jump physics
+  style.css       All UI/overlay/crosshair styling
+```
 
 ## Tech stack
 
-- **Engine:** Three.js (latest, ES modules via jsDelivr import map)
-- **Rendering:** WebGL (`THREE.WebGLRenderer`, antialias on)
+- **Engine:** Three.js (npm `three`)
+- **Bundler / dev server:** Vite (`npm run dev` / `npm run build` / `npm run preview`)
+- **Rendering:** WebGL (`THREE.WebGLRenderer`, antialias + soft shadow maps)
 - **Camera:** `PerspectiveCamera` driven by `PointerLockControls`
-- **Input:** Pointer Lock API — click canvas to grab the mouse, `Esc` to release
+- **Input:** Pointer Lock API — click to grab the mouse, `Esc` to release
 - **Physics:** hand-rolled (gravity + ground clamp); no physics library yet
 - **Assets:** none — geometry and materials are created procedurally in code
-- **Server:** `.venv\Scripts\python -m http.server 8090`
 
 ## Controls
 
@@ -68,20 +82,14 @@ Verify in the browser before considering the task done.
 | Esc | Release the mouse |
 | Click | Grab the mouse (lock pointer) |
 
-## World layout
-
-- A large flat ground plane at `y = 0` with a grid helper for spatial reference.
-- Player eye height ≈ 1.7 units; spawns a few units back from origin looking forward.
-- Sky-blue background, hemisphere + directional lighting.
-
 ## Key systems
 
-### Pointer lock
-Clicking the canvas requests pointer lock; a centered overlay prompts for the click and
-hides while locked. `Esc` (browser default) exits lock and re-shows the overlay.
+### Pointer lock (`input.js` + `player.js`)
+Clicking the canvas or overlay requests pointer lock; a centered overlay prompts for the
+click and hides while locked. `Esc` (browser default) exits lock and re-shows the overlay.
 
-### Movement
-WASD sets a velocity in camera-local space each frame; movement is projected onto the
-horizontal plane so looking up/down doesn't change walk speed. Space triggers a jump only
-when grounded. Gravity integrates vertical velocity; the player is clamped to eye height
-when landing.
+### Movement (`player.js`)
+WASD sets a velocity in camera-local space each frame, projected onto the horizontal plane
+so pitch doesn't affect walk speed. Space jumps only when grounded. Gravity integrates
+vertical velocity; the player is clamped to eye height (1.7) on landing. `dt` is clamped to
+50 ms to avoid tunneling on lag spikes.
