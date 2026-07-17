@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import { Timer } from 'three';
 import { createRenderer, createScene, createCamera, handleResize } from './scene.js';
 import { buildWorld } from './world.js';
 import { createInput } from './input.js';
@@ -9,16 +9,17 @@ const scene = createScene();
 const camera = createCamera();
 handleResize(renderer, camera);
 
-buildWorld(scene);
+const { colliders } = buildWorld(scene);
 
 const keys = createInput();
-const player = new Player(camera, renderer.domElement, scene, keys);
+const player = new Player(camera, renderer.domElement, keys, colliders);
 
-const clock = new THREE.Clock();
+const timer = new Timer();
 
 function animate() {
   requestAnimationFrame(animate);
-  const dt = Math.min(clock.getDelta(), 0.05); // clamp to avoid tunneling on lag spikes
+  timer.update();
+  const dt = Math.min(timer.getDelta(), 0.05); // clamp to avoid tunneling on lag spikes
   player.update(dt, camera);
   renderer.render(scene, camera);
 }
