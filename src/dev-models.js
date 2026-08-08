@@ -11,15 +11,20 @@ import { MODEL_TABLE, MODEL_REJECTS, MODEL_DIR } from './gen/model-table.js';
 //
 //   ?i=0&n=12       batch: first index and count
 //   ?cols=4         columns in the contact sheet
-//   ?mode=front     fixed camera 4.5 m out, identical for every tile
+//   ?mode=front     fixed camera 4.6 m out, identical for every tile
 //                   -> tiles are directly comparable in size (default)
 //        fit        camera pulled back to frame each model individually
-//                   -> best for reading facing on small props
+//                   -> best for judging shape and spotting broken models
+//        straight   dead-on view of the -Z face -> decides facing outright
 //        top        straight down, -Z is screen-up
+//        under      worm's-eye view, for ceiling fixtures
 //   ?keys=desk,mug  render only these table keys (comma separated)
+//   ?spin=desk      one model four times at table yaw +0/90/180/270
+//   ?dy=180         extra yaw in degrees on top of the table value
 //   ?raw=1          ignore the table: scale 1, yaw 0 (shows the raw GLB)
 //
-// window.__report() dumps measured raw + normalized sizes as JSON.
+// window.__report() dumps measured raw + normalized sizes as JSON, which is how
+// the table's foot/height values were cross-checked against reality.
 
 const qs = new URLSearchParams(location.search);
 const MODE = qs.get('mode') || 'front';
@@ -160,13 +165,14 @@ function normalize(root, scale, yaw) {
 async function load(entry, index) {
   const group = new THREE.Group();
   const tile = { ...entry, index, group, status: 'loading' };
+  const extra = entry.spin || 0;
   scene.add(group);
   tiles.push(tile);
   try {
     const gltf = await loader.loadAsync(MODEL_DIR + entry.file);
     const root = gltf.scene;
     const scale = RAW ? 1 : entry.scale;
-    const yaw = (RAW ? 0 : entry.yaw) + DY;
+    const yaw = (RAW ? 0 : entry.yaw) + DY + extra;
     const m = normalize(root, scale, yaw);
     tile.rawSize = m.rawSize;
     tile.size = m.size;
@@ -278,7 +284,6 @@ function aim(t) {
 function render() {
   renderer.setScissorTest(false);
   renderer.clear();
-  const dpr = renderer.getPixelRatio();
   for (const t of shown) {
     if (!t.cell) continue;
     for (const o of tiles) o.group.visible = o === t;
@@ -292,7 +297,6 @@ function render() {
     camera.updateProjectionMatrix();
     renderer.render(scene, camera);
   }
-  void dpr;
   requestAnimationFrame(render);
 }
 
@@ -312,6 +316,19 @@ const all = await buildList();
 let list = ONLY.length
   ? all.filter((e) => ONLY.includes(e.key))
   : all.slice(START, START + COUNT);
+// ?spin=key1,key2 — each named model four times, at table yaw +0/90/180/270,
+// so the real front can be picked out of a single screenshot.
+const SPIN = (qs.get('spin') || '').split(',').filter(Boolean);
+if (SPIN.length) {
+  list = [];
+  for (const key of SPIN) {
+    const e = all.find((x) => x.key === key);
+    if (!e) continue;
+    for (let q = 0; q < 4; q++) {
+      list.push({ ...e, key: `${key} +${q * 90}`, spin: q * Math.PI / 2 });
+    }
+  }
+}
 window.__count = all.length;
 window.__keys = all.map((e) => e.key);
 for (const [i, e] of list.entries()) await load(e, i);

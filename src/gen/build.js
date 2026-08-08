@@ -3,6 +3,7 @@ import { getAssets } from '../textures.js';
 import { maskToRects } from './rects.js';
 import { Batcher, boxBetween, slab, applyWorldUVs } from './geom.js';
 import { furnish, tryPlace } from './props.js';
+import { modelInfo, stampModel } from './models.js';
 import {
   TILE, WALL_H, CEIL_H, DOOR_H,
   SOLID, ROOM, CORRIDOR, DOOR, isOpen, worldX, worldZ,
@@ -382,6 +383,16 @@ function makeSink(layout, batcher, materials, masks) {
       // to walk into, so leaving them out of the nav grid gave the enemies
       // routes straight through the furniture.
       if (top > 0.3) stampCentres(blocked, x0, z0, x1, z1);
+    },
+
+    // --- downloaded models -------------------------------------------------
+    modelInfo,
+
+    // Batched by source material, so a floor of desks is a couple of draw calls.
+    model(key, x, y, z, yaw) {
+      return stampModel(key, x, y, z, yaw, (geometry, material) => {
+        batcher.add(`mdl:${material.name || 'm'}:${material.id}`, material, geometry);
+      });
     },
 
     beginDynamic(mass, hp) { pending = { mass, hp, boxes: [] }; },

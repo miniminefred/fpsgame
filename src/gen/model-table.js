@@ -10,6 +10,27 @@
 // the resulting height in metres — both derived from the raw glTF bounding box,
 // so a placer can reserve space without loading the model.
 //
+// `mount` says where the thing belongs:
+//   floor    stands on the floor, put it at y=0
+//   desktop  sits on a desk/table, put it at the surface height
+//   wall     hangs on a wall; the wall is at +Z behind it, so it needs
+//            wall-normal-aligned yaw plus a y offset of your choosing
+//   ceiling  hangs from the ceiling; place at ceilingY - height, and the
+//            model's mounting plate/canopy is at the TOP of its box
+//
+// Caveats worth knowing before you place things:
+//   * `workstation` and `standing_workstation` are whole pre-dressed desk
+//     scenes (desk + monitors + keyboard + clutter, and workstation also has
+//     its own chair and plant) — do not stack extra props on them. They are
+//     also by far the heaviest models here (6.5k and 21k triangles).
+//   * `cubicle_partition` includes its own worktop, and `recycling_bin` is a
+//     row of three bins, not one.
+//   * `clipboard`, `folder` and `ring_binder` are modelled standing upright;
+//     the contract only allows yaw, so they cannot be laid flat.
+//   * Wood-toned pieces (executive_desk, meeting_table, coffee_table, stool,
+//     bookshelf, crate, door, double_door) read as accents in an otherwise
+//     grey/white set — fine in moderation, muddy if over-used.
+//
 // Generated + hand-tuned; see MODEL_REJECTS at the bottom for what was dropped.
 
 export const MODEL_DIR = '/models/office/';
@@ -172,7 +193,7 @@ export const MODEL_TABLE = {
     file: 'tech_tv_screen.glb',
     scale: 0.55072,
     yaw: 0,
-    foot: [1.22, 0.03],
+    foot: [1.22, 0.034],
     height: 0.67,
     tags: ['screen'],
     mount: 'wall',
@@ -200,7 +221,7 @@ export const MODEL_TABLE = {
     scale: 1.5592,
     yaw: 0,
     foot: [0.44, 0.18],
-    height: 0.04,
+    height: 0.043,
     tags: ['clutter', 'computer'],
     mount: 'desktop',
   },
@@ -208,8 +229,8 @@ export const MODEL_TABLE = {
     file: 'tech_mouse.glb',
     scale: 0.56613,
     yaw: 0,
-    foot: [0.07, 0.11],
-    height: 0.03,
+    foot: [0.065, 0.11],
+    height: 0.027,
     tags: ['clutter'],
     mount: 'desktop',
   },
@@ -218,7 +239,7 @@ export const MODEL_TABLE = {
     scale: 0.14786,
     yaw: 1.5708,
     foot: [0.36, 0.3],
-    height: 0,
+    height: 0.004,
     tags: ['clutter'],
     mount: 'desktop',
   },
@@ -226,7 +247,7 @@ export const MODEL_TABLE = {
     file: 'tech_headphones.glb',
     scale: 1.4275,
     yaw: 0,
-    foot: [0.19, 0.07],
+    foot: [0.19, 0.066],
     height: 0.17,
     tags: ['clutter'],
     mount: 'desktop',
@@ -234,9 +255,9 @@ export const MODEL_TABLE = {
   webcam: {
     file: 'tech_webcam.glb',
     scale: 0.045,
-    yaw: 0,
-    foot: [0.09, 0.04],
-    height: 0.07,
+    yaw: 3.1416,
+    foot: [0.09, 0.035],
+    height: 0.066,
     tags: ['clutter'],
     mount: 'desktop',
   },
@@ -352,7 +373,7 @@ export const MODEL_TABLE = {
     file: 'store_ring_binder.glb',
     scale: 0.40517,
     yaw: 0,
-    foot: [0.22, 0.06],
+    foot: [0.22, 0.058],
     height: 0.32,
     tags: ['clutter'],
     mount: 'desktop',
@@ -379,7 +400,7 @@ export const MODEL_TABLE = {
     file: 'store_folder.glb',
     scale: 1.7222,
     yaw: 0,
-    foot: [0.31, 0.05],
+    foot: [0.31, 0.052],
     height: 0.19,
     tags: ['clutter'],
     mount: 'desktop',
@@ -388,16 +409,16 @@ export const MODEL_TABLE = {
     file: 'store_clipboard.glb',
     scale: 0.62745,
     yaw: 1.5708,
-    foot: [0.24, 0.03],
+    foot: [0.24, 0.031],
     height: 0.32,
-    tags: ['clutter'],
-    mount: 'desktop',
+    tags: ['clutter', 'wall'],
+    mount: 'wall',
   },
   coffee_mug: {
     file: 'store_coffee_mug.glb',
     scale: 0.16667,
     yaw: 0,
-    foot: [0.1, 0.13],
+    foot: [0.098, 0.13],
     height: 0.1,
     tags: ['clutter'],
     mount: 'desktop',
@@ -414,7 +435,7 @@ export const MODEL_TABLE = {
   desk_fan: {
     file: 'tech_desk_fan.glb',
     scale: 1.1442,
-    yaw: 0,
+    yaw: 3.1416,
     foot: [0.22, 0.17],
     height: 0.3,
     tags: ['clutter'],
@@ -423,7 +444,7 @@ export const MODEL_TABLE = {
   coffee_machine: {
     file: 'store_coffee_machine.glb',
     scale: 0.22931,
-    yaw: 0,
+    yaw: 3.1416,
     foot: [0.21, 0.37],
     height: 0.42,
     tags: ['appliance'],
@@ -441,8 +462,8 @@ export const MODEL_TABLE = {
   water_cooler: {
     file: 'store_water_cooler.glb',
     scale: 0.32916,
-    yaw: 0,
-    foot: [0.3, 0.35],
+    yaw: 1.5708,
+    foot: [0.35, 0.3],
     height: 1.3,
     tags: ['appliance'],
     mount: 'floor',
@@ -450,7 +471,7 @@ export const MODEL_TABLE = {
   vending_machine: {
     file: 'store_vending_machine.glb',
     scale: 0.59161,
-    yaw: 0,
+    yaw: 3.1416,
     foot: [1.29, 0.64],
     height: 1.9,
     tags: ['appliance'],
@@ -459,7 +480,7 @@ export const MODEL_TABLE = {
   soda_machine: {
     file: 'furn_vending_machine.glb',
     scale: 0.19566,
-    yaw: 0,
+    yaw: 3.1416,
     foot: [0.99, 1.03],
     height: 1.9,
     tags: ['appliance'],
@@ -468,7 +489,7 @@ export const MODEL_TABLE = {
   trash_can: {
     file: 'store_trash_can.glb',
     scale: 0.87779,
-    yaw: 0,
+    yaw: 1.5708,
     foot: [0.41, 0.41],
     height: 0.65,
     tags: ['clutter'],
@@ -505,7 +526,7 @@ export const MODEL_TABLE = {
     file: 'store_whiteboard.glb',
     scale: 0.8726,
     yaw: 1.5708,
-    foot: [1.8, 0.04],
+    foot: [1.8, 0.044],
     height: 1.22,
     tags: ['wall'],
     mount: 'wall',
@@ -513,8 +534,8 @@ export const MODEL_TABLE = {
   corkboard: {
     file: 'store_corkboard.glb',
     scale: 1.1802,
-    yaw: 0,
-    foot: [0.9, 0.04],
+    yaw: 3.1416,
+    foot: [0.9, 0.036],
     height: 0.62,
     tags: ['wall'],
     mount: 'wall',
@@ -523,7 +544,7 @@ export const MODEL_TABLE = {
     file: 'store_wall_clock.glb',
     scale: 0.010849,
     yaw: 1.5708,
-    foot: [0.3, 0.04],
+    foot: [0.3, 0.042],
     height: 0.3,
     tags: ['wall'],
     mount: 'wall',
@@ -532,7 +553,7 @@ export const MODEL_TABLE = {
     file: 'furn_exit_sign.glb',
     scale: 0.15525,
     yaw: 1.5708,
-    foot: [0.32, 0.02],
+    foot: [0.32, 0.017],
     height: 0.11,
     tags: ['sign', 'wall'],
     mount: 'wall',
@@ -541,7 +562,7 @@ export const MODEL_TABLE = {
     file: 'furn_window_blinds.glb',
     scale: 0.2947,
     yaw: 0,
-    foot: [0.7, 0.08],
+    foot: [0.7, 0.077],
     height: 1.5,
     tags: ['wall'],
     mount: 'wall',
@@ -650,16 +671,7 @@ export const MODEL_TABLE = {
     scale: 0.96987,
     yaw: 0,
     foot: [2.07, 3],
-    height: 0.04,
-    tags: ['rug'],
-    mount: 'floor',
-  },
-  round_rug: {
-    file: 'furn_round_rug.glb',
-    scale: 0.79014,
-    yaw: 0,
-    foot: [1.97, 2],
-    height: 0.01,
+    height: 0.036,
     tags: ['rug'],
     mount: 'floor',
   },
@@ -667,10 +679,11 @@ export const MODEL_TABLE = {
 
 // Models that were downloaded but are not usable in the game, and why.
 export const MODEL_REJECTS = {
+  round_rug: "furn_round_rug.glb renders as three thin fringe slivers instead of a disc from every angle — the rug surface itself is missing/degenerate (130 verts, 2 materials).",
   water_fountain: "furn_water_fountain.glb is a byte-identical duplicate of store_water_cooler.glb (same poly.pizza source) — kept once as `water_cooler`.",
 };
 
-/** All table keys carrying every one of the given tags. */
+/** All table keys carrying the given tag. */
 export function modelsWithTag(tag) {
   return Object.keys(MODEL_TABLE).filter((k) => MODEL_TABLE[k].tags.includes(tag));
 }

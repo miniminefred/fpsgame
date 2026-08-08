@@ -11,6 +11,8 @@ import { Hud } from './hud.js';
 import { Minimap } from './minimap.js';
 import { Shooting } from './shooting.js';
 import { Physics } from './physics.js';
+import { loadModels } from './gen/models.js';
+import { modelKeysUsed } from './gen/props.js';
 import { Game } from './game.js';
 
 const renderer = createRenderer();
@@ -53,6 +55,10 @@ addEventListener('resize', () => weapons.layout());
 // Any click after you die starts a new run.
 addEventListener('mousedown', () => game.restartIfDead());
 
+// Furniture models have to be in hand before the first floor is furnished, or
+// that floor silently falls back to boxes. Everything else is procedural, so
+// this is the only asset the generator waits on.
+await loadModels(modelKeysUsed());
 game.start();
 
 // Dev-only handle for poking at a running floor from the console. Stripped from

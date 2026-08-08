@@ -60,7 +60,15 @@ function monitorAt(p, x, z, rng) {
 
 export const PROPS = {
   desk: {
-    w: 1.6, d: 0.8,
+    // Model + a monitor and a mug on top. Kept out of the destructible set: a
+    // model is one mesh, so there are no pieces for it to fall into.
+    w: 1.6, d: 0.8, model: 'desk',
+    desktop: [
+      { key: 'monitor', z: 0.16 },
+      { key: 'keyboard', z: -0.18, chance: 0.85 },
+      { key: 'coffee_mug', x: -0.55, z: 0.05, chance: 0.4 },
+      { key: 'paper_stack', x: 0.55, z: 0.1, chance: 0.35 },
+    ],
     build(p, rng) {
       const H = 0.74;
       p.box('laminate', -0.8, H - 0.04, -0.4, 0.8, H, 0.4);
@@ -101,7 +109,7 @@ export const PROPS = {
   },
 
   cabinet: {
-    w: 0.52, d: 0.7,
+    w: 0.52, d: 0.7, model: 'filing_cabinet',
     build(p, rng) {
       const H = rng.chance(0.4) ? 1.32 : 0.72;
       p.box('metal', -0.25, 0, -0.33, 0.25, H, 0.33);
@@ -116,7 +124,7 @@ export const PROPS = {
   },
 
   shelving: {
-    w: 1.96, d: 0.62,
+    w: 1.96, d: 0.62, model: 'shelving_unit',
     build(p, rng) {
       const H = 2.1;
       for (const sx of [-0.93, 0.93]) {
@@ -163,7 +171,9 @@ export const PROPS = {
   },
 
   printer: {
-    w: 0.86, d: 0.88,
+    // 'copier' not 'printer': the latter model is a 24 cm desktop unit, and
+    // this prop stands on the floor.
+    w: 0.86, d: 0.88, model: 'copier',
     build(p, rng) {
       const big = rng.chance(0.45);
       const H = big ? 1.15 : 0.78;
@@ -196,7 +206,7 @@ export const PROPS = {
   },
 
   sofa: {
-    w: 1.8, d: 0.82,
+    w: 1.8, d: 0.82, model: 'sofa',
     build(p) {
       p.box('fabric', -0.9, 0.1, -0.41, 0.9, 0.44, 0.41);
       p.box('fabric', -0.9, 0.44, 0.22, 0.9, 0.86, 0.41);
@@ -208,6 +218,8 @@ export const PROPS = {
   },
 
   counter: {
+    // No model: the candidates are all small appliances, and this is a whole
+    // kitchenette run with a sink and a coffee machine on it.
     w: 2.2, d: 0.66,
     build(p, rng) {
       const H = 0.92;
@@ -234,7 +246,7 @@ export const PROPS = {
   },
 
   vending: {
-    w: 1.04, d: 0.82,
+    w: 1.04, d: 0.82, model: 'vending_machine',
     build(p) {
       p.box('metalDark', -0.5, 0, -0.39, 0.5, 1.92, 0.39);
       p.box('screenOn', -0.42, 0.5, -0.4, 0.16, 1.76, -0.38);   // lit display window
@@ -245,7 +257,7 @@ export const PROPS = {
   },
 
   serverRack: {
-    w: 0.72, d: 1.06,
+    w: 0.72, d: 1.06, model: 'server_rack',
     build(p, rng) {
       const H = 2.05;
       p.box('metalDark', -0.34, 0, -0.5, 0.34, H, 0.5);
@@ -261,7 +273,7 @@ export const PROPS = {
   },
 
   plant: {
-    w: 0.68, d: 0.68,
+    w: 0.68, d: 0.68, model: 'tall_plant',
     build(p, rng) {
       p.box('plastic', -0.16, 0, -0.16, 0.16, 0.34, 0.16);
       const blades = rng.int(4, 7);
@@ -278,7 +290,7 @@ export const PROPS = {
   },
 
   meetingTable: {
-    w: 3.1, d: 1.32,
+    w: 3.1, d: 1.32, model: 'meeting_table',
     build(p, rng) {
       const H = 0.75;
       p.box('laminateDark', -1.5, H - 0.06, -0.65, 1.5, H, 0.65);
@@ -304,18 +316,55 @@ export const PROPS = {
 // were authored from.
 export function tryPlace(sink, kind, cx, cz, rot, rng) {
   const spec = PROPS[kind];
+
+  // A prop with a downloaded model uses THAT model's measured footprint, not
+  // the hand-authored one, so collision always matches what you can see. If the
+  // model is missing the prop falls back to its boxes and its own footprint.
+  const model = spec.model ? sink.modelInfo(spec.model) : null;
+  const fw = model ? model.foot[0] : spec.w;
+  const fd = model ? model.foot[1] : spec.d;
+
   const swap = (rot & 1) === 1;
-  const w = (swap ? spec.d : spec.w) / 2;
-  const d = (swap ? spec.w : spec.d) / 2;
+  const w = (swap ? fd : fw) / 2;
+  const d = (swap ? fw : fd) / 2;
 
   if (!sink.canPlace(cx - w, cz - d, cx + w, cz + d)) return false;
 
-  if (spec.mass) sink.beginDynamic(spec.mass, spec.hp);
-  spec.build(placer(sink, cx, cz, rot), rng);
-  if (spec.mass) sink.endDynamic();
+  if (model) {
+    // The quarter turns rotate the front from -Z toward +X, which is a negative
+    // rotation about Y in Three's right-handed frame.
+    const yaw = -rot * Math.PI / 2;
+    sink.model(spec.model, cx, 0, cz, yaw);
+    sink.obstacle(cx - w, cz - d, cx + w, cz + d, model.height);
+
+    // Anything that belongs on top of it — a monitor on a desk, say.
+    if (spec.desktop) {
+      for (const item of spec.desktop) {
+        if (rng.chance(item.chance ?? 1)) {
+          const [ox, oz] = QUARTER[rot & 3](item.x ?? 0, item.z ?? 0);
+          sink.model(item.key, cx + ox, model.height, cz + oz, yaw + (item.yaw ?? 0));
+        }
+      }
+    }
+  } else {
+    if (spec.mass) sink.beginDynamic(spec.mass, spec.hp);
+    spec.build(placer(sink, cx, cz, rot), rng);
+    if (spec.mass) sink.endDynamic();
+  }
 
   sink.occupy(cx - w, cz - d, cx + w, cz + d);
   return true;
+}
+
+// Every model key the furnishing pass can ask for, so the loader only fetches
+// what a floor actually needs rather than all 71.
+export function modelKeysUsed() {
+  const keys = new Set();
+  for (const spec of Object.values(PROPS)) {
+    if (spec.model) keys.add(spec.model);
+    for (const item of spec.desktop ?? []) keys.add(item.key);
+  }
+  return [...keys];
 }
 
 // Fills a room according to its role. Room bounds arrive in world metres,
@@ -381,15 +430,17 @@ function meetingRoom(sink, bounds, rng) {
   const rot = alongX ? 0 : 1;
 
   if (tryPlace(sink, 'meetingTable', cx, cz, rot, rng)) {
-    const seats = Math.floor((alongX ? x1 - x0 : z1 - z0) / 0.85) - 1;
+    const table = PROPS.meetingTable;
+    const half = (sink.modelInfo?.(table.model)?.foot[1] ?? table.d) / 2 + 0.42;
+    const seats = Math.max(2, Math.floor((alongX ? x1 - x0 : z1 - z0) / 0.85) - 1);
     for (let i = 0; i < seats; i++) {
       const t = (i - (seats - 1) / 2) * 0.85;
       if (alongX) {
-        tryPlace(sink, 'chair', cx + t, cz - 1.0, 0, rng);
-        tryPlace(sink, 'chair', cx + t, cz + 1.0, 2, rng);
+        tryPlace(sink, 'chair', cx + t, cz - half, 0, rng);
+        tryPlace(sink, 'chair', cx + t, cz + half, 2, rng);
       } else {
-        tryPlace(sink, 'chair', cx - 1.0, cz + t, 1, rng);
-        tryPlace(sink, 'chair', cx + 1.0, cz + t, 3, rng);
+        tryPlace(sink, 'chair', cx - half, cz + t, 1, rng);
+        tryPlace(sink, 'chair', cx + half, cz + t, 3, rng);
       }
     }
   } else {
