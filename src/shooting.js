@@ -222,8 +222,9 @@ export class Shooting {
       const dyn = hit.object.userData.dynamic;
       if (dyn) {
         this.physics?.impulse(dyn.handle, dir, IMPULSE * stats.punch, hit.point);
+        // The impact sound comes back through onPropHit, which is the only side
+        // that knows what the prop is made of.
         this.onPropHit?.(dyn, dir, hit.point, stats.damage);
-        this.audio.bulletHitMaterial('prop', hit.point);
       }
 
       this.effects.impact(hit.point, this._normal, WORLD_COLOR);

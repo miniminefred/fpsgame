@@ -16,95 +16,117 @@ import { Sfx } from './sfx.js';
 // and a playback rate around it, and the enemy voices are pitched by body size on
 // top of that, so six types out of three recordings still sound like six people.
 
-// name -> mix. `gain` is level, `pitch` the ± playback-rate jitter, `maxVoices`
-// the per-sound concurrency cap.
+// name -> mix. `gain` is its level and `pitch` the ± playback-rate jitter.
 //
-// Everything overlaps, and the caps sit far above anything the game can actually
-// reach. Nothing here rate-limits an event that really happened: a dropped shot
-// is silence, and silence in the middle of a burst reads as the gun jamming. The
-// arithmetic is just length ÷ interval — the SMG's 0.7 s clip at 900 rpm is ten
-// shots ringing at once before anything else joins in, and a firefight puts a
-// room of return fire, impacts, boots and screaming on top of that. The pile-up
-// is the point. Keeping the sum in range is the limiter's job on the master bus,
-// not a voice budget's.
+// There are no caps and no throttles in this table, because there are none in
+// the engine either. Whatever the game says happened gets played, however many
+// of them are already ringing: the SMG's 0.7 s clip at 900 rpm is ten shots
+// overlapping before anything else joins in, and a firefight stacks a room of
+// return fire, impacts, boots and screaming on top. That pile-up is the sound of
+// a firefight. Holding the sum inside full scale is the limiter's job on the
+// master bus — dropping events is nobody's.
 //
-// `minGap` is the one exception, and it is only ever used where a single throat
-// is making the sound: there is one player, and they cannot grunt four times at
-// once. Anything with many sources — footsteps, a floor full of staff — overlaps
-// freely.
+// Which leaves `gain` doing real work: with nothing being discarded, the only
+// thing keeping a floor of enemies from burying the gun in your hands is that
+// each clip is mixed to the size of the thing that made it.
 const LIBRARY = {
-  'pistol-fire':  { variants: 3, gain: 0.80, pitch: 0.05, maxVoices: 24 },
-  'smg-fire':     { variants: 3, gain: 0.62, pitch: 0.06, maxVoices: 40 },
-  'shotgun-fire': { variants: 3, gain: 0.95, pitch: 0.04, maxVoices: 12 },
-  'rifle-fire':   { variants: 3, gain: 0.80, pitch: 0.05, maxVoices: 32 },
-  'sniper-fire':  { variants: 2, gain: 1.00, pitch: 0.03, maxVoices: 8 },
+  'pistol-fire':  { variants: 3, gain: 0.80, pitch: 0.05 },
+  'smg-fire':     { variants: 3, gain: 0.62, pitch: 0.06 },
+  'shotgun-fire': { variants: 3, gain: 0.95, pitch: 0.04 },
+  'rifle-fire':   { variants: 3, gain: 0.80, pitch: 0.05 },
+  'sniper-fire':  { variants: 2, gain: 1.00, pitch: 0.03 },
 
-  'mag-out':  { variants: 2, gain: 0.45, pitch: 0.07, maxVoices: 8 },
-  'mag-in':   { variants: 2, gain: 0.50, pitch: 0.07, maxVoices: 8 },
-  'dry-fire': { variants: 2, gain: 0.40, pitch: 0.08, maxVoices: 8 },
+  'mag-out':  { variants: 2, gain: 0.45, pitch: 0.07 },
+  'mag-in':   { variants: 2, gain: 0.50, pitch: 0.07 },
+  'dry-fire': { variants: 2, gain: 0.40, pitch: 0.08 },
 
-  // A floor holds up to 28 of these, so the caps are sized for a room of them
-  // going off at once rather than for one.
-  'enemy-fire':  { variants: 3, gain: 0.75, pitch: 0.09, maxVoices: 40 },
-  'melee-swing': { variants: 2, gain: 0.50, pitch: 0.12, maxVoices: 20 },
-  'melee-hit':   { variants: 2, gain: 0.80, pitch: 0.10, maxVoices: 8 },
+  // A floor holds up to 28 of these, and on a bad one they all shoot at once.
+  'enemy-fire':  { variants: 3, gain: 0.75, pitch: 0.09 },
+  'melee-swing': { variants: 2, gain: 0.50, pitch: 0.12 },
+  'melee-hit':   { variants: 2, gain: 0.80, pitch: 0.10 },
 
-  // The office staff, who shout actual words at you. Twelve takes because these
-  // are the only clips in the set with *content* — pitch jitter disguises a
-  // repeated gunshot, and does nothing at all for a repeated sentence.
-  'enemy-alert': { variants: 12, gain: 0.75, pitch: 0.04, maxVoices: 16 },
-  'enemy-pain':  { variants: 3, gain: 0.65, pitch: 0.09, maxVoices: 20 },
-  'enemy-death': { variants: 3, gain: 0.80, pitch: 0.07, maxVoices: 20 },
-  // Idle muttering is atmosphere, not an event, so this one is spaced — a floor
-  // of staff all grumbling at once is a crowd, not an empty office.
-  'enemy-idle':  { variants: 2, gain: 0.45, pitch: 0.10, minGap: 0.6, maxVoices: 4 },
+  // The office staff, who shout actual sentences at you. This is the one clip in
+  // the set with *content*, and content is the thing variation cannot fake:
+  // pitch jitter hides a repeated gunshot completely and does nothing whatsoever
+  // for a repeated punchline. Hence twenty-five of them, where three would do
+  // for anything else.
+  'enemy-alert': { variants: 26, gain: 0.75, pitch: 0.04 },
+  'enemy-pain':  { variants: 3, gain: 0.65, pitch: 0.09 },
+  'enemy-death': { variants: 3, gain: 0.80, pitch: 0.07 },
+  // Idle muttering is the one vocal that is atmosphere rather than an event, so
+  // its spacing lives in the enemy that does the muttering (see _mutter), not in
+  // a throttle here.
+  'enemy-idle':  { variants: 2, gain: 0.45, pitch: 0.10 },
 
   // The green ones, up from further down. Same events, a different throat.
-  'zombie-alert': { variants: 3, gain: 0.75, pitch: 0.08, maxVoices: 16 },
-  'zombie-pain':  { variants: 3, gain: 0.70, pitch: 0.09, maxVoices: 20 },
-  'zombie-death': { variants: 3, gain: 0.85, pitch: 0.07, maxVoices: 20 },
-  'zombie-idle':  { variants: 2, gain: 0.55, pitch: 0.10, minGap: 0.6, maxVoices: 4 },
+  'zombie-alert': { variants: 3, gain: 0.75, pitch: 0.08 },
+  'zombie-pain':  { variants: 3, gain: 0.70, pitch: 0.09 },
+  'zombie-death': { variants: 3, gain: 0.85, pitch: 0.07 },
+  'zombie-idle':  { variants: 2, gain: 0.55, pitch: 0.10 },
 
   // The sentry units. Pitch jitter stays low here — a servo that wanders in
   // pitch stops sounding like a machine.
-  'robot-alert': { variants: 3, gain: 0.70, pitch: 0.03, maxVoices: 16 },
-  'robot-pain':  { variants: 3, gain: 0.65, pitch: 0.04, maxVoices: 20 },
-  'robot-death': { variants: 3, gain: 0.85, pitch: 0.03, maxVoices: 20 },
-  'robot-idle':  { variants: 2, gain: 0.50, pitch: 0.04, minGap: 0.6, maxVoices: 4 },
-  'robot-step':  { variants: 3, gain: 0.60, pitch: 0.06, maxVoices: 32 },
+  'robot-alert': { variants: 3, gain: 0.70, pitch: 0.03 },
+  'robot-pain':  { variants: 3, gain: 0.65, pitch: 0.04 },
+  'robot-death': { variants: 3, gain: 0.85, pitch: 0.03 },
+  'robot-idle':  { variants: 2, gain: 0.50, pitch: 0.04 },
+  'robot-step':  { variants: 3, gain: 0.60, pitch: 0.06 },
 
-  'enemy-step': { variants: 3, gain: 0.55, pitch: 0.14, maxVoices: 32 },
+  'enemy-step': { variants: 3, gain: 0.55, pitch: 0.14 },
 
-  // What the bullet landed on. Every surface in the building answers back.
-  'hit-flesh':    { variants: 3, gain: 0.70, pitch: 0.12, maxVoices: 32 },
-  'impact-wall':  { variants: 3, gain: 0.45, pitch: 0.13, maxVoices: 40 },
-  'impact-metal': { variants: 3, gain: 0.50, pitch: 0.13, maxVoices: 32 },
-  'impact-glass': { variants: 3, gain: 0.55, pitch: 0.12, maxVoices: 32 },
-  'impact-wood':  { variants: 3, gain: 0.50, pitch: 0.13, maxVoices: 32 },
+  // What the bullet landed on. Every surface in the building answers back in its
+  // own material — see SUBSTANCE below for which prop is made of what.
+  'hit-flesh':        { variants: 3, gain: 0.70, pitch: 0.12 },
+  'impact-wall':      { variants: 3, gain: 0.45, pitch: 0.13 },
+  'impact-metal':     { variants: 3, gain: 0.50, pitch: 0.13 },
+  'impact-glass':     { variants: 3, gain: 0.55, pitch: 0.12 },
+  'impact-wood':      { variants: 3, gain: 0.50, pitch: 0.13 },
+  'impact-plastic':   { variants: 3, gain: 0.50, pitch: 0.14 },
+  'impact-fabric':    { variants: 3, gain: 0.42, pitch: 0.14 },
+  'impact-cardboard': { variants: 3, gain: 0.45, pitch: 0.14 },
+  'impact-electronic':{ variants: 3, gain: 0.52, pitch: 0.12 },
+  'impact-foliage':   { variants: 3, gain: 0.45, pitch: 0.15 },
 
-  'player-hurt':  { variants: 3, gain: 0.80, pitch: 0.07, minGap: 0.3, maxVoices: 2 },
-  'player-death': { gain: 1.00, pitch: 0.03, maxVoices: 1 },
-  // One player, one set of lungs: both of these are spaced rather than stacked.
-  jump:   { variants: 3, gain: 0.40, pitch: 0.08, minGap: 0.25, maxVoices: 2 },
-  breath: { variants: 3, gain: 0.30, pitch: 0.08, minGap: 0.9, maxVoices: 2 },
+  // Every hit you take is heard, including all four of a burst that lands in one
+  // second. Being shot four times should sound like being shot four times.
+  'player-hurt':  { variants: 3, gain: 0.80, pitch: 0.07 },
+  'player-death': { gain: 1.00, pitch: 0.03 },
+  jump:   { variants: 3, gain: 0.40, pitch: 0.08 },
+  breath: { variants: 3, gain: 0.30, pitch: 0.08 },
 
-  'glass-break':   { variants: 3, gain: 0.75, pitch: 0.10, maxVoices: 16 },
-  'prop-break':    { variants: 3, gain: 0.70, pitch: 0.10, maxVoices: 16 },
-  'tube-break':    { variants: 2, gain: 0.65, pitch: 0.12, maxVoices: 12 },
-  'debris-settle': { variants: 3, gain: 0.45, pitch: 0.12, maxVoices: 12 },
-  // Walking into furniture is continuous contact, so this is one scrape rather
-  // than one per frame.
-  'prop-shove':    { variants: 3, gain: 0.40, pitch: 0.12, minGap: 0.4, maxVoices: 4 },
+  // Coming apart, one per substance. `prop-break` is the wooden one — it kept
+  // its original name because it is on disk under it.
+  'glass-break':      { variants: 3, gain: 0.75, pitch: 0.10 },
+  'prop-break':       { variants: 3, gain: 0.70, pitch: 0.10 },
+  'tube-break':       { variants: 2, gain: 0.65, pitch: 0.12 },
+  'break-metal':      { variants: 3, gain: 0.78, pitch: 0.10 },
+  'break-plastic':    { variants: 3, gain: 0.68, pitch: 0.11 },
+  'break-fabric':     { variants: 3, gain: 0.55, pitch: 0.11 },
+  'break-cardboard':  { variants: 3, gain: 0.60, pitch: 0.12 },
+  'break-electronic': { variants: 3, gain: 0.75, pitch: 0.10 },
+  'break-foliage':    { variants: 3, gain: 0.68, pitch: 0.11 },
 
-  step: { variants: 4, gain: 0.30, pitch: 0.14, maxVoices: 16 },
-  land: { variants: 2, gain: 0.50, pitch: 0.10, maxVoices: 8 },
+  // ...and the tail a second later, as the pieces stop moving.
+  'debris-settle':     { variants: 3, gain: 0.45, pitch: 0.12 },
+  'settle-wood':       { variants: 3, gain: 0.45, pitch: 0.13 },
+  'settle-metal':      { variants: 3, gain: 0.48, pitch: 0.13 },
+  'settle-glass':      { variants: 3, gain: 0.50, pitch: 0.13 },
+  'settle-plastic':    { variants: 3, gain: 0.45, pitch: 0.14 },
+  'settle-electronic': { variants: 3, gain: 0.45, pitch: 0.13 },
+  // Leaning on a desk is one shove, not sixty a second — but that is a fact
+  // about the collision, so game.js decides when a shove has happened and this
+  // plays every time it says so.
+  'prop-shove':    { variants: 3, gain: 0.40, pitch: 0.12 },
 
-  'shell-casing': { variants: 3, gain: 0.28, pitch: 0.16, maxVoices: 24 },
+  step: { variants: 4, gain: 0.30, pitch: 0.14 },
+  land: { variants: 2, gain: 0.50, pitch: 0.10 },
 
-  'floor-clear': { gain: 0.55, pitch: 0.01, maxVoices: 2 },
-  descend:       { gain: 0.70, pitch: 0.02, maxVoices: 2 },
-  'low-health':  { variants: 2, gain: 0.45, pitch: 0.02, maxVoices: 2 },
-  heal:          { gain: 0.45, pitch: 0.02, maxVoices: 2 },
+  'shell-casing': { variants: 3, gain: 0.28, pitch: 0.16 },
+
+  'floor-clear': { gain: 0.55, pitch: 0.01 },
+  descend:       { gain: 0.70, pitch: 0.02 },
+  'low-health':  { variants: 2, gain: 0.45, pitch: 0.02 },
+  heal:          { gain: 0.45, pitch: 0.02 },
 
   'amb-office': { gain: 0.30, pitch: 0, bed: true },
   'amb-drone':  { gain: 0.22, pitch: 0, bed: true },
@@ -120,17 +142,42 @@ const IMPACT_SCATTER = 0.03;
 // reanimated colleague still lands like a person in office shoes.
 const STEP_CLIP = { robot: 'robot-step' };
 
-// What each destructible is made of, for the bullet that hits it and for the
-// noise it makes coming apart.
-const IMPACT_CLIP = { glass: 'impact-glass', panel: 'impact-metal', prop: 'impact-wood' };
-const BREAK_CLIP = { glass: 'glass-break', panel: 'tube-break', prop: 'prop-break' };
+// What the office is made of. Every destructible carries a `substance` (see
+// gen/props.js) and each one answers in its own voice three times over: when a
+// bullet hits it, when it finally comes apart, and again a moment later as the
+// pieces stop moving. A filing cabinet and a pot plant have no business sounding
+// alike in any of those three.
+//
+// `settle` is allowed to be missing — a torn partition and a burst box do not
+// clatter afterwards, they just stop.
+const SUBSTANCE = {
+  wood:       { impact: 'impact-wood',       break: 'prop-break',       settle: 'settle-wood' },
+  metal:      { impact: 'impact-metal',      break: 'break-metal',      settle: 'settle-metal' },
+  glass:      { impact: 'impact-glass',      break: 'glass-break',      settle: 'settle-glass' },
+  plastic:    { impact: 'impact-plastic',    break: 'break-plastic',    settle: 'settle-plastic' },
+  electronic: { impact: 'impact-electronic', break: 'break-electronic', settle: 'settle-electronic' },
+  foliage:    { impact: 'impact-foliage',    break: 'break-foliage',    settle: 'settle-wood' },
+  cardboard:  { impact: 'impact-cardboard',  break: 'break-cardboard',  settle: 'debris-settle' },
+  fabric:     { impact: 'impact-fabric',     break: 'break-fabric' },
+  // A fluorescent tube is steel to shoot at and glass to break, which is why it
+  // is its own substance rather than either one.
+  tube:       { impact: 'impact-metal',      break: 'tube-break',       settle: 'settle-glass' },
+};
+
+// The two destructibles that are part of the building rather than furniture, and
+// so have no entry in the prop catalogue to carry a substance.
+const KIND_SUBSTANCE = { glass: 'glass', panel: 'tube' };
+
+// Anything whose substance never got set falls back to laminate panel, which is
+// what most of an office is.
+const DEFAULT_SUBSTANCE = 'wood';
 
 const CASING_DELAY = 0.26;    // seconds after the shot before brass lands
 const DEBRIS_DELAY = 0.8;     // ...and before the wreckage stops moving
 
-// How far a placed sound is still worth spawning a voice for. The panner would
-// make it inaudible anyway; this stops a floor of 28 enemies spending the voice
-// budget on footsteps in rooms you cannot hear.
+// How far away a sound is still worth placing. This is not a budget — it is the
+// range past which the panner's own falloff has already taken the clip below
+// audible, so spawning it would be inaudible work rather than a sound you lose.
 const AUDIBLE = 26;
 const AUDIBLE_STEP = 15;
 
@@ -149,7 +196,6 @@ export class GameAudio {
     this._fwd = new THREE.Vector3();
     this._up = new THREE.Vector3();
     this._at = { x: 0, y: 0, z: 0 };
-    this._listener = null;   // the camera, once the game hands it over
   }
 
   /**
@@ -214,11 +260,12 @@ export class GameAudio {
   }
 
   /**
-   * A bullet landed on something breakable, which knows what it is made of.
-   * `kind` is a destructible's kind: 'glass', 'panel' (a ceiling tube), 'prop'.
+   * A bullet landed on something breakable. `kind` is the destructible's kind
+   * ('glass', 'panel' for a ceiling tube, 'prop'); `substance` is what a prop is
+   * made of, and is ignored for the two kinds that are part of the building.
    */
-  bulletHitMaterial(kind, point) {
-    this.sfx.play(IMPACT_CLIP[kind] ?? 'impact-wood', {
+  bulletHitMaterial(kind, substance, point) {
+    this.sfx.play(substanceOf(kind, substance).impact, {
       at: this._place(point), delay: Math.random() * IMPACT_SCATTER,
     });
   }
@@ -305,13 +352,17 @@ export class GameAudio {
 
   // --- the building coming apart ------------------------------------------------
 
-  /** `kind` is a destructible's kind: 'glass', 'panel' (a ceiling tube), 'prop'. */
-  breakThing(kind, point) {
+  /** Something came apart. Same arguments as bulletHitMaterial. */
+  breakThing(kind, substance, point) {
     const at = this._place(point);
-    this.sfx.play(BREAK_CLIP[kind] ?? 'prop-break', { at });
-    // The tail is what makes destruction read as heavy: the thing breaks, then a
-    // second later the pieces stop moving.
-    this.sfx.play('debris-settle', { at, delay: DEBRIS_DELAY + Math.random() * 0.4 });
+    const spec = substanceOf(kind, substance);
+    this.sfx.play(spec.break, { at });
+    // The tail is what makes destruction read as heavy: the thing breaks, and a
+    // second later its pieces stop moving. Some substances have no tail — a torn
+    // partition does not clatter.
+    if (spec.settle) {
+      this.sfx.play(spec.settle, { at, delay: DEBRIS_DELAY + Math.random() * 0.4 });
+    }
   }
 
   /** Furniture shoved aside by the player walking into it. */
@@ -358,4 +409,11 @@ export class GameAudio {
     this._at.z = point.z;
     return this._at;
   }
+}
+
+// Window glazing and ceiling tubes are part of the building and never went
+// through the prop catalogue, so their kind names their substance; everything
+// else is furniture and brought its own.
+function substanceOf(kind, substance) {
+  return SUBSTANCE[KIND_SUBSTANCE[kind] ?? substance] ?? SUBSTANCE[DEFAULT_SUBSTANCE];
 }

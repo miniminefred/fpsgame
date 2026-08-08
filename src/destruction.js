@@ -88,9 +88,9 @@ export class Destruction {
     if (!entry) return false;
     if (entry.broken) return true;
 
-    // Glass, a steel tube and a laminate desk are all "world geometry" to the
+    // Glass, a steel tube and a pot plant are all "world geometry" to the
     // raycast, and all sound completely different when you shoot them.
-    this.audio.bulletHitMaterial(entry.kind, hit.point);
+    this.audio.bulletHitMaterial(entry.kind, entry.substance, hit.point);
 
     entry.hp -= damage;
     if (entry.hp <= 0) this._shatter(entry, dir, hit.point);
@@ -99,7 +99,10 @@ export class Destruction {
 
   /** A bullet landed on a loose prop that is already its own body. */
   damageProp(dyn, dir, point, damage) {
-    if (!dyn.hp || dyn.broken) return;
+    if (dyn.broken) return;
+    // Ahead of the hp check: a prop you cannot destroy still answers when shot.
+    this.audio.bulletHitMaterial('prop', dyn.substance, point);
+    if (!dyn.hp) return;
     dyn.hp -= damage;
     if (dyn.hp <= 0) this._breakProp(dyn, dir, point);
   }
@@ -130,7 +133,7 @@ export class Destruction {
 
     const glassy = entry.kind !== 'prop';
     this.effects.impact(point, _up.set(0, 1, 0), glassy ? 0xdff0ff : 0xffe4b0);
-    this.audio.breakThing(entry.kind, point);
+    this.audio.breakThing(entry.kind, entry.substance, point);
   }
 
   // Loose prop: retire the intact body and re-emit its boxes as independent
@@ -152,7 +155,7 @@ export class Destruction {
     this._scatter(dyn.parts, dyn, dir, point);
 
     this.effects.impact(point, _up.set(0, 1, 0), 0xffe4b0);
-    this.audio.breakThing('prop', point);
+    this.audio.breakThing('prop', dyn.substance, point);
   }
 
   /**
