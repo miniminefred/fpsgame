@@ -4,7 +4,8 @@ const BOX_COLORS = [0xd9534f, 0xf0ad4e, 0x5bc0de, 0x9b59b6, 0xe0e0e0, 0x8bc34a];
 
 // Builds the static flat-plane world: ground, reference grid, and a set of
 // boxes of varying height/footprint. Returns collider AABBs (in world space,
-// resting on the ground) so the player can walk into them and jump on top.
+// resting on the ground) so the player can walk into them and jump on top,
+// plus the solid meshes so bullets can be raycast against them.
 export function buildWorld(scene) {
   const groundMat = new THREE.MeshStandardMaterial({ color: 0x4f7a43, roughness: 1 });
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), groundMat);
@@ -17,6 +18,7 @@ export function buildWorld(scene) {
   scene.add(grid);
 
   const colliders = [];
+  const meshes = [ground];
 
   // Adds a box resting on the ground (bottom at y=0) and records its collider.
   function addBox(x, z, w, h, d, color) {
@@ -28,6 +30,7 @@ export function buildWorld(scene) {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     scene.add(mesh);
+    meshes.push(mesh);
     colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2, top: h });
   }
 
@@ -47,5 +50,5 @@ export function buildWorld(scene) {
     addBox(-7 - i * 2.4, 6, 2, 0.6 + i * 0.8, 2, BOX_COLORS[i % BOX_COLORS.length]);
   }
 
-  return { colliders };
+  return { colliders, meshes };
 }
