@@ -145,6 +145,10 @@ export class Enemies {
           if (!nav.walkable(tx, ty)) continue;
 
           const x = nav.wx(tx), z = nav.wz(ty);
+          // A single walkable tile is not enough: movement tests a whole body
+          // radius, so a tile wedged against furniture is one an enemy can
+          // stand on but never leave. Spawning there makes it a statue.
+          if (!nav.clear(x, z, RADIUS)) continue;
           if (Math.hypot(x - layout.spawn.x, z - layout.spawn.z) < minDist) continue;
           if (spots.some((s) => Math.hypot(s.x - x, s.z - z) < 1.6)) continue;
 
