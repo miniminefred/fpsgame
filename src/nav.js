@@ -11,6 +11,10 @@ import { SOLID } from './gen/layout.js';
 const REPATH_INTERVAL = 0.3;   // seconds between flood fills
 const LOS_STEP = 0.25;         // metres between line-of-sight samples
 
+// Enemy body radius. Lives here rather than in enemies.js because the nav grid
+// has to be eroded by it — see `fits` below.
+export const BODY_RADIUS = 0.36;
+
 export class NavGrid {
   constructor(nav) {
     this.W = nav.W;
@@ -25,6 +29,19 @@ export class NavGrid {
     this.queue = new Int32Array(this.W * this.H);
     this.fieldAge = Infinity;
     this.fieldOrigin = -1;
+
+    // `walk` is where a *point* may stand; `fits` is where a whole body may.
+    // Routing on `walk` and then moving with a radius test is a contradiction:
+    // the field happily leads an enemy into a 0.4 m gap between two desks that
+    // its 0.72 m body then refuses to enter, and it stalls there forever. So we
+    // erode the grid by the body radius once per floor and path on that.
+    this.fits = new Uint8Array(this.W * this.H);
+    for (let ty = 0; ty < this.H; ty++) {
+      for (let tx = 0; tx < this.W; tx++) {
+        if (!this.walk[ty * this.W + tx]) continue;
+        if (this.clear(this.wx(tx), this.wz(ty), BODY_RADIUS)) this.fits[ty * this.W + tx] = 1;
+      }
+    }
   }
 
   tx(x) { return Math.floor((x - this.ox) / this.TILE); }
@@ -36,6 +53,11 @@ export class NavGrid {
 
   walkable(tx, ty) {
     return this.inBounds(tx, ty) && this.walk[ty * this.W + tx] === 1;
+  }
+
+  // Can a whole body stand centred on this tile? This is what pathing uses.
+  fitsAt(tx, ty) {
+    return this.inBounds(tx, ty) && this.fits[ty * this.W + tx] === 1;
   }
 
   // Is a body of the given radius clear of walls and furniture here?
@@ -86,17 +108,17 @@ export class NavGrid {
   }
 
   _flood(sx, sy) {
-    const { W, H, walk, field, queue } = this;
+    const { W, H, fits, field, queue } = this;
     field.fill(-1);
 
-    // The player is often standing on something the enemies can't walk on (a
-    // desk, a doorway edge case) — start from the nearest tile they can.
-    if (!this.walkable(sx, sy)) {
+    // The player is often standing somewhere no enemy body fits (on a desk, in
+    // a corner) — start from the nearest tile where one does.
+    if (!this.fitsAt(sx, sy)) {
       let found = false;
-      for (let r = 1; r <= 6 && !found; r++) {
+      for (let r = 1; r <= 8 && !found; r++) {
         for (let dy = -r; dy <= r && !found; dy++) {
           for (let dx = -r; dx <= r && !found; dx++) {
-            if (this.walkable(sx + dx, sy + dy)) { sx += dx; sy += dy; found = true; }
+            if (this.fitsAt(sx + dx, sy + dy)) { sx += dx; sy += dy; found = true; }
           }
         }
       }
@@ -113,10 +135,10 @@ export class NavGrid {
       const x = i % W, y = (i / W) | 0;
       const d = field[i] + 1;
 
-      if (x > 0 && field[i - 1] === -1 && walk[i - 1]) { field[i - 1] = d; queue[tail++] = i - 1; }
-      if (x < W - 1 && field[i + 1] === -1 && walk[i + 1]) { field[i + 1] = d; queue[tail++] = i + 1; }
-      if (y > 0 && field[i - W] === -1 && walk[i - W]) { field[i - W] = d; queue[tail++] = i - W; }
-      if (y < H - 1 && field[i + W] === -1 && walk[i + W]) { field[i + W] = d; queue[tail++] = i + W; }
+      if (x > 0 && field[i - 1] === -1 && fits[i - 1]) { field[i - 1] = d; queue[tail++] = i - 1; }
+      if (x < W - 1 && field[i + 1] === -1 && fits[i + 1]) { field[i + 1] = d; queue[tail++] = i + 1; }
+      if (y > 0 && field[i - W] === -1 && fits[i - W]) { field[i - W] = d; queue[tail++] = i - W; }
+      if (y < H - 1 && field[i + W] === -1 && fits[i + W]) { field[i + W] = d; queue[tail++] = i + W; }
     }
   }
 
@@ -133,10 +155,10 @@ export class NavGrid {
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
         if (!dx && !dy) continue;
-        if (!this.walkable(tx + dx, ty + dy)) continue;
+        if (!this.fitsAt(tx + dx, ty + dy)) continue;
         // Diagonals are only legal if both orthogonal neighbours are open, so
         // nobody clips a wall corner.
-        if (dx && dy && (!this.walkable(tx + dx, ty) || !this.walkable(tx, ty + dy))) continue;
+        if (dx && dy && (!this.fitsAt(tx + dx, ty) || !this.fitsAt(tx, ty + dy))) continue;
 
         const d = this.field[(ty + dy) * this.W + (tx + dx)];
         if (d >= 0 && d < best) { best = d; bestX = dx; bestZ = dy; }

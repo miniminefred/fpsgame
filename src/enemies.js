@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { BODY_RADIUS as RADIUS } from './nav.js';
 
 // The people still working here.
 //
@@ -9,7 +10,6 @@ import * as THREE from 'three';
 // converted into a miss distance at the player's range, so backing off actually
 // makes you harder to hit instead of just changing a magic number.
 
-const RADIUS = 0.36;
 const EYE = 1.55;
 const SIGHT = 22;          // metres they can notice you at, with line of sight
 const HEARING = 15;        // metres your gunfire carries without line of sight

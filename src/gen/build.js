@@ -328,10 +328,26 @@ function makeSink(layout, batcher, materials, masks) {
     ty1: Math.min(H - 1, Math.ceil((z1 - layout.oz) / TILE) - 1),
   });
 
+  // Reserving floor rounds OUTWARD — being generous is what stops two props
+  // overlapping.
   const stamp = (mask, x0, z0, x1, z1) => {
     const r = range(x0, z0, x1, z1);
     for (let ty = r.ty0; ty <= r.ty1; ty++) {
       for (let tx = r.tx0; tx <= r.tx1; tx++) mask[ty * W + tx] = 1;
+    }
+  };
+
+  // Blocking navigation rounds to tile CENTRES instead. Rounding outward here
+  // inflates every prop to whole half-metre tiles — a 0.66 m cabinet would
+  // block a full metre — which walls off gaps a body can plainly walk through
+  // and leaves the enemies with a floorplan the player doesn't share.
+  const stampCentres = (mask, x0, z0, x1, z1) => {
+    const tx0 = Math.max(0, Math.ceil((x0 - layout.ox) / TILE - 0.5));
+    const tx1 = Math.min(W - 1, Math.floor((x1 - layout.ox) / TILE - 0.5));
+    const ty0 = Math.max(0, Math.ceil((z0 - layout.oz) / TILE - 0.5));
+    const ty1 = Math.min(H - 1, Math.floor((z1 - layout.oz) / TILE - 0.5));
+    for (let ty = ty0; ty <= ty1; ty++) {
+      for (let tx = tx0; tx <= tx1; tx++) mask[ty * W + tx] = 1;
     }
   };
 
@@ -360,8 +376,12 @@ function makeSink(layout, batcher, materials, masks) {
       // or a permanent hole in the nav grid.
       if (pending) return;
       colliders.push({ minX: x0, maxX: x1, minZ: z0, maxZ: z1, top });
-      // Anything knee-high or taller stops an enemy from walking through it.
-      if (top >= 0.5) stamp(blocked, x0, z0, x1, z1);
+      // Anything the player can't step over blocks the enemies too. The
+      // threshold has to match the player's step tolerance (STEP_EPS in
+      // player.js): a sofa at 0.44 m and a plant pot at 0.34 m are both solid
+      // to walk into, so leaving them out of the nav grid gave the enemies
+      // routes straight through the furniture.
+      if (top > 0.3) stampCentres(blocked, x0, z0, x1, z1);
     },
 
     beginDynamic(mass, hp) { pending = { mass, hp, boxes: [] }; },

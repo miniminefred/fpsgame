@@ -1,10 +1,14 @@
 // Headless QA harness for FURNITURE PLACEMENT.
 //
-//   node tools/validate-props.mjs                  # full sweep + summary
-//   node tools/validate-props.mjs --seeds 20       # random seeds per floor (default 10)
+//   node tools/validate-props.mjs                  # full sweep + summary (300 floors)
+//   node tools/validate-props.mjs --seeds 40       # random seeds per floor (default 14)
+//   node tools/validate-props.mjs --small 10       # small human-typeable seeds too (default 6)
 //   node tools/validate-props.mjs --floors 15      # floors 1..N (default 15)
-//   node tools/validate-props.mjs --dump 7 3       # ASCII plan for seed 7, floor 3
+//   node tools/validate-props.mjs --dump 7003 7    # ASCII plan + per-room reachability table,
+//                                                  # then a 0.125 m zoom of the worst room
+//   node tools/validate-props.mjs --dump 7003 7 --room 15    # ... zoom a specific room
 //   node tools/validate-props.mjs --catalogue      # prop catalogue audit only
+//   node tools/validate-props.mjs --trace          # print stack traces for crashes
 //
 // Companion to tools/validate-layout.mjs, which proves the EMPTY floorplan is
 // sound. This one runs the real buildLevel() and interrogates what furnishing
@@ -77,10 +81,22 @@ const MAX_EXAMPLES = 6;
 const EPS = 1e-6;
 const HAIRLINE = 0.01;     // 1 cm — the "small epsilon" for overlap tests
 const REACH_SHARE = 0.25;  // a room must expose at least this share of itself
+const GEOM_SOFT = 0.75;    // ... and losing a quarter of it to furniture is bad
 const CLEAR_R = 1.5;       // metres of clearance owed to spawn and exit
 const MAX_PROP_SIDE = 4.0;
 const MAX_PROP_TOP = 2.4;
 const MIN_PROP_TOP = 0.05;
+
+// Geometric reachability. The nav grid is tile-granular; the *colliders* are
+// not, so "can a body get there" has to be answered on a finer grid or the tool
+// cannot tell an inflated nav stamp from a genuinely blocked gap.
+//
+// The model is exactly player.js's: every collider is an AABB inflated by the
+// player's collision RADIUS, and a position is legal when it is outside all of
+// them. That makes this the same question the game asks every frame.
+const SUB = 4;                 // cells per tile => 0.125 m cells
+const BODY_R = 0.4;            // must match RADIUS in src/player.js
+const ENEMY_R = 0.36;          // RADIUS in src/enemies.js, for reference
 
 // ---------------------------------------------------------------------------
 // check bookkeeping (same shape as validate-layout.mjs)
@@ -120,10 +136,15 @@ const IDS = [
   ['4.room-dead', 'FAIL', 'ROOM REACH    every room has walkable floor reachable from its door'],
   ['4.room-share', 'FAIL', `ROOM REACH    >= ${REACH_SHARE * 100}% of a room interior reachable from its door`],
   ['4.room-pocket', 'WARN', 'ROOM REACH    a room has no walkable-but-unreachable pockets'],
+  ['4.geom-dead', 'FAIL', 'ROOM REACH    (geometric) a body can reach floor inside every room'],
+  ['4.geom-share', 'FAIL', `ROOM REACH    (geometric) >= ${REACH_SHARE * 100}% of the passable floor of a room reachable`],
+  ['4.geom-soft', 'WARN', `ROOM REACH    (geometric) >= ${GEOM_SOFT * 100}% of the passable floor of a room reachable`],
+  ['4.nav-inflation', 'WARN', 'ROOM REACH    nav grid does not seal a gap a body can physically pass'],
 
   ['5.connected', 'FAIL', 'CONNECTIVITY  every room reachable from spawn AFTER furnishing'],
   ['5.walk-orphan', 'WARN', 'CONNECTIVITY  no walkable tile stranded from spawn by furniture'],
   ['5.spawn-walk', 'FAIL', 'CONNECTIVITY  spawn tile itself is walkable'],
+  ['5.geom-connected', 'FAIL', 'CONNECTIVITY  (geometric) every room physically reachable from spawn'],
 
   ['6.spawn-clear', 'FAIL', `SPAWN/EXIT    no furniture within ${CLEAR_R} m of spawn`],
   ['6.exit-clear', 'FAIL', `SPAWN/EXIT    no furniture within ${CLEAR_R} m of exit`],
@@ -283,6 +304,7 @@ const stats = {
   biggestPocket: 0, biggestPocketCase: '',
   reachOfWalkable: [],                // reached / walkable, per room
   worstRooms: [],                     // {share, id, role, interior, walkable, reached}
+  geomShare: [], geomDeadRooms: 0, geomLowRooms: 0, geomSoftRooms: 0, geomWorst: [], navInflated: 0,
   edgeStandoff: new Map(),            // kind -> gaps for edgeProp-only kinds
 };
 
@@ -610,8 +632,43 @@ function validate(seed, floorNumber) {
     check('5.connected').fail(id, `${cutOff.length} rooms unreachable from spawn: ${cutOff.slice(0, 3).join(',')}`);
   }
 
+  // ---- 4b/5b. geometric reachability -------------------------------------
+  const geom = buildGeomGrid(layout, colliders, BODY_R);
+  const { pass, GW } = geom;
+  const gIdx = (gx, gy) => gy * GW + gx;
+  const gSeedNear = (tx, ty) => {
+    const out = [];
+    for (let gy = ty * SUB; gy < (ty + 1) * SUB; gy++) {
+      for (let gx = tx * SUB; gx < (tx + 1) * SUB; gx++) if (pass[gIdx(gx, gy)]) out.push(gIdx(gx, gy));
+    }
+    return out;
+  };
+  const gSpawn = [];
+  for (let rr = 0; rr < 12 && !gSpawn.length; rr++) {
+    for (let dy = -rr; dy <= rr; dy++) for (let dx = -rr; dx <= rr; dx++) {
+      const s = gSeedNear(sx + dx, sy + dy);
+      if (s.length) { gSpawn.push(...s); break; }
+    }
+  }
+  const gReach = floodWalk(pass, GW, geom.GH, gSpawn);
+  const geomCutOff = [];
+  rooms.forEach((r, ri) => {
+    let any = false;
+    for (let ty = r.y0; ty < r.y1 && !any; ty++) {
+      for (let tx = r.x0; tx < r.x1 && !any; tx++) {
+        for (let gy = ty * SUB; gy < (ty + 1) * SUB && !any; gy++) {
+          for (let gx = tx * SUB; gx < (tx + 1) * SUB; gx++) if (gReach[gIdx(gx, gy)]) { any = true; break; }
+        }
+      }
+    }
+    if (!any) geomCutOff.push(`${r.role}#${ri}`);
+  });
+  if (geomCutOff.length) {
+    check('5.geom-connected').fail(id, `${geomCutOff.length} rooms physically unreachable: ${geomCutOff.slice(0, 3).join(',')}`);
+  }
+
   // ---- 4. per-room reachability from its own doorways --------------------
-  let dead = 0, low = 0, pocket = 0;
+  let dead = 0, low = 0, pocket = 0, gDead = 0, gLow = 0, gSoft = 0, inflation = 0;
   rooms.forEach((r, ri) => {
     const interior = (r.x1 - r.x0) * (r.y1 - r.y0);
     if (!interior) return;
@@ -661,6 +718,37 @@ function validate(seed, floorNumber) {
       stats.worstRooms.length = 40;
     }
 
+    // Same question again, geometrically: how much of the room can a body that
+    // stepped through the doorway actually get to?
+    const gSeeds = [];
+    for (const d of r.doors) {
+      for (let y = d.y0; y < d.y1; y++) {
+        for (let x = d.x0; x < d.x1; x++) {
+          const ns = d.vertical ? [[x - 1, y], [x + 1, y]] : [[x, y - 1], [x, y + 1]];
+          for (const [nx, ny] of ns) {
+            if (!inb(nx, ny) || owner[idx(nx, ny)] !== ri) continue;
+            gSeeds.push(...gSeedNear(nx, ny));
+          }
+        }
+      }
+    }
+    // Rooms are rectangles, so confining the flood to the room's cell rect is
+    // the same thing as confining it to the room.
+    const { passable: gPass, reached: gReached } = floodInRect(
+      pass, GW, r.x0 * SUB, r.y0 * SUB, r.x1 * SUB - 1, r.y1 * SUB - 1, gSeeds);
+    const gShare = gPass ? gReached / gPass : 1;
+    stats.geomShare.push(gShare);
+    if (gPass > 0 && gReached === 0) { gDead++; stats.geomDeadRooms++; }
+    else if (gShare < REACH_SHARE) { gLow++; stats.geomLowRooms++; }
+    if (gShare < GEOM_SOFT) { gSoft++; stats.geomSoftRooms++; }
+    stats.geomWorst.push({ id, role: r.role, gPass, gReached, gShare, nav: share, doors: r.doors.length });
+    if (stats.geomWorst.length > 400) {
+      stats.geomWorst.sort((a, b) => a.gShare - b.gShare);
+      stats.geomWorst.length = 40;
+    }
+    // The nav grid sealed something a body can walk through.
+    if (walkable - reached > 2 && gShare > 0.9) { inflation++; stats.navInflated++; }
+
     if (reached === 0 && walkable > 0) { dead++; stats.deadRooms++; }
     else if (share < REACH_SHARE) { low++; stats.lowRooms++; }
     if (walkable - reached > 2) {
@@ -677,6 +765,10 @@ function validate(seed, floorNumber) {
   if (dead) check('4.room-dead').fail(id, `${dead} rooms with no floor reachable from their own door`);
   if (low) check('4.room-share').fail(id, `${low} rooms under ${REACH_SHARE * 100}% reachable from their own door`);
   if (pocket) check('4.room-pocket').fail(id, `${pocket} rooms with walkable pockets sealed off inside them`);
+  if (gDead) check('4.geom-dead').fail(id, `${gDead} rooms a body cannot enter past its own doorway`);
+  if (gLow) check('4.geom-share').fail(id, `${gLow} rooms with under ${REACH_SHARE * 100}% of their passable floor reachable`);
+  if (gSoft) check('4.geom-soft').fail(id, `${gSoft} rooms with under ${GEOM_SOFT * 100}% of their passable floor reachable by the player`);
+  if (inflation) check('4.nav-inflation').fail(id, `${inflation} rooms the nav grid seals but a body can walk through`);
 
   // props per room by role — attribute each collider/dynamic to its owner room
   const perRoom = new Map();
@@ -750,6 +842,82 @@ function floodWalk(walk, W, H, seeds, allow = null) {
     if (y < H - 1) push(i + W);
   }
   return seen;
+}
+
+// A sub-tile "can a body stand here" grid built from the real collider AABBs,
+// each inflated by `radius`, exactly as player.js resolves collisions. Every
+// collider counts — walls and furniture alike — because a prop spans y 0..top
+// and there is no step-up, so even a 0.34 m planter has to be walked round.
+function buildGeomGrid(layout, colliders, radius) {
+  const { W, H, tiles, ox, oz } = layout;
+  const GW = W * SUB, GH = H * SUB, CS = TILE / SUB;
+  const pass = new Uint8Array(GW * GH);
+
+  for (let ty = 0; ty < H; ty++) {
+    if (!rowHasOpen(tiles, W, ty)) continue;
+    for (let tx = 0; tx < W; tx++) {
+      if (!isOpen(tiles[ty * W + tx])) continue;
+      for (let gy = ty * SUB; gy < (ty + 1) * SUB; gy++) {
+        for (let gx = tx * SUB; gx < (tx + 1) * SUB; gx++) pass[gy * GW + gx] = 1;
+      }
+    }
+  }
+
+  // Cell centre sits at (gx + 0.5) * CS + ox.
+  for (const c of colliders) {
+    const gx0 = Math.max(0, Math.ceil((c.minX - radius - ox) / CS - 0.5));
+    const gx1 = Math.min(GW - 1, Math.floor((c.maxX + radius - ox) / CS - 0.5));
+    const gy0 = Math.max(0, Math.ceil((c.minZ - radius - oz) / CS - 0.5));
+    const gy1 = Math.min(GH - 1, Math.floor((c.maxZ + radius - oz) / CS - 0.5));
+    for (let gy = gy0; gy <= gy1; gy++) {
+      const row = gy * GW;
+      for (let gx = gx0; gx <= gx1; gx++) pass[row + gx] = 0;
+    }
+  }
+  return { pass, GW, GH };
+}
+
+function rowHasOpen(tiles, W, ty) {
+  for (let tx = 0; tx < W; tx++) if (isOpen(tiles[ty * W + tx])) return true;
+  return false;
+}
+
+// Flood confined to an inclusive cell rect, counting passable and reached cells
+// without allocating a whole-grid buffer per room.
+const scratch = { seen: new Uint8Array(0), q: new Int32Array(0) };
+function floodInRect(grid, GW, rx0, ry0, rx1, ry1, seeds) {
+  const w = rx1 - rx0 + 1, h = ry1 - ry0 + 1;
+  if (w <= 0 || h <= 0) return { passable: 0, reached: 0 };
+  const n = w * h;
+  if (scratch.seen.length < n) { scratch.seen = new Uint8Array(n); scratch.q = new Int32Array(n); }
+  const seen = scratch.seen, q = scratch.q;
+  seen.fill(0, 0, n);
+
+  let passable = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) if (grid[(ry0 + y) * GW + rx0 + x]) passable++;
+  }
+
+  let head = 0, tail = 0;
+  for (const g of seeds) {
+    const gx = g % GW, gy = (g / GW) | 0;
+    if (gx < rx0 || gx > rx1 || gy < ry0 || gy > ry1) continue;
+    const li = (gy - ry0) * w + (gx - rx0);
+    if (seen[li] || !grid[g]) continue;
+    seen[li] = 1; q[tail++] = li;
+  }
+  let reached = tail;
+  while (head < tail) {
+    const li = q[head++], x = li % w, y = (li / w) | 0;
+    const push = (nx, ny) => {
+      if (nx < 0 || ny < 0 || nx >= w || ny >= h) return;
+      const lj = ny * w + nx;
+      if (seen[lj] || !grid[(ry0 + ny) * GW + rx0 + nx]) return;
+      seen[lj] = 1; q[tail++] = lj; reached++;
+    };
+    push(x - 1, y); push(x + 1, y); push(x, y - 1); push(x, y + 1);
+  }
+  return { passable, reached };
 }
 
 function nearestWalk(walk, W, H, sx, sy) {
@@ -831,22 +999,31 @@ function dump(seed, floorNumber) {
     console.log(line);
   }
 
-  // Per-room reachability table for the same floor.
+  // Per-room reachability table for the same floor: the tile-granular nav
+  // answer next to the geometric one a real body gets.
   const owner = new Int32Array(W * H).fill(-1);
   rooms.forEach((r, ri) => {
     for (let y = r.y0; y < r.y1; y++) for (let x = r.x0; x < r.x1; x++) owner[y * W + x] = ri;
   });
-  console.log('\nroom  role         interior  walkable  reachable-from-own-door');
+  const geom = buildGeomGrid(layout, colliders, BODY_R);
+  const { pass, GW } = geom;
+
+  console.log('\nroom  role         interior  walkable  nav-reachable      player-reachable (geometric)');
+  const worst = [];
   rooms.forEach((r, ri) => {
     const interior = (r.x1 - r.x0) * (r.y1 - r.y0);
-    const seeds = [];
+    const seeds = [], gSeeds = [];
     for (const d of r.doors) {
       for (let y = d.y0; y < d.y1; y++) {
         for (let x = d.x0; x < d.x1; x++) {
           const ns = d.vertical ? [[x - 1, y], [x + 1, y]] : [[x, y - 1], [x, y + 1]];
           for (const [nx, ny] of ns) {
             if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
-            if (owner[ny * W + nx] === ri && walk[ny * W + nx]) seeds.push(ny * W + nx);
+            if (owner[ny * W + nx] !== ri) continue;
+            if (walk[ny * W + nx]) seeds.push(ny * W + nx);
+            for (let gy = ny * SUB; gy < (ny + 1) * SUB; gy++) {
+              for (let gx = nx * SUB; gx < (nx + 1) * SUB; gx++) if (pass[gy * GW + gx]) gSeeds.push(gy * GW + gx);
+            }
           }
         }
       }
@@ -854,10 +1031,40 @@ function dump(seed, floorNumber) {
     const got = floodWalk(walk, W, H, seeds, (i) => owner[i] === ri);
     let wk = 0, rc = 0;
     for (let y = r.y0; y < r.y1; y++) for (let x = r.x0; x < r.x1; x++) { if (walk[y * W + x]) wk++; if (got[y * W + x]) rc++; }
-    const flag = rc === 0 ? '  <-- DEAD' : rc / interior < REACH_SHARE ? '  <-- SEALED' : '';
+    const g = floodInRect(pass, GW, r.x0 * SUB, r.y0 * SUB, r.x1 * SUB - 1, r.y1 * SUB - 1, gSeeds);
+    const gShare = g.passable ? g.reached / g.passable : 1;
+    worst.push({ ri, gShare });
+    const flag = g.reached === 0 ? '  <-- PLAYER LOCKED OUT'
+      : gShare < GEOM_SOFT ? '  <-- PLAYER SHUT OUT OF THE REST'
+        : rc < wk ? '  <-- nav-only pocket' : '';
     console.log(`${String(ri).padStart(4)}  ${r.role.padEnd(12)} ${String(interior).padStart(8)}  ${String(wk).padStart(8)}  `
-      + `${String(rc).padStart(6)} (${fmt(100 * rc / interior)}%)${flag}`);
+      + `${String(rc).padStart(6)} (${fmt(100 * rc / interior).padStart(5)}%)     `
+      + `${String(g.reached).padStart(6)}/${String(g.passable).padEnd(6)} (${fmt(100 * gShare).padStart(5)}%)${flag}`);
   });
+
+  // Zoom on one room's sub-cell passability, either the one named with --room or
+  // the worst one on the floor.
+  const ri = args.indexOf('--room') >= 0
+    ? Number(args[args.indexOf('--room') + 1])
+    : worst.sort((a, b) => a.gShare - b.gShare)[0]?.ri;
+  const r = rooms[ri];
+  if (!r) return;
+  const furnHere = colliders.filter((c) => c.top !== WALL_H
+    && c.minX > wx(r.x0) - 0.3 && c.maxX < wx(r.x1) + 0.3
+    && c.minZ > wz(r.y0) - 0.3 && c.maxZ < wz(r.y1) + 0.3)
+    .sort((a, b) => a.minZ - b.minZ);
+  console.log(`\n--- room ${ri} (${r.role}) zoom: 0.125 m cells, colliders inflated by the player radius ${BODY_R} m`);
+  console.log(`    world x ${fmt(wx(r.x0), 2)}..${fmt(wx(r.x1), 2)}   z ${fmt(wz(r.y0), 2)}..${fmt(wz(r.y1), 2)}   doors ${r.doors.length}`);
+  for (const c of furnHere) {
+    console.log(`    ${kindOf(c).padEnd(14)} ${fmt(c.maxX - c.minX, 2)} x ${fmt(c.maxZ - c.minZ, 2)} top ${fmt(c.top, 2)}  `
+      + `x ${fmt(c.minX, 2)}..${fmt(c.maxX, 2)}  z ${fmt(c.minZ, 2)}..${fmt(c.maxZ, 2)}`);
+  }
+  console.log('    o = the player can stand here,  (blank) = inside a collider or too close to one');
+  for (let gy = r.y0 * SUB; gy < r.y1 * SUB; gy++) {
+    let s = '    ';
+    for (let gx = r.x0 * SUB; gx < r.x1 * SUB; gx++) s += pass[gy * GW + gx] ? 'o' : ' ';
+    console.log(s.replace(/\s+$/, '') || '    ');
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -993,10 +1200,26 @@ console.log(`rooms                ${stats.totalRooms} total, ${stats.deadRooms} 
   + `${stats.lowRooms} under ${REACH_SHARE * 100}% reachable`);
 console.log(`room roles           ${hist(stats.roomsByRole, 12)}`);
 stats.worstRooms.sort((a, b) => a.share - b.share);
-console.log('worst 8 rooms by reachable share (interior tiles / walkable / reached):');
+console.log('worst 8 rooms by NAV reachable share (interior tiles / walkable / reached):');
 for (const r of stats.worstRooms.slice(0, 8)) {
   console.log(`  ${r.id.padEnd(16)} ${r.role.padEnd(11)} doors=${r.doors}  ${String(r.interior).padStart(4)} / `
     + `${String(r.walkable).padStart(4)} / ${String(r.reached).padStart(4)}  = ${fmt(100 * r.share)}% of interior`);
+}
+console.log('');
+console.log(`GEOMETRIC reachability (${fmt(TILE / SUB, 3)} m cells, colliders inflated by the player's `
+  + `RADIUS ${BODY_R} m; enemies are ${ENEMY_R} m)`);
+console.log(`  share of passable floor reachable from a room's own door: median ${fmt(100 * median(stats.geomShare))}%, `
+  + `p10 ${fmt(100 * pct(stats.geomShare, 0.1))}%, min ${fmt(100 * lo(stats.geomShare))}%`);
+console.log(`  ${stats.geomDeadRooms} rooms a body cannot enter, ${stats.geomLowRooms} rooms under ${REACH_SHARE * 100}%, `
+  + `${stats.geomSoftRooms} rooms (${fmt(100 * stats.geomSoftRooms / stats.totalRooms)}% of all rooms) under ${GEOM_SOFT * 100}% passable-floor reachable`);
+console.log(`  ${stats.navInflated} rooms where the NAV grid seals a gap a body can physically walk through`);
+stats.geomWorst.sort((a, b) => a.gShare - b.gShare);
+if (stats.geomWorst.length) {
+  console.log('  worst 12 rooms — the player is physically shut out of the rest (passable cells / reached / geom share / nav share):');
+  for (const r of stats.geomWorst.slice(0, 12)) {
+    console.log(`    ${r.id.padEnd(16)} ${r.role.padEnd(11)} doors=${r.doors}  ${String(r.gPass).padStart(5)} / `
+      + `${String(r.gReached).padStart(5)} / ${fmt(100 * r.gShare).padStart(6)}%  (nav ${fmt(100 * r.nav)}%)`);
+  }
 }
 console.log('');
 console.log(`prop kinds placed    ${hist(stats.footprintHist, 16)}`);

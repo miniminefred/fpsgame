@@ -50,7 +50,13 @@ function monitorAt(p, x, z, rng) {
 }
 
 // --- prop catalogue ---------------------------------------------------------
-// `w`/`d` are the footprint used for fit tests before anything is emitted.
+//
+// `w`/`d` are the footprint reserved before anything is emitted, so they must
+// bound BOTH the collision box and the visual geometry. Declaring them smaller
+// than the obstacle is a silent interpenetration bug: the fit test reserves less
+// floor than the prop actually occupies, and the next prop is free to overlap
+// the difference. `tools/validate-props.mjs --catalogue` checks all three boxes
+// nest correctly.
 
 export const PROPS = {
   desk: {
@@ -85,7 +91,7 @@ export const PROPS = {
   },
 
   partition: {
-    w: 1.6, d: 0.1,
+    w: 1.6, d: 0.12,
     build(p) {
       p.box('partition', -0.8, 0.06, -0.05, 0.8, 1.38, 0.05);
       p.box('metal', -0.8, 1.38, -0.055, 0.8, 1.44, 0.055);
@@ -95,7 +101,7 @@ export const PROPS = {
   },
 
   cabinet: {
-    w: 0.5, d: 0.66,
+    w: 0.52, d: 0.7,
     build(p, rng) {
       const H = rng.chance(0.4) ? 1.32 : 0.72;
       p.box('metal', -0.25, 0, -0.33, 0.25, H, 0.33);
@@ -110,7 +116,7 @@ export const PROPS = {
   },
 
   shelving: {
-    w: 1.9, d: 0.6,
+    w: 1.96, d: 0.62,
     build(p, rng) {
       const H = 2.1;
       for (const sx of [-0.93, 0.93]) {
@@ -124,7 +130,9 @@ export const PROPS = {
         // Stock: cardboard boxes and ring binders, patchily filled.
         let x = -0.88;
         while (x < 0.78) {
-          const w = rng.range(0.22, 0.42);
+          // Clamped so a box never hangs off the end of the shelf.
+          const w = Math.min(rng.range(0.22, 0.42), 0.88 - x);
+          if (w < 0.12) break;
           if (rng.chance(0.72)) {
             const h = rng.range(0.18, 0.4);
             p.box(rng.chance(0.7) ? 'cardboard' : 'paper', x, y + 0.04, -0.26, x + w, y + 0.04 + h, 0.26);
@@ -137,7 +145,7 @@ export const PROPS = {
   },
 
   crateStack: {
-    w: 0.66, d: 0.66, mass: 6, hp: 28,
+    w: 0.72, d: 0.72, mass: 6, hp: 28,
     build(p, rng) {
       let y = 0;
       const layers = rng.int(1, 3);
@@ -155,7 +163,7 @@ export const PROPS = {
   },
 
   printer: {
-    w: 0.86, d: 0.72,
+    w: 0.86, d: 0.88,
     build(p, rng) {
       const big = rng.chance(0.45);
       const H = big ? 1.15 : 0.78;
@@ -226,7 +234,7 @@ export const PROPS = {
   },
 
   vending: {
-    w: 1.0, d: 0.78,
+    w: 1.04, d: 0.82,
     build(p) {
       p.box('metalDark', -0.5, 0, -0.39, 0.5, 1.92, 0.39);
       p.box('screenOn', -0.42, 0.5, -0.4, 0.16, 1.76, -0.38);   // lit display window
@@ -237,7 +245,7 @@ export const PROPS = {
   },
 
   serverRack: {
-    w: 0.7, d: 1.0,
+    w: 0.72, d: 1.06,
     build(p, rng) {
       const H = 2.05;
       p.box('metalDark', -0.34, 0, -0.5, 0.34, H, 0.5);
@@ -253,7 +261,7 @@ export const PROPS = {
   },
 
   plant: {
-    w: 0.6, d: 0.6,
+    w: 0.68, d: 0.68,
     build(p, rng) {
       p.box('plastic', -0.16, 0, -0.16, 0.16, 0.34, 0.16);
       const blades = rng.int(4, 7);
@@ -270,7 +278,7 @@ export const PROPS = {
   },
 
   meetingTable: {
-    w: 3.0, d: 1.3,
+    w: 3.1, d: 1.32,
     build(p, rng) {
       const H = 0.75;
       p.box('laminateDark', -1.5, H - 0.06, -0.65, 1.5, H, 0.65);
@@ -464,19 +472,59 @@ function serverRoom(sink, bounds, rng) {
   }
 }
 
+// A desk in the dead centre of a 4.5 m room leaves only ~0.65 m of standable
+// floor either side once the player's radius is taken off both edges, and a
+// single cabinet dropped at a random wall then closes one of them and cuts the
+// room in half. So the desk goes against a wall like a real one, and only rooms
+// with space to spare get a free-standing island.
 function privateOffice(sink, bounds, rng) {
   const { x0, z0, x1, z1 } = bounds;
-  const cx = (x0 + x1) / 2;
-  const cz = (z0 + z1) / 2;
-  const rot = rng.int(0, 3);
+  const roomy = Math.min(x1 - x0, z1 - z0) > 6;
 
-  if (tryPlace(sink, 'desk', cx, cz, rot, rng)) {
-    const back = QUARTER[rot & 3](0, -0.95);
-    tryPlace(sink, 'chair', cx + back[0], cz + back[1], (rot + 2) & 3, rng);
+  let seated = false;
+  if (roomy && rng.chance(0.5)) {
+    const cx = (x0 + x1) / 2;
+    const cz = (z0 + z1) / 2;
+    const rot = rng.int(0, 3);
+    if (tryPlace(sink, 'desk', cx, cz, rot, rng)) {
+      const back = QUARTER[rot & 3](0, -0.95);
+      tryPlace(sink, 'chair', cx + back[0], cz + back[1], (rot + 2) & 3, rng);
+      seated = true;
+    }
   }
+  if (!seated) seated = deskAgainstWall(sink, bounds, rng);
+
   if (rng.chance(0.8)) edgeProp(sink, bounds, 'cabinet', rng);
   if (rng.chance(0.45)) edgeProp(sink, bounds, 'plant', rng);
   if (rng.chance(0.3)) edgeProp(sink, bounds, 'shelving', rng);
+}
+
+// Desk backed onto a wall with its chair tucked in front of it.
+function deskAgainstWall(sink, { x0, z0, x1, z1 }, rng) {
+  const spec = PROPS.desk;
+  const standoff = spec.d / 2;
+  const margin = spec.w / 2;
+
+  for (let tries = 0; tries < 10; tries++) {
+    const side = rng.int(0, 3);
+    const alongX = side === 0 || side === 2;
+    if (alongX && x1 - x0 < margin * 2) continue;
+    if (!alongX && z1 - z0 < margin * 2) continue;
+
+    let cx, cz, rot;
+    switch (side) {
+      case 0: cx = rng.range(x0 + margin, x1 - margin); cz = z1 - standoff; rot = 2; break;
+      case 1: cx = x0 + standoff; cz = rng.range(z0 + margin, z1 - margin); rot = 1; break;
+      case 2: cx = rng.range(x0 + margin, x1 - margin); cz = z0 + standoff; rot = 0; break;
+      default: cx = x1 - standoff; cz = rng.range(z0 + margin, z1 - margin); rot = 3; break;
+    }
+    if (!tryPlace(sink, 'desk', cx, cz, rot, rng)) continue;
+
+    const out = QUARTER[rot & 3](0, -0.95);
+    tryPlace(sink, 'chair', cx + out[0], cz + out[1], (rot + 2) & 3, rng);
+    return true;
+  }
+  return false;
 }
 
 function lobby(sink, bounds, rng) {
@@ -487,19 +535,34 @@ function lobby(sink, bounds, rng) {
 }
 
 // Tries to seat a prop against a random wall, back to the wall, a few times.
-function edgeProp(sink, { x0, z0, x1, z1 }, kind, rng) {
+//
+// Every side uses HALF THE DEPTH as the standoff and HALF THE WIDTH as the
+// along-wall margin, with no special case. That is the whole point of backing a
+// prop against a wall: its depth always faces the wall, and the quarter-turn
+// each side applies is exactly what maps `d` onto the axis perpendicular to it.
+// Swapping the two here pushed wide props (counters, meeting tables) up to a
+// metre out into the room and shoved narrow ones into the wall.
+function edgeProp(sink, bounds, kind, rng) {
+  const { x0, z0, x1, z1 } = bounds;
   const spec = PROPS[kind];
+  const standoff = spec.d / 2;
+  const margin = spec.w / 2;   // so a 3 m table can't hang off the end of the wall
+
+  const alongX = x1 - x0 >= margin * 2;
+  const alongZ = z1 - z0 >= margin * 2;
+
   for (let tries = 0; tries < 12; tries++) {
     const side = rng.int(0, 3);
-    const swap = side === 1 || side === 3;
-    const halfD = (swap ? spec.w : spec.d) / 2;
-    let cx, cz, rot;
+    // A prop wider than the wall it was offered simply doesn't fit there.
+    if ((side === 0 || side === 2) && !alongX) continue;
+    if ((side === 1 || side === 3) && !alongZ) continue;
 
+    let cx, cz, rot;
     switch (side) {
-      case 0: cx = rng.range(x0 + 1, x1 - 1); cz = z1 - halfD; rot = 2; break;  // back to +z wall
-      case 1: cx = x0 + halfD; cz = rng.range(z0 + 1, z1 - 1); rot = 1; break;
-      case 2: cx = rng.range(x0 + 1, x1 - 1); cz = z0 + halfD; rot = 0; break;
-      default: cx = x1 - halfD; cz = rng.range(z0 + 1, z1 - 1); rot = 3; break;
+      case 0: cx = rng.range(x0 + margin, x1 - margin); cz = z1 - standoff; rot = 2; break;
+      case 1: cx = x0 + standoff; cz = rng.range(z0 + margin, z1 - margin); rot = 1; break;
+      case 2: cx = rng.range(x0 + margin, x1 - margin); cz = z0 + standoff; rot = 0; break;
+      default: cx = x1 - standoff; cz = rng.range(z0 + margin, z1 - margin); rot = 3; break;
     }
     if (tryPlace(sink, kind, cx, cz, rot, rng)) return true;
   }
