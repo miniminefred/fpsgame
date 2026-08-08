@@ -6,16 +6,17 @@ const BOX_COLORS = [0xd9534f, 0xf0ad4e, 0x5bc0de, 0x9b59b6, 0xe0e0e0, 0x8bc34a];
 // boxes of varying height/footprint. Returns collider AABBs (in world space,
 // resting on the ground) so the player can walk into them and jump on top,
 // plus the solid meshes so bullets can be raycast against them.
+const GROUND_SIZE = 500;
+
 export function buildWorld(scene) {
+  // No reference grid: helper lines use an unlit LineBasicMaterial, so they keep
+  // full brightness inside cast shadows and read as bright streaks slicing
+  // through them. Plain lit ground shows the shadows cleanly.
   const groundMat = new THREE.MeshStandardMaterial({ color: 0x4f7a43, roughness: 1 });
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), groundMat);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE), groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   scene.add(ground);
-
-  const grid = new THREE.GridHelper(500, 250, 0x2f5030, 0x3d6640);
-  grid.position.y = 0.01;
-  scene.add(grid);
 
   const colliders = [];
   const meshes = [ground];
