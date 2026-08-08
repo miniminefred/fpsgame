@@ -365,7 +365,7 @@
     },
     {
       "name": "impact-floor",
-      "text": "loud bullet impact on a concrete floor, sharp crack with grit and dust, close mic, dry, no reverb, no music",
+      "text": "loud bullet impact on a hard concrete floor, sharp crack with grit and dust, close mic, dry, no reverb, no music",
       "duration": 0.6,
       "influence": 0.85,
       "variants": 3
