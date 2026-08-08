@@ -28,7 +28,16 @@ import { eraseSpan } from './gen/geom.js';
 const DEBRIS_LIFETIME = 16;    // seconds a fragment lies around before it fades
 const MAX_DEBRIS = 120;        // hard cap on live fragments, oldest recycled first
 const MAX_FRAGMENTS = 14;      // pieces one prop may break into, largest first
-const MIN_FRAGMENT = 0.03;     // metres — smaller pieces aren't worth a body
+
+// A fragment is judged on its LONGEST side, not its shortest. Office furniture
+// is panel goods — a desktop, a monitor, a shelf, a pane of glass are all a
+// centimetre or two thick — so a filter that wanted every dimension to clear a
+// threshold threw away almost everything worth watching fall.
+const MIN_FRAGMENT = 0.06;     // metres, longest side
+// Thin slabs are given a little body to collide with. Cannon will happily
+// simulate a 2 mm box, but it tunnels and jitters through the floor; the visible
+// mesh keeps its real thickness, only the collision box is padded.
+const MIN_BODY = 0.03;
 
 // Effective density for a fragment whose prop never declared a mass. Office
 // furniture is mostly air and thin panel, so this is far below solid timber.
@@ -153,8 +162,8 @@ export class Destruction {
     // Capping by size keeps the big, readable pieces and drops the ring binders,
     // so one shot can't spend the whole debris budget.
     const chosen = parts
-      .filter((p) => p.x1 - p.x0 >= MIN_FRAGMENT && p.y1 - p.y0 >= MIN_FRAGMENT && p.z1 - p.z0 >= MIN_FRAGMENT)
-      .sort((a, b) => sizeOf(b) - sizeOf(a))
+      .filter((p) => longestSide(p) >= MIN_FRAGMENT)
+      .sort((a, b) => longestSide(b) - longestSide(a))
       .slice(0, MAX_FRAGMENTS);
 
     for (const part of chosen) {
@@ -178,7 +187,12 @@ export class Destruction {
         ? Math.max(0.4, dyn.mass * ((sx * sy * sz) / volume))
         : THREE.MathUtils.clamp(sx * sy * sz * DENSITY, 0.4, MAX_FRAGMENT_MASS);
 
-      const handle = this.physics?.addBox({ size: { x: sx, y: sy, z: sz }, position: world, yaw, mass });
+      const handle = this.physics?.addBox({
+        size: {
+          x: Math.max(sx, MIN_BODY), y: Math.max(sy, MIN_BODY), z: Math.max(sz, MIN_BODY),
+        },
+        position: world, yaw, mass,
+      });
 
       if (handle) {
         // Blown away from the impact and slightly upward; the impulse is
@@ -250,8 +264,8 @@ function resolve(hit) {
   return null;
 }
 
-function sizeOf(p) {
-  return (p.x1 - p.x0) * (p.y1 - p.y0) * (p.z1 - p.z0);
+function longestSide(p) {
+  return Math.max(p.x1 - p.x0, p.y1 - p.y0, p.z1 - p.z0);
 }
 
 const _local = new THREE.Vector3();
