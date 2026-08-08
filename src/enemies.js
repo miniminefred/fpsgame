@@ -26,6 +26,9 @@ const SKIN = 0xbe9a78;
 // suit, which keeps them readable at a glance in a grey corridor: the colour of
 // the visor tells you what is about to happen to you.
 //
+// `voice` names the set of vocals a type uses (see audio.js). Left off, a type
+// gobbles like the rest of the office; the green ones brought their own.
+//
 // Multipliers are applied to the floor's base tuning (see tuningFor in
 // game.js), so types scale with depth instead of going obsolete.
 const TYPES = {
@@ -63,6 +66,24 @@ const TYPES = {
     name: 'Manager', hp: 2.7, speed: 0.82, damage: 1.9, rate: 1.6, spread: 0.55,
     range: 21, melee: false, scale: 1.14,
     suit: 0x1c2126, shirt: 0xd8c08a, visor: 0xc060ff, unlockFloor: 6, weight: 2,
+  },
+  reanimated: {
+    // Green, and no longer on the payroll. Slow and soaks damage, but it only
+    // wants to be close to you, and it does not stop coming. The one type that
+    // punishes backing into a corner rather than standing in the open.
+    name: 'Reanimated', hp: 2.4, speed: 0.86, damage: 1.3, rate: 1.35, spread: 1,
+    range: 2.1, melee: true, scale: 1.03, blunt: ['chairLeg', 'extinguisher'],
+    suit: 0x33502c, shirt: 0x8fb063, visor: 0x66ff4d, voice: 'zombie',
+    unlockFloor: 3, weight: 2,
+  },
+  sentry: {
+    // Facilities' idea of a cost saving. Armoured and slow, accurate at range,
+    // and it never gets bored — the white visor is the one that means the thing
+    // looking at you is not going to wander off.
+    name: 'Sentry Unit', hp: 3.2, speed: 0.78, damage: 1.45, rate: 1.35, spread: 0.7,
+    range: 17, melee: false, scale: 1.18,
+    suit: 0x474d55, shirt: 0x9aa3ab, visor: 0xffffff, voice: 'robot',
+    unlockFloor: 5, weight: 2,
   },
 };
 
