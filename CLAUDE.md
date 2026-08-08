@@ -91,7 +91,8 @@ tools/
   validate-props.mjs   Headless furniture-placement invariants
 src/
   main.js         Bootstrap: wires modules, runs the render loop
-  game.js         The run: floor progression, difficulty curves, destructible props
+  game.js         The run: floor progression and difficulty curves
+  destruction.js  Everything coming apart: damage routing, debris, its lifecycle
   level.js        One floor's lifecycle — generate, animate the exit, dispose
   scene.js        Renderer, camera, fog
   lighting.js     Fill light + a pooled set of ceiling lights that follow the player
@@ -195,15 +196,23 @@ Gunfire spread is sampled as a real angle and converted into a miss distance at 
 so backing off genuinely makes you harder to hit.
 
 ### Furniture models (`gen/models.js` + `gen/props.js`)
-Static props are drawn with downloaded CC0/CC-BY GLBs; loose props are not. That split is
-forced, not stylistic: breaking a prop apart re-emits the boxes it was authored from as
-separate bodies, and a model is one mesh with no pieces to fall into. So chairs, crates,
-coffee tables and water coolers stay procedural and destructible, and desks, cabinets,
-shelving, copiers, sofas, vending machines, racks, plants and meeting tables are models.
+Static props are drawn with downloaded CC0/CC-BY GLBs; loose props are not. The split is
+about physics, not destructibility: a loose prop needs its own mesh so the solver can move
+it, and a model is one merged mesh per material. So chairs, crates, coffee tables and water
+coolers stay procedural and shovable, and desks, cabinets, shelving, copiers, sofas, vending
+machines, racks, plants and meeting tables are models.
 
 A prop with a model uses THAT model's measured footprint rather than the hand-authored one,
 so collision always matches what you can see. Every model is missing-safe — if a GLB fails
 to load, the prop silently falls back to its boxes.
+
+Every model-backed prop still authors a `build()` of boxes, and it now earns its keep twice:
+as that fallback, and as the pieces the prop breaks into. `tryPlace` runs it through
+`sink.captureBoxes()` — a dry run that collects the boxes without drawing them — so the
+model is what you see and the boxes are only what it falls apart into. The debris therefore
+wears the procedural palette rather than the GLB's, which is a deliberate trade: a desk that
+bursts into pale laminate panels reads fine in the half-second it takes to land, and the
+alternative is slicing model geometry at runtime.
 
 Models arrive at arbitrary scale facing arbitrary directions (28 of 71 were facing the
 wrong way), so `model-table.js` records the yaw and scale that put each at real-world size
@@ -211,7 +220,40 @@ facing -Z. Check a new entry in `/dev-models.html` before trusting it, and bewar
 model's name is not its size: the `printer` model is a 24 cm desktop unit, which is why the
 floor-standing prop uses `copier`.
 
-### Destructible props (`game.js` + `physics.js`)
-Loose furniture is authored as a handful of boxes, so breaking it apart is just "re-emit
-each of those boxes as its own rigid body" — the pieces it falls into are the pieces it was
-built from. Fragments are capped and time out, so a long run cannot grow the body count.
+### Destruction (`destruction.js` + `gen/geom.js` + `physics.js`)
+Everything on a floor can be destroyed: all furniture, the window glazing, and the ceiling
+tubes. Only the shell — walls, floor, ceiling slab — is permanent, because the generator's
+connectivity and sealing invariants are proved once at generation and nothing re-proves them
+at runtime.
+
+Loose furniture is the easy half: it is already its own mesh and its own body, so breaking
+it is "re-emit each of its boxes as a body".
+
+The hard half is everything else, which was merged into a batched chunk and has no mesh left
+to delete. Two mechanisms make it work, and both live at the seam between batching and
+destruction:
+
+- **Spans.** Anything drawn between `batcher.beginSpans()` and `endSpans()` remembers which
+  mesh it landed in and which run of vertices it owns. Destroying it collapses that run onto
+  a single point, leaving degenerate triangles: nothing rasterizes, nothing shadows, and no
+  ray can intersect it. The vertex count never changes, so no other span's offsets move.
+- **Hit routing by `faceIndex`.** A raycast against a chunk hits a mesh shared by a hundred
+  props, so mesh identity says nothing — but a prop's vertices are a contiguous run, so a
+  binary search over the runs on that mesh names it exactly. No spatial guessing and no
+  tolerance to tune, which is what keeps a pane of glass three centimetres in front of a
+  wall from being confused with the wall.
+
+Destroying a static prop has to give back *four* things it was holding, and missing any one
+of them is a bug that only shows up later: its geometry (the span), the player's collider
+(`top = -1`), the solver's own static body (`physics.removeStatic` — miss this and debris
+rests in mid-air on furniture that no longer exists), and its nav tiles
+(`nav.openTiles`, which also re-erodes `fits` and invalidates the distance field).
+
+Fragments are judged on their LONGEST side, not their shortest: office furniture is panel
+goods, so a filter wanting every dimension to clear a threshold throws away almost
+everything worth watching fall. They are capped per prop and globally, and they time out, so
+a long run cannot grow the body count.
+
+Windows are two layers on purpose. The sky is a permanent backdrop and only the glazing in
+front of it is destructible — the shell is never cut, so if the sky went away with the glass
+you would be looking at grey drywall.
