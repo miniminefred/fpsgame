@@ -60,6 +60,20 @@ First time on a fresh clone: `npm install`.
 Verify in the browser before considering the task done. `npm run build` must also stay
 green (it type-checks the bundle and catches import mistakes HMR can hide).
 
+`npm test` runs the two headless generator validators in `tools/`. They exist because
+generation bugs are invisible one floor at a time and obvious over hundreds — every defect
+they check for was a real bug that shipped and got caught by widening the sweep. Run them
+after touching anything in `src/gen/`. They fail the build only on hard invariants
+(connectivity, sealing, prop interpenetration); everything else is a warning with repro
+seeds. Note they run in Node, so GLB models cannot load and the props fall back to boxes —
+model-path placement has to be checked in the browser.
+
+In the dev build `window.dev` exposes `{ game, player, enemies, shooting, physics, scene,
+camera, weapons, renderer }`, which is the fastest way to jump floors, teleport, or measure
+something from the console. `/dev-models.html` is a contact-sheet harness for inspecting the
+furniture models at true relative scale (see the header of `src/dev-models.js` for its
+query parameters).
+
 ## The game
 
 **Office Descent** — an endless procedurally-generated office shooter. You arrive on a
@@ -97,9 +111,12 @@ src/
     layout.js     Floorplan: corridor spine + BSP room blocks + doors
     build.js      Floorplan -> meshes, colliders, nav grid, lights, windows
     props.js      Office furniture catalogue and per-room-role furnishing
+    models.js     Loads + bakes the downloaded furniture GLBs for batching
+    model-table.js  Per-model scale/yaw/footprint normalization data
     geom.js       World-space UVs and the material/chunk geometry batcher
     rects.js      Greedy tile-mask -> rectangle decomposition
     rng.js        Seeded PRNG (every floor is reproducible from its seed)
+dev-models.html   Contact sheet for eyeballing the furniture models
 ```
 
 ## Tech stack
@@ -176,6 +193,23 @@ part-way through the swing, so you can back out of reach.
 
 Gunfire spread is sampled as a real angle and converted into a miss distance at your range,
 so backing off genuinely makes you harder to hit.
+
+### Furniture models (`gen/models.js` + `gen/props.js`)
+Static props are drawn with downloaded CC0/CC-BY GLBs; loose props are not. That split is
+forced, not stylistic: breaking a prop apart re-emits the boxes it was authored from as
+separate bodies, and a model is one mesh with no pieces to fall into. So chairs, crates,
+coffee tables and water coolers stay procedural and destructible, and desks, cabinets,
+shelving, copiers, sofas, vending machines, racks, plants and meeting tables are models.
+
+A prop with a model uses THAT model's measured footprint rather than the hand-authored one,
+so collision always matches what you can see. Every model is missing-safe — if a GLB fails
+to load, the prop silently falls back to its boxes.
+
+Models arrive at arbitrary scale facing arbitrary directions (28 of 71 were facing the
+wrong way), so `model-table.js` records the yaw and scale that put each at real-world size
+facing -Z. Check a new entry in `/dev-models.html` before trusting it, and beware that a
+model's name is not its size: the `printer` model is a 24 cm desktop unit, which is why the
+floor-standing prop uses `copier`.
 
 ### Destructible props (`game.js` + `physics.js`)
 Loose furniture is authored as a handful of boxes, so breaking it apart is just "re-emit
