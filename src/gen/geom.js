@@ -66,9 +66,32 @@ const CHUNK = 12;
 
 // Collects geometry per material-and-chunk and merges each group into one mesh.
 // Static level geometry never moves, so this is pure win.
+//
+// Batching and destruction pull in opposite directions: once a desk's triangles
+// are merged into a chunk they have no identity left to remove. Spans are the
+// bridge. Anything added between beginSpans() and endSpans() remembers WHERE it
+// landed in the merge — which mesh, and which run of vertices — so a single prop
+// can later be erased from a shared buffer without unpicking the batch. The
+// offsets can only be read while the source geometries are still alive, which is
+// why build() records them before merging rather than after.
 export class Batcher {
   constructor() {
     this.groups = new Map();
+    this._spans = [];        // every span recorded so far, patched up by build()
+    this._recording = null;  // the span list currently being collected, if any
+  }
+
+  // Start attributing everything added from here on to one destructible unit.
+  // Returns the array build() will fill in with { mesh, start, count }.
+  beginSpans() {
+    this._recording = [];
+    return this._recording;
+  }
+
+  endSpans() {
+    const spans = this._recording;
+    this._recording = null;
+    return spans ?? [];
   }
 
   // `opts` is taken from the first add() for a given key.
@@ -79,10 +102,22 @@ export class Batcher {
 
     let group = this.groups.get(chunkKey);
     if (!group) {
-      group = { key, material, geos: [], opts: opts ?? {} };
+      group = { key, material, geos: [], opts: opts ?? {}, mesh: null, offsets: null };
       this.groups.set(chunkKey, group);
     }
     group.geos.push(geometry);
+
+    if (this._recording) {
+      const span = {
+        mesh: null,
+        start: 0,
+        count: geometry.attributes.position.count,
+        _group: group,
+        _index: group.geos.length - 1,
+      };
+      this._recording.push(span);
+      this._spans.push(span);
+    }
   }
 
   // Merges every group into the scene. Returns the created meshes; the caller
@@ -92,6 +127,17 @@ export class Batcher {
 
     for (const [key, group] of this.groups) {
       if (!group.geos.length) continue;
+
+      // mergeGeometries concatenates vertices in order, so each source
+      // geometry's run starts at the total count of everything before it. This
+      // has to be tallied now: the sources are disposed a line later.
+      let n = 0;
+      group.offsets = group.geos.map((g) => {
+        const at = n;
+        n += g.attributes.position.count;
+        return at;
+      });
+
       const merged = mergeGeometries(group.geos, false);
       for (const g of group.geos) g.dispose();
       if (!merged) {
@@ -106,9 +152,35 @@ export class Batcher {
       if (group.opts.renderOrder !== undefined) mesh.renderOrder = group.opts.renderOrder;
       scene.add(mesh);
       meshes.push(mesh);
+      group.mesh = mesh;
     }
 
+    // A group whose merge failed leaves its spans pointing at no mesh, which
+    // callers must treat as "already gone" rather than as an error.
+    for (const span of this._spans) {
+      span.mesh = span._group.mesh;
+      span.start = span._group.offsets?.[span._index] ?? 0;
+      span._group = null;
+    }
+
+    this._spans.length = 0;
+    this._recording = null;
     this.groups.clear();
     return meshes;
   }
+}
+
+// Collapses a span's vertices onto its first one, which leaves every triangle in
+// it degenerate: nothing is rasterized, nothing casts a shadow, and a ray can no
+// longer intersect it (a zero-area triangle fails the barycentric test). Cheaper
+// and far simpler than rebuilding the merged buffer, and the vertex count never
+// changes so no other span's offsets move.
+export function eraseSpan(span) {
+  if (!span?.mesh || span.count <= 1) return;
+  const pos = span.mesh.geometry.attributes.position;
+  const x = pos.getX(span.start);
+  const y = pos.getY(span.start);
+  const z = pos.getZ(span.start);
+  for (let i = span.start + 1; i < span.start + span.count; i++) pos.setXYZ(i, x, y, z);
+  pos.needsUpdate = true;
 }
