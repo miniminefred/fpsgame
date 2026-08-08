@@ -14,6 +14,20 @@
       "loop": true
     },
     {
+      "name": "breath",
+      "text": "man breathing hard while running, single exhale, close mic, dry, no words, no music",
+      "duration": 0.9,
+      "influence": 0.6,
+      "variants": 3
+    },
+    {
+      "name": "debris-settle",
+      "text": "broken furniture debris clattering and settling on a hard floor, dry",
+      "duration": 1.6,
+      "influence": 0.65,
+      "variants": 3
+    },
+    {
       "name": "descend",
       "text": "heavy metal service hatch grinding open, industrial, dry, no music",
       "duration": 2.5,
@@ -27,38 +41,103 @@
       "variants": 2
     },
     {
-      "name": "enemy-alert",
-      "text": "human male startled aggressive snarl, short, close mic, no words, no music",
+      "name": "enemy-alert-1",
+      "text": "angry man shouting \"HEY YOU!\", close mic, dry, no music",
       "duration": 1.0,
-      "influence": 0.6,
-      "variants": 3
+      "influence": 0.7
+    },
+    {
+      "name": "enemy-alert-10",
+      "text": "angry man shouting \"I AM CALLING SECURITY!\", close mic, dry, no music",
+      "duration": 1.4,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-11",
+      "text": "man shouting \"THAT IS MY STAPLER!\", unhinged, close mic, dry, no music",
+      "duration": 1.4,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-12",
+      "text": "angry man shouting \"GET HIM!\", close mic, dry, no music",
+      "duration": 1.0,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-2",
+      "text": "angry man shouting \"STOP!\", close mic, dry, no music",
+      "duration": 1.0,
+      "influence": 0.7
+    },
+    {
+      "name": "enemy-alert-3",
+      "text": "angry man shouting \"OVER HERE!\", close mic, dry, no music",
+      "duration": 1.2,
+      "influence": 0.7
+    },
+    {
+      "name": "enemy-alert-4",
+      "text": "furious man screaming a long angry \"AAAARGH!\", rage shout, close mic, dry, no music",
+      "duration": 1.4,
+      "influence": 0.65
+    },
+    {
+      "name": "enemy-alert-5",
+      "text": "angry man shouting \"INTRUDER!\", close mic, dry, no music",
+      "duration": 1.2,
+      "influence": 0.7
+    },
+    {
+      "name": "enemy-alert-6",
+      "text": "angry man shouting \"HEY, BUTTBREATH!\", close mic, dry, no music",
+      "duration": 1.3,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-7",
+      "text": "angry man shouting \"GET OVER HERE!\", close mic, dry, no music",
+      "duration": 1.3,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-8",
+      "text": "man shouting \"MY FEET STINK!\", unhinged, close mic, dry, no music",
+      "duration": 1.3,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-9",
+      "text": "angry man shouting \"YOU ARE NOT ON THE LIST!\", close mic, dry, no music",
+      "duration": 1.4,
+      "influence": 0.75
     },
     {
       "name": "enemy-death",
-      "text": "human male dying groan collapsing, close mic, no words, no music",
-      "duration": 1.5,
+      "text": "man screaming a long agonised \"AAAAARGH!\" and collapsing, close mic, dry, no music",
+      "duration": 1.8,
       "influence": 0.6,
       "variants": 3
     },
     {
       "name": "enemy-fire",
-      "text": "single dirty makeshift gunshot, flat crack, heard from across a room, dry, no music",
+      "text": "single loud gunshot, hard flat crack, close mic, dry, no reverb, no music",
       "duration": 0.8,
-      "influence": 0.6,
+      "influence": 0.85,
       "variants": 3
     },
     {
       "name": "enemy-idle",
-      "text": "human male low irritated muttering breath, close mic, no words, no music",
-      "duration": 1.6,
+      "text": "man muttering irritably to himself under his breath, close mic, dry, no music",
+      "duration": 2.0,
       "influence": 0.55,
       "variants": 2
     },
     {
       "name": "enemy-pain",
-      "text": "human male grunt of pain, short, close mic, no words, no music",
+      "text": "angry man yelling \"ARGH!\" in pain, short, close mic, dry, no music",
       "duration": 0.8,
-      "influence": 0.6,
+      "influence": 0.65,
       "variants": 3
     },
     {
@@ -82,6 +161,12 @@
       "variants": 3
     },
     {
+      "name": "heal",
+      "text": "soft synthetic recovery chime, warm and reassuring, short, no music",
+      "duration": 1.0,
+      "influence": 0.75
+    },
+    {
       "name": "hit-flesh",
       "text": "bullet hitting flesh, wet thud, close mic, no music",
       "duration": 0.6,
@@ -89,10 +174,38 @@
       "variants": 3
     },
     {
-      "name": "impact-wall",
-      "text": "bullet impact on painted concrete wall, sharp crack with dust and small debris, dry",
+      "name": "impact-glass",
+      "text": "bullet punching through a glass pane, sharp crack and falling shards, close mic, dry",
+      "duration": 0.7,
+      "influence": 0.75,
+      "variants": 3
+    },
+    {
+      "name": "impact-metal",
+      "text": "bullet impact on sheet metal, hollow metallic ping, close mic, dry",
       "duration": 0.6,
-      "influence": 0.7,
+      "influence": 0.75,
+      "variants": 3
+    },
+    {
+      "name": "impact-wall",
+      "text": "loud bullet impact on a concrete wall, sharp crack with dust and debris, close mic, dry, no reverb, no music",
+      "duration": 0.6,
+      "influence": 0.85,
+      "variants": 3
+    },
+    {
+      "name": "impact-wood",
+      "text": "loud bullet impact on a wooden desk panel, hard splintering thud, close mic, dry, no reverb, no music",
+      "duration": 0.6,
+      "influence": 0.85,
+      "variants": 3
+    },
+    {
+      "name": "jump",
+      "text": "man short effort grunt jumping, close mic, dry, no words, no music",
+      "duration": 0.6,
+      "influence": 0.6,
       "variants": 3
     },
     {
@@ -100,6 +213,13 @@
       "text": "single boot landing on carpeted concrete after a jump, heavy, close mic, dry",
       "duration": 0.7,
       "influence": 0.65,
+      "variants": 2
+    },
+    {
+      "name": "low-health",
+      "text": "low urgent synthetic warning pulse, single beat, dry, no music",
+      "duration": 0.7,
+      "influence": 0.8,
       "variants": 2
     },
     {
@@ -118,9 +238,9 @@
     },
     {
       "name": "melee-hit",
-      "text": "blunt metal object striking a body, dull heavy thud, close mic, dry, no music",
+      "text": "loud blunt metal object striking a body, hard heavy thud, close mic, dry, no reverb, no music",
       "duration": 0.6,
-      "influence": 0.7,
+      "influence": 0.85,
       "variants": 2
     },
     {
@@ -132,9 +252,9 @@
     },
     {
       "name": "pistol-fire",
-      "text": "single dry pistol shot, close mic, no reverb, no music",
+      "text": "single loud pistol gunshot, sharp immediate report, close mic, dry, no reverb, no music",
       "duration": 0.9,
-      "influence": 0.65,
+      "influence": 0.85,
       "variants": 3
     },
     {
@@ -158,10 +278,59 @@
       "variants": 3
     },
     {
-      "name": "rifle-fire",
-      "text": "single assault rifle shot, sharp crack, close mic, dry, no music",
+      "name": "prop-shove",
+      "text": "office chair scraping and shoved across a hard floor, close mic, dry",
       "duration": 0.9,
+      "influence": 0.7,
+      "variants": 3
+    },
+    {
+      "name": "rifle-fire",
+      "text": "single loud assault rifle gunshot, sharp cracking report, close mic, dry, no reverb, no music",
+      "duration": 0.9,
+      "influence": 0.85,
+      "variants": 3
+    },
+    {
+      "name": "robot-alert",
+      "text": "aggressive robotic alert chirp, synthetic scanning beep, short, dry, no music",
+      "duration": 1.0,
+      "influence": 0.7,
+      "variants": 3
+    },
+    {
+      "name": "robot-death",
+      "text": "robot powering down and collapsing, descending servo whine with an electrical short, dry, no music",
+      "duration": 1.8,
       "influence": 0.65,
+      "variants": 3
+    },
+    {
+      "name": "robot-idle",
+      "text": "robot servo whine and quiet electronic chatter, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.6,
+      "variants": 2
+    },
+    {
+      "name": "robot-pain",
+      "text": "robot taking damage, electrical spark and servo glitch, short, dry, no music",
+      "duration": 0.8,
+      "influence": 0.7,
+      "variants": 3
+    },
+    {
+      "name": "robot-step",
+      "text": "single heavy mechanical footstep, servo whir and metal foot on a hard floor, close mic, dry",
+      "duration": 0.6,
+      "influence": 0.65,
+      "variants": 3
+    },
+    {
+      "name": "shell-casing",
+      "text": "single brass rifle casing bouncing on a hard floor, bright metallic ting, close mic, dry",
+      "duration": 0.8,
+      "influence": 0.7,
       "variants": 3
     },
     {
@@ -173,9 +342,9 @@
     },
     {
       "name": "smg-fire",
-      "text": "single submachine gun shot, fast snappy crack, close mic, dry, no music",
+      "text": "single loud submachine gun shot, sharp snappy report, close mic, dry, no reverb, no music",
       "duration": 0.7,
-      "influence": 0.65,
+      "influence": 0.85,
       "variants": 3
     },
     {
@@ -187,9 +356,9 @@
     },
     {
       "name": "step",
-      "text": "single footstep on office carpet, soft, close mic, dry",
+      "text": "single firm footstep on thin office carpet over concrete, close mic, dry, no reverb, no music",
       "duration": 0.5,
-      "influence": 0.6,
+      "influence": 0.8,
       "variants": 4
     },
     {
@@ -198,6 +367,34 @@
       "duration": 1.2,
       "influence": 0.7,
       "variants": 2
+    },
+    {
+      "name": "zombie-alert",
+      "text": "zombie snarl and hungry moan, wet guttural, close mic, dry, no words, no music",
+      "duration": 1.0,
+      "influence": 0.55,
+      "variants": 3
+    },
+    {
+      "name": "zombie-death",
+      "text": "zombie final gurgling death moan collapsing, close mic, dry, no words, no music",
+      "duration": 1.6,
+      "influence": 0.55,
+      "variants": 3
+    },
+    {
+      "name": "zombie-idle",
+      "text": "zombie low wet moaning breath, slow and dragging, close mic, dry, no words, no music",
+      "duration": 1.8,
+      "influence": 0.5,
+      "variants": 2
+    },
+    {
+      "name": "zombie-pain",
+      "text": "zombie pained wet groan, short, close mic, dry, no words, no music",
+      "duration": 0.8,
+      "influence": 0.55,
+      "variants": 3
     }
   ]
 }
