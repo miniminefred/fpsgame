@@ -105,6 +105,7 @@ src/
   physics.js      cannon-es rigid bodies for loose furniture
   audio.js        Sound library + every game event that makes a noise
   sfx.js          WebAudio sample engine: decode, pitch-vary, place, overlap
+  casings.js      Spent brass: ejects, bounces, times out
   hud.js          Health, ammo, floor, objective, toasts, death screen
   minimap.js      Per-floor floorplan raster + live player/enemy markers
   textures.js     Procedural canvas textures and the shared material cache
@@ -120,6 +121,7 @@ src/
     rng.js        Seeded PRNG (every floor is reproducible from its seed)
 public/sounds/    Generated MP3 sound set + sounds.json (the prompts that made it)
 dev-models.html   Contact sheet for eyeballing the furniture models
+dev-sounds.html   Measures the whole sound set and flags clips to regenerate
 ```
 
 ## Tech stack
@@ -189,7 +191,20 @@ only ~4.5 m across at the smallest, so a global grid leaves some rooms pitch bla
 
 ### Enemies (`enemies.js` + `nav.js`)
 Everyone chases the same target, so instead of pathfinding per enemy one BFS distance field
-is flooded from the player and every enemy walks downhill on it. Six types share one rig
+is flooded from the player and every enemy walks downhill on it. Anyone going somewhere
+*else* — the staffer looking for a toilet — gets a field of their own flooded from their
+destination (`nav.floodTo`), because walking straight at a target means walking into the
+wall in front of it.
+
+Hearing is measured on that field, not as a straight line. A radius through walls made
+someone one metre away behind drywall — and a thirty metre walk from the nearest door —
+count as next to you, so firing anywhere turned the whole floor around at once.
+
+Each floor rolls a **theme** that tilts the type weights (Infestation, Automated,
+Lockdown…), so floors have their own character without any of them becoming one enemy
+repeated; the name is shown on the way in. One or two **Panicking Staffers** are placed by
+hand on every floor rather than rolled — they ignore you entirely and run the corridors
+looking for a toilet, and they still count toward clearing the floor. Six types share one rig
 with different numbers and colours; the visor colour tells you what is about to happen.
 Melee types swing office junk (fire extinguishers, keyboards, monitors) and land the hit
 part-way through the swing, so you can back out of reach.
