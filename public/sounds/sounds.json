@@ -14,6 +14,48 @@
       "loop": true
     },
     {
+      "name": "break-cardboard",
+      "text": "stack of cardboard boxes bursting and collapsing, papery crush, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75,
+      "variants": 3
+    },
+    {
+      "name": "break-electronic",
+      "text": "electronic appliance blowing apart, plastic shatter with electrical sparks and falling parts, close mic, dry, no music",
+      "duration": 2.0,
+      "influence": 0.75,
+      "variants": 3
+    },
+    {
+      "name": "break-fabric",
+      "text": "padded fabric partition tearing and falling flat on a hard floor, dull, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75,
+      "variants": 3
+    },
+    {
+      "name": "break-foliage",
+      "text": "potted plant smashing, ceramic pot breaking with soil and leaves scattering, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75,
+      "variants": 3
+    },
+    {
+      "name": "break-metal",
+      "text": "metal filing cabinet collapsing and crashing onto a hard floor, close mic, dry, no music",
+      "duration": 2.0,
+      "influence": 0.75,
+      "variants": 3
+    },
+    {
+      "name": "break-plastic",
+      "text": "plastic office chair shattering and clattering apart on a hard floor, close mic, dry, no music",
+      "duration": 1.9,
+      "influence": 0.75,
+      "variants": 3
+    },
+    {
       "name": "breath",
       "text": "man breathing hard while running, single exhale, close mic, dry, no words, no music",
       "duration": 0.9,
@@ -65,10 +107,94 @@
       "influence": 0.75
     },
     {
+      "name": "enemy-alert-13",
+      "text": "furious man shouting \"YOUR MOTHER WAS A BALLOON ANIMAL!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-14",
+      "text": "furious man shouting \"I WILL STOMP ON YOUR LEGO SET!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-15",
+      "text": "furious man shouting \"I WILL PUT CACTUS IN YOUR TOILET!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-16",
+      "text": "furious man shouting \"I HAVE READ YOUR PERFORMANCE REVIEW!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-17",
+      "text": "furious man shouting \"YOU PARKED IN MY SPACE!\", close mic, dry, no music",
+      "duration": 1.5,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-18",
+      "text": "furious man shouting \"I AM GOING TO LAMINATE YOU!\", close mic, dry, no music",
+      "duration": 1.6,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-19",
+      "text": "furious man shouting \"YOUR HAIRCUT IS A CRY FOR HELP!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
       "name": "enemy-alert-2",
       "text": "angry man shouting \"STOP!\", close mic, dry, no music",
       "duration": 1.0,
       "influence": 0.7
+    },
+    {
+      "name": "enemy-alert-20",
+      "text": "furious man shouting \"I WILL DRINK YOUR OAT MILK!\", close mic, dry, no music",
+      "duration": 1.6,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-21",
+      "text": "furious man shouting \"NOBODY LIKED YOUR PRESENTATION!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-22",
+      "text": "furious man shouting \"I AM PUTTING YOU ON A CALL!\", close mic, dry, no music",
+      "duration": 1.6,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-23",
+      "text": "furious man shouting \"YOU SMELL LIKE A PRINTER!\", close mic, dry, no music",
+      "duration": 1.6,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-24",
+      "text": "furious man shouting \"I WILL EAT YOUR BIRTHDAY CAKE!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-25",
+      "text": "furious man shouting \"THIS IS A BUSINESS CASUAL FLOOR!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-26",
+      "text": "furious man shouting \"I LIKE WAFFLES!\", close mic, dry, no music",
+      "duration": 1.5,
+      "influence": 0.75
     },
     {
       "name": "enemy-alert-3",
@@ -174,6 +300,34 @@
       "variants": 3
     },
     {
+      "name": "impact-cardboard",
+      "text": "loud bullet punching through a cardboard box, dry papery burst, close mic, dry, no reverb, no music",
+      "duration": 0.6,
+      "influence": 0.85,
+      "variants": 3
+    },
+    {
+      "name": "impact-electronic",
+      "text": "loud bullet hitting an electronic appliance, plastic crack with electrical spark and rattle, close mic, dry, no music",
+      "duration": 0.7,
+      "influence": 0.85,
+      "variants": 3
+    },
+    {
+      "name": "impact-fabric",
+      "text": "loud bullet impact on a padded fabric panel, dull muffled thump, close mic, dry, no reverb, no music",
+      "duration": 0.6,
+      "influence": 0.85,
+      "variants": 3
+    },
+    {
+      "name": "impact-foliage",
+      "text": "loud bullet tearing through the leaves of a potted plant, rustling snap, close mic, dry, no music",
+      "duration": 0.6,
+      "influence": 0.85,
+      "variants": 3
+    },
+    {
       "name": "impact-glass",
       "text": "bullet punching through a glass pane, sharp crack and falling shards, close mic, dry",
       "duration": 0.7,
@@ -185,6 +339,13 @@
       "text": "bullet impact on sheet metal, hollow metallic ping, close mic, dry",
       "duration": 0.6,
       "influence": 0.75,
+      "variants": 3
+    },
+    {
+      "name": "impact-plastic",
+      "text": "loud bullet impact on hard plastic, sharp cracking snap, close mic, dry, no reverb, no music",
+      "duration": 0.6,
+      "influence": 0.85,
       "variants": 3
     },
     {
@@ -324,6 +485,41 @@
       "text": "single heavy mechanical footstep, servo whir and metal foot on a hard floor, close mic, dry",
       "duration": 0.6,
       "influence": 0.65,
+      "variants": 3
+    },
+    {
+      "name": "settle-electronic",
+      "text": "electronic parts and circuit boards clattering to rest, small rattles, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.7,
+      "variants": 3
+    },
+    {
+      "name": "settle-glass",
+      "text": "broken glass shards tinkling and sliding to rest on a concrete floor, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.7,
+      "variants": 3
+    },
+    {
+      "name": "settle-metal",
+      "text": "metal panels and parts clattering and tumbling to rest on a hard floor, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.7,
+      "variants": 3
+    },
+    {
+      "name": "settle-plastic",
+      "text": "broken plastic pieces bouncing and rattling to rest on a hard floor, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.7,
+      "variants": 3
+    },
+    {
+      "name": "settle-wood",
+      "text": "broken wooden panels tumbling and settling on a hard floor, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.7,
       "variants": 3
     },
     {
