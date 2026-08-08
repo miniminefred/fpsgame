@@ -1,0 +1,212 @@
+import * as THREE from 'three';
+
+// Hitscan shooting: fire rate, ammo/reload, spread, camera recoil, damage.
+//
+// Every shot raycasts from the camera center (where the crosshair is) rather
+// than from the muzzle, so what you point at is what you hit; the tracer is
+// then drawn from the muzzle to the impact point for looks. Shotguns fire
+// `pellets` rays per trigger pull, each with its own spread offset.
+
+const RECOIL_RECOVER = 7;     // radians/s the view drifts back down after kick
+const HIT_COLOR = 0xff6b5a;   // impact flash on a drone
+const WORLD_COLOR = 0xffe0a0; // impact flash on world geometry
+const PITCH_LIMIT = 1.5;      // ~86°: recoil must not tip the view past vertical
+
+export class Shooting {
+  constructor({ camera, controls, keys, weapons, effects, targets, world, hud, audio }) {
+    this.camera = camera;
+    this.controls = controls;
+    this.keys = keys;
+    this.weapons = weapons;
+    this.effects = effects;
+    this.targets = targets;
+    this.hud = hud;
+    this.audio = audio;
+
+    // Everything a bullet can stop on: world geometry plus the drones.
+    this.hittables = [...world.meshes, ...targets.meshes];
+
+    this.raycaster = new THREE.Raycaster();
+    this.cooldown = 0;          // seconds until the next shot is allowed
+    this.reloadLeft = 0;
+    this.viewKick = 0;          // pitch we've added and still owe back
+    this.kills = 0;
+    this.hits = 0;
+
+    // Ammo per weapon slot; the reserve is effectively infinite.
+    this.mags = [];
+    for (let i = 0; i < weapons.count; i++) this.mags.push(weapons.statsAt(i).mag);
+
+    this._aim = new THREE.Vector3();
+    this._dir = new THREE.Vector3();
+    this._origin = new THREE.Vector3();
+    this._muzzle = new THREE.Vector3();
+    this._end = new THREE.Vector3();
+    this._normal = new THREE.Vector3();
+    // PointerLockControls keeps the camera in YXZ, so reading pitch back the
+    // same way lets us clamp recoil without fighting the controls.
+    this._euler = new THREE.Euler(0, 0, 0, 'YXZ');
+
+    this._syncHud();
+  }
+
+  get mag() { return this.mags[this.weapons.active]; }
+  get reloading() { return this.reloadLeft > 0; }
+
+  update(dt) {
+    const stats = this.weapons.stats;
+
+    if (this.cooldown > 0) this.cooldown -= dt;
+
+    if (this.reloadLeft > 0) {
+      this.reloadLeft -= dt;
+      if (this.reloadLeft <= 0) {
+        this.reloadLeft = 0;
+        this.mags[this.weapons.active] = stats.mag;
+        this._syncHud();
+      }
+    }
+
+    // Recoil recovery: pull the view back down toward where it was aimed.
+    if (this.viewKick > 0) {
+      const back = Math.min(this.viewKick, RECOIL_RECOVER * dt * (0.4 + this.viewKick * 6));
+      this._pitch(-back);
+      this.viewKick -= back;
+    }
+
+    const pressed = this.keys.firePressed;
+    this.keys.firePressed = false;   // consume the edge either way
+
+    if (!this.controls.isLocked) return;
+
+    if (this.keys.reload) this.reload();
+
+    const wantsFire = stats.auto ? this.keys.fire : pressed;
+    if (!wantsFire || this.cooldown > 0 || this.reloading) return;
+
+    if (this.mag <= 0) {
+      // Empty: click on the trigger edge, then start reloading automatically.
+      if (pressed) this.audio.click(1.5, 0.3);
+      this.reload();
+      return;
+    }
+
+    this._fire(stats);
+  }
+
+  reload() {
+    const stats = this.weapons.stats;
+    if (this.reloading || this.mag >= stats.mag) return;
+    this.reloadLeft = stats.reload;
+    this.weapons.startReload(stats.reload);
+    this.audio.reload(stats.reload);
+    this._syncHud();
+  }
+
+  // Called when the player switches weapons — the HUD ammo must follow, and a
+  // half-finished reload on the old gun is dropped.
+  onWeaponChange() {
+    this.reloadLeft = 0;
+    this.cooldown = Math.max(this.cooldown, 0.25);   // brief swap delay
+    this._syncHud();
+  }
+
+  _fire(stats) {
+    this.mags[this.weapons.active]--;
+    this.cooldown = 60 / stats.rpm;
+
+    this.weapons.fired();
+    this.weapons.muzzleWorld(this._muzzle);
+    this.audio.shot({ pitch: stats.pitch, punch: stats.punch, decay: 0.14 + stats.punch * 0.09 });
+
+    this.camera.getWorldPosition(this._origin);
+    this.camera.getWorldDirection(this._aim);
+
+    let hitAny = false;
+    let killedAny = false;
+
+    for (let p = 0; p < stats.pellets; p++) {
+      // Spread: nudge the aim inside a small cone. The first pellet of a
+      // multi-pellet shot still gets spread — shotguns are never pinpoint.
+      this._dir.copy(this._aim);
+      if (stats.spread > 0) {
+        const a = Math.random() * Math.PI * 2;
+        const r = Math.sqrt(Math.random()) * stats.spread;
+        this._dir.x += Math.cos(a) * r;
+        this._dir.y += Math.sin(a) * r;
+        this._dir.z += (Math.random() - 0.5) * r * 0.2;
+        this._dir.normalize();
+      }
+
+      const result = this._trace(this._origin, this._dir, stats);
+      if (result === 'kill') { hitAny = true; killedAny = true; }
+      else if (result === 'hit') hitAny = true;
+    }
+
+    // View kick, applied on the camera's local X so it's independent of yaw.
+    this.viewKick += this._pitch(stats.kick * (0.8 + Math.random() * 0.4));
+
+    if (hitAny) {
+      this.hits++;
+      if (killedAny) this.kills++;
+      this.hud.hitmarker(killedAny);
+      this.audio.ping(killedAny);
+    }
+
+    this._syncHud();
+  }
+
+  // Casts one ray, draws its tracer/impact, and applies damage. Returns
+  // 'kill' | 'hit' | null.
+  _trace(origin, dir, stats) {
+    this.raycaster.set(origin, dir);
+    this.raycaster.far = stats.range;
+    const hits = this.raycaster.intersectObjects(this.hittables, false);
+
+    for (const hit of hits) {
+      const target = hit.object.userData.target;
+
+      // Dead drones are still in the raycast list while they pop — shoot past.
+      if (target && !target.alive) continue;
+
+      if (hit.face) {
+        this._normal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld);
+      } else {
+        this._normal.copy(dir).negate();   // no face data — face the shooter
+      }
+
+      this.effects.tracer(this._muzzle, hit.point);
+
+      if (target) {
+        const outcome = this.targets.hit(target, stats.damage);
+        this.effects.impact(hit.point, this._normal, HIT_COLOR);
+        return outcome;
+      }
+
+      this.effects.impact(hit.point, this._normal, WORLD_COLOR);
+      this.effects.decal(hit.point, this._normal);
+      return null;
+    }
+
+    // Nothing hit — run the tracer out to the weapon's max range.
+    this._end.copy(origin).addScaledVector(dir, stats.range);
+    this.effects.tracer(this._muzzle, this._end);
+    return null;
+  }
+
+  // Pitches the view by `delta` radians (positive = up), clamped to just short
+  // of vertical. Returns how much was actually applied, so recoil recovery
+  // never owes back more than it took.
+  _pitch(delta) {
+    this._euler.setFromQuaternion(this.camera.quaternion);
+    const target = THREE.MathUtils.clamp(this._euler.x + delta, -PITCH_LIMIT, PITCH_LIMIT);
+    const applied = target - this._euler.x;
+    if (applied !== 0) this.camera.rotateX(applied);
+    return applied;
+  }
+
+  _syncHud() {
+    this.hud.setAmmo(this.mag, this.weapons.stats.mag, this.reloading);
+    this.hud.setScore(this.kills, this.hits);
+  }
+}

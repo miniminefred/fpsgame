@@ -84,8 +84,9 @@ export class Weapons {
     this.onChange?.(this.active, WEAPONS[this.active].name);
   }
 
-  // Combat stats for the equipped weapon.
+  // Combat stats for the equipped weapon, and for any slot.
   get stats() { return WEAPONS[this.active]; }
+  statsAt(index) { return WEAPONS[index]; }
 
   _onLoaded(i, cfg, model) {
     model.traverse((o) => {

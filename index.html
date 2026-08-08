@@ -10,20 +10,26 @@
   <div id="app"></div>
 
   <div id="crosshair"></div>
+  <div id="hitmarker"></div>
 
   <div id="overlay">
     <h1>Alfred — 3D FPS</h1>
-    <p>A flat world to run and jump around in.</p>
+    <p>Shoot the drones. Five guns, live ammo.</p>
     <div class="cta">Click to play</div>
     <div class="keys">
       <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> move &nbsp;·&nbsp;
       <kbd>Space</kbd> jump &nbsp;·&nbsp; <kbd>Mouse</kbd> look &nbsp;·&nbsp; <kbd>Esc</kbd> release<br />
+      <kbd>Left click</kbd> shoot &nbsp;·&nbsp; <kbd>R</kbd> reload &nbsp;·&nbsp;
       <kbd>1</kbd>–<kbd>5</kbd> switch weapon (light → heavy)
     </div>
   </div>
 
   <div id="hint">Esc to release the mouse</div>
-  <div id="weapon"></div>
+  <div id="hud">
+    <div id="weapon"></div>
+    <div id="ammo"></div>
+  </div>
+  <div id="score"></div>
 
   <script type="module" src="/src/main.js"></script>
 </body>

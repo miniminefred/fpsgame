@@ -1,10 +1,30 @@
 // Keyboard state + pointer-lock overlay wiring.
 
 export function createInput() {
-  const keys = { forward: false, back: false, left: false, right: false, jump: false };
+  const keys = {
+    forward: false, back: false, left: false, right: false, jump: false,
+    reload: false,
+    fire: false,        // trigger held — automatic weapons read this
+    firePressed: false, // trigger edge — semi-auto weapons consume this
+  };
 
   addEventListener('keydown', (e) => setKey(keys, e.code, true));
   addEventListener('keyup', (e) => setKey(keys, e.code, false));
+
+  addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    keys.fire = true;
+    keys.firePressed = true;
+  });
+  addEventListener('mouseup', (e) => {
+    if (e.button === 0) keys.fire = false;
+  });
+
+  // Losing focus (alt-tab mid-burst) must not leave the trigger stuck down.
+  addEventListener('blur', () => {
+    keys.forward = keys.back = keys.left = keys.right = false;
+    keys.jump = keys.reload = keys.fire = keys.firePressed = false;
+  });
 
   return keys;
 }
@@ -24,6 +44,7 @@ function setKey(keys, code, down) {
     case 'KeyA': case 'ArrowLeft':  keys.left = down; break;
     case 'KeyD': case 'ArrowRight': keys.right = down; break;
     case 'Space':                   keys.jump = down; break;
+    case 'KeyR':                    keys.reload = down; break;
   }
 }
 
