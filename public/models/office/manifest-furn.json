@@ -1,0 +1,236 @@
+[
+  {
+    "key": "sofa",
+    "file": "furn_sofa.glb",
+    "title": "Couch Medium",
+    "author": "Quaternius",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/mWgQ94zhDZ",
+    "bytes": 22940
+  },
+  {
+    "key": "armchair",
+    "file": "furn_armchair.glb",
+    "title": "Couch Small",
+    "author": "Quaternius",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/ZOPP3KzNIk",
+    "bytes": 19048
+  },
+  {
+    "key": "lounge_chair",
+    "file": "furn_lounge_chair.glb",
+    "title": "Sofa Small",
+    "author": "Quaternius",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/vRMLQC5Dfg",
+    "bytes": 10228
+  },
+  {
+    "key": "coffee_table",
+    "file": "furn_coffee_table.glb",
+    "title": "Coffee Table",
+    "author": "Kenney",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/y4ZU5S7RuD",
+    "bytes": 14864
+  },
+  {
+    "key": "meeting_table",
+    "file": "furn_meeting_table.glb",
+    "title": "Table",
+    "author": "CreativeTrio",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/KndwzSWSHR",
+    "bytes": 14844
+  },
+  {
+    "key": "round_table",
+    "file": "furn_round_table.glb",
+    "title": "Table Large Circular",
+    "author": "CreativeTrio",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/aG6qYcqcI0",
+    "bytes": 19444
+  },
+  {
+    "key": "stool",
+    "file": "furn_stool.glb",
+    "title": "Stool",
+    "author": "Quaternius",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/ngWUQ7Dt9u",
+    "bytes": 20676
+  },
+  {
+    "key": "cubicle_partition",
+    "file": "furn_cubicle_partition.glb",
+    "title": "Cubicle",
+    "author": "Stephen Faett",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/9oZP4harYcp",
+    "bytes": 95396
+  },
+  {
+    "key": "potted_plant",
+    "file": "furn_potted_plant.glb",
+    "title": "Houseplant",
+    "author": "Quaternius",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/bfLOqIV5uP",
+    "bytes": 16636
+  },
+  {
+    "key": "small_houseplant",
+    "file": "furn_small_houseplant.glb",
+    "title": "Houseplant",
+    "author": "Quaternius",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/dveIJ0xNpX",
+    "bytes": 25884
+  },
+  {
+    "key": "tall_plant",
+    "file": "furn_tall_plant.glb",
+    "title": "Houseplant",
+    "author": "Quaternius",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/VtJh4Irl4w",
+    "bytes": 14412
+  },
+  {
+    "key": "ceiling_lamp",
+    "file": "furn_ceiling_lamp.glb",
+    "title": "Ceiling Light",
+    "author": "Quaternius",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/sRNcgQFbLB",
+    "bytes": 8840
+  },
+  {
+    "key": "fluorescent_panel",
+    "file": "furn_fluorescent_panel.glb",
+    "title": "Ceiling Light",
+    "author": "Ryan Donaldson",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/3izH548dJnA",
+    "bytes": 24996
+  },
+  {
+    "key": "pendant_lamp",
+    "file": "furn_pendant_lamp.glb",
+    "title": "Light Ceiling",
+    "author": "Quaternius",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/NNlnaiDJIh",
+    "bytes": 26540
+  },
+  {
+    "key": "floor_lamp",
+    "file": "furn_floor_lamp.glb",
+    "title": "Light Floor",
+    "author": "Quaternius",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/sRBBvofo58",
+    "bytes": 9964
+  },
+  {
+    "key": "rug",
+    "file": "furn_rug.glb",
+    "title": "Rug",
+    "author": "Quaternius",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/7H5qKjuxVY",
+    "bytes": 6020
+  },
+  {
+    "key": "round_rug",
+    "file": "furn_round_rug.glb",
+    "title": "Round Rug",
+    "author": "Quaternius",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/ZYBzMHnSbM",
+    "bytes": 6628
+  },
+  {
+    "key": "door",
+    "file": "furn_door.glb",
+    "title": "Door",
+    "author": "Quaternius",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/TOMs7NG2FG",
+    "bytes": 41636
+  },
+  {
+    "key": "double_door",
+    "file": "furn_double_door.glb",
+    "title": "Door Double",
+    "author": "Quaternius",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/blrNJIEdns",
+    "bytes": 63624
+  },
+  {
+    "key": "exit_sign",
+    "file": "furn_exit_sign.glb",
+    "title": "Fire Exit Sign",
+    "author": "J-Toastie",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/gpft2tHZv4",
+    "bytes": 62376
+  },
+  {
+    "key": "water_fountain",
+    "file": "furn_water_fountain.glb",
+    "title": "Water Cooler",
+    "author": "J-Toastie",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/zWi9p5FSxD",
+    "bytes": 70396
+  },
+  {
+    "key": "reception_desk",
+    "file": "furn_reception_desk.glb",
+    "title": "Kitchen Bar",
+    "author": "Kenney",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/w00V8SbhYD",
+    "bytes": 13884
+  },
+  {
+    "key": "vending_machine",
+    "file": "furn_vending_machine.glb",
+    "title": "Vending Machine",
+    "author": "dook",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/yNG4vqWVq0",
+    "bytes": 135804
+  },
+  {
+    "key": "coffee_stand",
+    "file": "furn_coffee_stand.glb",
+    "title": "Coffee Machine",
+    "author": "Zsky",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/kRpKjpQsEd",
+    "bytes": 48232
+  },
+  {
+    "key": "window_blinds",
+    "file": "furn_window_blinds.glb",
+    "title": "Window blinds",
+    "author": "Jarlan Perez",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/8UULkkmfhcB",
+    "bytes": 15324
+  },
+  {
+    "key": "ceiling_fan",
+    "file": "furn_ceiling_fan.glb",
+    "title": "Ceiling Fan",
+    "author": "CreativeTrio",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/pRMxaQQXha",
+    "bytes": 22256
+  }
+]

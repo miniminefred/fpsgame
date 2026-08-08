@@ -1,0 +1,218 @@
+[
+  {
+    "key": "desk",
+    "file": "tech_desk.glb",
+    "title": "Computer Desk",
+    "author": "Zsky",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/OhXey2fljr",
+    "bytes": 31920
+  },
+  {
+    "key": "executive_desk",
+    "file": "tech_executive_desk.glb",
+    "title": "Executive Desk",
+    "author": "Zsky",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/maMILE0taC",
+    "bytes": 97544
+  },
+  {
+    "key": "standing_desk",
+    "file": "tech_standing_desk.glb",
+    "title": "Standing Desk",
+    "author": "Zsky",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/dE6BqyF4Ws",
+    "bytes": 18576
+  },
+  {
+    "key": "l_shaped_desk",
+    "file": "tech_l_shaped_desk.glb",
+    "title": "L Shaped Desk",
+    "author": "Zsky",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/BfrWTbXWBl",
+    "bytes": 62336
+  },
+  {
+    "key": "office_chair",
+    "file": "tech_office_chair.glb",
+    "title": "Executive Chair",
+    "author": "Zsky",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/hW11P9DDXa",
+    "bytes": 115604
+  },
+  {
+    "key": "monitor",
+    "file": "tech_monitor.glb",
+    "title": "Monitor",
+    "author": "Zsky",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/Qyw8JFtZF0",
+    "bytes": 13184
+  },
+  {
+    "key": "dual_monitor",
+    "file": "tech_dual_monitor.glb",
+    "title": "Dual Monitors on sit-stand arm",
+    "author": "involuntary tsetse",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/c9fdvmLhrsT",
+    "bytes": 142292
+  },
+  {
+    "key": "pc_tower",
+    "file": "tech_pc_tower.glb",
+    "title": "Desktop computer",
+    "author": "Luca Regazzi (okon3)",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/dY79tyRnkaM",
+    "bytes": 97812
+  },
+  {
+    "key": "keyboard",
+    "file": "tech_keyboard.glb",
+    "title": "Computer Keyboard",
+    "author": "Kenney",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/vsqTUPFSw6",
+    "bytes": 7960
+  },
+  {
+    "key": "mouse",
+    "file": "tech_mouse.glb",
+    "title": "Computer Mouse",
+    "author": "Zsky",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/fbmU0OF0G2",
+    "bytes": 10900
+  },
+  {
+    "key": "mousepad",
+    "file": "tech_mousepad.glb",
+    "title": "Mousepad",
+    "author": "dook",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/S5sNqsyyOs",
+    "bytes": 7048
+  },
+  {
+    "key": "laptop",
+    "file": "tech_laptop.glb",
+    "title": "Notebook",
+    "author": "Zsky",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/UeJDUbgwAU",
+    "bytes": 13180
+  },
+  {
+    "key": "printer",
+    "file": "tech_printer.glb",
+    "title": "Printer",
+    "author": "CreativeTrio",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/77K2TCL5Lz",
+    "bytes": 22692
+  },
+  {
+    "key": "copier",
+    "file": "tech_copier.glb",
+    "title": "Printer",
+    "author": "Mikael Ganehag Brorsson",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/6uy3vUnmbCJ",
+    "bytes": 35464
+  },
+  {
+    "key": "server_rack",
+    "file": "tech_server_rack.glb",
+    "title": "server rack",
+    "author": "Jeremy Eyring",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/6ijQclm8jxw",
+    "bytes": 1822516
+  },
+  {
+    "key": "desk_lamp",
+    "file": "tech_desk_lamp.glb",
+    "title": "Desk Lamp",
+    "author": "Zsky",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/QPSkIimiV6",
+    "bytes": 29748
+  },
+  {
+    "key": "desk_fan",
+    "file": "tech_desk_fan.glb",
+    "title": "Desk Fan",
+    "author": "CreativeTrio",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/OlTLyyXoXY",
+    "bytes": 30668
+  },
+  {
+    "key": "office_phone",
+    "file": "tech_office_phone.glb",
+    "title": "Office Phone",
+    "author": "dook",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/YxfMuchpUF",
+    "bytes": 362728
+  },
+  {
+    "key": "projector",
+    "file": "tech_projector.glb",
+    "title": "projector",
+    "author": "Jonathan Granskog",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/4oVHZbDvwV8",
+    "bytes": 50052
+  },
+  {
+    "key": "tv_screen",
+    "file": "tech_tv_screen.glb",
+    "title": "Tv",
+    "author": "Zsky",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/olZvo1qoRs",
+    "bytes": 4892
+  },
+  {
+    "key": "headphones",
+    "file": "tech_headphones.glb",
+    "title": "Headphones",
+    "author": "CreativeTrio",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/PSsWSIAYIL",
+    "bytes": 42780
+  },
+  {
+    "key": "webcam",
+    "file": "tech_webcam.glb",
+    "title": "Webcam",
+    "author": "dook",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/afOuPVCoKj",
+    "bytes": 68232
+  },
+  {
+    "key": "workstation",
+    "file": "tech_workstation.glb",
+    "title": "Desk",
+    "author": "dook",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/ISpMh81QGq",
+    "bytes": 658168
+  },
+  {
+    "key": "standing_workstation",
+    "file": "tech_standing_workstation.glb",
+    "title": "Standing Desk",
+    "author": "dook",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/uxIo5ge0pw",
+    "bytes": 1635376
+  }
+]

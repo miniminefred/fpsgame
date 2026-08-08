@@ -1,0 +1,209 @@
+[
+  {
+    "key": "filing_cabinet",
+    "file": "store_filing_cabinet.glb",
+    "title": "File Cabinet",
+    "author": "J-Toastie",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/9732ObD3OY",
+    "bytes": 66464
+  },
+  {
+    "key": "bookshelf",
+    "file": "store_bookshelf.glb",
+    "title": "Bookcase with Books",
+    "author": "Quaternius",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/tACDGJ4CGW",
+    "bytes": 589464
+  },
+  {
+    "key": "shelving_unit",
+    "file": "store_shelving_unit.glb",
+    "title": "Shelves",
+    "author": "J-Toastie",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/OD78iJOQoN",
+    "bytes": 129900
+  },
+  {
+    "key": "cardboard_box",
+    "file": "store_cardboard_box.glb",
+    "title": "Cardboard Box Closed",
+    "author": "Kenney",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/zv8NvYfT9B",
+    "bytes": 11328
+  },
+  {
+    "key": "box_stack",
+    "file": "store_box_stack.glb",
+    "title": "Cardboard Boxes",
+    "author": "Quaternius",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/V9KbWC8Vd6",
+    "bytes": 25280
+  },
+  {
+    "key": "crate",
+    "file": "store_crate.glb",
+    "title": "Crate",
+    "author": "Quaternius",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/3VGWnZPXmG",
+    "bytes": 35812
+  },
+  {
+    "key": "ring_binder",
+    "file": "store_ring_binder.glb",
+    "title": "Binder",
+    "author": "J-Toastie",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/9RgMOzJPGx",
+    "bytes": 21944
+  },
+  {
+    "key": "book_stack",
+    "file": "store_book_stack.glb",
+    "title": "Book Stack",
+    "author": "Danni Bittman",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/1WggoIFq8tx",
+    "bytes": 45152
+  },
+  {
+    "key": "paper_stack",
+    "file": "store_paper_stack.glb",
+    "title": "Large Stack of Paper",
+    "author": "Jarlan Perez",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/8IY5NMKWEJW",
+    "bytes": 11724
+  },
+  {
+    "key": "folder",
+    "file": "store_folder.glb",
+    "title": "File Folder",
+    "author": "Ryan Dewalt",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/fDhOEadpKWA",
+    "bytes": 4596
+  },
+  {
+    "key": "clipboard",
+    "file": "store_clipboard.glb",
+    "title": "Clipboard",
+    "author": "William Murphy",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/8H5SDxwMnEA",
+    "bytes": 7604
+  },
+  {
+    "key": "coffee_mug",
+    "file": "store_coffee_mug.glb",
+    "title": "Cup",
+    "author": "J-Toastie",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/3EOEqKBvy4",
+    "bytes": 11772
+  },
+  {
+    "key": "coffee_machine",
+    "file": "store_coffee_machine.glb",
+    "title": "Coffee Machine",
+    "author": "J-Toastie",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/EWVe4TaOiB",
+    "bytes": 134176
+  },
+  {
+    "key": "water_cooler",
+    "file": "store_water_cooler.glb",
+    "title": "Water Cooler",
+    "author": "J-Toastie",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/zWi9p5FSxD",
+    "bytes": 70396
+  },
+  {
+    "key": "vending_machine",
+    "file": "store_vending_machine.glb",
+    "title": "Vending Machine",
+    "author": "J-Toastie",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/ZhziWexNWk",
+    "bytes": 536480
+  },
+  {
+    "key": "trash_can",
+    "file": "store_trash_can.glb",
+    "title": "Trash Can",
+    "author": "J-Toastie",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/P2sHfpB9yu",
+    "bytes": 370216
+  },
+  {
+    "key": "recycling_bin",
+    "file": "store_recycling_bin.glb",
+    "title": "Bins",
+    "author": "Dilan Shah",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/75lHRN19gMY",
+    "bytes": 19492
+  },
+  {
+    "key": "whiteboard",
+    "file": "store_whiteboard.glb",
+    "title": "Whiteboard",
+    "author": "J-Toastie",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/ZJiCTnor3L",
+    "bytes": 81060
+  },
+  {
+    "key": "corkboard",
+    "file": "store_corkboard.glb",
+    "title": "Wall Corkboard",
+    "author": "CreativeTrio",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/U8yQZ9l0HZ",
+    "bytes": 23764
+  },
+  {
+    "key": "wall_clock",
+    "file": "store_wall_clock.glb",
+    "title": "Analog Clock",
+    "author": "Poly by Google",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/5gAoMR2YHs3",
+    "bytes": 13656
+  },
+  {
+    "key": "fire_extinguisher",
+    "file": "store_fire_extinguisher.glb",
+    "title": "Fire Extinguisher",
+    "author": "dook",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/LtrzDvRya9",
+    "bytes": 54356
+  },
+  {
+    "key": "mop_bucket",
+    "file": "store_mop_bucket.glb",
+    "title": "Mop & Bucket",
+    "author": "J-Toastie",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/kWobe0q7tf",
+    "bytes": 119312
+  },
+  {
+    "key": "pallet",
+    "file": "store_pallet.glb",
+    "title": "Wooden Pallet",
+    "author": "J-Toastie",
+    "license": "CC-BY",
+    "source": "https://poly.pizza/m/XSKlcrzyi6",
+    "bytes": 305252
+  }
+]
