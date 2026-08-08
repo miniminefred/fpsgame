@@ -508,9 +508,9 @@ function makeSink(layout, batcher, materials, masks) {
 
     // --- static props ------------------------------------------------------
 
-    beginStatic(hp) {
+    beginStatic(hp, substance) {
       record = hp > 0
-        ? { hp, boxes: [], colliders: [], navTiles: [], spans: batcher.beginSpans() }
+        ? { hp, substance, boxes: [], colliders: [], navTiles: [], spans: batcher.beginSpans() }
         : null;
     },
 
@@ -527,6 +527,9 @@ function makeSink(layout, batcher, materials, masks) {
 
       destructibles.push({
         kind: 'prop',
+        // What it is made of, so a bullet into a filing cabinet and a bullet
+        // into a pot plant do not make the same noise.
+        substance: r.substance,
         hp: r.hp,
         spans: r.spans,
         colliders: r.colliders,
@@ -537,7 +540,7 @@ function makeSink(layout, batcher, materials, masks) {
       });
     },
 
-    beginDynamic(mass, hp) { pending = { mass, hp, boxes: [] }; },
+    beginDynamic(mass, hp, substance) { pending = { mass, hp, substance, boxes: [] }; },
 
     // Turns the collected boxes into one free-standing group whose origin sits
     // at the centre of their combined bounds — which is exactly where the
@@ -586,6 +589,7 @@ function makeSink(layout, batcher, materials, masks) {
         parts,
         mass: p.mass,
         hp: p.hp ?? 0,
+        substance: p.substance,
         size: { x: maxX - minX, y: maxY - minY, z: maxZ - minZ },
         position: { x: cx, y: cy, z: cz },
       });

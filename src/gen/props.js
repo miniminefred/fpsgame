@@ -69,7 +69,7 @@ export const PROPS = {
     // Drawn as a model, but `build` is still authored and still matters twice
     // over: it is the fallback when the GLB is missing, and it is the set of
     // pieces the desk comes apart into when it's destroyed.
-    w: 1.6, d: 0.8, model: 'desk', hp: 70,
+    w: 1.6, d: 0.8, model: 'desk', hp: 70, substance: 'wood',
     desktop: [
       { key: 'monitor', z: 0.16 },
       { key: 'keyboard', z: -0.18, chance: 0.85 },
@@ -95,7 +95,7 @@ export const PROPS = {
   },
 
   chair: {
-    w: 0.62, d: 0.62, mass: 9, hp: 45,
+    w: 0.62, d: 0.62, mass: 9, hp: 45, substance: 'plastic',
     build(p) {
       p.box('metalDark', -0.22, 0.02, -0.22, 0.22, 0.08, 0.22);   // star base
       p.box('metalDark', -0.04, 0.08, -0.04, 0.04, 0.42, 0.04);   // gas lift
@@ -106,7 +106,7 @@ export const PROPS = {
   },
 
   partition: {
-    w: 1.6, d: 0.12, hp: 26,
+    w: 1.6, d: 0.12, hp: 26, substance: 'fabric',
     build(p) {
       p.box('partition', -0.8, 0.06, -0.05, 0.8, 1.38, 0.05);
       p.box('metal', -0.8, 1.38, -0.055, 0.8, 1.44, 0.055);
@@ -116,7 +116,7 @@ export const PROPS = {
   },
 
   cabinet: {
-    w: 0.52, d: 0.7, model: 'filing_cabinet', hp: 60,
+    w: 0.52, d: 0.7, model: 'filing_cabinet', hp: 60, substance: 'metal',
     build(p, rng) {
       const H = rng.chance(0.4) ? 1.32 : 0.72;
       p.box('metal', -0.25, 0, -0.33, 0.25, H, 0.33);
@@ -131,7 +131,7 @@ export const PROPS = {
   },
 
   shelving: {
-    w: 1.96, d: 0.62, model: 'shelving_unit', hp: 95,
+    w: 1.96, d: 0.62, model: 'shelving_unit', hp: 95, substance: 'metal',
     build(p, rng) {
       const H = 2.1;
       for (const sx of [-0.93, 0.93]) {
@@ -160,7 +160,7 @@ export const PROPS = {
   },
 
   crateStack: {
-    w: 0.72, d: 0.72, mass: 6, hp: 28,
+    w: 0.72, d: 0.72, mass: 6, hp: 28, substance: 'cardboard',
     build(p, rng) {
       let y = 0;
       const layers = rng.int(1, 3);
@@ -180,7 +180,7 @@ export const PROPS = {
   printer: {
     // 'copier' not 'printer': the latter model is a 24 cm desktop unit, and
     // this prop stands on the floor.
-    w: 0.86, d: 0.88, model: 'copier', hp: 55,
+    w: 0.86, d: 0.88, model: 'copier', hp: 55, substance: 'electronic',
     build(p, rng) {
       const big = rng.chance(0.45);
       const H = big ? 1.15 : 0.78;
@@ -197,7 +197,7 @@ export const PROPS = {
   },
 
   coffeeTable: {
-    w: 1.1, d: 0.7, mass: 14, hp: 60,
+    w: 1.1, d: 0.7, mass: 14, hp: 60, substance: 'wood',
     build(p, rng) {
       const H = 0.42;
       p.box('laminateDark', -0.52, H - 0.05, -0.32, 0.52, H, 0.32);
@@ -213,7 +213,7 @@ export const PROPS = {
   },
 
   sofa: {
-    w: 1.8, d: 0.82, model: 'sofa', hp: 75,
+    w: 1.8, d: 0.82, model: 'sofa', hp: 75, substance: 'fabric',
     build(p) {
       p.box('fabric', -0.9, 0.1, -0.41, 0.9, 0.44, 0.41);
       p.box('fabric', -0.9, 0.44, 0.22, 0.9, 0.86, 0.41);
@@ -227,7 +227,7 @@ export const PROPS = {
   counter: {
     // No model: the candidates are all small appliances, and this is a whole
     // kitchenette run with a sink and a coffee machine on it.
-    w: 2.2, d: 0.66, hp: 90,
+    w: 2.2, d: 0.66, hp: 90, substance: 'wood',
     build(p, rng) {
       const H = 0.92;
       p.box('laminateDark', -1.1, H - 0.05, -0.33, 1.1, H, 0.33);
@@ -243,7 +243,7 @@ export const PROPS = {
   },
 
   waterCooler: {
-    w: 0.4, d: 0.4, mass: 11, hp: 35,
+    w: 0.4, d: 0.4, mass: 11, hp: 35, substance: 'plastic',
     build(p) {
       p.box('metal', -0.18, 0, -0.18, 0.18, 1.0, 0.18);
       p.box('screenOn', -0.14, 1.0, -0.14, 0.14, 1.42, 0.14);   // the bottle
@@ -253,7 +253,7 @@ export const PROPS = {
   },
 
   vending: {
-    w: 1.04, d: 0.82, model: 'vending_machine', hp: 120,
+    w: 1.04, d: 0.82, model: 'vending_machine', hp: 120, substance: 'electronic',
     build(p) {
       p.box('metalDark', -0.5, 0, -0.39, 0.5, 1.92, 0.39);
       p.box('screenOn', -0.42, 0.5, -0.4, 0.16, 1.76, -0.38);   // lit display window
@@ -264,7 +264,7 @@ export const PROPS = {
   },
 
   serverRack: {
-    w: 0.72, d: 1.06, model: 'server_rack', hp: 130,
+    w: 0.72, d: 1.06, model: 'server_rack', hp: 130, substance: 'electronic',
     build(p, rng) {
       const H = 2.05;
       p.box('metalDark', -0.34, 0, -0.5, 0.34, H, 0.5);
@@ -280,7 +280,7 @@ export const PROPS = {
   },
 
   plant: {
-    w: 0.68, d: 0.68, model: 'tall_plant', hp: 22,
+    w: 0.68, d: 0.68, model: 'tall_plant', hp: 22, substance: 'foliage',
     build(p, rng) {
       p.box('plastic', -0.16, 0, -0.16, 0.16, 0.34, 0.16);
       const blades = rng.int(4, 7);
@@ -297,7 +297,7 @@ export const PROPS = {
   },
 
   meetingTable: {
-    w: 3.1, d: 1.32, model: 'meeting_table', hp: 100,
+    w: 3.1, d: 1.32, model: 'meeting_table', hp: 100, substance: 'wood',
     build(p, rng) {
       const H = 0.75;
       p.box('laminateDark', -1.5, H - 0.06, -0.65, 1.5, H, 0.65);
@@ -342,7 +342,7 @@ export function tryPlace(sink, kind, cx, cz, rot, rng) {
 
   if (spec.mass) {
     // Loose: its own rigid body, and its own mesh so physics can move it.
-    sink.beginDynamic(spec.mass, spec.hp);
+    sink.beginDynamic(spec.mass, spec.hp, spec.substance);
     spec.build(placer(sink, cx, cz, rot), rng);
     sink.endDynamic();
   } else if (model) {
@@ -353,7 +353,7 @@ export function tryPlace(sink, kind, cx, cz, rot, rng) {
     // The quarter turns rotate the front from -Z toward +X, which is a negative
     // rotation about Y in Three's right-handed frame.
     const yaw = -rot * Math.PI / 2;
-    sink.beginStatic(spec.hp);
+    sink.beginStatic(spec.hp, spec.substance);
     sink.model(spec.model, cx, 0, cz, yaw);
     sink.obstacle(cx - w, cz - d, cx + w, cz + d, model.height);
 
@@ -370,7 +370,7 @@ export function tryPlace(sink, kind, cx, cz, rot, rng) {
   } else {
     // Static boxes: the geometry it is drawn with is already the geometry it
     // falls apart into, so there is nothing to capture separately.
-    sink.beginStatic(spec.hp);
+    sink.beginStatic(spec.hp, spec.substance);
     spec.build(placer(sink, cx, cz, rot), rng);
     sink.endStatic();
   }
