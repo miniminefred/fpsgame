@@ -19,13 +19,39 @@ const BASE = '/sounds/';
 
 const DEFAULT_PITCH = 0.06;   // ±6% playback rate unless a sound asks otherwise
 const DEFAULT_GAIN_VAR = 0.12;
-const MAX_VOICES = 28;        // global cap; a shotgun into a crowd is not 40 sounds
+
+// A voice is a BufferSource and two nodes — cheap enough that the cap exists
+// only to stop a runaway, not to ration. Sounds are meant to pile up here: an
+// SMG at 900 rpm firing a 0.7 s clip is ten shots ringing at once by itself, and
+// in a real firefight it is sharing the air with a room of return fire, impacts,
+// footsteps and screaming. Set this too low and events go *silent*, which reads
+// as the gun jamming. The limiter on the master bus is what keeps the sum in
+// range, not a voice budget.
+const MAX_VOICES = 192;
 
 // Distance falloff for placed sounds. refDistance is generous because office
 // rooms are small and a gunshot two rooms away still has to read as a threat.
 const REF_DISTANCE = 4;
 const MAX_DISTANCE = 70;
 const ROLLOFF = 1.15;
+
+// Every clip is measured and conditioned as it decodes, because generated audio
+// arrives at wildly inconsistent levels — the first pass at this set drew three
+// pistol takes at 1/50th the loudness of the shotgun's, which played as silence
+// and read as the gun misfiring at random. Two corrections, both cheap:
+//
+//   * Level. Takes are pulled toward a common RMS so one variant of a gun is
+//     never a fiftieth the loudness of the next. Bounded, and never past the
+//     point where the peak would clip.
+//   * Onset. Leading dead air is skipped. A one-shot sample is expected to crack
+//     the instant it is triggered, and a take whose blast sits 480 ms in makes
+//     every rapid-fire burst ragged no matter how many voices are free.
+const TARGET_RMS = 0.13;
+const MAX_BOOST = 8;
+const MIN_TRIM = 0.4;
+const ONSET_FLOOR = 0.05;     // fraction of peak that counts as the sound starting
+const ONSET_LEAD = 0.004;     // seconds kept before it, so the attack survives
+const DUD_RATIO = 0.25;       // quieter than this vs its siblings and we complain
 
 export class Sfx {
   constructor({ volume = 0.9 } = {}) {
@@ -48,21 +74,51 @@ export class Sfx {
    * `gain` is its mix level, `pitch` the ± playback-rate jitter per play, and
    * `minGap` a per-sound throttle — nine shotgun pellets landing on the same
    * wall must not be nine impact sounds stacked on the same millisecond.
+   *
+   * Clips always play out in full. Nothing here truncates a tail to save a
+   * voice — the overlap of those tails is the sound of sustained fire.
+   *
+   * `bed` marks a continuous ambience loop, which is exempt from the level and
+   * onset conditioning below: it has no transient to find, and trimming its head
+   * would break the seam it loops on.
    */
   define(name, { variants = 1, gain = 1, pitch = DEFAULT_PITCH,
-                 gainVar = DEFAULT_GAIN_VAR, minGap = 0, maxVoices = 6 } = {}) {
+                 gainVar = DEFAULT_GAIN_VAR, minGap = 0, maxVoices = 32,
+                 bed = false } = {}) {
     const urls = variants > 1
       ? Array.from({ length: variants }, (_, i) => `${BASE}${name}-${i + 1}.mp3`)
       : [`${BASE}${name}.mp3`];
 
     this.library.set(name, {
-      name, urls, gain, pitch, gainVar, minGap, maxVoices,
-      raw: new Array(urls.length).fill(null),
-      buffers: new Array(urls.length).fill(null),
+      name, urls, gain, pitch, gainVar, minGap, maxVoices, bed,
+      encoded: new Array(urls.length).fill(null),
+      // One entry per variant once decoded: { buffer, offset, norm, rms, peak }.
+      takes: new Array(urls.length).fill(null),
       last: -1,        // index of the take played last, so it isn't played twice
       lastAt: -1e9,
       live: 0,
     });
+  }
+
+  /** Every decoded take's measurements. The dev sound harness reports on this. */
+  report() {
+    const rows = [];
+    for (const entry of this.library.values()) {
+      entry.takes.forEach((take, i) => {
+        rows.push({
+          name: entry.name,
+          take: entry.urls.length > 1 ? i + 1 : 0,
+          loaded: !!take,
+          seconds: take ? +take.buffer.duration.toFixed(2) : 0,
+          peak: take ? +take.peak.toFixed(3) : 0,
+          rms: take ? +take.rms.toFixed(4) : 0,
+          onsetMs: take ? Math.round(take.offset * 1000) : 0,
+          norm: take ? +take.norm.toFixed(2) : 0,
+          mixed: take ? +(take.rms * take.norm * entry.gain).toFixed(4) : 0,
+        });
+      });
+    }
+    return rows;
   }
 
   /** Starts every download. Safe to call before any user gesture. */
@@ -73,8 +129,8 @@ export class Sfx {
       entry.urls.forEach((url, i) => {
         fetch(url)
           .then((res) => (res.ok ? res.arrayBuffer() : Promise.reject(res.status)))
-          .then((raw) => {
-            entry.raw[i] = raw;
+          .then((bytes) => {
+            entry.encoded[i] = bytes;
             if (this.ctx) this._decode(entry, i);
           })
           // A missing clip is not worth breaking the game over: that sound just
@@ -96,10 +152,24 @@ export class Sfx {
     if (!Ctx) return false;
 
     this.ctx = new Ctx();
+    // Chrome usually hands back a running context inside a gesture, but not
+    // always, and a suspended one plays nothing while looking entirely healthy.
+    if (this.ctx.state === 'suspended') this.ctx.resume();
 
     this.master = this.ctx.createGain();
     this.master.gain.value = this.volume;
-    this.master.connect(this.ctx.destination);
+
+    // A limiter on the way out. Twenty overlapping voices in a firefight will
+    // sum past full scale, and WebAudio's answer to that is hard clipping —
+    // which arrives as a crackle exactly when the action peaks.
+    const limiter = this.ctx.createDynamicsCompressor();
+    limiter.threshold.value = -10;
+    limiter.knee.value = 6;
+    limiter.ratio.value = 8;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.2;
+
+    this.master.connect(limiter).connect(this.ctx.destination);
 
     // Two buses so ambience can sit under the action without the action having
     // to be mixed against it clip by clip.
@@ -112,7 +182,7 @@ export class Sfx {
     this.ambienceBus.connect(this.master);
 
     for (const entry of this.library.values()) {
-      entry.raw.forEach((_, i) => this._decode(entry, i));
+      entry.encoded.forEach((_, i) => this._decode(entry, i));
     }
     this._flushLoops();
     return true;
@@ -138,18 +208,23 @@ export class Sfx {
     if (entry.live >= entry.maxVoices || this.voices >= MAX_VOICES) return false;
 
     const index = pick(entry);
-    const buffer = entry.buffers[index];
-    if (!buffer) return false;
+    const take = entry.takes[index];
+    if (!take) return false;
 
     entry.last = index;
     entry.lastAt = now;
 
     const src = this.ctx.createBufferSource();
-    src.buffer = buffer;
+    src.buffer = take.buffer;
     src.playbackRate.value = rate * (1 + (Math.random() * 2 - 1) * entry.pitch);
 
+    // take.norm is what pulls a quiet variant up to its siblings, so one draw of
+    // a gun is never a fiftieth the loudness of the next.
     const g = this.ctx.createGain();
-    g.gain.value = entry.gain * gain * (1 + (Math.random() * 2 - 1) * entry.gainVar);
+    g.gain.value = entry.gain * gain * take.norm
+      * (1 + (Math.random() * 2 - 1) * entry.gainVar);
+
+    const start = now + delay;
 
     if (at) {
       const panner = this.ctx.createPanner();
@@ -168,7 +243,9 @@ export class Sfx {
     this.voices++;
     src.onended = () => { entry.live--; this.voices--; };
 
-    src.start(now + delay);
+    // Started at the take's onset, not at zero: a one-shot has to crack the
+    // instant the trigger is pulled, whatever dead air the clip shipped with.
+    src.start(start, take.offset);
     return true;
   }
 
@@ -217,12 +294,16 @@ export class Sfx {
   // --- internals ---------------------------------------------------------------
 
   _decode(entry, i) {
-    const raw = entry.raw[i];
-    if (!raw || entry.buffers[i]) return;
-    entry.raw[i] = null;   // decodeAudioData detaches the buffer — only ever once
+    const bytes = entry.encoded[i];
+    if (!bytes || entry.takes[i]) return;
+    entry.encoded[i] = null;   // decodeAudioData detaches it — only ever once
     this.ctx.decodeAudioData(
-      raw,
-      (buffer) => { entry.buffers[i] = buffer; this._flushLoops(); },
+      bytes,
+      (buffer) => {
+        entry.takes[i] = measure(buffer, entry.bed);
+        this._flushLoops();
+        if (import.meta.env?.DEV) warnIfDud(entry);
+      },
       () => {}
     );
   }
@@ -237,7 +318,7 @@ export class Sfx {
     for (const handle of this.loops) {
       if (handle.source) continue;
       const entry = this.library.get(handle.name);
-      const buffer = entry?.buffers[0];
+      const buffer = entry?.takes[0]?.buffer;
       if (!buffer) continue;
 
       const src = this.ctx.createBufferSource();
@@ -257,6 +338,57 @@ export class Sfx {
 
     if (started && this.ambienceBus.gain.value === 0) this.setAmbience(1, 3);
   }
+}
+
+/**
+ * Measures a decoded clip and works out the two corrections it needs: how much
+ * to scale it so it sits with everything else, and how far in its sound actually
+ * starts. A bed is measured but left alone.
+ */
+function measure(buffer, bed) {
+  const x = buffer.getChannelData(0);
+  let peak = 0;
+  let sum = 0;
+  for (let i = 0; i < x.length; i++) {
+    const a = x[i] < 0 ? -x[i] : x[i];
+    if (a > peak) peak = a;
+    sum += x[i] * x[i];
+  }
+  const rms = Math.sqrt(sum / Math.max(1, x.length));
+
+  if (bed || rms <= 0) return { buffer, offset: 0, norm: 1, rms, peak };
+
+  // Pull toward a common loudness, but never so far that the peak clips.
+  let norm = Math.min(MAX_BOOST, Math.max(MIN_TRIM, TARGET_RMS / rms));
+  if (peak > 0) norm = Math.min(norm, 0.99 / peak);
+
+  const threshold = peak * ONSET_FLOOR;
+  let i = 0;
+  while (i < x.length && (x[i] < 0 ? -x[i] : x[i]) < threshold) i++;
+  const lead = Math.round(ONSET_LEAD * buffer.sampleRate);
+  const offset = Math.max(0, i - lead) / buffer.sampleRate;
+
+  return { buffer, offset, norm, rms, peak };
+}
+
+// A generated set is drawn one clip at a time and the draws are not consistent,
+// so a variant can come back near-silent while its siblings are fine. Levelling
+// hides that in play; this says so out loud, because the real fix is to
+// regenerate the take, not to amplify a recording of nothing.
+function warnIfDud(entry) {
+  const takes = entry.takes.filter(Boolean);
+  if (entry.bed || takes.length < 2 || takes.length !== entry.urls.length) return;
+
+  const sorted = takes.map((t) => t.rms).sort((a, b) => a - b);
+  const median = sorted[sorted.length >> 1];
+  entry.takes.forEach((take, i) => {
+    if (take.rms < median * DUD_RATIO) {
+      console.warn(
+        `[sfx] ${entry.name}-${i + 1} is ${(take.rms / median).toFixed(2)}x its ` +
+        `siblings' loudness (rms ${take.rms.toFixed(4)} vs ${median.toFixed(4)}) — regenerate it`
+      );
+    }
+  });
 }
 
 // Never the same take twice in a row: with three variants a plain random pick

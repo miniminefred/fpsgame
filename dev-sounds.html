@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sound set harness</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #16181c; color: #cfe3f2; padding: 16px 20px 60px;
+      font: 12px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+    h1 { font-size: 15px; color: #ffe9a8; font-weight: 600; margin-bottom: 2px; }
+    p.lead { color: #8ea3b5; margin-bottom: 14px; max-width: 78ch; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { padding: 3px 8px; text-align: right; white-space: nowrap; }
+    th { color: #8ea3b5; font-weight: 500; border-bottom: 1px solid #2b3038; text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+    tbody tr:hover { background: #1e2229; }
+    td.name { color: #eef4fa; cursor: pointer; }
+    td.name:hover { color: #9fd8ff; text-decoration: underline; }
+    tr.group td { padding-top: 10px; }
+    .ok { color: #7fd18d; }
+    .warn { color: #ffc26b; }
+    .bad { color: #ff6b6b; }
+    .muted { color: #5d6b78; }
+    #summary {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 5;
+      background: rgba(0,0,0,.82); padding: 6px 20px; white-space: pre;
+      border-top: 1px solid #2b3038;
+    }
+    button {
+      font: inherit; background: #2b3038; color: #cfe3f2; border: 1px solid #3a414b;
+      border-radius: 3px; padding: 3px 10px; cursor: pointer; margin-bottom: 12px;
+    }
+    button:hover { background: #353c46; }
+  </style>
+</head>
+<body>
+  <h1>Sound set harness</h1>
+  <p class="lead">
+    Every clip in the library, decoded and measured. <b>rms</b> is raw loudness as
+    generated; <b>norm</b> is the correction sfx.js applies to bring a take in
+    line with its siblings; <b>mixed</b> is what actually reaches the bus. A take
+    flagged <span class="bad">dud</span> is far quieter than its siblings and
+    should be regenerated rather than amplified. <b>onset</b> is dead air before
+    the sound starts — skipped at playback, but a large one means the clip was
+    generated badly. Click a name to hear it.
+  </p>
+  <button id="play-all">Audition every clip in sequence</button>
+  <table>
+    <thead>
+      <tr>
+        <th>sound</th><th>take</th><th>sec</th><th>peak</th>
+        <th>rms</th><th>onset</th><th>norm</th><th>mixed</th><th>verdict</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div id="summary">decoding…</div>
+  <script type="module" src="/src/dev-sounds.js"></script>
+</body>
+</html>
