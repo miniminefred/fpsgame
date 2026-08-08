@@ -58,7 +58,7 @@ game.start();
 // Dev-only handle for poking at a running floor from the console. Stripped from
 // production builds by the bundler.
 if (import.meta.env.DEV) {
-  window.dev = { game, player, enemies, shooting, physics, scene, camera, weapons };
+  window.dev = { game, player, enemies, shooting, physics, scene, camera, weapons, renderer };
 }
 
 const timer = new Timer();

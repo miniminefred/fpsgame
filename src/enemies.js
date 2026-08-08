@@ -168,12 +168,22 @@ export class Enemies {
       skin: new THREE.MeshStandardMaterial({ color: SKIN, roughness: 0.8 }),
       visor: new THREE.MeshBasicMaterial({ color: type.visor }),
       gun: new THREE.MeshStandardMaterial({ color: 0x24272b, roughness: 0.5, metalness: 0.4 }),
-      plastic: new THREE.MeshStandardMaterial({ color: 0x33373c, roughness: 0.8 }),
-      metal: new THREE.MeshStandardMaterial({ color: 0x9aa0a6, roughness: 0.4, metalness: 0.5 }),
-      accent: new THREE.MeshStandardMaterial({ color: 0xb63b2c, roughness: 0.55 }),
-      screen: new THREE.MeshStandardMaterial({ color: 0x1d2833, roughness: 0.35 }),
-      paper: new THREE.MeshStandardMaterial({ color: 0xe8e4d8, roughness: 0.85 }),
     };
+
+    // Only melee staff need the junk-weapon palette, and only they pay for it.
+    if (type.melee) {
+      Object.assign(mats, {
+        plastic: new THREE.MeshStandardMaterial({ color: 0x33373c, roughness: 0.8 }),
+        metal: new THREE.MeshStandardMaterial({ color: 0x9aa0a6, roughness: 0.4, metalness: 0.5 }),
+        accent: new THREE.MeshStandardMaterial({ color: 0xb63b2c, roughness: 0.55 }),
+        screen: new THREE.MeshStandardMaterial({ color: 0x1d2833, roughness: 0.35 }),
+        paper: new THREE.MeshStandardMaterial({ color: 0xe8e4d8, roughness: 0.85 }),
+      });
+    }
+
+    // Geometry created just for this enemy (weapon parts). The body rig reuses
+    // the shared GEO set, which must never be disposed.
+    const ownGeo = [];
 
     const mesh = (geo, mat, px, py, pz) => {
       const m = new THREE.Mesh(geo, mat);
@@ -206,14 +216,18 @@ export class Enemies {
 
       if (bluntSpec.shaft) {
         const [sw, sh, sl] = bluntSpec.shaft;
-        const shaft = new THREE.Mesh(new THREE.BoxGeometry(sw, sh, sl), mats.plastic);
+        const geo = new THREE.BoxGeometry(sw, sh, sl);
+        ownGeo.push(geo);
+        const shaft = new THREE.Mesh(geo, mats.plastic);
         shaft.position.z = -sl / 2;
         shaft.castShadow = true;
         blunt.add(shaft);
       }
 
       const [hw, hh, hl] = bluntSpec.head;
-      const head2 = new THREE.Mesh(new THREE.BoxGeometry(hw, hh, hl), mats[bluntSpec.headMat]);
+      const headGeo = new THREE.BoxGeometry(hw, hh, hl);
+      ownGeo.push(headGeo);
+      const head2 = new THREE.Mesh(headGeo, mats[bluntSpec.headMat]);
       head2.position.z = -(bluntSpec.shaft ? bluntSpec.shaft[2] : 0) - hl / 2;
       head2.castShadow = true;
       blunt.add(head2);
@@ -224,7 +238,7 @@ export class Enemies {
     }
 
     const enemy = {
-      group, mats, torso, head, armL, armR, legL, legR, gun,
+      group, mats, ownGeo, torso, head, armL, armR, legL, legR, gun,
       blunt, bluntReach: bluntSpec ? bluntSpec.reach : 0,
       type,
       x, z,
@@ -528,10 +542,14 @@ export class Enemies {
     if (e.deathTime <= 0) e.group.visible = false;
   }
 
+  // Called on every new floor. Materials are per-enemy (so a hit flash on one
+  // doesn't light up the floor) and weapon geometry is per-enemy, so both have
+  // to be released here or a long run bleeds GPU memory one floor at a time.
   clear() {
     for (const e of this.items) {
       this.scene.remove(e.group);
       for (const m of Object.values(e.mats)) m.dispose();
+      for (const g of e.ownGeo) g.dispose();
     }
     this.items.length = 0;
     this.meshes.length = 0;

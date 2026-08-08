@@ -84,6 +84,7 @@ function scaffold(group, size) {
   const w = Math.max(size?.x || 0, size?.z || 0);
   const big = w > 1.7 || (size?.y || 0) > 1.7;
   const span = Math.max(2, Math.ceil(w + 2.4));
+  if (MODE === 'under') return; // the floor would occlude a worm's-eye view
   const grid = new THREE.GridHelper(span, span, 0x7f8894, 0x474d55);
   grid.position.y = 0.001;
   group.add(grid);
@@ -246,7 +247,22 @@ function aim(t) {
     camera.lookAt(cx, 0, 0);
     return;
   }
+  if (MODE === 'under') {
+    // Worm's-eye view: checks that ceiling fixtures have a lit underside.
+    const d = Math.max(s.x, s.z, 0.05) * 1.6 + 0.5;
+    camera.up.set(0, 0, 1);
+    camera.position.set(cx, -d, 0);
+    camera.lookAt(cx, s.y * 0.5, 0);
+    return;
+  }
   camera.up.set(0, 1, 0);
+  if (MODE === 'straight') {
+    // Dead-on view of the -Z face: whatever is visible IS the declared front.
+    const d = Math.max(s.x, s.y) * 2.1 + s.z * 0.5 + 0.3;
+    camera.position.set(cx, s.y * 0.5, -d);
+    camera.lookAt(cx, s.y * 0.5, 0);
+    return;
+  }
   if (MODE === 'fit') {
     const d = maxd * 2.0 + 0.25;
     camera.position.set(cx + d * 0.42, s.y * 0.62 + d * 0.34, -d);
