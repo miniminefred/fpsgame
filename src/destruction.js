@@ -111,8 +111,13 @@ export class Destruction {
 
     // A retired collider is left in the array rather than spliced out of it:
     // the player is holding that array, and `top` below the floor is already
-    // how a collider says "walk through me" (see player.js).
-    for (const collider of entry.colliders) collider.top = -1;
+    // how a collider says "walk through me" (see player.js). The solver keeps
+    // its own static body per collider, and that has to go too or the debris
+    // lands on the shape of the thing it just came out of.
+    for (const collider of entry.colliders) {
+      collider.top = -1;
+      this.physics?.removeStatic(collider);
+    }
 
     this.level?.nav?.openTiles(entry.navTiles);
     for (const fixture of entry.fixtures) this.lighting?.removeFixture(fixture);

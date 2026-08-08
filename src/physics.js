@@ -102,6 +102,9 @@ export class Physics {
 
     this.world = null;
     this.props = [];
+    // Static bodies, keyed by the level collider they were built from, so a
+    // destroyed prop can take its own collision away with it.
+    this._statics = new Map();
     this._accum = 0;
     this._hasGround = false;
 
@@ -164,6 +167,7 @@ export class Physics {
 
     this.world = world;
     this.props = [];
+    this._statics.clear();
     this._accum = 0;
     this._hasGround = false;
   }
@@ -203,7 +207,7 @@ export class Physics {
       // with and would only pollute the broadphase list.
       if (!(w > 1e-4) || !(d > 1e-4) || !(h > 1e-4)) continue;
 
-      this.world.addBody(new Body({
+      const body = new Body({
         mass: 0,
         type: Body.STATIC,
         shape: new Box(new Vec3(w / 2, h / 2, d / 2)),
@@ -211,8 +215,23 @@ export class Physics {
         material: this._worldMat,
         collisionFilterGroup: GROUP_WORLD,
         collisionFilterMask: GROUP_PROP,
-      }));
+      });
+      this.world.addBody(body);
+      this._statics.set(b, body);
     }
+  }
+
+  /**
+   * Drop a piece of static collision. Needed because the level's furniture is
+   * destructible: retiring the collider the PLAYER sees is not enough on its
+   * own, because the solver has its own copy, and debris left resting on the
+   * ghost of a desk that has just been shot apart hangs in mid-air.
+   */
+  removeStatic(box) {
+    const body = this._statics.get(box);
+    if (!body) return;
+    this._statics.delete(box);
+    this.world?.removeBody(body);
   }
 
   /**
@@ -348,6 +367,7 @@ export class Physics {
   dispose() {
     this.world = null;
     this.props = [];
+    this._statics.clear();
     this._accum = 0;
     this._hasGround = false;
   }
