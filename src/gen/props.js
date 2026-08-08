@@ -415,7 +415,11 @@ export function furnish(sink, room, bounds, rng) {
 // Cubicle farm: pods on a 3.4 x 3.0 m pitch, each a desk backed by an L of
 // partitions, with the whole grid facing a consistent direction like real ones.
 function openPlan(sink, { x0, z0, x1, z1 }, rng) {
-  const PITCH_X = 3.4;
+  // The cross aisle is what is left of the pitch after a 1.6 m desk and the side
+  // partition, and the player is 0.8 m across. At the old 3.4 m pitch that aisle
+  // came to 0.79 m — a centimetre too narrow to walk down, which is how a whole
+  // cubicle farm ends up with a quarter of it shut off from the doorway.
+  const PITCH_X = 3.7;
   const PITCH_Z = 3.0;
   const cols = Math.floor((x1 - x0) / PITCH_X);
   const rows = Math.floor((z1 - z0) / PITCH_Z);
@@ -435,11 +439,15 @@ function openPlan(sink, { x0, z0, x1, z1 }, rng) {
       tryPlace(sink, 'chair', cx, cz - facing * 0.85, rot, rng);
       tryPlace(sink, 'partition', cx, cz + facing * 0.62, 0, rng);
       if (c < cols - 1) tryPlace(sink, 'partition', cx + PITCH_X / 2 - 0.05, cz, 1, rng);
-      if (rng.chance(0.25)) tryPlace(sink, 'cabinet', cx + 1.05, cz + facing * 0.3, rot, rng);
+      // No cabinet in the pod. Wherever it went it stood in the cross aisle, and
+      // a 0.52 m cabinet in a 0.94 m aisle leaves less than the 0.8 m the player
+      // needs — which sealed off part of the farm from its own doorway. They go
+      // along the walls instead, which is where they are in a real one anyway.
     }
   }
 
   // A shared printer and a sad plant, as is traditional.
+  if (rng.chance(0.75)) edgeProp(sink, { x0, z0, x1, z1 }, 'cabinet', rng);
   edgeProp(sink, { x0, z0, x1, z1 }, 'printer', rng);
   if (rng.chance(0.7)) edgeProp(sink, { x0, z0, x1, z1 }, 'plant', rng);
   if (rng.chance(0.5)) edgeProp(sink, { x0, z0, x1, z1 }, 'waterCooler', rng);

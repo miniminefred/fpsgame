@@ -32,7 +32,7 @@ import { Sfx } from './sfx.js';
 const LIBRARY = {
   'pistol-fire':  { variants: 3, gain: 0.80, pitch: 0.05 },
   'smg-fire':     { variants: 3, gain: 0.62, pitch: 0.06 },
-  'shotgun-fire': { variants: 3, gain: 0.95, pitch: 0.04 },
+  'shotgun-fire': { variants: 4, gain: 1.15, pitch: 0.04 },
   'rifle-fire':   { variants: 3, gain: 0.80, pitch: 0.05 },
   'sniper-fire':  { variants: 2, gain: 1.00, pitch: 0.03 },
 
@@ -57,6 +57,8 @@ const LIBRARY = {
   // its spacing lives in the enemy that does the muttering (see _mutter), not in
   // a throttle here.
   'enemy-idle':  { variants: 2, gain: 0.45, pitch: 0.10 },
+  // The staffer with somewhere to be. Loud, because he is not confiding in you.
+  panic:         { variants: 14, gain: 0.85, pitch: 0.05 },
 
   // The green ones, up from further down. Same events, a different throat.
   'zombie-alert': { variants: 3, gain: 0.75, pitch: 0.08 },
@@ -77,7 +79,11 @@ const LIBRARY = {
   // What the bullet landed on. Every surface in the building answers back in its
   // own material — see SUBSTANCE below for which prop is made of what.
   'hit-flesh':        { variants: 3, gain: 0.70, pitch: 0.12 },
+  // The shell itself, told apart by the hit normal rather than by any extra
+  // bookkeeping: the building already knows which way its surfaces face.
   'impact-wall':      { variants: 3, gain: 0.45, pitch: 0.13 },
+  'impact-floor':     { variants: 3, gain: 0.45, pitch: 0.13 },
+  'impact-ceiling':   { variants: 3, gain: 0.42, pitch: 0.14 },
   'impact-metal':     { variants: 3, gain: 0.50, pitch: 0.13 },
   'impact-glass':     { variants: 3, gain: 0.55, pitch: 0.12 },
   'impact-wood':      { variants: 3, gain: 0.50, pitch: 0.13 },
@@ -92,7 +98,7 @@ const LIBRARY = {
   'player-hurt':  { variants: 3, gain: 0.80, pitch: 0.07 },
   'player-death': { gain: 1.00, pitch: 0.03 },
   jump:   { variants: 3, gain: 0.40, pitch: 0.08 },
-  breath: { variants: 3, gain: 0.30, pitch: 0.08 },
+  breath: { variants: 6, gain: 0.42, pitch: 0.09 },
 
   // Coming apart, one per substance. `prop-break` is the wooden one — it kept
   // its original name because it is on disk under it.
@@ -180,6 +186,17 @@ const DEBRIS_DELAY = 0.8;     // ...and before the wreckage stops moving
 // audible, so spawning it would be inaudible work rather than a sound you lose.
 const AUDIBLE = 26;
 const AUDIBLE_STEP = 15;
+// He carries further than anything else on the floor, which is the point: you
+// are meant to hear him two rooms away and go and find out what that is.
+const PANIC_AUDIBLE = 44;
+
+// Roughly where a voice leaves a body, so a shout does not come from their shoes.
+const MOUTH_HEIGHT = 1.35;
+
+// Metres of detour that halve a sound. Matches the panner's reference distance
+// closely enough that the walk round the corner and the walk across the room are
+// paid for at the same rate.
+const DETOUR_REFERENCE = 5;
 
 // Enemy voices are pitched by body size. The scale spread across the six types
 // is only 0.9–1.14, far too narrow to hear, so it is exaggerated hard: an intern
@@ -196,6 +213,16 @@ export class GameAudio {
     this._fwd = new THREE.Vector3();
     this._up = new THREE.Vector3();
     this._at = { x: 0, y: 0, z: 0 };
+    this._source = { x: 0, y: 0, z: 0 };
+    // Reused so a firefight is not allocating an options object per gunshot.
+    this._opts = { at: null, muffled: false, gain: 1, rate: 1, delay: 0 };
+    // The floor's nav grid, which is what knows where the doorways are.
+    this.nav = null;
+  }
+
+  /** Called once per floor: sound routing needs that floor's walls. */
+  setNav(nav) {
+    this.nav = nav;
   }
 
   /**
@@ -252,11 +279,20 @@ export class GameAudio {
   // --- bullets landing ----------------------------------------------------------
 
   bulletHitFlesh(point) {
-    this.sfx.play('hit-flesh', { at: this._place(point), delay: Math.random() * IMPACT_SCATTER });
+    this._placed('hit-flesh', point, { delay: Math.random() * IMPACT_SCATTER });
   }
 
-  bulletHitWall(point) {
-    this.sfx.play('impact-wall', { at: this._place(point), delay: Math.random() * IMPACT_SCATTER });
+  /**
+   * A bullet landed on the building itself. `normal` says which way the surface
+   * faces, which is all it takes to tell drywall from carpet from ceiling tile —
+   * up is floor, down is ceiling, anything else is wall.
+   */
+  bulletHitWall(point, normal) {
+    const facing = normal ? normal.y : 0;
+    const clip = facing > 0.7 ? 'impact-floor'
+      : facing < -0.7 ? 'impact-ceiling'
+      : 'impact-wall';
+    this._placed(clip, point, { delay: Math.random() * IMPACT_SCATTER });
   }
 
   /**
@@ -265,9 +301,8 @@ export class GameAudio {
    * made of, and is ignored for the two kinds that are part of the building.
    */
   bulletHitMaterial(kind, substance, point) {
-    this.sfx.play(substanceOf(kind, substance).impact, {
-      at: this._place(point), delay: Math.random() * IMPACT_SCATTER,
-    });
+    this._placed(substanceOf(kind, substance).impact, point,
+      { delay: Math.random() * IMPACT_SCATTER });
   }
 
   /**
@@ -299,16 +334,14 @@ export class GameAudio {
   // --- the staff ----------------------------------------------------------------
 
   enemyShot(enemy) {
-    if (!this._near(enemy, AUDIBLE)) return;
+    const at = this._near(enemy, AUDIBLE);
     // Bigger types fire lower, so you can hear what is shooting at you.
-    this.sfx.play('enemy-fire', {
-      at: this._at, rate: Math.pow(enemy.type.scale, -1.4),
-    });
+    if (at) this._placed('enemy-fire', at, { rate: Math.pow(enemy.type.scale, -1.4) });
   }
 
   enemyMeleeSwing(enemy) {
-    if (!this._near(enemy, AUDIBLE)) return;
-    this.sfx.play('melee-swing', { at: this._at, rate: Math.pow(enemy.type.scale, -1.2) });
+    const at = this._near(enemy, AUDIBLE);
+    if (at) this._placed('melee-swing', at, { rate: Math.pow(enemy.type.scale, -1.2) });
   }
 
   /** A swing that connected. At the camera — it happened to you, not near you. */
@@ -323,11 +356,18 @@ export class GameAudio {
   enemyDeath(enemy) { this._voice(enemy, 'death', AUDIBLE); }
   enemyIdle(enemy)  { this._voice(enemy, 'idle', AUDIBLE_STEP); }
 
+  /** Someone who has stopped caring that there is a firefight on. */
+  enemyPanic(enemy) {
+    const at = this._near(enemy, PANIC_AUDIBLE);
+    if (at) this._placed('panic', at, { rate: Math.pow(enemy.type.scale, VOICE_EXPONENT) });
+  }
+
   enemyStep(enemy) {
-    if (!this._near(enemy, AUDIBLE_STEP)) return;
-    this.sfx.play(STEP_CLIP[enemy.type.voice] ?? 'enemy-step', {
-      at: this._at, rate: Math.pow(enemy.type.scale, -0.8),
-    });
+    const at = this._near(enemy, AUDIBLE_STEP);
+    if (at) {
+      this._placed(STEP_CLIP[enemy.type.voice] ?? 'enemy-step', at,
+        { rate: Math.pow(enemy.type.scale, -0.8) });
+    }
   }
 
   // --- the player ---------------------------------------------------------------
@@ -354,20 +394,19 @@ export class GameAudio {
 
   /** Something came apart. Same arguments as bulletHitMaterial. */
   breakThing(kind, substance, point) {
-    const at = this._place(point);
     const spec = substanceOf(kind, substance);
-    this.sfx.play(spec.break, { at });
+    this._placed(spec.break, point);
     // The tail is what makes destruction read as heavy: the thing breaks, and a
     // second later its pieces stop moving. Some substances have no tail — a torn
     // partition does not clatter.
     if (spec.settle) {
-      this.sfx.play(spec.settle, { at, delay: DEBRIS_DELAY + Math.random() * 0.4 });
+      this._placed(spec.settle, point, { delay: DEBRIS_DELAY + Math.random() * 0.4 });
     }
   }
 
   /** Furniture shoved aside by the player walking into it. */
   propShove(point) {
-    this.sfx.play('prop-shove', { at: this._place(point) });
+    this._placed('prop-shove', point);
   }
 
   jump() { this.sfx.play('jump'); }
@@ -383,32 +422,60 @@ export class GameAudio {
   // --- internals ----------------------------------------------------------------
 
   _voice(enemy, event, range) {
-    if (!this._near(enemy, range)) return;
+    const at = this._near(enemy, range);
+    if (!at) return;
     const set = enemy.type.voice ?? 'enemy';
-    this.sfx.play(`${set}-${event}`, {
-      at: this._at, rate: Math.pow(enemy.type.scale, VOICE_EXPONENT),
-    });
+    this._placed(`${set}-${event}`, at, { rate: Math.pow(enemy.type.scale, VOICE_EXPONENT) });
   }
 
-  // Fills the shared placement scratch from an enemy, and says whether they are
-  // close enough to be worth a voice at all.
+  // Where an enemy's noise comes from, or null if they are too far away to be
+  // worth placing. The range test is straight-line on purpose: it is a cheap
+  // rejection, and _placed does the honest routing for whatever survives it.
   _near(enemy, range) {
-    if (!this.sfx.ready) return false;
+    if (!this.sfx.ready) return null;
     const dx = enemy.x - this._pos.x;
     const dz = enemy.z - this._pos.z;
-    if (dx * dx + dz * dz > range * range) return false;
-    this._at.x = enemy.x;
-    this._at.y = 1.2;
-    this._at.z = enemy.z;
-    return true;
+    if (dx * dx + dz * dz > range * range) return null;
+    this._source.x = enemy.x;
+    this._source.y = MOUTH_HEIGHT;
+    this._source.z = enemy.z;
+    return this._source;
   }
 
-  _place(point) {
-    this._at.x = point.x;
+  /**
+   * Plays a sound that happened somewhere in the building, from where it would
+   * actually be heard.
+   *
+   * The true position is only right when you can see the thing making the noise.
+   * Otherwise the sound comes out of a doorway, arriving from a direction that
+   * can be nothing like the direction of its source — and quieter, for having
+   * gone the long way round. nav.soundPath works both out; all this does is
+   * spend them.
+   */
+  _placed(name, point, extra = null) {
+    const path = this.nav?.soundPath(point.x, point.z, this._pos.x, this._pos.z);
+
+    this._at.x = path ? path.x : point.x;
     this._at.y = point.y;
-    this._at.z = point.z;
-    return this._at;
+    this._at.z = path ? path.z : point.z;
+
+    const opts = this._opts;
+    opts.at = this._at;
+    // No path at all means the source is off the nav field — off the floor, or
+    // inside something. Treat it as muffled rather than pretending it is clear.
+    opts.muffled = path ? path.occluded : true;
+    opts.gain = (extra?.gain ?? 1) * detourGain(path ? path.detour : 0);
+    opts.rate = extra?.rate ?? 1;
+    opts.delay = extra?.delay ?? 0;
+    return this.sfx.play(name, opts);
   }
+}
+
+// Going round two corners costs you the same as walking it. Mirrors the inverse
+// falloff the panner applies to the straight-line part, so the two halves of the
+// journey are attenuated on the same curve.
+function detourGain(detour) {
+  return detour > 0 ? DETOUR_REFERENCE / (DETOUR_REFERENCE + detour) : 1;
 }
 
 // Window glazing and ceiling tubes are part of the building and never went

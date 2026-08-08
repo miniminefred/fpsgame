@@ -4,8 +4,20 @@
 // in `setLevel()` into an offscreen canvas. `update()` runs every frame and does
 // nothing but blit that image and stamp a handful of markers on top — no tile
 // loops, no allocations.
+//
+// It is drawn at a FIXED zoom and scrolled to keep the player centred, rather
+// than fitted to the floor. Fitting looks tidy and tells you nothing: floors
+// keep growing as you descend, so the scale shrinks with every one, and by the
+// time it matters the corridor you are standing in is two pixels wide. A fixed
+// scale means a metre is always the same distance on the map, and the part of it
+// you can see is the part you are about to walk into.
 
 const SOLID = 0, ROOM = 1, CORRIDOR = 2, DOOR = 3;
+
+// CSS pixels per tile. A tile is 0.5 m, so 2.6 puts about 33 m across the widget
+// — a couple of rooms in every direction, which is the range at which knowing
+// where an enemy is actually changes what you do.
+const ZOOM = 2.6;
 
 const COLORS = {
   backdrop: 'rgba(12, 15, 18, 0.68)',
@@ -38,10 +50,8 @@ export class Minimap {
     this.plan.width = this.size;
     this.plan.height = this.size;
 
-    this.scale = 1;   // device pixels per tile
-    this.offX = 0;
-    this.offY = 0;
-    this._t = 0;      // animation clock for the pulsing exit marker
+    this.scale = ZOOM * dpr;   // device pixels per tile, fixed for every floor
+    this._t = 0;               // animation clock for the pulsing exit marker
   }
 
   // Rasterise the static floorplan. Call once per floor.
@@ -50,19 +60,20 @@ export class Minimap {
     if (!this.ctx || !level) return;
 
     const { W, H, tiles, rooms } = level;
-    const pad = 6 * this.dpr;
-    const s = Math.min((this.size - pad * 2) / W, (this.size - pad * 2) / H);
-    this.scale = s;
-    this.offX = (this.size - W * s) / 2;
-    this.offY = (this.size - H * s) / 2;
+    const s = this.scale;
+
+    // The plan is now the size of the floor, not the size of the widget: it is
+    // scrolled under a fixed viewport rather than squeezed into one.
+    this.plan.width = Math.ceil(W * s);
+    this.plan.height = Math.ceil(H * s);
 
     const g = this.plan.getContext('2d');
-    g.clearRect(0, 0, this.size, this.size);
+    g.clearRect(0, 0, this.plan.width, this.plan.height);
 
     // Row run-length fill: a 150x126 floor becomes a couple of thousand rects
     // instead of ~19 000, and adjacent tiles never leave hairline seams.
-    const px = (v) => this.offX + v * s;
-    const py = (v) => this.offY + v * s;
+    const px = (v) => v * s;
+    const py = (v) => v * s;
     const cell = Math.ceil(s) + 0.5;
 
     for (let y = 0; y < H; y++) {
@@ -99,9 +110,9 @@ export class Minimap {
     }
   }
 
-  // World position -> minimap device pixels.
-  _mx(x) { return this.offX + ((x - this.level.ox) / this.level.TILE) * this.scale; }
-  _my(z) { return this.offY + ((z - this.level.oz) / this.level.TILE) * this.scale; }
+  // World position -> device pixels inside the rasterised plan.
+  _mx(x) { return ((x - this.level.ox) / this.level.TILE) * this.scale; }
+  _my(z) { return ((z - this.level.oz) / this.level.TILE) * this.scale; }
 
   update(player, enemies) {
     const ctx = this.ctx;
@@ -111,14 +122,20 @@ export class Minimap {
     ctx.clearRect(0, 0, this.size, this.size);
     ctx.fillStyle = COLORS.backdrop;
     ctx.fillRect(0, 0, this.size, this.size);
-    ctx.drawImage(this.plan, 0, 0);
+
+    // Scroll the plan so the player sits dead centre. Everything stamped on top
+    // is offset by the same amount, so markers stay glued to the floorplan.
+    const centre = this.size / 2;
+    const sx = player ? centre - this._mx(player.x) : 0;
+    const sy = player ? centre - this._my(player.z) : 0;
+    ctx.drawImage(this.plan, sx, sy);
 
     const d = this.dpr;
 
     // Exit: a pulsing ring with a cross through it.
     const exit = this.level.exit;
     if (exit) {
-      const ex = this._mx(exit.x), ey = this._my(exit.z);
+      const ex = this._mx(exit.x) + sx, ey = this._my(exit.z) + sy;
       const pulse = 4.2 + Math.sin(this._t * 3) * 1.2;
       ctx.strokeStyle = COLORS.exit;
       ctx.lineWidth = 1.6 * d;
@@ -137,7 +154,7 @@ export class Minimap {
         const e = enemies[i];
         if (!e || e.alive === false) continue;
         ctx.beginPath();
-        ctx.arc(this._mx(e.x), this._my(e.z), r, 0, Math.PI * 2);
+        ctx.arc(this._mx(e.x) + sx, this._my(e.z) + sy, r, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -145,9 +162,8 @@ export class Minimap {
     // Player: a triangle pointing where the camera looks. Three.js yaw 0 faces
     // -Z, which is up on a north-up map, so the canvas rotation is -yaw.
     if (player) {
-      const px = this._mx(player.x), py = this._my(player.z);
       ctx.save();
-      ctx.translate(px, py);
+      ctx.translate(centre, centre);
       ctx.rotate(-(player.yaw || 0));
       ctx.beginPath();
       ctx.moveTo(0, -5.2 * d);

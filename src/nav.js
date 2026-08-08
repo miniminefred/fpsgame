@@ -11,6 +11,11 @@ import { SOLID, isOpen } from './gen/layout.js';
 const REPATH_INTERVAL = 0.3;   // seconds between flood fills
 const LOS_STEP = 0.25;         // metres between line-of-sight samples
 
+// How far soundPath will walk looking for the opening a sound comes out of.
+// Anything further away than this has been attenuated to nothing anyway, and the
+// walk runs per placed sound, so it is not allowed to be unbounded.
+const MAX_SOUND_STEPS = 64;
+
 // Enemy body radius. Lives here rather than in enemies.js because the nav grid
 // has to be eroded by it — see `fits` below.
 export const BODY_RADIUS = 0.36;
@@ -174,6 +179,76 @@ export class NavGrid {
       if (y > 0 && field[i - W] === -1 && fits[i - W]) { field[i - W] = d; queue[tail++] = i - W; }
       if (y < H - 1 && field[i + W] === -1 && fits[i + W]) { field[i + W] = d; queue[tail++] = i + W; }
     }
+  }
+
+  // How far a point is from the field's origin (the player) *through the
+  // building* rather than through its walls, in metres. -1 when off the field.
+  //
+  // This is the honest measure of "how far away is that", and the flood has
+  // already paid for it. Straight-line distance says an enemy on the far side of
+  // a wall is close by; it is one metre away and a thirty metre walk.
+  pathDistance(x, z) {
+    const tx = this.tx(x), ty = this.ty(z);
+    if (!this.inBounds(tx, ty)) return -1;
+    const d = this.field[ty * this.W + tx];
+    return d < 0 ? -1 : d * this.TILE;
+  }
+
+  /**
+   * Where a sound made at (sx, sz) should appear to come from, heard from
+   * (lx, lz).
+   *
+   * Sound does not go through a wall, it goes around it and out of a doorway, so
+   * a shout from the next room should arrive from the door — not from the blank
+   * plaster it happens to be standing behind. Panning a source at its true
+   * position gets that exactly wrong, and the error is worst in precisely the
+   * case you most want to trust your ears.
+   *
+   * The route is already known: the field is flooded from the listener, so
+   * walking downhill from the source retraces the path sound would take. The
+   * first point on it that the listener can actually see is the opening it comes
+   * out of. `detour` is how far it travelled to get there, which is what makes a
+   * voice two rooms away quieter than one behind the same wall.
+   *
+   * Returns null if the source is off the field, in which case the caller should
+   * fall back to the true position.
+   */
+  soundPath(sx, sz, lx, lz) {
+    if (this.losClear(sx, sz, lx, lz)) {
+      return { x: sx, z: sz, detour: 0, occluded: false };
+    }
+
+    let tx = this.tx(sx), ty = this.ty(sz);
+    if (!this.inBounds(tx, ty)) return null;
+    let here = this.field[ty * this.W + tx];
+    if (here < 0) return null;
+
+    const { W, field } = this;
+    for (let step = 1; step <= MAX_SOUND_STEPS; step++) {
+      // Steepest descent, four-connected to match the flood.
+      let bx = 0, by = 0, best = here;
+      if (tx > 0 && field[ty * W + tx - 1] >= 0 && field[ty * W + tx - 1] < best) {
+        best = field[ty * W + tx - 1]; bx = -1; by = 0;
+      }
+      if (tx < W - 1 && field[ty * W + tx + 1] >= 0 && field[ty * W + tx + 1] < best) {
+        best = field[ty * W + tx + 1]; bx = 1; by = 0;
+      }
+      if (ty > 0 && field[(ty - 1) * W + tx] >= 0 && field[(ty - 1) * W + tx] < best) {
+        best = field[(ty - 1) * W + tx]; bx = 0; by = -1;
+      }
+      if (ty < this.H - 1 && field[(ty + 1) * W + tx] >= 0 && field[(ty + 1) * W + tx] < best) {
+        best = field[(ty + 1) * W + tx]; bx = 0; by = 1;
+      }
+      if (!bx && !by) break;   // a local minimum that still cannot see the ear
+
+      tx += bx; ty += by; here = best;
+      const wx = this.wx(tx), wz = this.wz(ty);
+      if (this.losClear(wx, wz, lx, lz)) {
+        return { x: wx, z: wz, detour: step * this.TILE, occluded: true };
+      }
+    }
+
+    return null;
   }
 
   // Direction of steepest descent on the field, as a world-space unit vector.

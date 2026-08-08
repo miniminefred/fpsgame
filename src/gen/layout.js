@@ -41,8 +41,8 @@ export function generateLayout(seed, floorNumber) {
 
   // Floors grow as you descend, but not without bound — past floor ~12 the
   // difficulty comes from the enemies, not from more walking.
-  const W = Math.min(150, 88 + floorNumber * 5);
-  const H = Math.min(126, 72 + floorNumber * 5);
+  const W = Math.min(300, 176 + floorNumber * 10);
+  const H = Math.min(252, 144 + floorNumber * 10);
 
   const tiles = new Uint8Array(W * H); // SOLID everywhere to start
   const at = (x, y) => tiles[y * W + x];
@@ -56,22 +56,32 @@ export function generateLayout(seed, floorNumber) {
   // three or four other rooms — you end up walking through somebody's office
   // to reach somebody else's office. More spine keeps every room within a
   // room or two of a corridor.
-  const vWanted = clamp(Math.round(W / 32), 2, 4);
-  const hWanted = clamp(Math.round(H / 32), 1, 3);
+  const vWanted = clamp(Math.round(W / 32), 3, 7);
+  const hWanted = clamp(Math.round(H / 32), 2, 5);
   const vLines = pickLines(rng, inner.x0 + MIN_LEAF + 2, inner.x1 - MIN_LEAF - 2, vWanted, CORRIDOR_W + 15);
   const hLines = pickLines(rng, inner.y0 + MIN_LEAF + 2, inner.y1 - MIN_LEAF - 2, hWanted, CORRIDOR_W + 15);
   // Both axes must exist or the corridors never cross and the floor splits.
   if (!vLines.length) vLines.push(Math.floor((inner.x0 + inner.x1) / 2));
   if (!hLines.length) hLines.push(Math.floor((inner.y0 + inner.y1) / 2));
 
-  const vBands = vLines.map((cx) => band(cx, inner.x0, inner.x1));
-  const hBands = hLines.map((cy) => band(cy, inner.y0, inner.y1));
+  const vBands = vLines.map((cx) => band(cx, inner.x0, inner.x1, inner.y0, inner.y1));
+  const hBands = hLines.map((cy) => band(cy, inner.y0, inner.y1, inner.x0, inner.x1));
+
+  // The first corridor on each axis runs the full slab, and those two crossing
+  // is what makes the network connected by construction. Every other corridor is
+  // cut short at one or both ends, so a floor reads as a building with a core
+  // and some wings rather than a grid stamped edge to edge. Shortening is only
+  // ever allowed to stop a corridor *outside* the primary cross, so the spine
+  // stays intact no matter how the dice fall — and connectAll still proves it.
+  for (let i = 1; i < vBands.length; i++) shorten(rng, vBands[i], inner.y0, inner.y1, hBands[0]);
+  for (let i = 1; i < hBands.length; i++) shorten(rng, hBands[i], inner.x0, inner.x1, vBands[0]);
+  ensureFrontage(vBands, hBands, inner);
 
   for (const b of vBands) {
-    for (let x = b.lo; x < b.hi; x++) for (let y = inner.y0; y < inner.y1; y++) set(x, y, CORRIDOR);
+    for (let x = b.lo; x < b.hi; x++) for (let y = b.from; y < b.to; y++) set(x, y, CORRIDOR);
   }
   for (const b of hBands) {
-    for (let y = b.lo; y < b.hi; y++) for (let x = inner.x0; x < inner.x1; x++) set(x, y, CORRIDOR);
+    for (let y = b.lo; y < b.hi; y++) for (let x = b.from; x < b.to; x++) set(x, y, CORRIDOR);
   }
 
   // --- 2. rooms in the leftover blocks --------------------------------------
@@ -188,8 +198,69 @@ function pickLines(rng, min, max, count, sep) {
   return lines.sort((a, b) => a - b);
 }
 
-function band(center, lo, hi) {
+/**
+ * Pulls corridors back over any room block that shortening left stranded.
+ *
+ * Rooms are carved into the blocks between corridors, and every room needs a way
+ * out. That works because a block always fronts onto a corridor — until a
+ * shortened corridor stops before reaching it, and a block can end up ringed by
+ * four solid stretches. BSP then buries its rooms behind each other with no exit
+ * at all, and the connectivity repair downstream can only respond by walling the
+ * whole block off, which quietly deletes a quarter of the floor.
+ *
+ * So the frontage is restored here, while corridors are still just numbers and
+ * before anything is carved: any unserved block extends one of its neighbours
+ * back over itself. Cheaper and far more predictable than discovering the
+ * problem later as a hole in the map.
+ */
+function ensureFrontage(vBands, hBands, inner) {
+  const xSpans = complement(inner.x0, inner.x1, vBands);
+  const ySpans = complement(inner.y0, inner.y1, hBands);
+  const enough = DOOR_W + 2;   // a frontage too short to hold a doorway is none
+
+  for (const xs of xSpans) {
+    if (xs.hi - xs.lo < MIN_LEAF + 1) continue;   // too thin to become rooms
+    for (const ys of ySpans) {
+      if (ys.hi - ys.lo < MIN_LEAF + 1) continue;
+
+      const vAdj = vBands.filter((b) => b.hi === xs.lo || b.lo === xs.hi);
+      const hAdj = hBands.filter((b) => b.hi === ys.lo || b.lo === ys.hi);
+      const served =
+        vAdj.some((b) => overlap(b.from, b.to, ys.lo, ys.hi) >= enough) ||
+        hAdj.some((b) => overlap(b.from, b.to, xs.lo, xs.hi) >= enough);
+      if (served) continue;
+
+      // Prefer extending a vertical neighbour; either restores frontage.
+      const band = vAdj[0] ?? hAdj[0];
+      if (!band) continue;
+      const span = vAdj.length ? ys : xs;
+      band.from = Math.min(band.from, span.lo);
+      band.to = Math.max(band.to, span.hi);
+    }
+  }
+}
+
+const overlap = (a0, a1, b0, b1) => Math.min(a1, b1) - Math.max(a0, b0);
+
+// Stops a corridor short of one or both exterior walls. `must` is the primary
+// corridor on the other axis, and the run has to keep covering it with a decent
+// stub either side — a corridor that ended exactly at the junction would read as
+// a T rather than as a corridor that carries on a bit and then stops.
+function shorten(rng, b, lo, hi, must) {
+  const stub = CORRIDOR_W * 2;
+  const latestStart = Math.max(lo, must.lo - stub);
+  const earliestEnd = Math.min(hi, must.hi + stub);
+  if (rng.chance(0.6)) b.from = rng.int(lo, latestStart);
+  if (rng.chance(0.6)) b.to = rng.int(earliestEnd, hi);
+}
+
+// A corridor: `lo..hi` is its width across the slab, `from..to` how far it runs
+// along it. Only `from..to` is ever shortened — the width and therefore the room
+// blocks either side of it stay exactly as they were, so a stopped corridor
+// leaves solid structural core behind it rather than a hole in the blocking.
+function band(center, lo, hi, from, to) {
   return {
+    from, to,
     lo: Math.max(lo, center - Math.floor(CORRIDOR_W / 2)),
     hi: Math.min(hi, center + Math.ceil(CORRIDOR_W / 2)),
   };

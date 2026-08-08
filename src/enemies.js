@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { BODY_RADIUS as RADIUS } from './nav.js';
+import { CORRIDOR, worldX, worldZ } from './gen/layout.js';
 
 // The people still working here.
 //
@@ -12,12 +13,14 @@ import { BODY_RADIUS as RADIUS } from './nav.js';
 
 const EYE = 1.55;
 const SIGHT = 22;          // metres they can notice you at, with line of sight
-// Gunfire through walls. Deliberately far shorter than SIGHT: hearing is the
-// only sense that ignores geometry, so a generous radius reads as the whole
-// floor turning to face you the moment you fire, which is both unfair and
-// stupid-looking. Short enough to mean "next room", not "this end of the
-// building".
-const HEARING = 9;
+// How far gunfire carries — measured *through the building*, not through its
+// walls. A straight-line radius was the bug: someone one metre away through
+// drywall and a thirty metre walk from the nearest door counted as right next to
+// you, so firing anywhere turned the whole floor around at once. Walking the
+// distance field instead means noise spreads the way it actually would, down
+// corridors and out of doorways, and this can afford to be generous because it
+// is now an honest number.
+const HEARING = 14;
 // Being heard is a real contact, so it holds them as long as you keep shooting.
 // Without this an enemy who heard you two rooms away walks toward the noise for
 // GIVE_UP seconds, gives up short of arriving, and goes back to work — which
@@ -27,6 +30,14 @@ const HEARD_MEMORY = 4;
 // instant it notices you is a chorus, and it was the single loudest thing on the
 // floor.
 const SHOUT_GAP = 1.8;
+
+// The panicking staffer. He picks somewhere to run, runs there, picks again —
+// which is what "running around" looks like without a plan, and it keeps him
+// moving through doorways rather than pacing one room.
+const PANIC_HOP = 30;          // metres he will commit to in one direction
+const PANIC_PATIENCE = 6;      // ...and how long before he changes his mind
+const PANIC_SHOUT = [1.6, 3.4];
+const CORRIDOR_SAMPLE = 10;    // keep every Nth corridor tile as a waypoint
 const PREFERRED = 7;       // range a shooter tries to hold
 const TOO_CLOSE = 3.5;
 const GIVE_UP = 7;         // seconds of no contact before they settle down
@@ -88,7 +99,17 @@ const TYPES = {
     name: 'Reanimated', hp: 2.4, speed: 0.86, damage: 1.3, rate: 1.35, spread: 1,
     range: 2.1, melee: true, scale: 1.03, blunt: ['chairLeg', 'extinguisher'],
     suit: 0x33502c, shirt: 0x8fb063, visor: 0x66ff4d, voice: 'zombie',
-    unlockFloor: 2, weight: 3,
+    unlockFloor: 1, weight: 3,
+  },
+  panicker: {
+    // Not fighting anybody. Has one problem, and it is not you: he is looking
+    // for a toilet and announcing it. Harmless, fast, dies to a look — but he
+    // counts toward clearing the floor, so at some point you do have to go and
+    // deal with him. Spawned by hand rather than rolled (see spawn), which is
+    // why the weight is zero.
+    name: 'Panicking Staffer', hp: 0.3, speed: 1.9, damage: 0, rate: 99, spread: 1,
+    range: 0, melee: false, scale: 0.95, panic: true,
+    suit: 0xa8b2c0, shirt: 0xf6f8fa, visor: 0xff3ec8, unlockFloor: 1, weight: 0,
   },
   sentry: {
     // Facilities' idea of a cost saving. Armoured and slow, accurate at range,
@@ -97,9 +118,22 @@ const TYPES = {
     name: 'Sentry Unit', hp: 3.2, speed: 0.78, damage: 1.45, rate: 1.35, spread: 0.7,
     range: 17, melee: false, scale: 1.18,
     suit: 0x474d55, shirt: 0x9aa3ab, visor: 0xffffff, voice: 'robot',
-    unlockFloor: 3, weight: 3,
+    unlockFloor: 2, weight: 3,
   },
 };
+
+// Who is working this floor tonight. Weights are relative, so a theme does not
+// replace the roster — it tilts it, and floors keep their own character without
+// any of them becoming one enemy repeated. Picked per floor, and named on the
+// way in so you know what you have walked into before it reaches you.
+const THEMES = [
+  { name: 'Business as usual', weight: 4, boost: {} },
+  { name: 'Infestation', weight: 3, boost: { reanimated: 7, intern: 2 } },
+  { name: 'Automated', weight: 3, boost: { sentry: 7, sysadmin: 3 } },
+  { name: 'Lockdown', weight: 2, boost: { security: 6, manager: 4 } },
+  { name: 'Night shift', weight: 2, boost: { reanimated: 4, sentry: 4, facilities: 3 } },
+  { name: 'All-hands', weight: 2, boost: { analyst: 6, intern: 5, manager: 3 } },
+];
 
 // Shared across every enemy — only the materials are per-instance, so a hit
 // flash on one doesn't light up the whole floor.
@@ -149,10 +183,23 @@ export class Enemies {
     this.nav = nav;
     this.tuning = tuning;
     this.shoutTimer = 0;
+    this.theme = pickTheme(layout.floorNumber, rng);
+    this.corridors = collectCorridors(layout, nav);
 
     const spots = this._spawnPoints(layout, nav, rng, tuning.count);
     for (const spot of spots) {
-      this._add(spot.x, spot.z, rng, tuning, pickType(layout.floorNumber, rng));
+      this._add(spot.x, spot.z, rng, tuning, pickType(layout.floorNumber, rng, this.theme));
+    }
+
+    // One or two panicking staffers on every floor, placed rather than rolled:
+    // they are a fixture of the building, not a difficulty ingredient, and
+    // leaving them to the weighted draw would mean floors without any. They
+    // start in a corridor because that is where the point of them is — you are
+    // supposed to see one sprint past the end of a hallway.
+    const panicking = rng.int(1, 2);
+    for (let i = 0; i < panicking; i++) {
+      const spot = this.corridors.length ? rng.pick(this.corridors) : spots[i];
+      if (spot) this._add(spot.x, spot.z, rng, tuning, TYPES.panicker);
     }
   }
 
@@ -302,7 +349,14 @@ export class Enemies {
       strafe: rng.chance(0.5) ? 1 : -1,
       voiceTimer: rng.range(1, 14),   // staggered, or a floor mutters in chorus
       lastStep: 0,
+      // Where the panicking staffer is currently convinced the toilet is.
+      wanderX: 0, wanderZ: 0, wanderTimer: 0,
     };
+
+    if (type.panic) {
+      enemy.state = 'panic';
+      enemy.voiceTimer = rng.range(0.2, 2.5);
+    }
 
     // Only the torso and head stop bullets; hitboxes on limbs this narrow
     // would make hit detection feel arbitrary.
@@ -355,8 +409,11 @@ export class Enemies {
       const dist = Math.hypot(dx, dz) || 0.001;
       const sees = dist < SIGHT && this.nav.losClear(e.x, e.z, px, pz);
       // Hearing only matters when they cannot see you — if they can, sight has
-      // already told them everything, and at a longer range.
-      const hears = !sees && ctx.noise > 0 && dist < HEARING;
+      // already told them everything, and at a longer range. The distance is the
+      // walked one: the field is flooded from the player, so it is already paid
+      // for, and a negative value means there is no route at all.
+      const along = this.nav.pathDistance(e.x, e.z);
+      const hears = !sees && ctx.noise > 0 && along >= 0 && along < HEARING;
       e.dist = dist;
 
       if (sees) {
@@ -372,12 +429,83 @@ export class Enemies {
         e.contact += dt;
       }
 
+      // He is not in the state machine at all: no alert, no chase, no weapon.
+      // Nothing you do changes his mind, which is the joke.
+      if (e.type.panic) {
+        this._panic(e, dt, audio);
+        this._animate(e, dt, audio);
+        continue;
+      }
+
       this._think(e, dt, dist, sees, hears, ctx);
       this._move(e, dt, dx, dz, dist, sees);
       this._shoot(e, dt, dist, sees, px, py, pz, player, effects, audio, hud);
       this._animate(e, dt, audio);
       this._mutter(e, dt, audio);
     }
+  }
+
+  // Runs somewhere, shouts about the toilet, runs somewhere else. Deliberately
+  // not pathfinding: he does not know where the bathroom is either.
+  _panic(e, dt, audio) {
+    e.voiceTimer -= dt;
+    if (e.voiceTimer <= 0) {
+      e.voiceTimer = PANIC_SHOUT[0] + Math.random() * (PANIC_SHOUT[1] - PANIC_SHOUT[0]);
+      audio.enemyPanic(e);
+    }
+
+    e.wanderTimer -= dt;
+    const dx = e.wanderX - e.x;
+    const dz = e.wanderZ - e.z;
+    const togo = Math.hypot(dx, dz);
+
+    if (e.wanderTimer <= 0 || togo < 0.5) {
+      this._repick(e);
+      return;
+    }
+
+    const speed = this.tuning.speed * e.type.speed;
+    const stepX = (dx / togo) * speed * dt;
+    const stepZ = (dz / togo) * speed * dt;
+    const movedX = this._tryMove(e, stepX, 0);
+    const movedZ = this._tryMove(e, 0, stepZ);
+    // Walked into something — that is a good enough reason to try a new plan.
+    if (!movedX && !movedZ) this._repick(e);
+
+    e.group.position.x = e.x;
+    e.group.position.z = e.z;
+    e.yaw = angleLerp(e.yaw, Math.atan2(-(dx / togo), -(dz / togo)), 1 - Math.exp(-9 * dt));
+    e.group.rotation.y = e.yaw;
+  }
+
+  // Somewhere else, anywhere else. Sampled rather than searched: a handful of
+  // tries is enough to find open floor, and failing simply means he stands and
+  // shouts for a moment, which is entirely in character.
+  _repick(e) {
+    e.wanderTimer = PANIC_PATIENCE * (0.6 + Math.random() * 0.8);
+
+    // Aim for a corridor. He has no pathfinding — he is not thinking clearly —
+    // but corridors are long and straight and connect to each other, so heading
+    // for one is both the thing that keeps him visible and the thing that gets
+    // him out of the room he is in.
+    const spots = this.corridors;
+    if (spots?.length) {
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const s = spots[(Math.random() * spots.length) | 0];
+        const away = Math.hypot(s.x - e.x, s.z - e.z);
+        if (away > 4 && away < PANIC_HOP) { e.wanderX = s.x; e.wanderZ = s.z; return; }
+      }
+    }
+
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const angle = Math.random() * Math.PI * 2;
+      const reach = 3 + Math.random() * 10;
+      const x = e.x + Math.cos(angle) * reach;
+      const z = e.z + Math.sin(angle) * reach;
+      if (this.nav.clear(x, z, RADIUS)) { e.wanderX = x; e.wanderZ = z; return; }
+    }
+    e.wanderX = e.x;
+    e.wanderZ = e.z;
   }
 
   // Idle staff grumble to themselves now and then, which is what tells you a
@@ -558,7 +686,7 @@ export class Enemies {
   }
 
   _animate(e, dt, audio) {
-    const moving = e.state === 'chase' || e.state === 'fight';
+    const moving = e.state === 'chase' || e.state === 'fight' || e.state === 'panic';
     e.walkPhase += dt * (moving ? 9 : 1.4);
 
     // One footfall per half stride cycle, taken off the leg animation itself so
@@ -642,17 +770,58 @@ export class Enemies {
 // Weighted pick from the types unlocked at this depth. Early floors are all
 // analysts and interns; the nastier staff join as you descend, and because
 // weights are relative the mix keeps shifting rather than simply adding.
-function pickType(floorNumber, rng) {
-  const pool = Object.values(TYPES).filter((t) => t.unlockFloor <= floorNumber);
+// Corridor waypoints for the panicking staffer. Sampled rather than exhaustive:
+// he only needs somewhere to be running to, and a floor holds thousands of
+// corridor tiles.
+function collectCorridors(layout, nav) {
+  const spots = [];
+  const { W, H, tiles } = layout;
+  let n = 0;
+  for (let ty = 1; ty < H - 1; ty++) {
+    for (let tx = 1; tx < W - 1; tx++) {
+      if (tiles[ty * W + tx] !== CORRIDOR) continue;
+      if (n++ % CORRIDOR_SAMPLE) continue;
+      const x = worldX(layout, tx + 0.5);
+      const z = worldZ(layout, ty + 0.5);
+      if (nav.clear(x, z, RADIUS)) spots.push({ x, z });
+    }
+  }
+  return spots;
+}
+
+function pickType(floorNumber, rng, theme) {
+  // `weight: 0` types are placed by hand rather than rolled — see spawn.
+  const pool = Object.entries(TYPES)
+    .filter(([, t]) => t.unlockFloor <= floorNumber && t.weight > 0)
+    .map(([key, t]) => ({ t, w: theme?.boost[key] ?? t.weight }));
+
   let total = 0;
-  for (const t of pool) total += t.weight;
+  for (const e of pool) total += e.w;
 
   let roll = rng() * total;
-  for (const t of pool) {
-    roll -= t.weight;
-    if (roll <= 0) return t;
+  for (const e of pool) {
+    roll -= e.w;
+    if (roll <= 0) return e.t;
   }
   return TYPES.analyst;
+}
+
+// Weighted pick over the themes whose signature types this floor can actually
+// staff — an Infestation with no Reanimated unlocked is just a normal floor
+// wearing a different name.
+function pickTheme(floorNumber, rng) {
+  const usable = THEMES.filter((theme) => {
+    const keys = Object.keys(theme.boost);
+    return !keys.length || keys.some((k) => TYPES[k] && TYPES[k].unlockFloor <= floorNumber);
+  });
+  let total = 0;
+  for (const theme of usable) total += theme.weight;
+  let roll = rng() * total;
+  for (const theme of usable) {
+    roll -= theme.weight;
+    if (roll <= 0) return theme;
+  }
+  return THEMES[0];
 }
 
 const lerp = (a, b, t) => a + (b - a) * t;

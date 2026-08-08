@@ -39,6 +39,16 @@ const REF_DISTANCE = 4;
 const MAX_DISTANCE = 70;
 const ROLLOFF = 1.15;
 
+// A sound with a wall in the way. Distance alone is a poor model of an office:
+// someone shouting six metres away through drywall and someone shouting six
+// metres away down an open corridor are the same distance and nothing like the
+// same sound. Muffling is mostly a treble problem — a wall eats the crack of a
+// gunshot and leaves the thump — so this is a lowpass first and a level cut
+// second, which is also what makes it *informative*: muffled means "not in this
+// room", and you can hear the difference without having to think about it.
+const OCCLUDED_CUTOFF = 620;   // Hz
+const OCCLUDED_GAIN = 0.45;
+
 // Every clip is measured and conditioned as it decodes, because generated audio
 // arrives at wildly inconsistent levels — the first pass at this set drew three
 // pistol takes at 1/50th the loudness of the shotgun's, which played as silence
@@ -206,7 +216,7 @@ export class Sfx {
    * yet" or "that clip has not finished downloading" — never "too many already
    * playing", because that decision is not this module's to make.
    */
-  play(name, { gain = 1, rate = 1, at = null, delay = 0 } = {}) {
+  play(name, { gain = 1, rate = 1, at = null, delay = 0, muffled = false } = {}) {
     if (!this.ctx) return false;
     const entry = this.library.get(name);
     if (!entry) return false;
@@ -226,7 +236,8 @@ export class Sfx {
     // a gun is never a fiftieth the loudness of the next.
     const g = this.ctx.createGain();
     g.gain.value = entry.gain * gain * take.norm
-      * (1 + (Math.random() * 2 - 1) * entry.gainVar);
+      * (1 + (Math.random() * 2 - 1) * entry.gainVar)
+      * (muffled ? OCCLUDED_GAIN : 1);
 
     const start = now + delay;
 
@@ -238,7 +249,15 @@ export class Sfx {
       panner.maxDistance = MAX_DISTANCE;
       panner.rolloffFactor = ROLLOFF;
       setPosition(panner, at.x, at.y, at.z);
-      src.connect(g).connect(panner).connect(this.sfxBus);
+
+      if (muffled) {
+        const wall = this.ctx.createBiquadFilter();
+        wall.type = 'lowpass';
+        wall.frequency.value = OCCLUDED_CUTOFF;
+        src.connect(g).connect(wall).connect(panner).connect(this.sfxBus);
+      } else {
+        src.connect(g).connect(panner).connect(this.sfxBus);
+      }
     } else {
       src.connect(g).connect(this.sfxBus);
     }

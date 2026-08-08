@@ -122,6 +122,9 @@ export class Game {
     // Bullets stop on this floor's geometry and this floor's occupants.
     this.shooting.setHittables([...level.meshes, ...this.enemies.meshes]);
 
+    // Sound has to know where this floor's walls and doorways are, or it comes
+    // straight through the plaster.
+    this.audio.setNav(level.nav);
     this.lighting.setFixtures(level.fixtures);
     this.lighting.setOcclusion((ax, az, bx, bz) => level.nav.losClear(ax, az, bx, bz));
     this.minimap.setLevel(level.map);
@@ -129,7 +132,7 @@ export class Game {
     this.cleared = false;
     this.descendLock = 1.2;     // grace period so you can't fall straight through
     this.hud.setFloor(this.floor);
-    this.hud.message(`FLOOR ${this.floor}`, 1800);
+    this.hud.message(`FLOOR ${this.floor} — ${this.enemies.theme?.name ?? ''}`.trim(), 2200);
     this._syncObjective();
   }
 
@@ -294,7 +297,9 @@ export class Game {
 function tuningFor(floor) {
   const t = floor - 1;
   return {
-    count: Math.min(28, 5 + Math.round(t * 1.8)),
+    // Scaled with the slab: floors are four times the area they used to be, and
+    // the old count left them feeling abandoned rather than dangerous.
+    count: Math.min(76, 16 + Math.round(t * 5)),
     health: Math.min(260, 100 + t * 10),
     damage: Math.min(18, 7 + t * 0.7),
     speed: Math.min(4.2, 2.5 + t * 0.09),

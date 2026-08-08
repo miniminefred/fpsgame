@@ -63,6 +63,42 @@
       "variants": 3
     },
     {
+      "name": "breath-1",
+      "text": "single sharp exhale of a man running hard, close mic, dry, no words, no music",
+      "duration": 0.9,
+      "influence": 0.6
+    },
+    {
+      "name": "breath-2",
+      "text": "single deep gasping inhale of a man out of breath, close mic, dry, no words, no music",
+      "duration": 1.0,
+      "influence": 0.6
+    },
+    {
+      "name": "breath-3",
+      "text": "ragged panting breath of a man sprinting, close mic, dry, no words, no music",
+      "duration": 1.0,
+      "influence": 0.6
+    },
+    {
+      "name": "breath-4",
+      "text": "heavy huffing breath through the mouth while running, close mic, dry, no words, no music",
+      "duration": 0.9,
+      "influence": 0.6
+    },
+    {
+      "name": "breath-5",
+      "text": "quick double breath in and out while jogging, close mic, dry, no words, no music",
+      "duration": 1.0,
+      "influence": 0.6
+    },
+    {
+      "name": "breath-6",
+      "text": "laboured winded breath of an exhausted man running, close mic, dry, no words, no music",
+      "duration": 1.1,
+      "influence": 0.6
+    },
+    {
       "name": "debris-settle",
       "text": "broken furniture debris clattering and settling on a hard floor, dry",
       "duration": 1.6,
@@ -307,6 +343,13 @@
       "variants": 3
     },
     {
+      "name": "impact-ceiling",
+      "text": "loud bullet punching through a suspended ceiling tile, papery crack with falling dust, close mic, dry, no music",
+      "duration": 0.7,
+      "influence": 0.85,
+      "variants": 3
+    },
+    {
       "name": "impact-electronic",
       "text": "loud bullet hitting an electronic appliance, plastic crack with electrical spark and rattle, close mic, dry, no music",
       "duration": 0.7,
@@ -316,6 +359,13 @@
     {
       "name": "impact-fabric",
       "text": "loud bullet impact on a padded fabric panel, dull muffled thump, close mic, dry, no reverb, no music",
+      "duration": 0.6,
+      "influence": 0.85,
+      "variants": 3
+    },
+    {
+      "name": "impact-floor",
+      "text": "loud bullet impact on a concrete floor, sharp crack with grit and dust, close mic, dry, no reverb, no music",
       "duration": 0.6,
       "influence": 0.85,
       "variants": 3
@@ -410,6 +460,90 @@
       "duration": 0.6,
       "influence": 0.7,
       "variants": 2
+    },
+    {
+      "name": "panic-1",
+      "text": "panicking man screaming \"I NEED TO POOP!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-10",
+      "text": "panicking man screaming \"IT IS HAPPENING!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-11",
+      "text": "panicking man screaming \"OUT OF MY WAY, I AM POOPING!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-12",
+      "text": "panicking man screaming \"SOMEBODY GET ME A TOILET!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-13",
+      "text": "panicking man screaming \"THIS IS AN EMERGENCY!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-14",
+      "text": "panicking man screaming \"I AM NOT GOING TO MAKE IT!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-2",
+      "text": "panicking man screaming \"I AM POOPING MY PANTS!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-3",
+      "text": "panicking man screaming \"WHERE THE HELL IS THE TOILET?\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-4",
+      "text": "panicking man screaming \"WHERE IS THE BATHROOM?\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-5",
+      "text": "panicking man screaming \"HAS ANYONE SEEN THE TOILET?\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-6",
+      "text": "panicking man screaming \"I CANNOT HOLD IT!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-7",
+      "text": "panicking man screaming \"THE BATHROOM IS LOCKED!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-8",
+      "text": "panicking man screaming \"OH GOD, OH GOD, OH GOD!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-9",
+      "text": "panicking man screaming \"I SHOULD NOT HAVE HAD THE BURRITO!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
     },
     {
       "name": "pistol-fire",
@@ -531,10 +665,10 @@
     },
     {
       "name": "shotgun-fire",
-      "text": "pump shotgun blast, deep, close mic, dry, no music",
-      "duration": 1.4,
-      "influence": 0.65,
-      "variants": 3
+      "text": "single enormous 12 gauge shotgun blast, deep booming report with heavy low end, close mic, dry, no reverb, no pump action, no music",
+      "duration": 1.6,
+      "influence": 0.85,
+      "variants": 4
     },
     {
       "name": "smg-fire",

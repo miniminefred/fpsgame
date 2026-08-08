@@ -236,7 +236,7 @@ export class Shooting {
       // answers in its own material, from destruction.js.
       if (!dyn && !this.onSurfaceHit?.(hit, dir, stats.damage)) {
         this.effects.decal(hit.point, this._normal);
-        this.audio.bulletHitWall(hit.point);
+        this.audio.bulletHitWall(hit.point, this._normal);
       }
       return null;
     }

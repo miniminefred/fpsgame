@@ -15,12 +15,21 @@
     <h1>OFFICE DESCENT</h1>
     <p>Clear the floor. Find the exit. Descend. There is no ground floor.</p>
     <div class="cta">Click to play</div>
+    <!-- Two flex rows rather than one wrapped block: the <kbd>s are bordered
+         boxes taller than their own line box, so relying on line-height to keep
+         the rows apart makes them collide. -->
     <div class="keys">
-      <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> move &nbsp;·&nbsp;
-      <kbd>Space</kbd> jump &nbsp;·&nbsp; <kbd>Mouse</kbd> look &nbsp;·&nbsp;
-      <kbd>Esc</kbd> release<br />
-      <kbd>Left click</kbd> shoot &nbsp;·&nbsp; <kbd>R</kbd> reload &nbsp;·&nbsp;
-      <kbd>1</kbd>–<kbd>5</kbd> weapons
+      <div class="row">
+        <span><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> move</span>
+        <span><kbd>Space</kbd> jump</span>
+        <span><kbd>Mouse</kbd> look</span>
+        <span><kbd>Esc</kbd> release</span>
+      </div>
+      <div class="row">
+        <span><kbd>Left click</kbd> shoot</span>
+        <span><kbd>R</kbd> reload</span>
+        <span><kbd>1</kbd>–<kbd>5</kbd> weapons</span>
+      </div>
     </div>
   </div>
 
