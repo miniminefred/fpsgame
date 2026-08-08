@@ -349,8 +349,9 @@ export class Enemies {
       strafe: rng.chance(0.5) ? 1 : -1,
       voiceTimer: rng.range(1, 14),   // staggered, or a floor mutters in chorus
       lastStep: 0,
-      // Where the panicking staffer is currently convinced the toilet is.
-      wanderX: 0, wanderZ: 0, wanderTimer: 0,
+      // Where the panicking staffer is currently convinced the toilet is, plus
+      // his own distance field to get there — see _repick.
+      wanderX: 0, wanderZ: 0, wanderTimer: 0, field: null, stuck: 0,
     };
 
     if (type.panic) {
@@ -455,57 +456,76 @@ export class Enemies {
     }
 
     e.wanderTimer -= dt;
-    const dx = e.wanderX - e.x;
-    const dz = e.wanderZ - e.z;
-    const togo = Math.hypot(dx, dz);
+    const togo = Math.hypot(e.wanderX - e.x, e.wanderZ - e.z);
 
-    if (e.wanderTimer <= 0 || togo < 0.5) {
+    if (e.wanderTimer <= 0 || togo < 0.8) {
       this._repick(e);
       return;
     }
 
+    // Downhill on his own field, not straight at the destination: the whole
+    // point of giving him one is that he goes round the wall instead of into it.
+    const dir = this.nav.descendOn(e.field, e.x, e.z, this._v);
+    if (!dir) { this._repick(e); return; }
+
     const speed = this.tuning.speed * e.type.speed;
-    const stepX = (dx / togo) * speed * dt;
-    const stepZ = (dz / togo) * speed * dt;
-    const movedX = this._tryMove(e, stepX, 0);
-    const movedZ = this._tryMove(e, 0, stepZ);
-    // Walked into something — that is a good enough reason to try a new plan.
-    if (!movedX && !movedZ) this._repick(e);
+    const movedX = this._tryMove(e, dir.x * speed * dt, 0);
+    const movedZ = this._tryMove(e, 0, dir.z * speed * dt);
+    // Wedged against something the grid thinks is passable. One more plan.
+    if (!movedX && !movedZ) {
+      e.stuck += dt;
+      if (e.stuck > 0.4) this._repick(e);
+    } else {
+      e.stuck = 0;
+    }
 
     e.group.position.x = e.x;
     e.group.position.z = e.z;
-    e.yaw = angleLerp(e.yaw, Math.atan2(-(dx / togo), -(dz / togo)), 1 - Math.exp(-9 * dt));
+    e.yaw = angleLerp(e.yaw, Math.atan2(-dir.x, -dir.z), 1 - Math.exp(-9 * dt));
     e.group.rotation.y = e.yaw;
   }
 
   // Somewhere else, anywhere else. Sampled rather than searched: a handful of
   // tries is enough to find open floor, and failing simply means he stands and
   // shouts for a moment, which is entirely in character.
+  // Somewhere else, and a route to it. Corridors are the preferred destination:
+  // that is where he can actually run, and where you get to watch him do it.
   _repick(e) {
     e.wanderTimer = PANIC_PATIENCE * (0.6 + Math.random() * 0.8);
+    e.stuck = 0;
+    e.field ??= this.nav.makeField();
 
-    // Aim for a corridor. He has no pathfinding — he is not thinking clearly —
-    // but corridors are long and straight and connect to each other, so heading
-    // for one is both the thing that keeps him visible and the thing that gets
-    // him out of the room he is in.
     const spots = this.corridors;
-    if (spots?.length) {
-      for (let attempt = 0; attempt < 10; attempt++) {
+    for (let attempt = 0; attempt < 12; attempt++) {
+      let x, z;
+      if (spots?.length && attempt < 8) {
         const s = spots[(Math.random() * spots.length) | 0];
-        const away = Math.hypot(s.x - e.x, s.z - e.z);
-        if (away > 4 && away < PANIC_HOP) { e.wanderX = s.x; e.wanderZ = s.z; return; }
+        x = s.x; z = s.z;
+      } else {
+        const angle = Math.random() * Math.PI * 2;
+        const reach = 4 + Math.random() * 12;
+        x = e.x + Math.cos(angle) * reach;
+        z = e.z + Math.sin(angle) * reach;
       }
+
+      const away = Math.hypot(x - e.x, z - e.z);
+      if (away < 4 || away > PANIC_HOP) continue;
+      if (!this.nav.clear(x, z, RADIUS)) continue;
+
+      // Flooded from the destination, so descending it walks him there. If he is
+      // not on the resulting field there is no route and the pick is wasted.
+      if (!this.nav.floodTo(e.field, x, z)) continue;
+      if (!this.nav.descendOn(e.field, e.x, e.z, this._v)) continue;
+
+      e.wanderX = x;
+      e.wanderZ = z;
+      return;
     }
 
-    for (let attempt = 0; attempt < 12; attempt++) {
-      const angle = Math.random() * Math.PI * 2;
-      const reach = 3 + Math.random() * 10;
-      const x = e.x + Math.cos(angle) * reach;
-      const z = e.z + Math.sin(angle) * reach;
-      if (this.nav.clear(x, z, RADIUS)) { e.wanderX = x; e.wanderZ = z; return; }
-    }
+    // Nowhere to go this time; stand and shout, and try again shortly.
     e.wanderX = e.x;
     e.wanderZ = e.z;
+    e.wanderTimer = 0.6;
   }
 
   // Idle staff grumble to themselves now and then, which is what tells you a

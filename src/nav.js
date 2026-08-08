@@ -143,15 +143,40 @@ export class NavGrid {
 
     this.fieldAge = 0;
     this.fieldOrigin = origin;
-    this._flood(tx, ty);
+    this._flood(tx, ty, this.field);
   }
 
-  _flood(sx, sy) {
-    const { W, H, fits, field, queue } = this;
+  /**
+   * A distance field of someone else's, flooded from wherever they are going.
+   *
+   * The shared field is flooded from the player, which is all any enemy chasing
+   * you needs. Anyone going somewhere *else* — the staffer looking for a toilet
+   * — has no route in it at all, and walking straight at a destination means
+   * walking into the wall between here and there. Giving them a field of their
+   * own is the same BFS, and at one flood every few seconds for one or two of
+   * them it costs nothing measurable.
+   *
+   * Returns false when the destination is not reachable, which is the caller's
+   * cue to pick a different one.
+   */
+  floodTo(field, x, z) {
+    const tx = this.tx(x), ty = this.ty(z);
+    if (!this.inBounds(tx, ty)) return false;
+    this._flood(tx, ty, field);
+    return field[ty * this.W + tx] >= 0 || this.fitsAt(tx, ty);
+  }
+
+  /** A field sized for this floor, for floodTo to fill. */
+  makeField() {
+    return new Int32Array(this.W * this.H);
+  }
+
+  _flood(sx, sy, field) {
+    const { W, H, fits, queue } = this;
     field.fill(-1);
 
-    // The player is often standing somewhere no enemy body fits (on a desk, in
-    // a corner) — start from the nearest tile where one does.
+    // The origin is often somewhere no body fits (on a desk, in a corner, a
+    // metre inside a wall) — start from the nearest tile where one does.
     if (!this.fitsAt(sx, sy)) {
       let found = false;
       for (let r = 1; r <= 8 && !found; r++) {
@@ -251,13 +276,18 @@ export class NavGrid {
     return null;
   }
 
-  // Direction of steepest descent on the field, as a world-space unit vector.
-  // Returns null when the mover is stranded off the field.
+  // Direction of steepest descent on the shared player field.
   descend(x, z, out) {
+    return this.descendOn(this.field, x, z, out);
+  }
+
+  // Direction of steepest descent on any field, as a world-space unit vector.
+  // Returns null when the mover is stranded off it.
+  descendOn(field, x, z, out) {
     const tx = this.tx(x), ty = this.ty(z);
     if (!this.inBounds(tx, ty)) return null;
 
-    const here = this.field[ty * this.W + tx];
+    const here = field[ty * this.W + tx];
     if (here < 0) return null;
 
     let bestX = 0, bestZ = 0, best = here;
@@ -269,7 +299,7 @@ export class NavGrid {
         // nobody clips a wall corner.
         if (dx && dy && (!this.fitsAt(tx + dx, ty) || !this.fitsAt(tx, ty + dy))) continue;
 
-        const d = this.field[(ty + dy) * this.W + (tx + dx)];
+        const d = field[(ty + dy) * this.W + (tx + dx)];
         if (d >= 0 && d < best) { best = d; bestX = dx; bestZ = dy; }
       }
     }
