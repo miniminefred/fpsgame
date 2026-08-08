@@ -12,7 +12,21 @@ import { BODY_RADIUS as RADIUS } from './nav.js';
 
 const EYE = 1.55;
 const SIGHT = 22;          // metres they can notice you at, with line of sight
-const HEARING = 15;        // metres your gunfire carries without line of sight
+// Gunfire through walls. Deliberately far shorter than SIGHT: hearing is the
+// only sense that ignores geometry, so a generous radius reads as the whole
+// floor turning to face you the moment you fire, which is both unfair and
+// stupid-looking. Short enough to mean "next room", not "this end of the
+// building".
+const HEARING = 9;
+// Being heard is a real contact, so it holds them as long as you keep shooting.
+// Without this an enemy who heard you two rooms away walks toward the noise for
+// GIVE_UP seconds, gives up short of arriving, and goes back to work — which
+// makes hearing you look broken rather than lethal.
+const HEARD_MEMORY = 4;
+// One of them calls it out and the rest just come. Every enemy shouting the
+// instant it notices you is a chorus, and it was the single loudest thing on the
+// floor.
+const SHOUT_GAP = 1.8;
 const PREFERRED = 7;       // range a shooter tries to hold
 const TOO_CLOSE = 3.5;
 const GIVE_UP = 7;         // seconds of no contact before they settle down
@@ -74,7 +88,7 @@ const TYPES = {
     name: 'Reanimated', hp: 2.4, speed: 0.86, damage: 1.3, rate: 1.35, spread: 1,
     range: 2.1, melee: true, scale: 1.03, blunt: ['chairLeg', 'extinguisher'],
     suit: 0x33502c, shirt: 0x8fb063, visor: 0x66ff4d, voice: 'zombie',
-    unlockFloor: 3, weight: 2,
+    unlockFloor: 2, weight: 3,
   },
   sentry: {
     // Facilities' idea of a cost saving. Armoured and slow, accurate at range,
@@ -83,7 +97,7 @@ const TYPES = {
     name: 'Sentry Unit', hp: 3.2, speed: 0.78, damage: 1.45, rate: 1.35, spread: 0.7,
     range: 17, melee: false, scale: 1.18,
     suit: 0x474d55, shirt: 0x9aa3ab, visor: 0xffffff, voice: 'robot',
-    unlockFloor: 5, weight: 2,
+    unlockFloor: 3, weight: 3,
   },
 };
 
@@ -117,6 +131,7 @@ export class Enemies {
     this.items = [];
     this.meshes = [];       // what bullets test against
     this.time = 0;
+    this.shoutTimer = 0;    // floor-wide, so only one of them calls you out
     this._v = new THREE.Vector3();
     this._muzzle = new THREE.Vector3();
     this._aim = new THREE.Vector3();
@@ -133,6 +148,7 @@ export class Enemies {
     this.clear();
     this.nav = nav;
     this.tuning = tuning;
+    this.shoutTimer = 0;
 
     const spots = this._spawnPoints(layout, nav, rng, tuning.count);
     for (const spot of spots) {
@@ -329,6 +345,7 @@ export class Enemies {
     const py = player.object.position.y;
 
     if (this.nav) this.nav.updateField(dt, px, pz);
+    if (this.shoutTimer > 0) this.shoutTimer -= dt;
 
     for (const e of this.items) {
       if (!e.alive) { this._die(e, dt); continue; }
@@ -337,12 +354,25 @@ export class Enemies {
       const dz = pz - e.z;
       const dist = Math.hypot(dx, dz) || 0.001;
       const sees = dist < SIGHT && this.nav.losClear(e.x, e.z, px, pz);
+      // Hearing only matters when they cannot see you — if they can, sight has
+      // already told them everything, and at a longer range.
+      const hears = !sees && ctx.noise > 0 && dist < HEARING;
       e.dist = dist;
 
-      if (sees) { e.contact = 0; e.lastSeen = { x: px, z: pz }; }
-      else e.contact += dt;
+      if (sees) {
+        e.contact = 0;
+        e.lastSeen = { x: px, z: pz };
+      } else if (hears) {
+        // Not a sighting, so they still do not know exactly where you are — but
+        // it counts as contact, which is what keeps them walking your way
+        // instead of losing interest halfway down the corridor.
+        e.contact = Math.min(e.contact, HEARD_MEMORY);
+        e.lastSeen = { x: px, z: pz };
+      } else {
+        e.contact += dt;
+      }
 
-      this._think(e, dt, dist, sees, ctx);
+      this._think(e, dt, dist, sees, hears, ctx);
       this._move(e, dt, dx, dz, dist, sees);
       this._shoot(e, dt, dist, sees, px, py, pz, player, effects, audio, hud);
       this._animate(e, dt, audio);
@@ -359,17 +389,22 @@ export class Enemies {
     if (e.state === 'idle') audio.enemyIdle(e);
   }
 
-  _think(e, dt, dist, sees, ctx) {
+  _think(e, dt, dist, sees, hears, ctx) {
     e.timer -= dt;
 
     switch (e.state) {
       case 'idle':
         // Noticed by sight, or by the racket you make shooting.
-        if (sees || (ctx.noise > 0 && dist < HEARING)) {
+        if (sees || hears) {
           e.state = 'alert';
           e.timer = this.tuning.reaction;
           e.lastSeen = { x: ctx.player.object.position.x, z: ctx.player.object.position.z };
-          ctx.audio.enemyAlert(e);
+          // Whoever spots you first does the shouting. The rest of the room has
+          // heard him and does not need to say it again.
+          if (this.shoutTimer <= 0) {
+            this.shoutTimer = SHOUT_GAP;
+            ctx.audio.enemyAlert(e);
+          }
         }
         break;
 
