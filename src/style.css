@@ -45,7 +45,9 @@ canvas { display: block; }
 /* While the click-to-play overlay is up the HUD steps back, and the death
    screen hides it entirely. Both are pure CSS off classes other code already
    toggles (#overlay.hidden from input.js, body.dead from hud.js). */
-#overlay:not(.hidden) ~ #hud { opacity: 0.18; }
+/* The HUD sits back behind the click-to-play screen, but stays legible. At the
+   0.18 it used to be, the minimap and the ammo counter read as simply missing. */
+#overlay:not(.hidden) ~ #hud { opacity: 0.6; }
 body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
 
 /* Damage flash — a red rim that pulses inward when the player is hit. */

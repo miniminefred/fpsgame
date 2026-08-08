@@ -55,16 +55,29 @@ addEventListener('resize', () => weapons.layout());
 // Any click after you die starts a new run.
 addEventListener('mousedown', () => game.restartIfDead());
 
-// Furniture models have to be in hand before the first floor is furnished, or
-// that floor silently falls back to boxes. Everything else is procedural, so
-// this is the only asset the generator waits on.
-await loadModels(modelKeysUsed());
-game.start();
-
 // Dev-only handle for poking at a running floor from the console. Stripped from
 // production builds by the bundler.
 if (import.meta.env.DEV) {
-  window.dev = { game, player, enemies, shooting, physics, scene, camera, weapons, renderer };
+  window.dev = { game, player, enemies, shooting, keys, physics, scene, camera, weapons, renderer };
+}
+
+// Furniture models want to be in hand before the first floor is furnished, or
+// that floor falls back to boxes. But they are optional dressing, and the game
+// must never fail to start because a download is slow or missing — that leaves
+// you staring at an empty HUD with no way in. So the wait is bounded, and any
+// failure just means boxes.
+const MODEL_TIMEOUT = 8000;
+
+async function boot() {
+  try {
+    await Promise.race([
+      loadModels(modelKeysUsed()),
+      new Promise((resolve) => setTimeout(resolve, MODEL_TIMEOUT)),
+    ]);
+  } catch (err) {
+    console.warn('[boot] furniture models unavailable — using procedural fallback', err);
+  }
+  game.start();
 }
 
 const timer = new Timer();
@@ -87,4 +100,9 @@ function animate() {
 
   renderer.render(scene, camera);
 }
+
+// The render loop starts straight away and tolerates having no floor yet, so
+// pointer lock and the HUD are live from the first frame rather than after the
+// models finish downloading.
 animate();
+boot();
