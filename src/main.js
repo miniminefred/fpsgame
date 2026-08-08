@@ -11,6 +11,7 @@ import { Hud } from './hud.js';
 import { Minimap } from './minimap.js';
 import { Shooting } from './shooting.js';
 import { Physics } from './physics.js';
+import { Destruction } from './destruction.js';
 import { loadModels } from './gen/models.js';
 import { modelKeysUsed } from './gen/props.js';
 import { Game } from './game.js';
@@ -40,9 +41,11 @@ const shooting = new Shooting({
   camera, controls: player.controls, keys, weapons, effects, enemies, hud, audio, physics,
 });
 
+const destruction = new Destruction({ scene, physics, effects, audio, shooting, lighting });
+
 const game = new Game({
   scene, camera, player, weapons, shooting, enemies,
-  effects, audio, hud, minimap, lighting, physics,
+  effects, audio, hud, minimap, lighting, physics, destruction,
 });
 
 onDigitKeys((n) => {
@@ -58,7 +61,10 @@ addEventListener('mousedown', () => game.restartIfDead());
 // Dev-only handle for poking at a running floor from the console. Stripped from
 // production builds by the bundler.
 if (import.meta.env.DEV) {
-  window.dev = { game, player, enemies, shooting, keys, physics, scene, camera, weapons, renderer };
+  window.dev = {
+    game, player, enemies, shooting, keys, physics, destruction,
+    scene, camera, weapons, renderer,
+  };
 }
 
 // Furniture models want to be in hand before the first floor is furnished, or

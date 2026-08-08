@@ -29,6 +29,11 @@ export class Shooting {
     // setHittables, called by the game when a level loads.
     this.hittables = [];
     this.onKill = null;
+    // Set by the game: (dyn, dir, point, damage) => void for loose props, and
+    // (hit, dir, damage) => boolean for batched level geometry, where the
+    // return says whether the thing hit was destructible.
+    this.onPropHit = null;
+    this.onSurfaceHit = null;
     // Gunfire is loud: enemies out of sight use this to come looking.
     this.noise = 0;
 
@@ -214,7 +219,13 @@ export class Shooting {
       }
 
       this.effects.impact(hit.point, this._normal, WORLD_COLOR);
-      if (!dyn) this.effects.decal(hit.point, this._normal);
+
+      // Everything else on the floor is either destructible or it is the
+      // building. Only the building keeps a bullet hole: a decal on a desk
+      // outlives the desk, and hangs in the air once it has been shot apart.
+      if (!dyn && !this.onSurfaceHit?.(hit, dir, stats.damage)) {
+        this.effects.decal(hit.point, this._normal);
+      }
       return null;
     }
 
