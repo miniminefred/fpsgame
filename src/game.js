@@ -28,7 +28,7 @@ const BREATH_SPEED = 4;        // moving at least this fast to be out of breath
 const SHOVE_INTERVAL = 0.4;
 
 export class Game {
-  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction }) {
+  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, casings }) {
     this.scene = scene;
     this.camera = camera;
     this.player = player;
@@ -42,6 +42,7 @@ export class Game {
     this.lighting = lighting;
     this.physics = physics;
     this.destruction = destruction;
+    this.casings = casings;
 
     this.level = new Level(scene);
     // Player-facing colliders for this floor's loose props, refreshed from the
@@ -106,9 +107,10 @@ export class Game {
     const seed = randomSeed();
     const rng = makeRng(seed ^ 0x9e3779b9);
 
-    // Debris from the last floor has to go before its physics world does —
-    // the handles it holds only mean anything inside that world.
+    // Debris and brass from the last floor have to go before its physics world
+    // does — the handles they hold only mean anything inside that world.
     this.destruction.clear();
+    this.casings?.clear();
 
     const level = this.level.generate(seed, this.floor);
 
@@ -195,6 +197,7 @@ export class Game {
         this._syncCollider(dyn);
       }
       this.destruction.update(dt);
+      this.casings?.update(dt);
     }
 
     if (this.state === 'playing') {

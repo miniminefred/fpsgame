@@ -12,6 +12,7 @@ import { Minimap } from './minimap.js';
 import { Shooting } from './shooting.js';
 import { Physics } from './physics.js';
 import { Destruction } from './destruction.js';
+import { Casings } from './casings.js';
 import { loadModels } from './gen/models.js';
 import { modelKeysUsed } from './gen/props.js';
 import { Game } from './game.js';
@@ -37,15 +38,16 @@ const lighting = createLighting(scene);
 
 const physics = new Physics();
 const weapons = new Weapons(camera, (i, name) => hud.setWeapon(i, name));
+const casings = new Casings(scene, physics);
 const shooting = new Shooting({
-  camera, controls: player.controls, keys, weapons, effects, enemies, hud, audio, physics,
+  camera, controls: player.controls, keys, weapons, effects, enemies, hud, audio, physics, casings,
 });
 
 const destruction = new Destruction({ scene, physics, effects, audio, shooting, lighting });
 
 const game = new Game({
   scene, camera, player, weapons, shooting, enemies,
-  effects, audio, hud, minimap, lighting, physics, destruction,
+  effects, audio, hud, minimap, lighting, physics, destruction, casings,
 });
 
 onDigitKeys((n) => {
@@ -68,7 +70,7 @@ addEventListener('mousedown', () => {
 if (import.meta.env.DEV) {
   window.dev = {
     game, player, enemies, shooting, keys, physics, destruction,
-    scene, camera, weapons, renderer, audio,
+    scene, camera, weapons, renderer, audio, casings,
   };
 }
 

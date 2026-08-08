@@ -14,7 +14,7 @@ const PITCH_LIMIT = 1.5;      // ~86°: recoil must not tip the view past vertic
 const IMPULSE = 7;            // N·s per unit of weapon punch, into loose props
 
 export class Shooting {
-  constructor({ camera, controls, keys, weapons, effects, enemies, hud, audio, physics }) {
+  constructor({ camera, controls, keys, weapons, effects, enemies, hud, audio, physics, casings }) {
     this.camera = camera;
     this.controls = controls;
     this.keys = keys;
@@ -24,6 +24,7 @@ export class Shooting {
     this.hud = hud;
     this.audio = audio;
     this.physics = physics;
+    this.casings = casings;
 
     // Everything a bullet can stop on. Rebuilt for each floor — see
     // setHittables, called by the game when a level loads.
@@ -145,6 +146,7 @@ export class Shooting {
     this.weapons.fired();
     this.weapons.muzzleWorld(this._muzzle);
     this.audio.playerShot(stats);
+    this.casings?.eject(this.camera, this._muzzle);
 
     this.camera.getWorldPosition(this._origin);
     this.camera.getWorldDirection(this._aim);
