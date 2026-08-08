@@ -28,6 +28,10 @@ const COLORS = {
   exitRoom: 'rgba(127, 216, 232, 0.16)',
   exit:     '#7fd8e8',
   enemy:    '#ff4d4d',
+  // The staff who are not shooting at you and do not have to be cleared. Yellow
+  // is the whole point of them being on the map at all: a red dot is somewhere
+  // you have to go, and one of these is somewhere you don't.
+  neutral:  '#ffd23a',
   player:   '#ffffff',
 };
 
@@ -146,13 +150,14 @@ export class Minimap {
       ctx.stroke();
     }
 
-    // Living hostiles.
+    // Everyone still on their feet: red for the ones you have to deal with,
+    // yellow for the ones you don't.
     if (enemies && enemies.length) {
-      ctx.fillStyle = COLORS.enemy;
       const r = 1.9 * d;
       for (let i = 0; i < enemies.length; i++) {
         const e = enemies[i];
         if (!e || e.alive === false) continue;
+        ctx.fillStyle = e.neutral ? COLORS.neutral : COLORS.enemy;
         ctx.beginPath();
         ctx.arc(this._mx(e.x) + sx, this._my(e.z) + sy, r, 0, Math.PI * 2);
         ctx.fill();

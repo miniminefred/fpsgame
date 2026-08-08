@@ -31,13 +31,21 @@ const HEARD_MEMORY = 4;
 // floor.
 const SHOUT_GAP = 1.8;
 
-// The panicking staffer. He picks somewhere to run, runs there, picks again —
-// which is what "running around" looks like without a plan, and it keeps him
-// moving through doorways rather than pacing one room.
-const PANIC_HOP = 30;          // metres he will commit to in one direction
-const PANIC_PATIENCE = 6;      // ...and how long before he changes his mind
+// The neutral staff. They pick somewhere to be, walk there, pick again — which
+// is what "still going about your day" looks like without a plan, and it keeps
+// them moving through doorways rather than pacing one room.
+const PANIC_HOP = 30;          // metres they will commit to in one direction
+const PANIC_PATIENCE = 6;      // ...and how long before they change their mind
 const PANIC_SHOUT = [1.6, 3.4];
 const CORRIDOR_SAMPLE = 10;    // keep every Nth corridor tile as a waypoint
+
+// Shoot a neutral and they do not draw a weapon they never had — they bolt.
+// Fleeing is the same wander loop with the destination filtered to somewhere
+// further from you, so it routes through doorways like everything else; when it
+// runs out they go back to whatever they were doing.
+const FLEE_TIME = 8;
+const FLEE_SPEED = 1.45;
+const FLEE_AWAY = 4;           // metres a flee destination must gain on you
 const PREFERRED = 7;       // range a shooter tries to hold
 const TOO_CLOSE = 3.5;
 const GIVE_UP = 7;         // seconds of no contact before they settle down
@@ -101,15 +109,35 @@ const TYPES = {
     suit: 0x33502c, shirt: 0x8fb063, visor: 0x66ff4d, voice: 'zombie',
     unlockFloor: 1, weight: 3,
   },
+  // --- the neutrals -----------------------------------------------------------
+  //
+  // Nobody on this side of the roster is fighting you, and none of them counts
+  // toward clearing the floor — you can walk past every one of them and take the
+  // exit. They all wear the same pink visor and show up yellow on the minimap,
+  // because "do I have to shoot this" is a question you need answered from the
+  // far end of a corridor, not once it is already swinging at you. All are
+  // placed by hand rather than rolled (see spawn), which is why the weights are
+  // zero.
   panicker: {
-    // Not fighting anybody. Has one problem, and it is not you: he is looking
-    // for a toilet and announcing it. Harmless, fast, dies to a look — but he
-    // counts toward clearing the floor, so at some point you do have to go and
-    // deal with him. Spawned by hand rather than rolled (see spawn), which is
-    // why the weight is zero.
+    // Has one problem, and it is not you: he is looking for a toilet and
+    // announcing it. Fast, and dies to a look.
     name: 'Panicking Staffer', hp: 0.3, speed: 1.9, damage: 0, rate: 99, spread: 1,
-    range: 0, melee: false, scale: 0.95, panic: true,
+    range: 0, melee: false, scale: 0.95, panic: true, neutral: true,
     suit: 0xa8b2c0, shirt: 0xf6f8fa, visor: 0xff3ec8, unlockFloor: 1, weight: 0,
+  },
+  cleaner: {
+    // Working a different job to everyone else on the floor and in no hurry
+    // about it. Wanders the rooms, mutters, ignores the firefight entirely.
+    name: 'Night Cleaner', hp: 0.8, speed: 1.05, damage: 0, rate: 99, spread: 1,
+    range: 0, melee: false, scale: 1.02, neutral: true,
+    suit: 0x37474f, shirt: 0x7fd8c4, visor: 0xff3ec8, unlockFloor: 1, weight: 0,
+  },
+  courier: {
+    // Has a delivery for someone on this floor and is going to make it. Brisk,
+    // corridor-bound, and entirely uninterested in what you are doing.
+    name: 'Courier', hp: 0.6, speed: 1.45, damage: 0, rate: 99, spread: 1,
+    range: 0, melee: false, scale: 0.99, neutral: true,
+    suit: 0x5a3a24, shirt: 0xf2c14e, visor: 0xff3ec8, unlockFloor: 1, weight: 0,
   },
   sentry: {
     // Facilities' idea of a cost saving. Armoured and slow, accurate at range,
@@ -121,6 +149,10 @@ const TYPES = {
     unlockFloor: 2, weight: 3,
   },
 };
+
+// The neutrals that are not the toilet guy. He is guaranteed on every floor;
+// these fill in around him so the harmless staff are not one repeated joke.
+const BYSTANDERS = [TYPES.cleaner, TYPES.courier];
 
 // Who is working this floor tonight. Weights are relative, so a theme does not
 // replace the roster — it tilts it, and floors keep their own character without
@@ -177,6 +209,15 @@ export class Enemies {
     return n;
   }
 
+  // What the floor objective counts. The neutrals are alive and on the floor and
+  // are deliberately not in this number — clearing a floor means clearing the
+  // people shooting at you, not hunting down a cleaner.
+  get hostileCount() {
+    let n = 0;
+    for (const e of this.items) if (e.alive && !e.neutral) n++;
+    return n;
+  }
+
   // Populates a floor. `tuning` scales with depth — see game.js.
   spawn(layout, nav, rng, tuning) {
     this.clear();
@@ -191,15 +232,19 @@ export class Enemies {
       this._add(spot.x, spot.z, rng, tuning, pickType(layout.floorNumber, rng, this.theme));
     }
 
-    // One or two panicking staffers on every floor, placed rather than rolled:
-    // they are a fixture of the building, not a difficulty ingredient, and
-    // leaving them to the weighted draw would mean floors without any. They
-    // start in a corridor because that is where the point of them is — you are
-    // supposed to see one sprint past the end of a hallway.
-    const panicking = rng.int(1, 2);
-    for (let i = 0; i < panicking; i++) {
+    // A handful of neutrals on every floor, placed rather than rolled: they are
+    // a fixture of the building, not a difficulty ingredient, and leaving them
+    // to the weighted draw would mean floors without any. They all start in a
+    // corridor because that is where the point of them is — you are supposed to
+    // see one cross the end of a hallway and have to decide, quickly, whether it
+    // mattered.
+    const neutrals = [];
+    for (let i = rng.int(1, 2); i > 0; i--) neutrals.push(TYPES.panicker);
+    for (let i = rng.int(1, 3); i > 0; i--) neutrals.push(rng.pick(BYSTANDERS));
+
+    for (let i = 0; i < neutrals.length; i++) {
       const spot = this.corridors.length ? rng.pick(this.corridors) : spots[i];
-      if (spot) this._add(spot.x, spot.z, rng, tuning, TYPES.panicker);
+      if (spot) this._add(spot.x, spot.z, rng, tuning, neutrals[i]);
     }
   }
 
@@ -329,6 +374,10 @@ export class Enemies {
       group, mats, ownGeo, torso, head, armL, armR, legL, legR, gun,
       blunt, bluntReach: bluntSpec ? bluntSpec.reach : 0,
       type,
+      // Flat, because the minimap reads it every frame alongside `alive` and has
+      // no business knowing what a type is.
+      neutral: !!type.neutral,
+      flee: 0,
       x, z,
       yaw: group.rotation.y,
       health: tuning.health * type.hp,
@@ -349,14 +398,14 @@ export class Enemies {
       strafe: rng.chance(0.5) ? 1 : -1,
       voiceTimer: rng.range(1, 14),   // staggered, or a floor mutters in chorus
       lastStep: 0,
-      // Where the panicking staffer is currently convinced the toilet is, plus
-      // his own distance field to get there — see _repick.
+      // Where a neutral is currently headed — the toilet, the next corridor to
+      // mop — plus their own distance field to get there. See _repick.
       wanderX: 0, wanderZ: 0, wanderTimer: 0, field: null, stuck: 0,
     };
 
-    if (type.panic) {
-      enemy.state = 'panic';
-      enemy.voiceTimer = rng.range(0.2, 2.5);
+    if (type.neutral) {
+      enemy.state = 'wander';
+      enemy.voiceTimer = type.panic ? rng.range(0.2, 2.5) : rng.range(3, 14);
     }
 
     // Only the torso and head stop bullets; hitboxes on limbs this narrow
@@ -381,7 +430,16 @@ export class Enemies {
     e.health -= damage * (mesh.userData.headshot ?? 1);
     e.hitFlash = HIT_FLASH;
     // Being shot at is a reliable way to get someone's attention.
-    if (e.state === 'idle') { e.state = 'alert'; e.timer = 0.15; }
+    if (e.neutral) {
+      // They have nothing to fight you with and never did. Zeroing the timer
+      // makes the next tick pick a destination away from you instead of
+      // finishing the walk they were already on.
+      e.flee = FLEE_TIME;
+      e.wanderTimer = 0;
+    } else if (e.state === 'idle') {
+      e.state = 'alert';
+      e.timer = 0.15;
+    }
 
     if (e.health > 0) return 'hit';
 
@@ -401,6 +459,11 @@ export class Enemies {
 
     if (this.nav) this.nav.updateField(dt, px, pz);
     if (this.shoutTimer > 0) this.shoutTimer -= dt;
+
+    // Where a fleeing neutral is running away from — _repick needs it and is
+    // called from places that have no player to hand.
+    this.playerX = px;
+    this.playerZ = pz;
 
     for (const e of this.items) {
       if (!e.alive) { this._die(e, dt); continue; }
@@ -430,10 +493,11 @@ export class Enemies {
         e.contact += dt;
       }
 
-      // He is not in the state machine at all: no alert, no chase, no weapon.
-      // Nothing you do changes his mind, which is the joke.
-      if (e.type.panic) {
-        this._panic(e, dt, audio);
+      // Neutrals are not in the state machine at all: no alert, no chase, no
+      // weapon. Seeing you and hearing you change nothing — the only thing that
+      // does is being shot, and that makes them run rather than fight.
+      if (e.neutral) {
+        this._wander(e, dt, audio);
         this._animate(e, dt, audio);
         continue;
       }
@@ -446,13 +510,28 @@ export class Enemies {
     }
   }
 
-  // Runs somewhere, shouts about the toilet, runs somewhere else. Deliberately
-  // not pathfinding: he does not know where the bathroom is either.
-  _panic(e, dt, audio) {
+  // Walks somewhere, says something about it, walks somewhere else. Deliberately
+  // not pathfinding to anything real: he does not know where the bathroom is
+  // either, and the cleaner is not working a route.
+  //
+  // Shoot one and `flee` runs for a few seconds: same loop, quicker, and only
+  // picking destinations that put distance between the two of you. When it
+  // expires they go back to the day they were having.
+  _wander(e, dt, audio) {
+    if (e.flee > 0) e.flee -= dt;
+
+    // The toilet guy shouts constantly because that is the whole character.
+    // Everyone else is quiet until you shoot them, and then they are not.
+    const shouting = e.type.panic || e.flee > 0;
     e.voiceTimer -= dt;
     if (e.voiceTimer <= 0) {
-      e.voiceTimer = PANIC_SHOUT[0] + Math.random() * (PANIC_SHOUT[1] - PANIC_SHOUT[0]);
-      audio.enemyPanic(e);
+      if (shouting) {
+        e.voiceTimer = PANIC_SHOUT[0] + Math.random() * (PANIC_SHOUT[1] - PANIC_SHOUT[0]);
+        audio.enemyPanic(e);
+      } else {
+        e.voiceTimer = 7 + Math.random() * 11;
+        audio.enemyIdle(e);
+      }
     }
 
     e.wanderTimer -= dt;
@@ -468,7 +547,7 @@ export class Enemies {
     const dir = this.nav.descendOn(e.field, e.x, e.z, this._v);
     if (!dir) { this._repick(e); return; }
 
-    const speed = this.tuning.speed * e.type.speed;
+    const speed = this.tuning.speed * e.type.speed * (e.flee > 0 ? FLEE_SPEED : 1);
     const movedX = this._tryMove(e, dir.x * speed * dt, 0);
     const movedZ = this._tryMove(e, 0, dir.z * speed * dt);
     // Wedged against something the grid thinks is passable. One more plan.
@@ -485,17 +564,25 @@ export class Enemies {
     e.group.rotation.y = e.yaw;
   }
 
-  // Somewhere else, anywhere else. Sampled rather than searched: a handful of
-  // tries is enough to find open floor, and failing simply means he stands and
-  // shouts for a moment, which is entirely in character.
-  // Somewhere else, and a route to it. Corridors are the preferred destination:
-  // that is where he can actually run, and where you get to watch him do it.
+  // Somewhere else, and a route to it. Sampled rather than searched: a handful
+  // of tries is enough to find open floor, and failing simply means standing
+  // still for a moment, which is entirely in character. Corridors are the
+  // preferred destination: that is where they can actually run, and where you
+  // get to watch them do it.
+  //
+  // While fleeing the pick also has to gain ground on the player — but only for
+  // the first ten attempts, because a neutral cornered in a dead end with
+  // nowhere further to go still needs to end up somewhere rather than freeze.
   _repick(e) {
     e.wanderTimer = PANIC_PATIENCE * (0.6 + Math.random() * 0.8);
     e.stuck = 0;
     e.field ??= this.nav.makeField();
 
     const spots = this.corridors;
+    const fromPlayer = e.flee > 0
+      ? Math.hypot(this.playerX - e.x, this.playerZ - e.z)
+      : 0;
+
     for (let attempt = 0; attempt < 12; attempt++) {
       let x, z;
       if (spots?.length && attempt < 8) {
@@ -511,6 +598,8 @@ export class Enemies {
       const away = Math.hypot(x - e.x, z - e.z);
       if (away < 4 || away > PANIC_HOP) continue;
       if (!this.nav.clear(x, z, RADIUS)) continue;
+      if (e.flee > 0 && attempt < 10 &&
+          Math.hypot(this.playerX - x, this.playerZ - z) < fromPlayer + FLEE_AWAY) continue;
 
       // Flooded from the destination, so descending it walks him there. If he is
       // not on the resulting field there is no route and the pick is wasted.
@@ -706,7 +795,7 @@ export class Enemies {
   }
 
   _animate(e, dt, audio) {
-    const moving = e.state === 'chase' || e.state === 'fight' || e.state === 'panic';
+    const moving = e.state === 'chase' || e.state === 'fight' || e.state === 'wander';
     e.walkPhase += dt * (moving ? 9 : 1.4);
 
     // One footfall per half stride cycle, taken off the leg animation itself so

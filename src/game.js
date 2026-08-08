@@ -222,7 +222,9 @@ export class Game {
   }
 
   _checkFloorState(dt, level) {
-    const remaining = this.enemies.aliveCount;
+    // Hostiles only — the neutral staff are alive, on the map, and none of your
+    // business. See enemies.js.
+    const remaining = this.enemies.hostileCount;
 
     if (!this.cleared && remaining === 0) {
       this.cleared = true;
@@ -272,7 +274,7 @@ export class Game {
     }
   }
 
-  _syncObjective(remaining = this.enemies.aliveCount) {
+  _syncObjective(remaining = this.enemies.hostileCount) {
     this.hud.setObjective(this.cleared
       ? 'Find the exit'
       : `Clear the floor — ${remaining} left`);

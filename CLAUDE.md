@@ -202,10 +202,17 @@ count as next to you, so firing anywhere turned the whole floor around at once.
 
 Each floor rolls a **theme** that tilts the type weights (Infestation, Automated,
 Lockdown…), so floors have their own character without any of them becoming one enemy
-repeated; the name is shown on the way in. One or two **Panicking Staffers** are placed by
-hand on every floor rather than rolled — they ignore you entirely and run the corridors
-looking for a toilet, and they still count toward clearing the floor. Six types share one rig
-with different numbers and colours; the visor colour tells you what is about to happen.
+repeated; the name is shown on the way in. Types share one rig with different numbers and
+colours; the visor colour tells you what is about to happen.
+
+A handful of **neutrals** — the Panicking Staffer looking for a toilet, plus a Night Cleaner
+and Couriers — are placed by hand on every floor rather than rolled (`weight: 0`). They are
+not in the state machine at all: no alert, no chase, no weapon, and seeing or hearing you
+changes nothing. They do **not** count toward clearing the floor (`hostileCount`, not
+`aliveCount`), so you can walk past every one and take the exit. Shoot one and it flees for
+a few seconds — the same wander loop, quicker, with destinations filtered to somewhere
+further from you — then goes back to its day. They wear a pink visor and show yellow on the
+minimap, because "do I have to shoot this" needs answering from the far end of a corridor.
 Melee types swing office junk (fire extinguishers, keyboards, monitors) and land the hit
 part-way through the swing, so you can back out of reach.
 
