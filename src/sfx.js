@@ -20,14 +20,18 @@ const BASE = '/sounds/';
 const DEFAULT_PITCH = 0.06;   // ±6% playback rate unless a sound asks otherwise
 const DEFAULT_GAIN_VAR = 0.12;
 
-// A voice is a BufferSource and two nodes — cheap enough that the cap exists
-// only to stop a runaway, not to ration. Sounds are meant to pile up here: an
-// SMG at 900 rpm firing a 0.7 s clip is ten shots ringing at once by itself, and
-// in a real firefight it is sharing the air with a room of return fire, impacts,
-// footsteps and screaming. Set this too low and events go *silent*, which reads
-// as the gun jamming. The limiter on the master bus is what keeps the sum in
-// range, not a voice budget.
-const MAX_VOICES = 192;
+// There is no voice cap, anywhere, on purpose. If the game says something
+// happened, it gets played — a mixer that quietly drops the eleventh gunshot
+// turns a burst into a gun that jams at random, and the fault is invisible from
+// inside the game because nothing errors. A voice is a BufferSource and two
+// nodes, so they are cheap enough to spend, and the only thing standing between
+// a pile of them and a clipped output is the limiter on the master bus, which is
+// where that job belongs. `voices` below is counted for the harness to report,
+// never to gate on.
+//
+// Deciding that a sound should not have been asked for is the caller's job, not
+// this module's: continuous contact is one shove, and the place that knows that
+// is the code holding the collider.
 
 // Distance falloff for placed sounds. refDistance is generous because office
 // rooms are small and a gunshot two rooms away still has to read as a threat.
@@ -71,32 +75,29 @@ export class Sfx {
 
   /**
    * Registers a sound. `variants` > 1 expects files named `<name>-1.mp3`…;
-   * `gain` is its mix level, `pitch` the ± playback-rate jitter per play, and
-   * `minGap` a per-sound throttle — nine shotgun pellets landing on the same
-   * wall must not be nine impact sounds stacked on the same millisecond.
+   * `gain` is its mix level and `pitch` the ± playback-rate jitter per play.
    *
-   * Clips always play out in full. Nothing here truncates a tail to save a
-   * voice — the overlap of those tails is the sound of sustained fire.
+   * There is no throttle and no voice count. Every call to `play` plays, clips
+   * always run to their end, and nothing truncates a tail to make room — the
+   * overlap of those tails is what sustained fire sounds like.
    *
    * `bed` marks a continuous ambience loop, which is exempt from the level and
    * onset conditioning below: it has no transient to find, and trimming its head
    * would break the seam it loops on.
    */
   define(name, { variants = 1, gain = 1, pitch = DEFAULT_PITCH,
-                 gainVar = DEFAULT_GAIN_VAR, minGap = 0, maxVoices = 32,
-                 bed = false } = {}) {
+                 gainVar = DEFAULT_GAIN_VAR, bed = false } = {}) {
     const urls = variants > 1
       ? Array.from({ length: variants }, (_, i) => `${BASE}${name}-${i + 1}.mp3`)
       : [`${BASE}${name}.mp3`];
 
     this.library.set(name, {
-      name, urls, gain, pitch, gainVar, minGap, maxVoices, bed,
+      name, urls, gain, pitch, gainVar, bed,
       encoded: new Array(urls.length).fill(null),
       // One entry per variant once decoded: { buffer, offset, norm, rms, peak }.
       takes: new Array(urls.length).fill(null),
       last: -1,        // index of the take played last, so it isn't played twice
-      lastAt: -1e9,
-      live: 0,
+      live: 0,         // counted for the harness only — never gated on
     });
   }
 
@@ -159,15 +160,19 @@ export class Sfx {
     this.master = this.ctx.createGain();
     this.master.gain.value = this.volume;
 
-    // A limiter on the way out. Twenty overlapping voices in a firefight will
-    // sum past full scale, and WebAudio's answer to that is hard clipping —
-    // which arrives as a crackle exactly when the action peaks.
+    // A limiter on the way out, and with no voice cap anywhere upstream it is
+    // the *only* thing standing between an arbitrary pile of sounds and a
+    // clipped output — WebAudio's answer to going past full scale is to clip
+    // hard, which arrives as a crackle exactly when the action peaks. So this is
+    // set like a brickwall rather than a gentle glue compressor: it has to
+    // swallow a hundred voices without distorting, and losing a little dynamic
+    // range at the peak is a far better trade than losing the eleventh gunshot.
     const limiter = this.ctx.createDynamicsCompressor();
-    limiter.threshold.value = -10;
-    limiter.knee.value = 6;
-    limiter.ratio.value = 8;
-    limiter.attack.value = 0.003;
-    limiter.release.value = 0.2;
+    limiter.threshold.value = -12;
+    limiter.knee.value = 4;
+    limiter.ratio.value = 12;
+    limiter.attack.value = 0.002;
+    limiter.release.value = 0.25;
 
     this.master.connect(limiter).connect(this.ctx.destination);
 
@@ -195,8 +200,11 @@ export class Sfx {
 
   /**
    * Fires a sound. `at` places it in the world (omit for anything happening at
-   * the camera — your own gun, your own pain). Returns true if it played, so a
-   * caller that layers two clips can tell whether the first was throttled away.
+   * the camera — your own gun, your own pain).
+   *
+   * Always plays. The only false it can return is "there is no audio context
+   * yet" or "that clip has not finished downloading" — never "too many already
+   * playing", because that decision is not this module's to make.
    */
   play(name, { gain = 1, rate = 1, at = null, delay = 0 } = {}) {
     if (!this.ctx) return false;
@@ -204,15 +212,11 @@ export class Sfx {
     if (!entry) return false;
 
     const now = this.ctx.currentTime;
-    if (now - entry.lastAt < entry.minGap) return false;
-    if (entry.live >= entry.maxVoices || this.voices >= MAX_VOICES) return false;
-
     const index = pick(entry);
     const take = entry.takes[index];
     if (!take) return false;
 
     entry.last = index;
-    entry.lastAt = now;
 
     const src = this.ctx.createBufferSource();
     src.buffer = take.buffer;
