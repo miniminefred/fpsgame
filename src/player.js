@@ -46,6 +46,9 @@ export class Player {
     this.onStep = null;
     this.onLand = null;
     this.onHurt = null;
+    this.onJump = null;
+    this.onRegen = null;
+    this._regenerating = false;
     this.dt = 0;
 
     this.airTime = 0;      // seconds since the feet last touched something
@@ -63,6 +66,10 @@ export class Player {
     this._vel = new THREE.Vector3();   // horizontal velocity, smoothed
     this._euler = new THREE.Euler(0, 0, 0, 'YXZ');
   }
+
+  // Current horizontal speed. The game reads this to know when you are working
+  // hard enough to be breathing about it.
+  get speed() { return Math.hypot(this._vel.x, this._vel.z); }
 
   // Yaw in Three.js convention (0 = looking down -Z) — the minimap wants this.
   get yaw() {
@@ -108,6 +115,7 @@ export class Player {
     if (this.dead) return;
     this.health -= amount;
     this.sinceDamage = 0;
+    this._regenerating = false;
     this.onHurt?.(amount);
     if (this.health <= 0) {
       this.health = 0;
@@ -149,6 +157,7 @@ export class Player {
       if (this.keys.jump && this.canJump) {
         this.velocityY = JUMP_SPEED;
         this.canJump = false;
+        this.onJump?.();
       }
     } else {
       this._vel.multiplyScalar(Math.max(0, 1 - dt * 10));
@@ -181,6 +190,8 @@ export class Player {
     if (!this.dead) {
       this.sinceDamage += dt;
       if (this.sinceDamage > REGEN_DELAY && this.health < this.maxHealth) {
+        // Announced once, on the frame it starts — not every frame it runs.
+        if (!this._regenerating) { this._regenerating = true; this.onRegen?.(); }
         this.heal(REGEN_RATE * dt);
       }
     }

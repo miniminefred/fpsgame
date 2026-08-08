@@ -14,6 +14,13 @@ const EXIT_RADIUS = 1.6;       // how close you must get to the pad to descend
 const HEAL_ON_DESCEND = 25;
 const PUSH_IMPULSE = 110;      // N·s per second of contact, walking into props
 
+// Vitals audio: the two sounds that report on the player rather than the world.
+const LOW_HEALTH = 0.35;       // fraction of max below which the pulse starts
+const PULSE_SLOW = 1.35;       // seconds between beats at the threshold...
+const PULSE_FAST = 0.55;       // ...and at nearly dead
+const BREATH_INTERVAL = 1.4;
+const BREATH_SPEED = 4;        // moving at least this fast to be out of breath
+
 export class Game {
   constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction }) {
     this.scene = scene;
@@ -55,11 +62,17 @@ export class Game {
         PUSH_IMPULSE * this.player.dt,
         { x: this.player.object.position.x, y: 0.45, z: this.player.object.position.z }
       );
+      this.audio.propShove(collider.push.group.position);
     };
 
     this.player.onStep = (sprinting) => this.audio.step(sprinting);
     this.player.onLand = (impact) => this.audio.land(impact);
     this.player.onHurt = (amount) => this.audio.playerHurt(amount);
+    this.player.onJump = () => this.audio.jump();
+    this.player.onRegen = () => this.audio.heal();
+
+    this.pulseTimer = 0;
+    this.breathTimer = 0;
 
     this.shooting.onPropHit = (dyn, dir, point, damage) =>
       this.destruction.damageProp(dyn, dir, point, damage);
@@ -181,6 +194,7 @@ export class Game {
       });
 
       this._checkFloorState(dt, level);
+      this._vitals(dt);
     }
 
     this.hud.setHealth(this.player.health, this.player.maxHealth);
@@ -209,6 +223,35 @@ export class Game {
       this.player.heal(HEAL_ON_DESCEND);
       this.audio.descend();
       this.nextFloor();
+    }
+  }
+
+  // The two sounds that are about you rather than about the floor: how hard you
+  // are running, and how close you are to not needing to.
+  _vitals(dt) {
+    const player = this.player;
+    if (player.dead) return;
+
+    if (player.keys.sprint && player.speed > BREATH_SPEED && player.airTime === 0) {
+      this.breathTimer -= dt;
+      if (this.breathTimer <= 0) {
+        this.breathTimer = BREATH_INTERVAL;
+        this.audio.breath();
+      }
+    } else {
+      // Half-charged when you stop, so a second sprint is not silent for a
+      // second and a half.
+      this.breathTimer = Math.min(this.breathTimer, BREATH_INTERVAL * 0.5);
+    }
+
+    const fraction = player.health / player.maxHealth;
+    if (fraction >= LOW_HEALTH) { this.pulseTimer = 0; return; }
+
+    const urgency = 1 - fraction / LOW_HEALTH;
+    this.pulseTimer -= dt;
+    if (this.pulseTimer <= 0) {
+      this.pulseTimer = PULSE_SLOW - urgency * (PULSE_SLOW - PULSE_FAST);
+      this.audio.lowHealth(urgency);
     }
   }
 

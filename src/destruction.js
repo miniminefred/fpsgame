@@ -88,6 +88,10 @@ export class Destruction {
     if (!entry) return false;
     if (entry.broken) return true;
 
+    // Glass, a steel tube and a laminate desk are all "world geometry" to the
+    // raycast, and all sound completely different when you shoot them.
+    this.audio.bulletHitMaterial(entry.kind, hit.point);
+
     entry.hp -= damage;
     if (entry.hp <= 0) this._shatter(entry, dir, hit.point);
     return true;

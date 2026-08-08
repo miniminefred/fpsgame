@@ -223,16 +223,19 @@ export class Shooting {
       if (dyn) {
         this.physics?.impulse(dyn.handle, dir, IMPULSE * stats.punch, hit.point);
         this.onPropHit?.(dyn, dir, hit.point, stats.damage);
+        this.audio.bulletHitMaterial('prop', hit.point);
       }
 
       this.effects.impact(hit.point, this._normal, WORLD_COLOR);
-      this.audio.bulletHitWall(hit.point);
 
       // Everything else on the floor is either destructible or it is the
       // building. Only the building keeps a bullet hole: a decal on a desk
       // outlives the desk, and hangs in the air once it has been shot apart.
+      // It is also the only thing that sounds like a wall — a destructible
+      // answers in its own material, from destruction.js.
       if (!dyn && !this.onSurfaceHit?.(hit, dir, stats.damage)) {
         this.effects.decal(hit.point, this._normal);
+        this.audio.bulletHitWall(hit.point);
       }
       return null;
     }

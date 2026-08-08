@@ -103,7 +103,8 @@ src/
   weapons.js      Five GLB viewmodels, recoil/reload animation, per-gun combat stats
   effects.js      Pooled tracers, impact flashes, bullet decals
   physics.js      cannon-es rigid bodies for loose furniture
-  audio.js        Procedural WebAudio gunfire, clicks, hit pings
+  audio.js        Sound library + every game event that makes a noise
+  sfx.js          WebAudio sample engine: decode, pitch-vary, place, overlap
   hud.js          Health, ammo, floor, objective, toasts, death screen
   minimap.js      Per-floor floorplan raster + live player/enemy markers
   textures.js     Procedural canvas textures and the shared material cache
@@ -117,6 +118,7 @@ src/
     geom.js       World-space UVs and the material/chunk geometry batcher
     rects.js      Greedy tile-mask -> rectangle decomposition
     rng.js        Seeded PRNG (every floor is reproducible from its seed)
+public/sounds/    Generated MP3 sound set + sounds.json (the prompts that made it)
 dev-models.html   Contact sheet for eyeballing the furniture models
 ```
 
@@ -219,6 +221,37 @@ wrong way), so `model-table.js` records the yaw and scale that put each at real-
 facing -Z. Check a new entry in `/dev-models.html` before trusting it, and beware that a
 model's name is not its size: the `printer` model is a 24 cm desktop unit, which is why the
 floor-standing prop uses `copier`.
+
+### Sound (`sfx.js` + `audio.js` + `public/sounds/`)
+Everything audible is a generated MP3 (see the `sound-generation` skill; `sounds.json`
+holds the prompt that produced every clip, so the set can be rebuilt). `sfx.js` is the
+engine — decode, pool, place, overlap — and knows nothing about the game; `audio.js` is
+the library plus one method per thing that can happen.
+
+Three rules earned their place the hard way:
+
+- **Nothing is rate-limited.** A dropped shot is silence, and silence mid-burst reads as
+  the gun jamming. An SMG at 900 rpm firing a 0.7 s clip is ~10 shots ringing at once
+  before anything else joins in; a firefight peaks around 66 concurrent voices. The
+  limiter on the master bus keeps the sum in range — a voice budget must not. The one
+  exception is `minGap`, used only where a single throat makes the sound (the player has
+  one set of lungs).
+- **Clips are measured and conditioned at decode.** Generated audio arrives at wildly
+  inconsistent levels: the first pass drew three pistol takes at 1/50th the loudness of
+  the shotgun's, which played as silence and read as the gun randomly misfiring. Takes
+  are pulled toward a common RMS (bounded, never into clipping) and started at their
+  onset, because a take whose blast sits 480 ms into the file makes every burst ragged
+  no matter how many voices are free.
+- **Never the same take twice in a row**, and every play draws a random playback rate.
+  That, not clip count, is what stops repetition sounding cheap.
+
+`/dev-sounds.html` measures the whole set and flags duds — a variant far quieter than
+its siblings is a clip to regenerate, not to amplify. Check it after generating anything;
+roughly a third of first-pass draws came back unusable and none of it is audible as a
+fault from inside the game.
+
+Enemy types name a vocal set with `voice` (`enemy` staff who shout at you, `zombie`,
+`robot`), so a new type gets its own throat by adding four files.
 
 ### Destruction (`destruction.js` + `gen/geom.js` + `physics.js`)
 Everything on a floor can be destroyed: all furniture, the window glazing, and the ceiling
