@@ -9,6 +9,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 // short one.
 export const UV_SCALE = 1 / 2;
 
+const _center = new THREE.Vector3();
+
 // Rewrites a geometry's UVs from its world positions, choosing the axis pair
 // from each face's normal. Vertical faces get v = height, so anything with
 // vertical structure (grout lines, scuffs) stays upright and unstretched.
@@ -52,9 +54,18 @@ export function slab(x0, z0, x1, z1, y, up = true) {
   return geo;
 }
 
-// Collects geometry per material and merges each group into one mesh. Static
-// level geometry never moves, so this is pure win: ~10 draw calls for a floor
-// that would otherwise be thousands.
+// Size of a batching chunk, in metres.
+//
+// Merging by material alone would give a handful of draw calls but one giant
+// bounding box each, so every bullet raycast would have to test every triangle
+// on the floor — a shotgun blast against a fully furnished floor costs nine
+// rays through tens of thousands of triangles. Splitting each material into
+// spatial chunks keeps the draw calls low while letting three's bounding-box
+// test reject almost everything before it looks at a triangle.
+const CHUNK = 12;
+
+// Collects geometry per material-and-chunk and merges each group into one mesh.
+// Static level geometry never moves, so this is pure win.
 export class Batcher {
   constructor() {
     this.groups = new Map();
@@ -62,10 +73,14 @@ export class Batcher {
 
   // `opts` is taken from the first add() for a given key.
   add(key, material, geometry, opts) {
-    let group = this.groups.get(key);
+    geometry.computeBoundingBox();
+    const c = geometry.boundingBox.getCenter(_center);
+    const chunkKey = `${key}|${Math.floor(c.x / CHUNK)},${Math.floor(c.z / CHUNK)}`;
+
+    let group = this.groups.get(chunkKey);
     if (!group) {
-      group = { material, geos: [], opts: opts ?? {} };
-      this.groups.set(key, group);
+      group = { key, material, geos: [], opts: opts ?? {} };
+      this.groups.set(chunkKey, group);
     }
     group.geos.push(geometry);
   }
@@ -85,7 +100,7 @@ export class Batcher {
       }
 
       const mesh = new THREE.Mesh(merged, group.material);
-      mesh.name = key;
+      mesh.name = group.key;
       mesh.castShadow = group.opts.castShadow ?? true;
       mesh.receiveShadow = group.opts.receiveShadow ?? true;
       if (group.opts.renderOrder !== undefined) mesh.renderOrder = group.opts.renderOrder;
