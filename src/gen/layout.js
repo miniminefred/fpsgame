@@ -20,9 +20,14 @@ export const DOOR_H = 2.1;
 
 const PAD = 2;                     // solid tiles of exterior wall on each side
 const CORRIDOR_W = 6;              // 3 m corridors
-const MIN_LEAF = 11;               // smallest room block (=> 5 m interior)
+const MIN_LEAF = 10;               // smallest room block (=> 4.5 m interior)
 const MAX_LEAF = 26;               // above this a block always splits again
 const DOOR_W = 3;                  // 1.5 m doorways
+// Minimum solid wall left between two openings. Without this, two rooms either
+// side of a shared wall each cut their own doorway and the second lands flush
+// against the first, merging them into one 3 m hole with a loose doorpost
+// floating in the middle of it.
+const DOOR_GAP = 2;
 
 export const SOLID = 0;
 export const ROOM = 1;
@@ -46,8 +51,15 @@ export function generateLayout(seed, floorNumber) {
   const inner = { x0: PAD, y0: PAD, x1: W - PAD, y1: H - PAD };
 
   // --- 1. corridor spine ----------------------------------------------------
-  const vLines = pickLines(rng, inner.x0 + MIN_LEAF + 2, inner.x1 - MIN_LEAF - 2, rng.int(1, 3), CORRIDOR_W + 16);
-  const hLines = pickLines(rng, inner.y0 + MIN_LEAF + 2, inner.y1 - MIN_LEAF - 2, rng.int(1, 2), CORRIDOR_W + 16);
+  // Corridor count scales with the slab. A single cross on a big floor leaves
+  // four huge blocks, and BSP then buries the middle of each block behind
+  // three or four other rooms — you end up walking through somebody's office
+  // to reach somebody else's office. More spine keeps every room within a
+  // room or two of a corridor.
+  const vWanted = clamp(Math.round(W / 32), 2, 4);
+  const hWanted = clamp(Math.round(H / 32), 1, 3);
+  const vLines = pickLines(rng, inner.x0 + MIN_LEAF + 2, inner.x1 - MIN_LEAF - 2, vWanted, CORRIDOR_W + 15);
+  const hLines = pickLines(rng, inner.y0 + MIN_LEAF + 2, inner.y1 - MIN_LEAF - 2, hWanted, CORRIDOR_W + 15);
   // Both axes must exist or the corridors never cross and the floor splits.
   if (!vLines.length) vLines.push(Math.floor((inner.x0 + inner.x1) / 2));
   if (!hLines.length) hLines.push(Math.floor((inner.y0 + inner.y1) / 2));
@@ -126,12 +138,18 @@ export function generateLayout(seed, floorNumber) {
 
   const spawnRoom = pickSpawnRoom(live, rng);
   const dist = bfs(tiles, W, H, Math.round(spawnRoom.cx), Math.round(spawnRoom.cy));
-  let exitRoom = spawnRoom;
-  let best = -1;
-  for (const r of live) {
-    const d = dist[Math.round(r.cy) * W + Math.round(r.cx)];
-    if (d > best) { best = d; exitRoom = r; }
-  }
+
+  // The exit goes somewhere far, but not reliably in the opposite corner — the
+  // strict furthest room makes every floor a diagonal march across the whole
+  // slab. Picking from the furthest quarter keeps it a hike without making it
+  // a chore.
+  const ranked = live
+    .map((r) => ({ r, d: dist[Math.round(r.cy) * W + Math.round(r.cx)] }))
+    .filter((e) => e.d >= 0)
+    .sort((a, b) => b.d - a.d);
+  const exitRoom = ranked.length
+    ? rng.pick(ranked.slice(0, Math.max(1, Math.ceil(ranked.length * 0.25)))).r
+    : spawnRoom;
 
   assignRoles(live, spawnRoom, exitRoom, rng);
 
@@ -156,6 +174,8 @@ export const tileX = (l, x) => Math.floor((x - l.ox) / l.TILE);
 export const tileY = (l, z) => Math.floor((z - l.oz) / l.TILE);
 
 // --- generation internals ---------------------------------------------------
+
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 // `count` positions inside [min,max] that are at least `sep` apart.
 function pickLines(rng, min, max, count, sep) {
@@ -217,6 +237,18 @@ function doorCandidates(room, tiles, W, H) {
   const { leaf } = room;
   const out = [];
 
+  const tileAt = (x, y) => (x >= 0 && y >= 0 && x < W && y < H ? tiles[y * W + x] : SOLID);
+
+  // Is there already an opening within DOOR_GAP tiles along this wall line?
+  // Rooms are doored one at a time, so this is what stops the next room's
+  // doorway from landing flush against one already cut from the other side.
+  const doorNear = (axis, line, i) => {
+    for (let k = -DOOR_GAP; k <= DOOR_GAP; k++) {
+      if ((axis === 'v' ? tileAt(line, i + k) : tileAt(i + k, line)) === DOOR) return true;
+    }
+    return false;
+  };
+
   // Walks one side of the room collecting maximal runs of wall that have the
   // same kind of open floor on the far side; runs at least a doorway wide are
   // door candidates.
@@ -233,10 +265,11 @@ function doorCandidates(room, tiles, W, H) {
       const wx = axis === 'v' ? wallLine : i;
       const wy = axis === 'v' ? i : wallLine;
 
-      const inBounds = ox >= 0 && ox < W && oy >= 0 && oy < H;
-      const kind = inBounds ? tiles[oy * W + ox] : SOLID;
+      const kind = tileAt(ox, oy);
       // The wall tile itself must still be wall — a corridor may have eaten it.
-      const usable = (kind === CORRIDOR || kind === ROOM) && tiles[wy * W + wx] === SOLID;
+      const usable = (kind === CORRIDOR || kind === ROOM)
+        && tiles[wy * W + wx] === SOLID
+        && !doorNear(axis, wallLine, i);
 
       if (usable && run && run.kind === kind) {
         run.to = i + 1;
@@ -359,17 +392,29 @@ function pickSpawnRoom(rooms, rng) {
 
 function assignRoles(rooms, spawnRoom, exitRoom, rng) {
   for (const r of rooms) {
+    // Aspect is tested before area on purpose: a long thin room is a service
+    // room whatever its floor area, and testing area first made this branch
+    // unreachable.
     const long = Math.max(r.wTiles, r.hTiles) / Math.min(r.wTiles, r.hTiles);
-    if (r.areaM2 > 85) r.role = 'openplan';
+    if (long > 1.9) r.role = rng.pick(['storage', 'copyroom', 'server', 'storage']);
+    else if (r.areaM2 > 85) r.role = 'openplan';
     else if (r.areaM2 > 40) r.role = rng.pick(['openplan', 'meeting', 'breakroom', 'storage']);
-    else if (long > 2.1) r.role = rng.pick(['storage', 'copyroom', 'server']);
     else r.role = rng.pick(['office', 'office', 'copyroom', 'storage', 'breakroom']);
   }
 
-  // Guarantee the flavour rooms the floor is meant to have.
-  const wants = ['storage', 'copyroom', 'server', 'breakroom'];
+  // Guarantee the flavour rooms the floor is meant to have — but only in rooms
+  // the right size for them, so no floor gets a 150 m² "storage cupboard".
+  const wants = [
+    ['storage', (r) => r.areaM2 < 90],
+    ['copyroom', (r) => r.areaM2 < 55],
+    ['server', (r) => r.areaM2 < 70],
+    ['breakroom', (r) => r.areaM2 > 30],
+  ];
   const pool = rng.shuffle(rooms.filter((r) => r !== spawnRoom && r !== exitRoom));
-  wants.forEach((role, i) => { if (pool[i]) pool[i].role = role; });
+  for (const [role, fits] of wants) {
+    const room = pool.find((r) => fits(r) && !r.forcedRole);
+    if (room) { room.role = role; room.forcedRole = true; }
+  }
 
   spawnRoom.role = 'lobby';
   exitRoom.role = 'exit';

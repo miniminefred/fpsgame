@@ -13,18 +13,22 @@ const WORLD_COLOR = 0xffe0a0; // impact flash on world geometry
 const PITCH_LIMIT = 1.5;      // ~86°: recoil must not tip the view past vertical
 
 export class Shooting {
-  constructor({ camera, controls, keys, weapons, effects, targets, world, hud, audio }) {
+  constructor({ camera, controls, keys, weapons, effects, enemies, hud, audio }) {
     this.camera = camera;
     this.controls = controls;
     this.keys = keys;
     this.weapons = weapons;
     this.effects = effects;
-    this.targets = targets;
+    this.enemies = enemies;
     this.hud = hud;
     this.audio = audio;
 
-    // Everything a bullet can stop on: world geometry plus the drones.
-    this.hittables = [...world.meshes, ...targets.meshes];
+    // Everything a bullet can stop on. Rebuilt for each floor — see
+    // setHittables, called by the game when a level loads.
+    this.hittables = [];
+    this.onKill = null;
+    // Gunfire is loud: enemies out of sight use this to come looking.
+    this.noise = 0;
 
     this.raycaster = new THREE.Raycaster();
     this.cooldown = 0;          // seconds until the next shot is allowed
@@ -53,10 +57,16 @@ export class Shooting {
   get mag() { return this.mags[this.weapons.active]; }
   get reloading() { return this.reloadLeft > 0; }
 
+  // Called once per floor with that floor's geometry plus its enemies.
+  setHittables(list) {
+    this.hittables = list;
+  }
+
   update(dt) {
     const stats = this.weapons.stats;
 
     if (this.cooldown > 0) this.cooldown -= dt;
+    if (this.noise > 0) this.noise -= dt;
 
     if (this.reloadLeft > 0) {
       this.reloadLeft -= dt;
@@ -114,6 +124,7 @@ export class Shooting {
   _fire(stats) {
     this.mags[this.weapons.active]--;
     this.cooldown = 60 / stats.rpm;
+    this.noise = 1.5;
 
     this.weapons.fired();
     this.weapons.muzzleWorld(this._muzzle);
@@ -148,7 +159,7 @@ export class Shooting {
 
     if (hitAny) {
       this.hits++;
-      if (killedAny) this.kills++;
+      if (killedAny) { this.kills++; this.onKill?.(); }
       this.hud.hitmarker(killedAny);
       this.audio.ping(killedAny);
     }
@@ -164,10 +175,11 @@ export class Shooting {
     const hits = this.raycaster.intersectObjects(this.hittables, false);
 
     for (const hit of hits) {
-      const target = hit.object.userData.target;
+      const enemy = hit.object.userData.enemy;
 
-      // Dead drones are still in the raycast list while they pop — shoot past.
-      if (target && !target.alive) continue;
+      // Bodies stay in the raycast list while they topple — shoot straight
+      // through them rather than wasting the round on a corpse.
+      if (hit.object.userData.isEnemyPart && !enemy) continue;
 
       if (hit.face) {
         this._normal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld);
@@ -177,8 +189,8 @@ export class Shooting {
 
       this.effects.tracer(this._muzzle, hit.point);
 
-      if (target) {
-        const outcome = this.targets.hit(target, stats.damage);
+      if (enemy) {
+        const outcome = this.enemies.hit(hit.object, stats.damage);
         this.effects.impact(hit.point, this._normal, HIT_COLOR);
         return outcome;
       }

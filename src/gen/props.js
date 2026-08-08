@@ -36,6 +36,19 @@ function placer(sink, cx, cz, rot) {
   };
 }
 
+// A monitor standing on a desk at (x, z) in the desk's local space, screen
+// facing the near side where the chair goes. Not a catalogue entry of its own —
+// it's only ever part of a workstation.
+function monitorAt(p, x, z, rng) {
+  const H = 0.74;
+  p.box('metalDark', x - 0.11, H, z - 0.07, x + 0.11, H + 0.02, z + 0.07);
+  p.box('metalDark', x - 0.025, H + 0.02, z - 0.02, x + 0.025, H + 0.2, z + 0.02);
+  p.box('plastic', x - 0.28, H + 0.17, z - 0.03, x + 0.28, H + 0.54, z + 0.02);
+  // Most of them are still logged in.
+  p.box(rng.chance(0.7) ? 'screenOn' : 'screen',
+    x - 0.26, H + 0.2, z - 0.036, x + 0.26, H + 0.51, z - 0.029);
+}
+
 // --- prop catalogue ---------------------------------------------------------
 // `w`/`d` are the footprint used for fit tests before anything is emitted.
 

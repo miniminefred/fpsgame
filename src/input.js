@@ -3,6 +3,7 @@
 export function createInput() {
   const keys = {
     forward: false, back: false, left: false, right: false, jump: false,
+    sprint: false,
     reload: false,
     fire: false,        // trigger held — automatic weapons read this
     firePressed: false, // trigger edge — semi-auto weapons consume this
@@ -23,7 +24,7 @@ export function createInput() {
   // Losing focus (alt-tab mid-burst) must not leave the trigger stuck down.
   addEventListener('blur', () => {
     keys.forward = keys.back = keys.left = keys.right = false;
-    keys.jump = keys.reload = keys.fire = keys.firePressed = false;
+    keys.jump = keys.sprint = keys.reload = keys.fire = keys.firePressed = false;
   });
 
   return keys;
@@ -44,6 +45,7 @@ function setKey(keys, code, down) {
     case 'KeyA': case 'ArrowLeft':  keys.left = down; break;
     case 'KeyD': case 'ArrowRight': keys.right = down; break;
     case 'Space':                   keys.jump = down; break;
+    case 'ShiftLeft': case 'ShiftRight': keys.sprint = down; break;
     case 'KeyR':                    keys.reload = down; break;
   }
 }
@@ -56,16 +58,18 @@ export function setupPointerLock(controls, domElement) {
   domElement.addEventListener('click', () => {
     if (!controls.isLocked) controls.lock();
   });
-  overlay.addEventListener('click', () => {
+  // The dev harness (dev-level.html) has no overlay, so neither element is
+  // required to exist.
+  overlay?.addEventListener('click', () => {
     if (!controls.isLocked) controls.lock();
   });
 
   controls.addEventListener('lock', () => {
-    overlay.classList.add('hidden');
-    crosshair.classList.add('visible');
+    overlay?.classList.add('hidden');
+    crosshair?.classList.add('visible');
   });
   controls.addEventListener('unlock', () => {
-    overlay.classList.remove('hidden');
-    crosshair.classList.remove('visible');
+    overlay?.classList.remove('hidden');
+    crosshair?.classList.remove('visible');
   });
 }

@@ -107,17 +107,27 @@ function floorSlab(layout, r, y, up = true) {
     worldX(layout, r.x1), worldZ(layout, r.y1), y, up);
 }
 
+const FRAME_T = 0.06;
+// The wall above a doorway starts *inside* the frame's header rather than
+// flush with its underside. Sharing that plane makes the two surfaces
+// co-planar, and the depth buffer then flickers between them as you move —
+// the classic z-fight. Overlapping them by half the frame depth buries the
+// wall's underside inside solid geometry where it can never be seen.
+const LINTEL_Y = DOOR_H + FRAME_T * 0.5;
+
 // A lintel over every doorway plus a frame down both jambs, so an opening reads
 // as a door and not as a hole somebody knocked in the wall.
 function buildDoorFrames(layout, batcher, materials) {
   for (const d of layout.doors) {
     const x0 = worldX(layout, d.x0), x1 = worldX(layout, d.x1);
     const z0 = worldZ(layout, d.y0), z1 = worldZ(layout, d.y1);
+    const T = FRAME_T;
 
     batcher.add('wall', materials.wall,
-      applyWorldUVs(boxBetween(x0, DOOR_H, z0, x1, WALL_H, z1)));
+      applyWorldUVs(boxBetween(x0, LINTEL_Y, z0, x1, WALL_H, z1)));
 
-    const T = 0.06;
+    // Jambs sit buried in the wall along the opening's axis and proud of both
+    // wall faces across it, which is exactly how a door casing reads.
     if (d.vertical) {
       batcher.add('doorframe', materials.doorframe, boxBetween(x0 - T, 0, z0 - T, x1 + T, DOOR_H + T, z0));
       batcher.add('doorframe', materials.doorframe, boxBetween(x0 - T, 0, z1, x1 + T, DOOR_H + T, z1 + T));
@@ -253,7 +263,7 @@ function buildCeilingLights(layout, batcher, materials, fixtures) {
         slab(x - hw, z - hd, x + hw, z + hd, CEIL_H - 0.015, false),
         { castShadow: false, receiveShadow: false });
 
-      fixtures.push({ x, y: CEIL_H - 0.12, z, color: 0xfff2d6, intensity: 9, distance: 8.5 });
+      fixtures.push({ x, y: CEIL_H - 0.12, z, color: 0xfff4de, intensity: 16, distance: 11 });
     }
   }
 }
@@ -391,6 +401,10 @@ function buildExit(scene, layout, fixtures) {
   );
   shaft.position.y = CEIL_H / 2;
   group.add(shaft);
+
+  // These materials are one-offs rather than the shared cache, so the level
+  // teardown is allowed to dispose them.
+  group.traverse((child) => { child.userData.ownMaterial = true; });
 
   scene.add(group);
   fixtures.push({ x: layout.exit.x, y: 1.6, z: layout.exit.z, color: 0x64ffa0, intensity: 7, distance: 8 });

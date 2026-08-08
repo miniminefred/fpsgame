@@ -149,6 +149,8 @@ export class Enemies {
     torso.userData.enemy = enemy;
     head.userData.enemy = enemy;
     head.userData.headshot = 2.2;
+    torso.userData.isEnemyPart = true;
+    head.userData.isEnemyPart = true;
 
     this.scene.add(group);
     this.items.push(enemy);
