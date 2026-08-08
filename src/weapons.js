@@ -9,32 +9,38 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 //
 // Combat fields: `rpm` rounds/minute, `auto` holds-to-fire, `damage` per
 // projectile, `pellets` projectiles per shot, `spread` cone half-angle in
-// radians, `kick` view recoil per shot in radians, `mag`/`reload` ammo handling.
+// radians, `kick` view recoil per shot in radians, `mag`/`reload` ammo handling,
+// `sound` the clip in the sound library this gun fires (see audio.js).
 const WEAPONS = [
   {
     name: 'Pistol', file: 'models/1_pistol.glb', length: 0.30, flip: false, yaw: 0,
     rpm: 420, auto: false, damage: 34, pellets: 1, spread: 0.004,
-    kick: 0.016, punch: 0.75, pitch: 1.35, mag: 12, reload: 1.1, range: 200,
+    kick: 0.016, punch: 0.75, mag: 12, reload: 1.1, range: 200,
+    sound: 'pistol-fire',
   },
   {
     name: 'SMG', file: 'models/2_smg.glb', length: 0.42, flip: false, yaw: 0,
     rpm: 900, auto: true, damage: 16, pellets: 1, spread: 0.019,
-    kick: 0.011, punch: 0.65, pitch: 1.5, mag: 30, reload: 1.4, range: 160,
+    kick: 0.011, punch: 0.65, mag: 30, reload: 1.4, range: 160,
+    sound: 'smg-fire',
   },
   {
     name: 'Shotgun', file: 'models/3_shotgun.glb', length: 0.58, flip: false, yaw: 0,
     rpm: 75, auto: false, damage: 14, pellets: 9, spread: 0.055,
-    kick: 0.045, punch: 1.25, pitch: 0.72, mag: 6, reload: 2.4, range: 45,
+    kick: 0.045, punch: 1.25, mag: 6, reload: 2.4, range: 45,
+    sound: 'shotgun-fire',
   },
   {
     name: 'Assault Rifle', file: 'models/4_assault_rifle.glb', length: 0.62, flip: false, yaw: 0,
     rpm: 620, auto: true, damage: 26, pellets: 1, spread: 0.011,
-    kick: 0.019, punch: 0.95, pitch: 1.05, mag: 30, reload: 1.9, range: 300,
+    kick: 0.019, punch: 0.95, mag: 30, reload: 1.9, range: 300,
+    sound: 'rifle-fire',
   },
   {
     name: 'Sniper Rifle', file: 'models/5_sniper.glb', length: 0.80, flip: false, yaw: 0,
     rpm: 48, auto: false, damage: 130, pellets: 1, spread: 0.0008,
-    kick: 0.06, punch: 1.4, pitch: 0.85, mag: 5, reload: 2.8, range: 500,
+    kick: 0.06, punch: 1.4, mag: 5, reload: 2.8, range: 500,
+    sound: 'sniper-fire',
   },
 ];
 

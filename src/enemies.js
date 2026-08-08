@@ -263,6 +263,8 @@ export class Enemies {
       swingLanded: true,
       dist: Infinity,
       strafe: rng.chance(0.5) ? 1 : -1,
+      voiceTimer: rng.range(1, 14),   // staggered, or a floor mutters in chorus
+      lastStep: 0,
     };
 
     // Only the torso and head stop bullets; hitboxes on limbs this narrow
@@ -322,8 +324,18 @@ export class Enemies {
       this._think(e, dt, dist, sees, ctx);
       this._move(e, dt, dx, dz, dist, sees);
       this._shoot(e, dt, dist, sees, px, py, pz, player, effects, audio, hud);
-      this._animate(e, dt);
+      this._animate(e, dt, audio);
+      this._mutter(e, dt, audio);
     }
+  }
+
+  // Idle staff grumble to themselves now and then, which is what tells you a
+  // room is occupied before you can see into it.
+  _mutter(e, dt, audio) {
+    e.voiceTimer -= dt;
+    if (e.voiceTimer > 0) return;
+    e.voiceTimer = 7 + Math.random() * 11;
+    if (e.state === 'idle') audio.enemyIdle(e);
   }
 
   _think(e, dt, dist, sees, ctx) {
@@ -336,6 +348,7 @@ export class Enemies {
           e.state = 'alert';
           e.timer = this.tuning.reaction;
           e.lastSeen = { x: ctx.player.object.position.x, z: ctx.player.object.position.z };
+          ctx.audio.enemyAlert(e);
         }
         break;
 
@@ -440,7 +453,7 @@ export class Enemies {
         const damage = this.tuning.damage * e.type.damage;
         player.takeDamage(damage);
         hud.damage(Math.min(1, damage / 22));
-        audio.ping(false);
+        audio.meleeHit();
       }
     }
 
@@ -455,7 +468,7 @@ export class Enemies {
     if (type.melee) {
       e.swing = SWING_TIME;
       e.swingLanded = false;
-      audio.click(0.42, 0.3);
+      audio.enemyMeleeSwing(e);
       return;
     }
 
@@ -478,8 +491,8 @@ export class Enemies {
 
     effects.tracer(this._muzzle, this._aim);
     effects.impact(this._muzzle, this._v.set(0, 1, 0), 0xffca7a);
-    // Heavier types fire lower and slower, so you can hear what's shooting you.
-    audio.shot({ pitch: 0.72 / type.scale, punch: 0.4 * type.damage + 0.25, decay: 0.1 });
+    // Heavier types fire lower, so you can hear what's shooting you.
+    audio.enemyShot(e);
 
     if (hit) {
       const damage = this.tuning.damage * type.damage;
@@ -488,9 +501,17 @@ export class Enemies {
     }
   }
 
-  _animate(e, dt) {
+  _animate(e, dt, audio) {
     const moving = e.state === 'chase' || e.state === 'fight';
     e.walkPhase += dt * (moving ? 9 : 1.4);
+
+    // One footfall per half stride cycle, taken off the leg animation itself so
+    // the sound lands with the foot rather than on a timer of its own.
+    const stride = Math.floor(e.walkPhase / Math.PI);
+    if (stride !== e.lastStep) {
+      e.lastStep = stride;
+      if (moving) audio.enemyStep(e);
+    }
 
     const swing = moving ? Math.sin(e.walkPhase) * 0.6 : Math.sin(e.walkPhase) * 0.05;
     e.legL.rotation.x = swing;

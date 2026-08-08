@@ -111,7 +111,7 @@ export class Shooting {
 
     if (this.mag <= 0) {
       // Empty: click on the trigger edge, then start reloading automatically.
-      if (pressed) this.audio.click(1.5, 0.3);
+      if (pressed) this.audio.dryFire();
       this.reload();
       return;
     }
@@ -133,6 +133,7 @@ export class Shooting {
   onWeaponChange() {
     this.reloadLeft = 0;
     this.cooldown = Math.max(this.cooldown, 0.25);   // brief swap delay
+    this.audio.weaponSwitch();
     this._syncHud();
   }
 
@@ -143,7 +144,7 @@ export class Shooting {
 
     this.weapons.fired();
     this.weapons.muzzleWorld(this._muzzle);
-    this.audio.shot({ pitch: stats.pitch, punch: stats.punch, decay: 0.14 + stats.punch * 0.09 });
+    this.audio.playerShot(stats);
 
     this.camera.getWorldPosition(this._origin);
     this.camera.getWorldDirection(this._aim);
@@ -207,6 +208,12 @@ export class Shooting {
       if (enemy) {
         const outcome = this.enemies.hit(hit.object, stats.damage);
         this.effects.impact(hit.point, this._normal, HIT_COLOR);
+        this.audio.bulletHitFlesh(hit.point);
+        // The vocal is played from here rather than from enemies.hit, because
+        // this is the only place that still knows who was shot: a kill clears
+        // the enemy off its own hitboxes on the way out.
+        if (outcome === 'kill') this.audio.enemyDeath(enemy);
+        else if (outcome === 'hit') this.audio.enemyPain(enemy);
         return outcome;
       }
 
@@ -219,6 +226,7 @@ export class Shooting {
       }
 
       this.effects.impact(hit.point, this._normal, WORLD_COLOR);
+      this.audio.bulletHitWall(hit.point);
 
       // Everything else on the floor is either destructible or it is the
       // building. Only the building keeps a bullet hole: a decal on a desk

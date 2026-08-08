@@ -126,7 +126,7 @@ export class Destruction {
 
     const glassy = entry.kind !== 'prop';
     this.effects.impact(point, _up.set(0, 1, 0), glassy ? 0xdff0ff : 0xffe4b0);
-    this.audio.click(glassy ? 2.2 : 0.7, 0.3);
+    this.audio.breakThing(entry.kind, point);
   }
 
   // Loose prop: retire the intact body and re-emit its boxes as independent
@@ -148,7 +148,7 @@ export class Destruction {
     this._scatter(dyn.parts, dyn, dir, point);
 
     this.effects.impact(point, _up.set(0, 1, 0), 0xffe4b0);
-    this.audio.click(0.7, 0.25);
+    this.audio.breakThing('prop', point);
   }
 
   /**

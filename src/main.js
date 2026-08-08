@@ -6,7 +6,7 @@ import { Player } from './player.js';
 import { Weapons } from './weapons.js';
 import { Effects } from './effects.js';
 import { Enemies } from './enemies.js';
-import { GunAudio } from './audio.js';
+import { GameAudio } from './audio.js';
 import { Hud } from './hud.js';
 import { Minimap } from './minimap.js';
 import { Shooting } from './shooting.js';
@@ -32,7 +32,7 @@ const hud = new Hud();
 const minimap = new Minimap(document.getElementById('minimap'));
 const effects = new Effects(scene);
 const enemies = new Enemies(scene);
-const audio = new GunAudio();
+const audio = new GameAudio();
 const lighting = createLighting(scene);
 
 const physics = new Physics();
@@ -55,15 +55,20 @@ onDigitKeys((n) => {
 });
 addEventListener('resize', () => weapons.layout());
 
-// Any click after you die starts a new run.
-addEventListener('mousedown', () => game.restartIfDead());
+// Any click after you die starts a new run. The same click is also the gesture
+// the browser wants before it will let an AudioContext exist, so the ambience
+// starts here rather than at load — where it would be silently refused.
+addEventListener('mousedown', () => {
+  audio.start();
+  game.restartIfDead();
+});
 
 // Dev-only handle for poking at a running floor from the console. Stripped from
 // production builds by the bundler.
 if (import.meta.env.DEV) {
   window.dev = {
     game, player, enemies, shooting, keys, physics, destruction,
-    scene, camera, weapons, renderer,
+    scene, camera, weapons, renderer, audio,
   };
 }
 
@@ -96,6 +101,7 @@ function animate() {
   player.update(dt, camera);
   lighting.update(dt, camera.position);
   weapons.update(dt);
+  audio.update(dt, camera);   // before anything plays, so this frame pans right
 
   if (game.state === 'playing') shooting.update(dt);
   else keys.firePressed = false;   // don't bank a trigger press through death

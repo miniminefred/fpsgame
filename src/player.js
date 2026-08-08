@@ -15,6 +15,14 @@ const MAX_HEALTH = 100;
 const REGEN_DELAY = 6;     // seconds after being hit before healing starts
 const REGEN_RATE = 7;      // health / second
 
+// Footsteps are spaced by distance walked, not by a timer, so sprinting speeds
+// the cadence up on its own and strafing round a desk doesn't pump out steps
+// while you barely move. Slightly shorter under sprint for the faster patter.
+const STRIDE = 2.6;
+const SPRINT_STRIDE = 2.3;
+const AIR_TIME_LANDING = 0.12;   // below this you were never really airborne
+const HARD_LANDING = 12;         // downward speed that counts as a full-weight thump
+
 // First-person player: pointer-lock camera + WASD + jump, with AABB collision
 // against the level's boxes (walk into them, jump onto desks), plus the health
 // the office takes off you.
@@ -33,7 +41,15 @@ export class Player {
     // Fired instead of blocking when the thing in the way is loose furniture:
     // (collider, dirX, dirZ) => void. The game turns it into a physics impulse.
     this.onPush = null;
+    // Audio hooks, all wired by the game: (sprinting) => void, (impact 0..1) =>
+    // void, (amount) => void.
+    this.onStep = null;
+    this.onLand = null;
+    this.onHurt = null;
     this.dt = 0;
+
+    this.airTime = 0;      // seconds since the feet last touched something
+    this._strideLeft = STRIDE * 0.5;   // first step lands half a stride in
 
     this.controls = new PointerLockControls(camera, domElement);
     this.object = this.controls.object;
@@ -63,6 +79,9 @@ export class Player {
     this.object.position.set(x, EYE, z);
     this.velocityY = 0;
     this._vel.set(0, 0, 0);
+    // Arriving on a new floor is not a fall, and must not sound like one.
+    this.airTime = 0;
+    this._strideLeft = STRIDE * 0.5;
 
     if (!this._blocked(x, z, 0)) return;
     for (let r = 0.5; r <= 6; r += 0.5) {
@@ -89,6 +108,7 @@ export class Player {
     if (this.dead) return;
     this.health -= amount;
     this.sinceDamage = 0;
+    this.onHurt?.(amount);
     if (this.health <= 0) {
       this.health = 0;
       this.dead = true;
@@ -134,6 +154,8 @@ export class Player {
       this._vel.multiplyScalar(Math.max(0, 1 - dt * 10));
     }
 
+    const fromX = pos.x;
+    const fromZ = pos.z;
     this._moveHorizontal(pos, this._vel.x * dt, this._vel.z * dt);
 
     this.velocityY -= GRAVITY * dt;
@@ -141,9 +163,19 @@ export class Player {
 
     const groundY = this._supportHeight(pos);
     if (pos.y - EYE <= groundY && this.velocityY <= 0) {
+      // Standing still still resolves here every frame, one frame of gravity at
+      // a time, so a landing is only a landing if you were up there a while.
+      if (this.airTime > AIR_TIME_LANDING) {
+        this.onLand?.(Math.min(1, -this.velocityY / HARD_LANDING));
+        this._strideLeft = STRIDE;   // no footstep on top of the thump
+      }
       pos.y = groundY + EYE;
       this.velocityY = 0;
       this.canJump = true;
+      this.airTime = 0;
+      this._trackStride(pos.x - fromX, pos.z - fromZ);
+    } else {
+      this.airTime += dt;
     }
 
     if (!this.dead) {
@@ -152,6 +184,20 @@ export class Player {
         this.heal(REGEN_RATE * dt);
       }
     }
+  }
+
+  // Counts down the distance to the next footfall. Fed the distance actually
+  // covered after collision, so grinding against a wall is silent.
+  _trackStride(dx, dz) {
+    const moved = Math.hypot(dx, dz);
+    if (moved < 1e-4) return;
+
+    const sprinting = this.keys.sprint && this._vel.lengthSq() > 16;
+    this._strideLeft -= moved;
+    if (this._strideLeft > 0) return;
+
+    this._strideLeft += sprinting ? SPRINT_STRIDE : STRIDE;
+    this.onStep?.(sprinting);
   }
 
   // Move one axis at a time and push back out of any box that rises above the

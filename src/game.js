@@ -57,6 +57,10 @@ export class Game {
       );
     };
 
+    this.player.onStep = (sprinting) => this.audio.step(sprinting);
+    this.player.onLand = (impact) => this.audio.land(impact);
+    this.player.onHurt = (amount) => this.audio.playerHurt(amount);
+
     this.shooting.onPropHit = (dyn, dir, point, damage) =>
       this.destruction.damageProp(dyn, dir, point, damage);
     this.shooting.onSurfaceHit = (hit, dir, damage) =>
@@ -194,7 +198,7 @@ export class Game {
       this.cleared = true;
       this.floorsCleared++;
       this.hud.message('FLOOR CLEAR — FIND THE EXIT', 2200);
-      this.audio.ping(true);
+      this.audio.floorClear();
     }
     this._syncObjective(remaining);
 
@@ -203,6 +207,7 @@ export class Game {
 
     if (distanceToExit(level, this.player.object.position) < EXIT_RADIUS) {
       this.player.heal(HEAL_ON_DESCEND);
+      this.audio.descend();
       this.nextFloor();
     }
   }
@@ -217,6 +222,7 @@ export class Game {
   // click-to-play overlay up over the death screen.
   _onDeath() {
     this.state = 'dead';
+    this.audio.playerDeath();
     this.hud.gameOver(true, { floor: this.floor, kills: this.kills });
     this.hud.setObjective('');
   }
