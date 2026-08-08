@@ -7,6 +7,9 @@ export function createRenderer() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
+  // PCFSoftShadowMap is deprecated in three r185 (it silently falls back to
+  // PCFShadowMap), so ask for PCFShadowMap directly. Edge softness now comes
+  // from the light's shadow.radius — see sunlight.js.
   renderer.shadowMap.type = THREE.PCFShadowMap;
   document.getElementById('app').appendChild(renderer.domElement);
   return renderer;
@@ -17,20 +20,10 @@ export function createScene() {
   scene.background = new THREE.Color(SKY);
   scene.fog = new THREE.Fog(SKY, 60, 200);
 
-  const hemi = new THREE.HemisphereLight(0xbfe3ff, 0x554433, 0.9);
+  // Sky fill only — it lifts shadowed faces off black without washing out the
+  // sun's cast shadows. The sun itself lives in sunlight.js.
+  const hemi = new THREE.HemisphereLight(0xbfe3ff, 0x6b7a58, 0.7);
   scene.add(hemi);
-
-  const sun = new THREE.DirectionalLight(0xffffff, 1.6);
-  sun.position.set(30, 50, 20);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.near = 1;
-  sun.shadow.camera.far = 150;
-  sun.shadow.camera.left = -80;
-  sun.shadow.camera.right = 80;
-  sun.shadow.camera.top = 80;
-  sun.shadow.camera.bottom = -80;
-  scene.add(sun);
 
   return scene;
 }

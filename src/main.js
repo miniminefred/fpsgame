@@ -1,5 +1,6 @@
 import { Timer } from 'three';
 import { createRenderer, createScene, createCamera, handleResize } from './scene.js';
+import { createSunlight } from './sunlight.js';
 import { buildWorld } from './world.js';
 import { createInput, onDigitKeys } from './input.js';
 import { Player } from './player.js';
@@ -15,6 +16,7 @@ const scene = createScene();
 const camera = createCamera();
 handleResize(renderer, camera);
 
+const sunlight = createSunlight(scene);
 const world = buildWorld(scene);
 
 const keys = createInput();
@@ -48,6 +50,7 @@ function animate() {
   timer.update();
   const dt = Math.min(timer.getDelta(), 0.05); // clamp to avoid tunneling on lag spikes
   player.update(dt, camera);
+  sunlight.update(camera.position); // keep the tight shadow frustum on the player
   weapons.update(dt);
   shooting.update(dt);
   targets.update(dt);
