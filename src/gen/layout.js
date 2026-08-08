@@ -1,0 +1,376 @@
+import { makeRng } from './rng.js';
+
+// Procedural office floorplan.
+//
+// Real office floors aren't mazes — they're a corridor spine with rooms packed
+// against it. So we generate in that order: carve 1-2 horizontal and 1-3
+// vertical corridors across the slab (guaranteed to intersect, so the corridor
+// network is connected by construction), then subdivide each leftover block
+// into rooms with BSP and cut a door from each room onto whatever it touches.
+//
+// Everything is done on a tile grid of TILE-metre cells. Walls are exactly one
+// tile thick, which is why rooms are carved inset by one tile on their min
+// sides only — two neighbouring rooms then share a single wall tile instead of
+// stacking two.
+
+export const TILE = 0.5;           // metres per tile
+export const WALL_H = 3.2;         // structural wall height
+export const CEIL_H = 3.0;         // suspended ceiling height
+export const DOOR_H = 2.1;
+
+const PAD = 2;                     // solid tiles of exterior wall on each side
+const CORRIDOR_W = 6;              // 3 m corridors
+const MIN_LEAF = 11;               // smallest room block (=> 5 m interior)
+const MAX_LEAF = 26;               // above this a block always splits again
+const DOOR_W = 3;                  // 1.5 m doorways
+
+export const SOLID = 0;
+export const ROOM = 1;
+export const CORRIDOR = 2;
+export const DOOR = 3;
+
+export const isOpen = (t) => t !== SOLID;
+
+export function generateLayout(seed, floorNumber) {
+  const rng = makeRng(seed);
+
+  // Floors grow as you descend, but not without bound — past floor ~12 the
+  // difficulty comes from the enemies, not from more walking.
+  const W = Math.min(150, 88 + floorNumber * 5);
+  const H = Math.min(126, 72 + floorNumber * 5);
+
+  const tiles = new Uint8Array(W * H); // SOLID everywhere to start
+  const at = (x, y) => tiles[y * W + x];
+  const set = (x, y, v) => { tiles[y * W + x] = v; };
+
+  const inner = { x0: PAD, y0: PAD, x1: W - PAD, y1: H - PAD };
+
+  // --- 1. corridor spine ----------------------------------------------------
+  const vLines = pickLines(rng, inner.x0 + MIN_LEAF + 2, inner.x1 - MIN_LEAF - 2, rng.int(1, 3), CORRIDOR_W + 16);
+  const hLines = pickLines(rng, inner.y0 + MIN_LEAF + 2, inner.y1 - MIN_LEAF - 2, rng.int(1, 2), CORRIDOR_W + 16);
+  // Both axes must exist or the corridors never cross and the floor splits.
+  if (!vLines.length) vLines.push(Math.floor((inner.x0 + inner.x1) / 2));
+  if (!hLines.length) hLines.push(Math.floor((inner.y0 + inner.y1) / 2));
+
+  const vBands = vLines.map((cx) => band(cx, inner.x0, inner.x1));
+  const hBands = hLines.map((cy) => band(cy, inner.y0, inner.y1));
+
+  for (const b of vBands) {
+    for (let x = b.lo; x < b.hi; x++) for (let y = inner.y0; y < inner.y1; y++) set(x, y, CORRIDOR);
+  }
+  for (const b of hBands) {
+    for (let y = b.lo; y < b.hi; y++) for (let x = inner.x0; x < inner.x1; x++) set(x, y, CORRIDOR);
+  }
+
+  // --- 2. rooms in the leftover blocks --------------------------------------
+  const xSpans = complement(inner.x0, inner.x1, vBands);
+  const ySpans = complement(inner.y0, inner.y1, hBands);
+
+  const rooms = [];
+  for (const xs of xSpans) {
+    for (const ys of ySpans) {
+      // Too thin to hold a room — leave it solid as a structural core.
+      if (xs.hi - xs.lo < MIN_LEAF + 1 || ys.hi - ys.lo < MIN_LEAF + 1) continue;
+
+      // Reserve the block's max edges as wall so rooms carved inset-on-min
+      // still end up separated from the corridor beyond.
+      const block = { x0: xs.lo, y0: ys.lo, x1: xs.hi - 1, y1: ys.hi - 1 };
+      const leaves = [];
+      bsp(block, rng, leaves);
+
+      for (const leaf of leaves) {
+        const room = {
+          id: rooms.length,
+          leaf,
+          x0: leaf.x0 + 1, y0: leaf.y0 + 1, x1: leaf.x1, y1: leaf.y1, // interior, max exclusive
+          doors: [],
+        };
+        if (room.x1 - room.x0 < 4 || room.y1 - room.y0 < 4) continue;
+        for (let y = room.y0; y < room.y1; y++) {
+          for (let x = room.x0; x < room.x1; x++) set(x, y, ROOM);
+        }
+        rooms.push(room);
+      }
+    }
+  }
+
+  // --- 3. doors -------------------------------------------------------------
+  const doors = [];
+  for (const room of rooms) {
+    const sides = doorCandidates(room, tiles, W, H);
+    // A door onto a corridor is always preferred; rooms that only touch other
+    // rooms get an interconnecting door instead.
+    const corridorSides = sides.filter((s) => s.kind === CORRIDOR);
+    const chosen = corridorSides.length ? corridorSides : sides;
+    if (!chosen.length) continue;
+
+    rng.shuffle(chosen);
+    const wanted = 1 + (rng.chance(0.35) && chosen.length > 1 ? 1 : 0);
+    for (let i = 0; i < Math.min(wanted, chosen.length); i++) {
+      cutDoor(chosen[i], rng, tiles, W, doors, room);
+    }
+  }
+
+  // --- 4. connectivity ------------------------------------------------------
+  connectAll(tiles, W, H, rooms, doors, vBands[0], hBands[0], rng);
+
+  // --- 5. roles, spawn and exit --------------------------------------------
+  const live = rooms.filter((r) => r.doors.length > 0);
+  for (const r of live) {
+    r.wTiles = r.x1 - r.x0;
+    r.hTiles = r.y1 - r.y0;
+    r.areaM2 = r.wTiles * r.hTiles * TILE * TILE;
+    r.cx = (r.x0 + r.x1) / 2;
+    r.cy = (r.y0 + r.y1) / 2;
+  }
+
+  const spawnRoom = pickSpawnRoom(live, rng);
+  const dist = bfs(tiles, W, H, Math.round(spawnRoom.cx), Math.round(spawnRoom.cy));
+  let exitRoom = spawnRoom;
+  let best = -1;
+  for (const r of live) {
+    const d = dist[Math.round(r.cy) * W + Math.round(r.cx)];
+    if (d > best) { best = d; exitRoom = r; }
+  }
+
+  assignRoles(live, spawnRoom, exitRoom, rng);
+
+  const layout = {
+    seed, floorNumber, W, H, TILE,
+    ox: -W * TILE / 2, oz: -H * TILE / 2,
+    tiles, rooms: live, doors,
+    spawnRoom, exitRoom,
+    rng,
+  };
+
+  layout.spawn = { x: worldX(layout, spawnRoom.cx), z: worldZ(layout, spawnRoom.cy) };
+  layout.exit = { x: worldX(layout, exitRoom.cx), z: worldZ(layout, exitRoom.cy) };
+
+  return layout;
+}
+
+// Tile <-> world helpers. The building is centred on the origin.
+export const worldX = (l, tx) => tx * l.TILE + l.ox;
+export const worldZ = (l, ty) => ty * l.TILE + l.oz;
+export const tileX = (l, x) => Math.floor((x - l.ox) / l.TILE);
+export const tileY = (l, z) => Math.floor((z - l.oz) / l.TILE);
+
+// --- generation internals ---------------------------------------------------
+
+// `count` positions inside [min,max] that are at least `sep` apart.
+function pickLines(rng, min, max, count, sep) {
+  const lines = [];
+  if (max <= min) return lines;
+  for (let tries = 0; tries < 60 && lines.length < count; tries++) {
+    const v = rng.int(min, max);
+    if (lines.every((l) => Math.abs(l - v) >= sep)) lines.push(v);
+  }
+  return lines.sort((a, b) => a - b);
+}
+
+function band(center, lo, hi) {
+  return {
+    lo: Math.max(lo, center - Math.floor(CORRIDOR_W / 2)),
+    hi: Math.min(hi, center + Math.ceil(CORRIDOR_W / 2)),
+  };
+}
+
+// The gaps left between a set of bands inside [lo,hi).
+function complement(lo, hi, bands) {
+  const spans = [];
+  let cursor = lo;
+  for (const b of [...bands].sort((a, c) => a.lo - c.lo)) {
+    if (b.lo > cursor) spans.push({ lo: cursor, hi: b.lo });
+    cursor = Math.max(cursor, b.hi);
+  }
+  if (cursor < hi) spans.push({ lo: cursor, hi });
+  return spans;
+}
+
+function bsp(rect, rng, out) {
+  const w = rect.x1 - rect.x0;
+  const h = rect.y1 - rect.y0;
+  const canX = w >= MIN_LEAF * 2;
+  const canY = h >= MIN_LEAF * 2;
+
+  if (!canX && !canY) { out.push(rect); return; }
+  // Stop early now and then so some rooms come out as big open-plan floors.
+  if (w <= MAX_LEAF && h <= MAX_LEAF && rng.chance(0.22)) { out.push(rect); return; }
+
+  let splitX;
+  if (canX && canY) splitX = w > h ? rng.chance(0.82) : rng.chance(0.18);
+  else splitX = canX;
+
+  if (splitX) {
+    const cut = rng.int(rect.x0 + MIN_LEAF, rect.x1 - MIN_LEAF);
+    bsp({ x0: rect.x0, y0: rect.y0, x1: cut, y1: rect.y1 }, rng, out);
+    bsp({ x0: cut, y0: rect.y0, x1: rect.x1, y1: rect.y1 }, rng, out);
+  } else {
+    const cut = rng.int(rect.y0 + MIN_LEAF, rect.y1 - MIN_LEAF);
+    bsp({ x0: rect.x0, y0: rect.y0, x1: rect.x1, y1: cut }, rng, out);
+    bsp({ x0: rect.x0, y0: cut, x1: rect.x1, y1: rect.y1 }, rng, out);
+  }
+}
+
+// Runs of wall along each side of a room that have open floor on the far side.
+function doorCandidates(room, tiles, W, H) {
+  const { leaf } = room;
+  const out = [];
+
+  // Walks one side of the room collecting maximal runs of wall that have the
+  // same kind of open floor on the far side; runs at least a doorway wide are
+  // door candidates.
+  const scan = (axis, wallLine, outsideLine, from, to) => {
+    let run = null;
+    const flush = () => {
+      if (run && run.to - run.from >= DOOR_W) out.push(run);
+      run = null;
+    };
+
+    for (let i = from; i < to; i++) {
+      const ox = axis === 'v' ? outsideLine : i;
+      const oy = axis === 'v' ? i : outsideLine;
+      const wx = axis === 'v' ? wallLine : i;
+      const wy = axis === 'v' ? i : wallLine;
+
+      const inBounds = ox >= 0 && ox < W && oy >= 0 && oy < H;
+      const kind = inBounds ? tiles[oy * W + ox] : SOLID;
+      // The wall tile itself must still be wall — a corridor may have eaten it.
+      const usable = (kind === CORRIDOR || kind === ROOM) && tiles[wy * W + wx] === SOLID;
+
+      if (usable && run && run.kind === kind) {
+        run.to = i + 1;
+      } else {
+        flush();
+        if (usable) run = { axis, wallLine, outsideLine, kind, from: i, to: i + 1 };
+      }
+    }
+    flush();
+  };
+
+  // Skip the first and last tile of each side so doors never land in a corner.
+  scan('v', leaf.x0, leaf.x0 - 1, room.y0 + 1, room.y1 - 1);
+  scan('v', leaf.x1, leaf.x1 + 1, room.y0 + 1, room.y1 - 1);
+  scan('h', leaf.y0, leaf.y0 - 1, room.x0 + 1, room.x1 - 1);
+  scan('h', leaf.y1, leaf.y1 + 1, room.x0 + 1, room.x1 - 1);
+
+  return out;
+}
+
+function cutDoor(run, rng, tiles, W, doors, room) {
+  const span = run.to - run.from;
+  const start = run.from + (span > DOOR_W ? rng.int(0, span - DOOR_W) : 0);
+  const end = Math.min(run.to, start + DOOR_W);
+
+  for (let i = start; i < end; i++) {
+    if (run.axis === 'v') tiles[i * W + run.wallLine] = DOOR;
+    else tiles[run.wallLine * W + i] = DOOR;
+  }
+
+  const door = run.axis === 'v'
+    ? { x0: run.wallLine, x1: run.wallLine + 1, y0: start, y1: end, vertical: true }
+    : { x0: start, x1: end, y0: run.wallLine, y1: run.wallLine + 1, vertical: false };
+
+  doors.push(door);
+  room.doors.push(door);
+}
+
+// Flood the floor from the corridor network; any room left stranded gets an
+// extra door punched toward reachable floor, and anything still stranded after
+// a few passes is filled back in so the player can never see an orphan room.
+function connectAll(tiles, W, H, rooms, doors, vBand, hBand, rng) {
+  const seedX = vBand ? vBand.lo : PAD + 1;
+  const seedY = hBand ? hBand.lo : PAD + 1;
+
+  for (let pass = 0; pass < 5; pass++) {
+    const dist = bfs(tiles, W, H, seedX, seedY);
+    const stranded = rooms.filter((r) => dist[Math.round((r.y0 + r.y1) / 2) * W + Math.round((r.x0 + r.x1) / 2)] < 0);
+    if (!stranded.length) return;
+
+    let cut = false;
+    for (const room of stranded) {
+      const options = doorCandidates(room, tiles, W, H).filter((run) => {
+        const ox = run.axis === 'v' ? run.outsideLine : run.from;
+        const oy = run.axis === 'v' ? run.from : run.outsideLine;
+        if (ox < 0 || oy < 0 || ox >= W || oy >= H) return false;
+        return dist[oy * W + ox] >= 0;
+      });
+      if (options.length) {
+        cutDoor(rng.pick(options), rng, tiles, W, doors, room);
+        cut = true;
+      }
+    }
+    if (!cut) break;
+  }
+
+  // Give up on the rest: wall them off entirely.
+  const dist = bfs(tiles, W, H, seedX, seedY);
+  for (const room of rooms) {
+    if (dist[Math.round((room.y0 + room.y1) / 2) * W + Math.round((room.x0 + room.x1) / 2)] >= 0) continue;
+    for (let y = room.y0; y < room.y1; y++) {
+      for (let x = room.x0; x < room.x1; x++) tiles[y * W + x] = SOLID;
+    }
+    room.doors.length = 0;
+  }
+}
+
+// Breadth-first tile distances over open floor. -1 means unreachable.
+export function bfs(tiles, W, H, sx, sy) {
+  const dist = new Int32Array(W * H).fill(-1);
+  if (!isOpen(tiles[sy * W + sx])) {
+    // Nudge to the nearest open tile so a bad seed point can't kill the flood.
+    let found = false;
+    for (let r = 1; r < 12 && !found; r++) {
+      for (let dy = -r; dy <= r && !found; dy++) {
+        for (let dx = -r; dx <= r && !found; dx++) {
+          const x = sx + dx, y = sy + dy;
+          if (x < 0 || y < 0 || x >= W || y >= H) continue;
+          if (isOpen(tiles[y * W + x])) { sx = x; sy = y; found = true; }
+        }
+      }
+    }
+    if (!found) return dist;
+  }
+
+  const queue = new Int32Array(W * H);
+  let head = 0, tail = 0;
+  dist[sy * W + sx] = 0;
+  queue[tail++] = sy * W + sx;
+
+  while (head < tail) {
+    const i = queue[head++];
+    const x = i % W, y = (i / W) | 0;
+    const d = dist[i] + 1;
+
+    if (x > 0 && dist[i - 1] === -1 && isOpen(tiles[i - 1])) { dist[i - 1] = d; queue[tail++] = i - 1; }
+    if (x < W - 1 && dist[i + 1] === -1 && isOpen(tiles[i + 1])) { dist[i + 1] = d; queue[tail++] = i + 1; }
+    if (y > 0 && dist[i - W] === -1 && isOpen(tiles[i - W])) { dist[i - W] = d; queue[tail++] = i - W; }
+    if (y < H - 1 && dist[i + W] === -1 && isOpen(tiles[i + W])) { dist[i + W] = d; queue[tail++] = i + W; }
+  }
+
+  return dist;
+}
+
+function pickSpawnRoom(rooms, rng) {
+  // A mid-sized room with a corridor door: reads as stepping out of a lift.
+  const good = rooms.filter((r) => r.areaM2 > 18 && r.areaM2 < 70);
+  return rng.pick(good.length ? good : rooms);
+}
+
+function assignRoles(rooms, spawnRoom, exitRoom, rng) {
+  for (const r of rooms) {
+    const long = Math.max(r.wTiles, r.hTiles) / Math.min(r.wTiles, r.hTiles);
+    if (r.areaM2 > 85) r.role = 'openplan';
+    else if (r.areaM2 > 40) r.role = rng.pick(['openplan', 'meeting', 'breakroom', 'storage']);
+    else if (long > 2.1) r.role = rng.pick(['storage', 'copyroom', 'server']);
+    else r.role = rng.pick(['office', 'office', 'copyroom', 'storage', 'breakroom']);
+  }
+
+  // Guarantee the flavour rooms the floor is meant to have.
+  const wants = ['storage', 'copyroom', 'server', 'breakroom'];
+  const pool = rng.shuffle(rooms.filter((r) => r !== spawnRoom && r !== exitRoom));
+  wants.forEach((role, i) => { if (pool[i]) pool[i].role = role; });
+
+  spawnRoom.role = 'lobby';
+  exitRoom.role = 'exit';
+}
