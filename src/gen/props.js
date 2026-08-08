@@ -57,12 +57,19 @@ function monitorAt(p, x, z, rng) {
 // floor than the prop actually occupies, and the next prop is free to overlap
 // the difference. `tools/validate-props.mjs --catalogue` checks all three boxes
 // nest correctly.
+//
+// Two independent flags, and they are NOT the same thing:
+//   `mass` — the prop is loose. It becomes a rigid body you can shove around.
+//   `hp`   — the prop can be destroyed. Every prop has this.
+// A desk is heavy office furniture bolted to nothing but still doesn't skid when
+// you walk into it, so it is static-with-hp; a chair is both.
 
 export const PROPS = {
   desk: {
-    // Model + a monitor and a mug on top. Kept out of the destructible set: a
-    // model is one mesh, so there are no pieces for it to fall into.
-    w: 1.6, d: 0.8, model: 'desk',
+    // Drawn as a model, but `build` is still authored and still matters twice
+    // over: it is the fallback when the GLB is missing, and it is the set of
+    // pieces the desk comes apart into when it's destroyed.
+    w: 1.6, d: 0.8, model: 'desk', hp: 70,
     desktop: [
       { key: 'monitor', z: 0.16 },
       { key: 'keyboard', z: -0.18, chance: 0.85 },
@@ -99,7 +106,7 @@ export const PROPS = {
   },
 
   partition: {
-    w: 1.6, d: 0.12,
+    w: 1.6, d: 0.12, hp: 26,
     build(p) {
       p.box('partition', -0.8, 0.06, -0.05, 0.8, 1.38, 0.05);
       p.box('metal', -0.8, 1.38, -0.055, 0.8, 1.44, 0.055);
@@ -109,7 +116,7 @@ export const PROPS = {
   },
 
   cabinet: {
-    w: 0.52, d: 0.7, model: 'filing_cabinet',
+    w: 0.52, d: 0.7, model: 'filing_cabinet', hp: 60,
     build(p, rng) {
       const H = rng.chance(0.4) ? 1.32 : 0.72;
       p.box('metal', -0.25, 0, -0.33, 0.25, H, 0.33);
@@ -124,7 +131,7 @@ export const PROPS = {
   },
 
   shelving: {
-    w: 1.96, d: 0.62, model: 'shelving_unit',
+    w: 1.96, d: 0.62, model: 'shelving_unit', hp: 95,
     build(p, rng) {
       const H = 2.1;
       for (const sx of [-0.93, 0.93]) {
@@ -173,7 +180,7 @@ export const PROPS = {
   printer: {
     // 'copier' not 'printer': the latter model is a 24 cm desktop unit, and
     // this prop stands on the floor.
-    w: 0.86, d: 0.88, model: 'copier',
+    w: 0.86, d: 0.88, model: 'copier', hp: 55,
     build(p, rng) {
       const big = rng.chance(0.45);
       const H = big ? 1.15 : 0.78;
@@ -206,7 +213,7 @@ export const PROPS = {
   },
 
   sofa: {
-    w: 1.8, d: 0.82, model: 'sofa',
+    w: 1.8, d: 0.82, model: 'sofa', hp: 75,
     build(p) {
       p.box('fabric', -0.9, 0.1, -0.41, 0.9, 0.44, 0.41);
       p.box('fabric', -0.9, 0.44, 0.22, 0.9, 0.86, 0.41);
@@ -220,7 +227,7 @@ export const PROPS = {
   counter: {
     // No model: the candidates are all small appliances, and this is a whole
     // kitchenette run with a sink and a coffee machine on it.
-    w: 2.2, d: 0.66,
+    w: 2.2, d: 0.66, hp: 90,
     build(p, rng) {
       const H = 0.92;
       p.box('laminateDark', -1.1, H - 0.05, -0.33, 1.1, H, 0.33);
@@ -246,7 +253,7 @@ export const PROPS = {
   },
 
   vending: {
-    w: 1.04, d: 0.82, model: 'vending_machine',
+    w: 1.04, d: 0.82, model: 'vending_machine', hp: 120,
     build(p) {
       p.box('metalDark', -0.5, 0, -0.39, 0.5, 1.92, 0.39);
       p.box('screenOn', -0.42, 0.5, -0.4, 0.16, 1.76, -0.38);   // lit display window
@@ -257,7 +264,7 @@ export const PROPS = {
   },
 
   serverRack: {
-    w: 0.72, d: 1.06, model: 'server_rack',
+    w: 0.72, d: 1.06, model: 'server_rack', hp: 130,
     build(p, rng) {
       const H = 2.05;
       p.box('metalDark', -0.34, 0, -0.5, 0.34, H, 0.5);
@@ -273,7 +280,7 @@ export const PROPS = {
   },
 
   plant: {
-    w: 0.68, d: 0.68, model: 'tall_plant',
+    w: 0.68, d: 0.68, model: 'tall_plant', hp: 22,
     build(p, rng) {
       p.box('plastic', -0.16, 0, -0.16, 0.16, 0.34, 0.16);
       const blades = rng.int(4, 7);
@@ -290,7 +297,7 @@ export const PROPS = {
   },
 
   meetingTable: {
-    w: 3.1, d: 1.32, model: 'meeting_table',
+    w: 3.1, d: 1.32, model: 'meeting_table', hp: 100,
     build(p, rng) {
       const H = 0.75;
       p.box('laminateDark', -1.5, H - 0.06, -0.65, 1.5, H, 0.65);
@@ -311,9 +318,12 @@ export const PROPS = {
 // Emits `kind` at (cx,cz) if its footprint is clear. Returns whether it landed.
 //
 // Props carrying a `mass` are loose: they become rigid bodies instead of static
-// geometry, so shooting a chair sends it skidding across the carpet. Those that
-// also carry `hp` come apart when that runs out, into exactly the boxes they
-// were authored from.
+// geometry, so shooting a chair sends it skidding across the carpet. Every prop
+// carries `hp` and comes apart when that runs out, into exactly the boxes it was
+// authored from — including the model-backed ones, which is why a prop drawn as
+// a GLB still runs its `build` here. The boxes are captured without being
+// emitted (`captureBoxes`), so the model is what you see and the boxes are only
+// what it falls into.
 export function tryPlace(sink, kind, cx, cz, rot, rng) {
   const spec = PROPS[kind];
 
@@ -330,10 +340,20 @@ export function tryPlace(sink, kind, cx, cz, rot, rng) {
 
   if (!sink.canPlace(cx - w, cz - d, cx + w, cz + d)) return false;
 
-  if (model) {
+  if (spec.mass) {
+    // Loose: its own rigid body, and its own mesh so physics can move it.
+    sink.beginDynamic(spec.mass, spec.hp);
+    spec.build(placer(sink, cx, cz, rot), rng);
+    sink.endDynamic();
+  } else if (model) {
+    // The debris has to be worked out before the model is stamped, so the
+    // capture pass doesn't swallow the model's geometry along with it.
+    const debris = sink.captureBoxes(() => spec.build(placer(sink, cx, cz, rot), rng));
+
     // The quarter turns rotate the front from -Z toward +X, which is a negative
     // rotation about Y in Three's right-handed frame.
     const yaw = -rot * Math.PI / 2;
+    sink.beginStatic(spec.hp);
     sink.model(spec.model, cx, 0, cz, yaw);
     sink.obstacle(cx - w, cz - d, cx + w, cz + d, model.height);
 
@@ -346,10 +366,13 @@ export function tryPlace(sink, kind, cx, cz, rot, rng) {
         }
       }
     }
+    sink.endStatic(debris);
   } else {
-    if (spec.mass) sink.beginDynamic(spec.mass, spec.hp);
+    // Static boxes: the geometry it is drawn with is already the geometry it
+    // falls apart into, so there is nothing to capture separately.
+    sink.beginStatic(spec.hp);
     spec.build(placer(sink, cx, cz, rot), rng);
-    if (spec.mass) sink.endDynamic();
+    sink.endStatic();
   }
 
   sink.occupy(cx - w, cz - d, cx + w, cz + d);

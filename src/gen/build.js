@@ -20,6 +20,12 @@ const MIN_WINDOW_RUN = 6;      // tiles (3 m) — shorter runs aren't worth glaz
 const MAX_WINDOW_DEPTH = 7;    // tiles in from the facade before it's not a facade
 const LIGHT_PITCH = 4;         // metres between ceiling fixtures
 
+// Glass and ceiling tubes are one-shot from any weapon on purpose: they are
+// scenery you interact with, not cover you have to grind through.
+const GLASS_HP = 1;
+const PANEL_HP = 1;
+const GLASS_OFFSET = 0.03;     // metres the glazing sits in front of the sky
+
 export function buildLevel(scene, layout) {
   const { materials } = getAssets();
   const { W, H, tiles, rng } = layout;
@@ -34,15 +40,17 @@ export function buildLevel(scene, layout) {
   const occupied = new Uint8Array(W * H);  // footprint of anything already placed
   const reserved = new Uint8Array(W * H);  // doorways, spawn, exit — keep clear
   const dynamics = [];                     // loose props handed to the physics world
+  const destructibles = [];                // everything static that can be shot apart
 
   reserveClearances(layout, reserved);
 
   buildShell(layout, batcher, materials, colliders);
   buildDoorFrames(layout, batcher, materials);
-  buildWindows(layout, batcher, materials, fixtures);
-  buildCeilingLights(layout, batcher, materials, fixtures);
+  buildWindows(layout, batcher, materials, fixtures, destructibles);
+  buildCeilingLights(layout, batcher, materials, fixtures, destructibles);
 
-  const sink = makeSink(layout, batcher, materials, { blocked, occupied, reserved, colliders, dynamics });
+  const sink = makeSink(layout, batcher, materials,
+    { blocked, occupied, reserved, colliders, dynamics, destructibles });
   furnishRooms(layout, sink, rng);
   furnishCorridors(layout, sink, rng);
 
@@ -69,6 +77,7 @@ export function buildLevel(scene, layout) {
     objects,         // everything added to the scene, for teardown
     colliders,
     dynamics,
+    destructibles,
     fixtures,
     exitObject,
     nav: { W, H, TILE, ox: layout.ox, oz: layout.oz, walk, tiles },
@@ -166,7 +175,7 @@ function buildDoorFrames(layout, batcher, materials) {
 // Walks in from each facade to find the first open tile in every row/column;
 // where a long enough stretch sits at the same depth, that's an outside wall
 // worth glazing.
-function buildWindows(layout, batcher, materials, fixtures) {
+function buildWindows(layout, batcher, materials, fixtures, destructibles) {
   const { W, H, tiles } = layout;
 
   const sides = [
@@ -179,7 +188,9 @@ function buildWindows(layout, batcher, materials, fixtures) {
   for (const side of sides) {
     let run = null;
     const flush = () => {
-      if (run && run.to - run.from >= MIN_WINDOW_RUN) emitWindow(layout, batcher, materials, fixtures, side, run);
+      if (run && run.to - run.from >= MIN_WINDOW_RUN) {
+        emitWindow(layout, batcher, materials, fixtures, destructibles, side, run);
+      }
       run = null;
     };
 
@@ -196,7 +207,7 @@ function buildWindows(layout, batcher, materials, fixtures) {
   }
 }
 
-function emitWindow(layout, batcher, materials, fixtures, side, run) {
+function emitWindow(layout, batcher, materials, fixtures, destructibles, side, run) {
   const { W, H } = layout;
   // Depth is measured from the grid edge; convert to the face of the wall that
   // the room actually sees, then pull the glass just clear of it.
@@ -207,6 +218,10 @@ function emitWindow(layout, batcher, materials, fixtures, side, run) {
   const a1 = (side.axis === 'x' ? worldZ : worldX)(layout, run.to);
   const facingPositive = side.outward < 0;   // glass faces back into the building
 
+  // The sky is a permanent backdrop, not the window. Behind it is solid wall —
+  // the shell is never cut — so if the sky went away with the glass, shooting a
+  // window out would replace the view with grey drywall and read as a bug.
+  // Leaving it and taking only the glazing away is what makes it read right.
   batcher.add('window', materials.window,
     paneQuad(side.axis, at, a0, a1, WINDOW_Y0, WINDOW_Y1, facingPositive),
     { castShadow: false, receiveShadow: false });
@@ -223,24 +238,74 @@ function emitWindow(layout, batcher, materials, fixtures, side, run) {
   push(a1 - 0.06, a1, WINDOW_Y0, WINDOW_Y1);
   push(a0, a1, WINDOW_Y0 - 0.06, WINDOW_Y0);
   push(a0, a1, WINDOW_Y1, WINDOW_Y1 + 0.06);
-  const mullions = Math.max(1, Math.round((a1 - a0) / 1.6));
-  for (let m = 1; m < mullions; m++) {
-    const t = a0 + (a1 - a0) * (m / mullions);
+  const bays = Math.max(1, Math.round((a1 - a0) / 1.6));
+  for (let m = 1; m < bays; m++) {
+    const t = a0 + (a1 - a0) * (m / bays);
     push(t - 0.03, t + 0.03, WINDOW_Y0, WINDOW_Y1);
   }
 
   // Daylight spilling in, as a cool counterpoint to the warm ceiling tubes.
+  const daylight = [];
   const steps = Math.max(1, Math.round((a1 - a0) / 4));
   for (let s = 0; s < steps; s++) {
     const t = a0 + (a1 - a0) * ((s + 0.5) / steps);
     const inset = side.outward * -1.1;
-    fixtures.push({
+    const fixture = {
       x: side.axis === 'x' ? at + inset : t,
       y: 1.9,
       z: side.axis === 'x' ? t : at + inset,
       color: 0xbcd6f0, intensity: 6, distance: 9,
+      at: t,
+    };
+    fixtures.push(fixture);
+    daylight.push(fixture);
+  }
+
+  // The glazing: one destructible pane per bay, a few centimetres inside the
+  // sky, so a window comes out a bay at a time rather than a whole facade run.
+  const glassAt = at - side.outward * GLASS_OFFSET;
+  for (let b = 0; b < bays; b++) {
+    const b0 = a0 + (a1 - a0) * (b / bays);
+    const b1 = a0 + (a1 - a0) * ((b + 1) / bays);
+
+    const spans = batcher.beginSpans();
+    batcher.add('glass', materials.glass,
+      paneQuad(side.axis, glassAt, b0 + 0.03, b1 - 0.03, WINDOW_Y0, WINDOW_Y1, facingPositive),
+      { castShadow: false, receiveShadow: false });
+    batcher.endSpans();
+
+    destructibles.push({
+      kind: 'glass',
+      hp: GLASS_HP,
+      spans,
+      colliders: [],
+      navTiles: [],
+      // Losing the daylight when the pane goes is a gameplay call, not a
+      // physical one: shooting the windows out is a way to darken a room.
+      fixtures: daylight.filter((f) => f.at >= b0 && f.at < b1),
+      parts: glassShards(side.axis, glassAt, b0, b1, materials.glass),
+      broken: false,
     });
   }
+}
+
+// A pane falls into a 2 x 2 of slabs — deliberately not random, so the pieces
+// always add back up to the pane that was there a moment ago.
+function glassShards(axis, at, b0, b1, material) {
+  const shards = [];
+  const T = 0.012;
+  for (let i = 0; i < 2; i++) {
+    for (let j = 0; j < 2; j++) {
+      const c0 = b0 + (b1 - b0) * (i / 2) + 0.02;
+      const c1 = b0 + (b1 - b0) * ((i + 1) / 2) - 0.02;
+      const y0 = WINDOW_Y0 + (WINDOW_Y1 - WINDOW_Y0) * (j / 2) + 0.02;
+      const y1 = WINDOW_Y0 + (WINDOW_Y1 - WINDOW_Y0) * ((j + 1) / 2) - 0.02;
+      shards.push(axis === 'x'
+        ? { material, x0: at - T, y0, z0: c0, x1: at + T, y1, z1: c1 }
+        : { material, x0: c0, y0, z0: at - T, x1: c1, y1, z1: at + T });
+    }
+  }
+  return shards;
 }
 
 // A vertical quad, with its UVs scaled so the sky texture keeps a constant
@@ -272,16 +337,38 @@ function paneQuad(axis, at, a0, a1, y0, y1, facingPositive) {
 // sample points and come out with no ceiling light at all — a pitch-black
 // office in the middle of a lit floor. Walking the rooms guarantees every one
 // gets at least a fixture at its centre.
-function buildCeilingLights(layout, batcher, materials, fixtures) {
+function buildCeilingLights(layout, batcher, materials, fixtures, destructibles) {
   const { W, H, tiles } = layout;
 
   const addFixture = (x, z, alongX) => {
     const hw = alongX ? 0.62 : 0.16;
     const hd = alongX ? 0.16 : 0.62;
+
+    const spans = batcher.beginSpans();
     batcher.add('panel', materials.panel,
       slab(x - hw, z - hd, x + hw, z + hd, CEIL_H - 0.015, false),
       { castShadow: false, receiveShadow: false });
-    fixtures.push({ x, y: CEIL_H - 0.12, z, color: 0xfff4de, intensity: 16, distance: 11 });
+    batcher.endSpans();
+
+    const fixture = { x, y: CEIL_H - 0.12, z, color: 0xfff4de, intensity: 16, distance: 11 };
+    fixtures.push(fixture);
+
+    // Shooting the tube out kills both halves of a fixture at once: the
+    // emissive panel that lights the whole floor for free, and the pool light
+    // that lights the room you're standing in.
+    destructibles.push({
+      kind: 'panel',
+      hp: PANEL_HP,
+      spans,
+      colliders: [],
+      navTiles: [],
+      fixtures: [fixture],
+      parts: [
+        { material: materials.panel, x0: x - hw, y0: CEIL_H - 0.05, z0: z - hd, x1: x, y1: CEIL_H - 0.02, z1: z + hd },
+        { material: materials.panel, x0: x, y0: CEIL_H - 0.05, z0: z - hd, x1: x + hw, y1: CEIL_H - 0.02, z1: z + hd },
+      ],
+      broken: false,
+    });
   };
 
   for (const room of layout.rooms) {
@@ -314,12 +401,17 @@ function buildCeilingLights(layout, batcher, materials, fixtures) {
 
 function makeSink(layout, batcher, materials, masks) {
   const { W, H, tiles } = layout;
-  const { blocked, occupied, reserved, colliders, dynamics } = masks;
+  const { blocked, occupied, reserved, colliders, dynamics, destructibles } = masks;
 
   // While a dynamic prop is being authored, its boxes are collected here
   // instead of going into the static batch — they need to stay a separate
   // mesh so physics can move them.
   let pending = null;
+  // A static prop being authored: everything it draws, blocks and collides
+  // with, gathered so all of it can be taken away in one go when it's shot.
+  let record = null;
+  // A dry run of a prop's `build`, collecting the boxes without drawing them.
+  let capture = null;
 
   // Tile range covering a world-space AABB.
   const range = (x0, z0, x1, z1) => ({
@@ -342,13 +434,16 @@ function makeSink(layout, batcher, materials, masks) {
   // inflates every prop to whole half-metre tiles — a 0.66 m cabinet would
   // block a full metre — which walls off gaps a body can plainly walk through
   // and leaves the enemies with a floorplan the player doesn't share.
-  const stampCentres = (mask, x0, z0, x1, z1) => {
+  const stampCentres = (mask, x0, z0, x1, z1, into) => {
     const tx0 = Math.max(0, Math.ceil((x0 - layout.ox) / TILE - 0.5));
     const tx1 = Math.min(W - 1, Math.floor((x1 - layout.ox) / TILE - 0.5));
     const ty0 = Math.max(0, Math.ceil((z0 - layout.oz) / TILE - 0.5));
     const ty1 = Math.min(H - 1, Math.floor((z1 - layout.oz) / TILE - 0.5));
     for (let ty = ty0; ty <= ty1; ty++) {
-      for (let tx = tx0; tx <= tx1; tx++) mask[ty * W + tx] = 1;
+      for (let tx = tx0; tx <= tx1; tx++) {
+        mask[ty * W + tx] = 1;
+        into?.push(ty * W + tx);
+      }
     }
   };
 
@@ -368,21 +463,26 @@ function makeSink(layout, batcher, materials, masks) {
     occupy(x0, z0, x1, z1) { stamp(occupied, x0, z0, x1, z1); },
 
     box(key, x0, y0, z0, x1, y1, z1) {
-      if (pending) pending.boxes.push({ key, x0, y0, z0, x1, y1, z1 });
-      else batcher.add(key, materials[key], boxBetween(x0, y0, z0, x1, y1, z1));
+      const b = { key, x0, y0, z0, x1, y1, z1 };
+      if (capture) { capture.push(b); return; }
+      if (pending) { pending.boxes.push(b); return; }
+      batcher.add(key, materials[key], boxBetween(x0, y0, z0, x1, y1, z1));
+      record?.boxes.push(b);
     },
 
     obstacle(x0, z0, x1, z1, top) {
       // A dynamic prop's footprint moves, so it can't become a static collider
-      // or a permanent hole in the nav grid.
-      if (pending) return;
-      colliders.push({ minX: x0, maxX: x1, minZ: z0, maxZ: z1, top });
+      // or a permanent hole in the nav grid. A dry run isn't there at all.
+      if (pending || capture) return;
+      const collider = { minX: x0, maxX: x1, minZ: z0, maxZ: z1, top };
+      colliders.push(collider);
+      record?.colliders.push(collider);
       // Anything the player can't step over blocks the enemies too. The
       // threshold has to match the player's step tolerance (STEP_EPS in
       // player.js): a sofa at 0.44 m and a plant pot at 0.34 m are both solid
       // to walk into, so leaving them out of the nav grid gave the enemies
       // routes straight through the furniture.
-      if (top > 0.3) stampCentres(blocked, x0, z0, x1, z1);
+      if (top > 0.3) stampCentres(blocked, x0, z0, x1, z1, record?.navTiles);
     },
 
     // --- downloaded models -------------------------------------------------
@@ -392,6 +492,48 @@ function makeSink(layout, batcher, materials, masks) {
     model(key, x, y, z, yaw) {
       return stampModel(key, x, y, z, yaw, (geometry, material) => {
         batcher.add(`mdl:${material.name || 'm'}:${material.id}`, material, geometry);
+      });
+    },
+
+    // Runs `fn` with everything it draws diverted into a list instead of into
+    // the world. Model-backed props use this to work out what they should break
+    // into without drawing the boxes they'd break into.
+    captureBoxes(fn) {
+      const previous = capture;
+      const boxes = [];
+      capture = boxes;
+      try { fn(); } finally { capture = previous; }
+      return boxes;
+    },
+
+    // --- static props ------------------------------------------------------
+
+    beginStatic(hp) {
+      record = hp > 0
+        ? { hp, boxes: [], colliders: [], navTiles: [], spans: batcher.beginSpans() }
+        : null;
+    },
+
+    // Files the prop away as one destructible unit: the vertex runs to erase,
+    // the colliders to retire, the nav tiles to give back, and the boxes to
+    // scatter. `debris` overrides the boxes it was drawn with, which is what a
+    // model-backed prop passes in.
+    endStatic(debris) {
+      const r = record;
+      record = null;
+      if (!r) return;
+      batcher.endSpans();
+      if (!r.spans.length) return;
+
+      destructibles.push({
+        kind: 'prop',
+        hp: r.hp,
+        spans: r.spans,
+        colliders: r.colliders,
+        navTiles: r.navTiles,
+        fixtures: [],
+        parts: (debris ?? r.boxes).map((b) => ({ ...b, material: materials[b.key] })),
+        broken: false,
       });
     },
 
