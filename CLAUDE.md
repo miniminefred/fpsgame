@@ -60,29 +60,60 @@ First time on a fresh clone: `npm install`.
 Verify in the browser before considering the task done. `npm run build` must also stay
 green (it type-checks the bundle and catches import mistakes HMR can hide).
 
+## The game
+
+**Office Descent** — an endless procedurally-generated office shooter. You arrive on a
+floor of a grey corporate building, clear the staff still working there, find the service
+hatch, and descend. The next floor is generated on the fly, a little bigger and a little
+nastier. There is no ground floor.
+
 ## Project layout
 
 ```
-index.html        Thin entry shell (overlay markup + <script src="/src/main.js">)
+index.html        Entry shell: overlay, HUD markup, minimap canvas
 vite.config.js    Dev/preview server pinned to port 8090
+tools/
+  validate-layout.mjs  Headless floorplan invariants (connectivity, doors, sealing)
+  validate-props.mjs   Headless furniture-placement invariants
 src/
   main.js         Bootstrap: wires modules, runs the render loop
-  scene.js        Renderer, scene, camera, lights, resize handling
-  world.js        Static world geometry (ground plane, grid, reference boxes)
-  input.js        Keyboard state + pointer-lock overlay wiring
-  player.js       Player class: PointerLockControls + movement + jump physics
-  style.css       All UI/overlay/crosshair styling
+  game.js         The run: floor progression, difficulty curves, destructible props
+  level.js        One floor's lifecycle — generate, animate the exit, dispose
+  scene.js        Renderer, camera, fog
+  lighting.js     Fill light + a pooled set of ceiling lights that follow the player
+  nav.js          Tile navigation: flow field, line of sight, walkability
+  enemies.js      Enemy types, AI state machine, gunfire and melee
+  player.js       PointerLockControls + movement + AABB collision + health
+  shooting.js     Hitscan: fire rate, ammo, spread, recoil, damage, prop impulses
+  weapons.js      Five GLB viewmodels, recoil/reload animation, per-gun combat stats
+  effects.js      Pooled tracers, impact flashes, bullet decals
+  physics.js      cannon-es rigid bodies for loose furniture
+  audio.js        Procedural WebAudio gunfire, clicks, hit pings
+  hud.js          Health, ammo, floor, objective, toasts, death screen
+  minimap.js      Per-floor floorplan raster + live player/enemy markers
+  textures.js     Procedural canvas textures and the shared material cache
+  style.css       All UI styling
+  gen/
+    layout.js     Floorplan: corridor spine + BSP room blocks + doors
+    build.js      Floorplan -> meshes, colliders, nav grid, lights, windows
+    props.js      Office furniture catalogue and per-room-role furnishing
+    geom.js       World-space UVs and the material/chunk geometry batcher
+    rects.js      Greedy tile-mask -> rectangle decomposition
+    rng.js        Seeded PRNG (every floor is reproducible from its seed)
 ```
 
 ## Tech stack
 
 - **Engine:** Three.js (npm `three`)
 - **Bundler / dev server:** Vite (`npm run dev` / `npm run build` / `npm run preview`)
-- **Rendering:** WebGL (`THREE.WebGLRenderer`, antialias + soft shadow maps)
+- **Rendering:** WebGL (`THREE.WebGLRenderer`, antialias, PCF shadow map)
 - **Camera:** `PerspectiveCamera` driven by `PointerLockControls`
-- **Input:** Pointer Lock API — click to grab the mouse, `Esc` to release
-- **Physics:** hand-rolled (gravity + ground clamp); no physics library yet
-- **Assets:** none — geometry and materials are created procedurally in code
+- **Physics:** `cannon-es` for loose props only. The player and enemies stay hand-rolled
+  and kinematic — putting a first-person player on a rigid body feels bad and is not worth
+  the fight.
+- **Assets:** weapon viewmodels and office props are CC0/CC-BY GLBs under `public/models`
+  (see the CREDITS files). Everything else — walls, floors, furniture, enemies, textures —
+  is generated procedurally in code.
 
 ## Controls
 
@@ -90,18 +121,63 @@ src/
 |-----|--------|
 | Mouse | Look around (when pointer is locked) |
 | W A S D | Move (relative to look direction) |
+| Shift | Sprint |
 | Space | Jump |
+| Left click | Shoot |
+| R | Reload |
+| 1 - 5 | Switch weapon (light to heavy) |
 | Esc | Release the mouse |
-| Click | Grab the mouse (lock pointer) |
+| Click | Grab the mouse / restart after dying |
 
 ## Key systems
 
-### Pointer lock (`input.js` + `player.js`)
-Clicking the canvas or overlay requests pointer lock; a centered overlay prompts for the
-click and hides while locked. `Esc` (browser default) exits lock and re-shows the overlay.
+### Floor generation (`gen/layout.js`)
+Real office floors are not mazes, so the generator does not build one. It carves a corridor
+spine first (2-4 vertical, 1-3 horizontal bands, guaranteed to intersect, so the corridor
+network is connected by construction), then BSP-subdivides each leftover block into rooms
+and cuts a doorway from each room onto whatever it touches. Corridor count scales with the
+slab: too few and BSP buries rooms three or four deep behind other rooms.
 
-### Movement (`player.js`)
-WASD sets a velocity in camera-local space each frame, projected onto the horizontal plane
-so pitch doesn't affect walk speed. Space jumps only when grounded. Gravity integrates
-vertical velocity; the player is clamped to eye height (1.7) on landing. `dt` is clamped to
-50 ms to avoid tunneling on lag spikes.
+Everything is a tile grid of `TILE` = 0.5 m cells. Walls are exactly one tile thick, which
+is why rooms are carved inset by one tile on their **min sides only** — two neighbouring
+rooms then share a single wall tile instead of stacking two.
+
+Two invariants are load-bearing and covered by `tools/validate-layout.mjs`: the floor is
+always fully connected from the spawn, and two doorways never merge into one wide hole
+(each room cuts its own door, so without a minimum wall stub the second lands flush
+against the first).
+
+### Geometry batching (`gen/geom.js`)
+A floor is tens of thousands of tiles. Runs of tiles are merged into maximal rectangles
+first (`gen/rects.js`), then batched **per material and per 12 m chunk**. Material-only
+batching would give few draw calls but one giant bounding box each, so every bullet
+raycast would test every triangle on the floor. Chunking keeps draw calls low while
+letting three's bounding-box test reject almost everything.
+
+All world surfaces use world-space UVs (one texture repeat = 2 m), so a texture never
+stretches differently on a long wall than on a short one.
+
+### Lighting (`lighting.js`)
+Ceiling fixtures are emissive panels in the batched geometry — visible floor-wide and free.
+A **fixed** pool of 12 point lights is then re-homed every few frames onto the nearest
+fixtures; the pool never grows or shrinks, so materials compile once. Candidates are
+filtered by line of sight, because shadowless point lights otherwise shine straight through
+walls and light the ceiling of the room next door.
+
+Fixtures are placed per room and then along corridors, never on one global grid — rooms are
+only ~4.5 m across at the smallest, so a global grid leaves some rooms pitch black.
+
+### Enemies (`enemies.js` + `nav.js`)
+Everyone chases the same target, so instead of pathfinding per enemy one BFS distance field
+is flooded from the player and every enemy walks downhill on it. Six types share one rig
+with different numbers and colours; the visor colour tells you what is about to happen.
+Melee types swing office junk (fire extinguishers, keyboards, monitors) and land the hit
+part-way through the swing, so you can back out of reach.
+
+Gunfire spread is sampled as a real angle and converted into a miss distance at your range,
+so backing off genuinely makes you harder to hit.
+
+### Destructible props (`game.js` + `physics.js`)
+Loose furniture is authored as a handful of boxes, so breaking it apart is just "re-emit
+each of those boxes as its own rigid body" — the pieces it falls into are the pieces it was
+built from. Fragments are capped and time out, so a long run cannot grow the body count.
