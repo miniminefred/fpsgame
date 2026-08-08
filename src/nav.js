@@ -1,4 +1,4 @@
-import { SOLID } from './gen/layout.js';
+import { SOLID, isOpen } from './gen/layout.js';
 
 // Navigation over the floor's tile grid.
 //
@@ -42,6 +42,40 @@ export class NavGrid {
         if (this.clear(this.wx(tx), this.wz(ty), BODY_RADIUS)) this.fits[ty * this.W + tx] = 1;
       }
     }
+  }
+
+  // A destroyed prop stops standing in the enemies' way. `indices` are the tiles
+  // it was blocking, recorded when it was placed.
+  //
+  // Reopening a tile is not enough on its own: pathing runs on `fits`, the grid
+  // eroded by the body radius, so the neighbours of a freed tile can become
+  // passable too. They are re-tested out to the erosion radius, and the distance
+  // field is invalidated so the next update floods through the new gap instead
+  // of leaving everyone walking into a desk that is no longer there.
+  openTiles(indices) {
+    if (!indices?.length) return;
+
+    let opened = false;
+    for (const i of indices) {
+      if (this.walk[i] || !isOpen(this.tiles[i])) continue;
+      this.walk[i] = 1;
+      opened = true;
+    }
+    if (!opened) return;
+
+    const R = Math.ceil(BODY_RADIUS / this.TILE) + 1;
+    for (const i of indices) {
+      const cx = i % this.W, cy = (i / this.W) | 0;
+      for (let ty = cy - R; ty <= cy + R; ty++) {
+        for (let tx = cx - R; tx <= cx + R; tx++) {
+          if (!this.inBounds(tx, ty)) continue;
+          const j = ty * this.W + tx;
+          this.fits[j] = this.walk[j] && this.clear(this.wx(tx), this.wz(ty), BODY_RADIUS) ? 1 : 0;
+        }
+      }
+    }
+
+    this.fieldAge = Infinity;
   }
 
   tx(x) { return Math.floor((x - this.ox) / this.TILE); }

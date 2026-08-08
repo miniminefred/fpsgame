@@ -48,6 +48,13 @@ function build() {
       // --- ceiling light panels and windows (unlit so they stay bright)
       panel: new THREE.MeshBasicMaterial({ color: 0xfdfbf2 }),
       window: new THREE.MeshBasicMaterial({ map: texture(skyPane()), color: 0xffffff }),
+      // The glazing itself, a few centimetres in front of the sky: nearly
+      // invisible until a light catches it, which is the point — you notice the
+      // sheen going away when you shoot a pane out, and the view stays.
+      glass: new THREE.MeshStandardMaterial({
+        color: 0xdfeaf2, roughness: 0.04, metalness: 0.1,
+        transparent: true, opacity: 0.16, depthWrite: false,
+      }),
 
       // --- furniture
       laminate: flat(0xd7d3c9, 0.72),          // desk / table tops

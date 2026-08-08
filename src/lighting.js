@@ -83,6 +83,20 @@ export function createLighting(scene) {
     for (const l of lights) l.intensity = 0;
   }
 
+  // A shot-out ceiling tube or a broken window. Dropping it from the candidate
+  // list is not enough on its own — a pool light may already be sitting on it,
+  // and would keep burning there until the next re-home — so any light standing
+  // on the dead fixture is killed on the spot.
+  function removeFixture(fixture) {
+    const i = fixtures.indexOf(fixture);
+    if (i === -1) return;
+    fixtures.splice(i, 1);
+    for (const l of lights) {
+      if (l.position.distanceToSquared(fixture) < 1e-6) l.intensity = 0;
+    }
+    sinceRehome = REHOME_INTERVAL;
+  }
+
   // The pool lights cast no shadows — twelve shadowed point lights would cost
   // six cube faces each — so on their own they shine straight through walls and
   // light up the ceiling of the room next door. Filtering candidates by line of
@@ -156,5 +170,5 @@ export function createLighting(scene) {
     sun.dispose();
   }
 
-  return { setFixtures, setOcclusion, update, dispose, sun };
+  return { setFixtures, removeFixture, setOcclusion, update, dispose, sun };
 }
