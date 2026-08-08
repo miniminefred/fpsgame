@@ -28,10 +28,13 @@ export function createLighting(scene) {
   // fill has to carry every room you can see but aren't standing in. Erring
   // bright here is deliberate: this is a strip-lit office, not a horror game,
   // and a corridor you can't read is just frustrating.
-  const hemi = new THREE.HemisphereLight(0xe8f0f8, 0x4a4d52, 1.05);
+  // Enough that no room is ever unreadable, but not so much that the fixtures
+  // stop mattering — the pools of light under the ceiling tubes are what give
+  // a flat white corridor any shape at all.
+  const hemi = new THREE.HemisphereLight(0xe8f0f8, 0x484c52, 0.82);
   scene.add(hemi);
 
-  const ambient = new THREE.AmbientLight(0xc6cfd8, 0.5);
+  const ambient = new THREE.AmbientLight(0xc6cfd8, 0.36);
   scene.add(ambient);
 
   const sun = new THREE.DirectionalLight(0xfff4e2, 0.85);
