@@ -104,7 +104,9 @@ export class Player {
     const pos = this.object.position;
     this.dt = dt;
 
-    if (this.controls.isLocked && !this.dead) {
+    // `engaged` rather than `isLocked`: if the browser refused mouse capture the
+    // game still has to be playable (see setupPointerLock's fallback look).
+    if ((this.controls.isLocked || this.controls.engaged) && !this.dead) {
       camera.getWorldDirection(this._forward);
       this._forward.y = 0;
       this._forward.normalize();

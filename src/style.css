@@ -284,3 +284,25 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
   border: 1px solid var(--line); background: rgba(255, 255, 255, 0.05);
   color: var(--ink-dim); font-family: inherit; font-size: 11px;
 }
+
+/* Shown only when the browser refused mouse capture and we fell back to
+   position-delta look, so the player knows why the cursor is still visible. */
+#lock-hint {
+  position: fixed;
+  left: 50%;
+  bottom: 12%;
+  transform: translateX(-50%);
+  z-index: 9;
+  padding: 6px 14px;
+  border: 1px solid rgba(127, 216, 232, 0.35);
+  border-radius: 2px;
+  background: rgba(10, 14, 18, 0.72);
+  color: #cfe3ea;
+  font: 400 12px/1.4 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+#lock-hint.visible { opacity: 1; }

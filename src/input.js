@@ -1,3 +1,5 @@
+import { Euler } from 'three';
+
 // Keyboard state + pointer-lock overlay wiring.
 
 export function createInput() {
@@ -63,52 +65,93 @@ function setKey(keys, code, down) {
 // So we listen for pointerlockerror, tell the player what happened, and retry
 // once the cooldown has passed rather than leaving them stuck at a dead overlay.
 const RELOCK_COOLDOWN = 1400;
+const LOOK_SENSITIVITY = 0.002;   // radians per pixel, matching PointerLockControls
+const PITCH_LIMIT = Math.PI / 2 - 0.02;
 
 export function setupPointerLock(controls, domElement) {
   const overlay = document.getElementById('overlay');
   const crosshair = document.getElementById('crosshair');
-  const cta = overlay?.querySelector('.cta');
-  const ctaText = cta?.textContent ?? '';
+  const hint = document.getElementById('lock-hint');
+  const camera = controls.object;
+  const euler = new Euler(0, 0, 0, 'YXZ');
 
   let retry = 0;
-  let wanted = false;
+  let lastX = null;
+  let lastY = null;
+
+  // `engaged` means the player has asked to play, whether or not the browser
+  // actually granted mouse capture. Everything downstream keys off this rather
+  // than off isLocked, so a refused lock can never leave the game unplayable.
+  controls.engaged = false;
+
+  const setEngaged = (on, fallback) => {
+    controls.engaged = on;
+    overlay?.classList.toggle('hidden', on);
+    crosshair?.classList.toggle('visible', on);
+    if (hint) hint.classList.toggle('visible', on && fallback);
+    lastX = lastY = null;
+  };
 
   const request = () => {
     if (controls.isLocked) return;
-    wanted = true;
+    // Engage immediately. If the lock lands, the 'lock' event confirms it; if
+    // it doesn't, we are already playing in fallback look mode.
+    setEngaged(true, true);
     try {
       controls.lock();
     } catch {
-      // Swallowed: the pointerlockerror handler below owns recovery.
+      // Swallowed: pointerlockerror below owns recovery.
     }
   };
 
   domElement.addEventListener('click', request);
-  // The model harness has no overlay, so neither element is required to exist.
+  // The model harness has no overlay, so none of these elements need exist.
   overlay?.addEventListener('click', request);
 
   document.addEventListener('pointerlockerror', () => {
-    if (!wanted || controls.isLocked) return;
-    if (cta) cta.textContent = 'Mouse capture blocked — retrying…';
+    if (controls.isLocked) return;
     clearTimeout(retry);
+    // Chrome refuses a re-lock for ~1.25 s after Esc, and refuses outright when
+    // the window isn't focused. Try once more, but keep playing either way.
     retry = setTimeout(() => {
-      if (cta) cta.textContent = ctaText;
-      // One automatic retry; after that the next click is the player's move.
-      if (wanted && !controls.isLocked && document.hasFocus()) request();
+      if (controls.engaged && !controls.isLocked && document.hasFocus()) {
+        try { controls.lock(); } catch { /* stay in fallback */ }
+      }
     }, RELOCK_COOLDOWN);
   });
 
+  // Fallback look: with no capture there is no movementX, so turn on the delta
+  // between successive cursor positions instead. Same maths as
+  // PointerLockControls, so the two modes feel identical.
+  addEventListener('mousemove', (event) => {
+    if (controls.isLocked || !controls.engaged) return;
+
+    if (lastX !== null) {
+      euler.setFromQuaternion(camera.quaternion);
+      euler.y -= (event.clientX - lastX) * LOOK_SENSITIVITY;
+      euler.x -= (event.clientY - lastY) * LOOK_SENSITIVITY;
+      euler.x = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, euler.x));
+      camera.quaternion.setFromEuler(euler);
+    }
+    lastX = event.clientX;
+    lastY = event.clientY;
+  });
+
+  // Without a real lock there is nothing for Esc to exit, so it has to release
+  // fallback mode by hand or the player has no way back to the menu.
+  addEventListener('keydown', (event) => {
+    if (event.code === 'Escape' && controls.engaged && !controls.isLocked) {
+      clearTimeout(retry);
+      setEngaged(false, false);
+    }
+  });
+
   controls.addEventListener('lock', () => {
-    wanted = true;
     clearTimeout(retry);
-    if (cta) cta.textContent = ctaText;
-    overlay?.classList.add('hidden');
-    crosshair?.classList.add('visible');
+    setEngaged(true, false);
   });
   controls.addEventListener('unlock', () => {
-    wanted = false;
     clearTimeout(retry);
-    overlay?.classList.remove('hidden');
-    crosshair?.classList.remove('visible');
+    setEngaged(false, false);
   });
 }

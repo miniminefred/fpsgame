@@ -97,7 +97,7 @@ export class Shooting {
     const pressed = this.keys.firePressed;
     this.keys.firePressed = false;   // consume the edge either way
 
-    if (!this.controls.isLocked) return;
+    if (!this.controls.isLocked && !this.controls.engaged) return;
 
     if (this.keys.reload) this.reload();
 
