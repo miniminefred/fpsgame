@@ -32,6 +32,7 @@ export function buildLevel(scene, layout) {
   const blocked = new Uint8Array(W * H);   // props too tall for an enemy to pass
   const occupied = new Uint8Array(W * H);  // footprint of anything already placed
   const reserved = new Uint8Array(W * H);  // doorways, spawn, exit — keep clear
+  const dynamics = [];                     // loose props handed to the physics world
 
   reserveClearances(layout, reserved);
 
@@ -40,12 +41,19 @@ export function buildLevel(scene, layout) {
   buildWindows(layout, batcher, materials, fixtures);
   buildCeilingLights(layout, batcher, materials, fixtures);
 
-  const sink = makeSink(layout, batcher, materials, { blocked, occupied, reserved, colliders });
+  const sink = makeSink(layout, batcher, materials, { blocked, occupied, reserved, colliders, dynamics });
   furnishRooms(layout, sink, rng);
   furnishCorridors(layout, sink, rng);
 
   const meshes = batcher.build(scene);
   objects.push(...meshes);
+
+  // Loose props go in as their own meshes so physics can shove them around.
+  for (const dyn of dynamics) {
+    scene.add(dyn.group);
+    objects.push(dyn.group);
+    meshes.push(...dyn.group.children);
+  }
 
   const exitObject = buildExit(scene, layout, fixtures);
   objects.push(exitObject);
@@ -59,6 +67,7 @@ export function buildLevel(scene, layout) {
     meshes,          // raycast targets for bullets
     objects,         // everything added to the scene, for teardown
     colliders,
+    dynamics,
     fixtures,
     exitObject,
     nav: { W, H, TILE, ox: layout.ox, oz: layout.oz, walk, tiles },
@@ -108,34 +117,45 @@ function floorSlab(layout, r, y, up = true) {
 }
 
 const FRAME_T = 0.06;
-// The wall above a doorway starts *inside* the frame's header rather than
-// flush with its underside. Sharing that plane makes the two surfaces
-// co-planar, and the depth buffer then flickers between them as you move —
-// the classic z-fight. Overlapping them by half the frame depth buries the
-// wall's underside inside solid geometry where it can never be seen.
-const LINTEL_Y = DOOR_H + FRAME_T * 0.5;
 
-// A lintel over every doorway plus a frame down both jambs, so an opening reads
-// as a door and not as a hole somebody knocked in the wall.
+// A doorway is three pieces of geometry meeting in the same few centimetres —
+// the wall above it, the header, and the jambs — and every shared plane between
+// them is a z-fight waiting to happen. Two rules keep it clean:
+//
+//  1. The frame LINES the opening rather than sitting flush with its mouth. A
+//     jamb spanning the last tile of wall would put its inner face exactly on
+//     the wall's reveal face, both pointing the same way; moving it just inside
+//     the opening puts the two faces back-to-back instead, where backface
+//     culling deals with them.
+//  2. Nothing abuts — everything OVERLAPS. The wall above starts half a frame
+//     depth *inside* the header, and the jambs run half a frame depth *into* it,
+//     so every buried face ends up strictly inside solid geometry instead of
+//     level with another face.
+const LINTEL_Y = DOOR_H + FRAME_T * 0.5;
+const JAMB_TOP = DOOR_H + FRAME_T * 0.5;
+
 function buildDoorFrames(layout, batcher, materials) {
   for (const d of layout.doors) {
     const x0 = worldX(layout, d.x0), x1 = worldX(layout, d.x1);
     const z0 = worldZ(layout, d.y0), z1 = worldZ(layout, d.y1);
     const T = FRAME_T;
 
+    const frame = (a0, b0, c0, a1, b1, c1) =>
+      batcher.add('doorframe', materials.doorframe, boxBetween(a0, b0, c0, a1, b1, c1));
+
     batcher.add('wall', materials.wall,
       applyWorldUVs(boxBetween(x0, LINTEL_Y, z0, x1, WALL_H, z1)));
 
-    // Jambs sit buried in the wall along the opening's axis and proud of both
-    // wall faces across it, which is exactly how a door casing reads.
     if (d.vertical) {
-      batcher.add('doorframe', materials.doorframe, boxBetween(x0 - T, 0, z0 - T, x1 + T, DOOR_H + T, z0));
-      batcher.add('doorframe', materials.doorframe, boxBetween(x0 - T, 0, z1, x1 + T, DOOR_H + T, z1 + T));
-      batcher.add('doorframe', materials.doorframe, boxBetween(x0 - T, DOOR_H, z0, x1 + T, DOOR_H + T, z1));
+      // Wall runs along Z, one tile thick in X; the opening spans z0..z1.
+      frame(x0 - T, 0, z0, x1 + T, JAMB_TOP, z0 + T);
+      frame(x0 - T, 0, z1 - T, x1 + T, JAMB_TOP, z1);
+      frame(x0 - T, DOOR_H, z0, x1 + T, DOOR_H + T, z1);
     } else {
-      batcher.add('doorframe', materials.doorframe, boxBetween(x0 - T, 0, z0 - T, x0, DOOR_H + T, z1 + T));
-      batcher.add('doorframe', materials.doorframe, boxBetween(x1, 0, z0 - T, x1 + T, DOOR_H + T, z1 + T));
-      batcher.add('doorframe', materials.doorframe, boxBetween(x0, DOOR_H, z0 - T, x1, DOOR_H + T, z1 + T));
+      // Wall runs along X, one tile thick in Z; the opening spans x0..x1.
+      frame(x0, 0, z0 - T, x0 + T, JAMB_TOP, z1 + T);
+      frame(x1 - T, 0, z0 - T, x1, JAMB_TOP, z1 + T);
+      frame(x0, DOOR_H, z0 - T, x1, DOOR_H + T, z1 + T);
     }
   }
 }
@@ -245,25 +265,46 @@ function paneQuad(axis, at, a0, a1, y0, y1, facingPositive) {
 
 // --- ceiling lights ---------------------------------------------------------
 
+// Fixtures are placed per room and then along the corridors, NOT on one global
+// grid. A global grid seems simpler, but rooms are only ~4.5 m across at the
+// smallest and the grid pitch is 4 m, so a room could easily fall between
+// sample points and come out with no ceiling light at all — a pitch-black
+// office in the middle of a lit floor. Walking the rooms guarantees every one
+// gets at least a fixture at its centre.
 function buildCeilingLights(layout, batcher, materials, fixtures) {
   const { W, H, tiles } = layout;
-  const step = Math.round(LIGHT_PITCH / TILE);
 
+  const addFixture = (x, z, alongX) => {
+    const hw = alongX ? 0.62 : 0.16;
+    const hd = alongX ? 0.16 : 0.62;
+    batcher.add('panel', materials.panel,
+      slab(x - hw, z - hd, x + hw, z + hd, CEIL_H - 0.015, false),
+      { castShadow: false, receiveShadow: false });
+    fixtures.push({ x, y: CEIL_H - 0.12, z, color: 0xfff4de, intensity: 16, distance: 11 });
+  };
+
+  for (const room of layout.rooms) {
+    const x0 = worldX(layout, room.x0), x1 = worldX(layout, room.x1);
+    const z0 = worldZ(layout, room.y0), z1 = worldZ(layout, room.y1);
+    const nx = Math.max(1, Math.round((x1 - x0) / LIGHT_PITCH));
+    const nz = Math.max(1, Math.round((z1 - z0) / LIGHT_PITCH));
+    const alongX = (x1 - x0) >= (z1 - z0);
+
+    for (let i = 0; i < nx; i++) {
+      for (let j = 0; j < nz; j++) {
+        addFixture(x0 + (x1 - x0) * ((i + 0.5) / nx), z0 + (z1 - z0) * ((j + 0.5) / nz), alongX);
+      }
+    }
+  }
+
+  // Corridors are 6 tiles wide, so a 6-tile lattice always lands on them a few
+  // times along their length. Tubes run the way the corridor runs.
+  const step = 6;
   for (let ty = step; ty < H - step; ty += step) {
     for (let tx = step; tx < W - step; tx += step) {
-      if (!isOpen(tiles[ty * W + tx])) continue;
-
-      const x = worldX(layout, tx + 0.5);
-      const z = worldZ(layout, ty + 0.5);
-      const along = tiles[ty * W + tx] === CORRIDOR;   // tubes run down corridors
-      const hw = along ? 0.16 : 0.6;
-      const hd = along ? 0.6 : 0.16;
-
-      batcher.add('panel', materials.panel,
-        slab(x - hw, z - hd, x + hw, z + hd, CEIL_H - 0.015, false),
-        { castShadow: false, receiveShadow: false });
-
-      fixtures.push({ x, y: CEIL_H - 0.12, z, color: 0xfff4de, intensity: 16, distance: 11 });
+      if (tiles[ty * W + tx] !== CORRIDOR) continue;
+      const runX = tiles[ty * W + tx - 4] === CORRIDOR && tiles[ty * W + tx + 4] === CORRIDOR;
+      addFixture(worldX(layout, tx + 0.5), worldZ(layout, ty + 0.5), runX);
     }
   }
 }
@@ -272,7 +313,12 @@ function buildCeilingLights(layout, batcher, materials, fixtures) {
 
 function makeSink(layout, batcher, materials, masks) {
   const { W, H, tiles } = layout;
-  const { blocked, occupied, reserved, colliders } = masks;
+  const { blocked, occupied, reserved, colliders, dynamics } = masks;
+
+  // While a dynamic prop is being authored, its boxes are collected here
+  // instead of going into the static batch — they need to stay a separate
+  // mesh so physics can move them.
+  let pending = null;
 
   // Tile range covering a world-space AABB.
   const range = (x0, z0, x1, z1) => ({
@@ -305,13 +351,71 @@ function makeSink(layout, batcher, materials, masks) {
     occupy(x0, z0, x1, z1) { stamp(occupied, x0, z0, x1, z1); },
 
     box(key, x0, y0, z0, x1, y1, z1) {
-      batcher.add(key, materials[key], boxBetween(x0, y0, z0, x1, y1, z1));
+      if (pending) pending.boxes.push({ key, x0, y0, z0, x1, y1, z1 });
+      else batcher.add(key, materials[key], boxBetween(x0, y0, z0, x1, y1, z1));
     },
 
     obstacle(x0, z0, x1, z1, top) {
+      // A dynamic prop's footprint moves, so it can't become a static collider
+      // or a permanent hole in the nav grid.
+      if (pending) return;
       colliders.push({ minX: x0, maxX: x1, minZ: z0, maxZ: z1, top });
       // Anything knee-high or taller stops an enemy from walking through it.
       if (top >= 0.5) stamp(blocked, x0, z0, x1, z1);
+    },
+
+    beginDynamic(mass, hp) { pending = { mass, hp, boxes: [] }; },
+
+    // Turns the collected boxes into one free-standing group whose origin sits
+    // at the centre of their combined bounds — which is exactly where the
+    // physics body's origin is, so syncing the two is a straight copy.
+    endDynamic() {
+      const p = pending;
+      pending = null;
+      if (!p || !p.boxes.length) return;
+
+      let minX = Infinity, minY = Infinity, minZ = Infinity;
+      let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+      for (const b of p.boxes) {
+        minX = Math.min(minX, b.x0); maxX = Math.max(maxX, b.x1);
+        minY = Math.min(minY, b.y0); maxY = Math.max(maxY, b.y1);
+        minZ = Math.min(minZ, b.z0); maxZ = Math.max(maxZ, b.z1);
+      }
+
+      const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2, cz = (minZ + maxZ) / 2;
+      const group = new THREE.Group();
+      group.position.set(cx, cy, cz);
+
+      // The parts list is kept in the group's local space so that breaking the
+      // prop apart is just "re-emit each of these as its own body" — the boxes
+      // it was authored from are already the pieces it should fall into.
+      const parts = [];
+      for (const b of p.boxes) {
+        const local = {
+          key: b.key,
+          material: materials[b.key],
+          x0: b.x0 - cx, y0: b.y0 - cy, z0: b.z0 - cz,
+          x1: b.x1 - cx, y1: b.y1 - cy, z1: b.z1 - cz,
+        };
+        parts.push(local);
+
+        const mesh = new THREE.Mesh(
+          boxBetween(local.x0, local.y0, local.z0, local.x1, local.y1, local.z1),
+          materials[b.key]
+        );
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        group.add(mesh);
+      }
+
+      dynamics.push({
+        group,
+        parts,
+        mass: p.mass,
+        hp: p.hp ?? 0,
+        size: { x: maxX - minX, y: maxY - minY, z: maxZ - minZ },
+        position: { x: cx, y: cy, z: cz },
+      });
     },
   };
 }

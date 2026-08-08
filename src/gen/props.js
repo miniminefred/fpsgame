@@ -74,7 +74,7 @@ export const PROPS = {
   },
 
   chair: {
-    w: 0.62, d: 0.62,
+    w: 0.62, d: 0.62, mass: 9, hp: 45,
     build(p) {
       p.box('metalDark', -0.22, 0.02, -0.22, 0.22, 0.08, 0.22);   // star base
       p.box('metalDark', -0.04, 0.08, -0.04, 0.04, 0.42, 0.04);   // gas lift
@@ -137,7 +137,7 @@ export const PROPS = {
   },
 
   crateStack: {
-    w: 0.66, d: 0.66,
+    w: 0.66, d: 0.66, mass: 6, hp: 28,
     build(p, rng) {
       let y = 0;
       const layers = rng.int(1, 3);
@@ -172,7 +172,7 @@ export const PROPS = {
   },
 
   coffeeTable: {
-    w: 1.1, d: 0.7,
+    w: 1.1, d: 0.7, mass: 14, hp: 60,
     build(p, rng) {
       const H = 0.42;
       p.box('laminateDark', -0.52, H - 0.05, -0.32, 0.52, H, 0.32);
@@ -216,7 +216,7 @@ export const PROPS = {
   },
 
   waterCooler: {
-    w: 0.4, d: 0.4,
+    w: 0.4, d: 0.4, mass: 11, hp: 35,
     build(p) {
       p.box('metal', -0.18, 0, -0.18, 0.18, 1.0, 0.18);
       p.box('screenOn', -0.14, 1.0, -0.14, 0.14, 1.42, 0.14);   // the bottle
@@ -289,6 +289,11 @@ export const PROPS = {
 // --- placement --------------------------------------------------------------
 
 // Emits `kind` at (cx,cz) if its footprint is clear. Returns whether it landed.
+//
+// Props carrying a `mass` are loose: they become rigid bodies instead of static
+// geometry, so shooting a chair sends it skidding across the carpet. Those that
+// also carry `hp` come apart when that runs out, into exactly the boxes they
+// were authored from.
 export function tryPlace(sink, kind, cx, cz, rot, rng) {
   const spec = PROPS[kind];
   const swap = (rot & 1) === 1;
@@ -296,7 +301,12 @@ export function tryPlace(sink, kind, cx, cz, rot, rng) {
   const d = (swap ? spec.w : spec.d) / 2;
 
   if (!sink.canPlace(cx - w, cz - d, cx + w, cz + d)) return false;
+
+  if (spec.mass) sink.beginDynamic(spec.mass, spec.hp);
   spec.build(placer(sink, cx, cz, rot), rng);
+  if (spec.mass) sink.endDynamic();
+
+  sink.occupy(cx - w, cz - d, cx + w, cz + d);
   return true;
 }
 

@@ -11,9 +11,10 @@ const RECOIL_RECOVER = 7;     // radians/s the view drifts back down after kick
 const HIT_COLOR = 0xff6b5a;   // impact flash on a drone
 const WORLD_COLOR = 0xffe0a0; // impact flash on world geometry
 const PITCH_LIMIT = 1.5;      // ~86°: recoil must not tip the view past vertical
+const IMPULSE = 7;            // N·s per unit of weapon punch, into loose props
 
 export class Shooting {
-  constructor({ camera, controls, keys, weapons, effects, enemies, hud, audio }) {
+  constructor({ camera, controls, keys, weapons, effects, enemies, hud, audio, physics }) {
     this.camera = camera;
     this.controls = controls;
     this.keys = keys;
@@ -22,6 +23,7 @@ export class Shooting {
     this.enemies = enemies;
     this.hud = hud;
     this.audio = audio;
+    this.physics = physics;
 
     // Everything a bullet can stop on. Rebuilt for each floor — see
     // setHittables, called by the game when a level loads.
@@ -60,6 +62,14 @@ export class Shooting {
   // Called once per floor with that floor's geometry plus its enemies.
   setHittables(list) {
     this.hittables = list;
+  }
+
+  // A destroyed prop's meshes leave the scene graph but their matrices don't
+  // update any more, so leaving them in the raycast list would leave an
+  // invisible collider hanging in the air where the prop used to be.
+  removeHittables(meshes) {
+    const drop = new Set(meshes);
+    this.hittables = this.hittables.filter((m) => !drop.has(m));
   }
 
   update(dt) {
@@ -195,8 +205,16 @@ export class Shooting {
         return outcome;
       }
 
+      // Loose furniture takes the hit as a shove. Heavier-hitting guns move it
+      // further, which is what makes a shotgun feel like a shotgun.
+      const dyn = hit.object.userData.dynamic;
+      if (dyn) {
+        this.physics?.impulse(dyn.handle, dir, IMPULSE * stats.punch, hit.point);
+        this.onPropHit?.(dyn, dir, hit.point, stats.damage);
+      }
+
       this.effects.impact(hit.point, this._normal, WORLD_COLOR);
-      this.effects.decal(hit.point, this._normal);
+      if (!dyn) this.effects.decal(hit.point, this._normal);
       return null;
     }
 

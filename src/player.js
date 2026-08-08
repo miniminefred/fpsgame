@@ -30,6 +30,10 @@ export class Player {
     this.dead = false;
     this.sinceDamage = REGEN_DELAY;
     this.onDeath = null;
+    // Fired instead of blocking when the thing in the way is loose furniture:
+    // (collider, dirX, dirZ) => void. The game turns it into a physics impulse.
+    this.onPush = null;
+    this.dt = 0;
 
     this.controls = new PointerLockControls(camera, domElement);
     this.object = this.controls.object;
@@ -98,6 +102,7 @@ export class Player {
 
   update(dt, camera) {
     const pos = this.object.position;
+    this.dt = dt;
 
     if (this.controls.isLocked && !this.dead) {
       camera.getWorldDirection(this._forward);
@@ -156,10 +161,12 @@ export class Player {
     if (dx !== 0) {
       for (const b of this.colliders) {
         if (b.top <= feetY + STEP_EPS) continue;
-        if (this._overlapsXZ(pos, b)) {
-          pos.x = dx > 0 ? b.minX - RADIUS : b.maxX + RADIUS;
-          this._vel.x = 0;
-        }
+        if (!this._overlapsXZ(pos, b)) continue;
+        // Loose furniture gets shoved aside rather than stopping you dead —
+        // a chair blocking a corridor you can't move would be miserable.
+        if (b.push) { this.onPush?.(b, Math.sign(dx), 0); continue; }
+        pos.x = dx > 0 ? b.minX - RADIUS : b.maxX + RADIUS;
+        this._vel.x = 0;
       }
     }
 
@@ -167,10 +174,10 @@ export class Player {
     if (dz !== 0) {
       for (const b of this.colliders) {
         if (b.top <= feetY + STEP_EPS) continue;
-        if (this._overlapsXZ(pos, b)) {
-          pos.z = dz > 0 ? b.minZ - RADIUS : b.maxZ + RADIUS;
-          this._vel.z = 0;
-        }
+        if (!this._overlapsXZ(pos, b)) continue;
+        if (b.push) { this.onPush?.(b, 0, Math.sign(dz)); continue; }
+        pos.z = dz > 0 ? b.minZ - RADIUS : b.maxZ + RADIUS;
+        this._vel.z = 0;
       }
     }
   }

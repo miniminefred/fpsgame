@@ -3,33 +3,79 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Alfred — 3D FPS</title>
+  <title>Alfred — Office Descent</title>
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
   <div id="app"></div>
 
-  <div id="crosshair"></div>
-  <div id="hitmarker"></div>
-
+  <!-- Click-to-lock overlay (must stay clickable) -->
   <div id="overlay">
-    <h1>Alfred — 3D FPS</h1>
-    <p>Shoot the drones. Five guns, live ammo.</p>
+    <div class="tag">Procedural &middot; Endless</div>
+    <h1>OFFICE DESCENT</h1>
+    <p>Clear the floor. Find the exit. Descend. There is no ground floor.</p>
     <div class="cta">Click to play</div>
     <div class="keys">
       <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> move &nbsp;·&nbsp;
-      <kbd>Space</kbd> jump &nbsp;·&nbsp; <kbd>Mouse</kbd> look &nbsp;·&nbsp; <kbd>Esc</kbd> release<br />
+      <kbd>Space</kbd> jump &nbsp;·&nbsp; <kbd>Mouse</kbd> look &nbsp;·&nbsp;
+      <kbd>Esc</kbd> release<br />
       <kbd>Left click</kbd> shoot &nbsp;·&nbsp; <kbd>R</kbd> reload &nbsp;·&nbsp;
-      <kbd>1</kbd>–<kbd>5</kbd> switch weapon (light → heavy)
+      <kbd>1</kbd>–<kbd>5</kbd> weapons
     </div>
   </div>
 
-  <div id="hint">Esc to release the mouse</div>
+  <!-- ============================================================
+       HUD layer. Everything in here is pointer-events: none so it
+       can never swallow the click that grabs pointer lock.
+       ============================================================ -->
   <div id="hud">
-    <div id="weapon"></div>
-    <div id="ammo"></div>
+    <div id="vignette"></div>
+
+    <div id="crosshair"></div>
+    <div id="hitmarker"></div>
+
+    <!-- top left: floor + objective -->
+    <div id="mission">
+      <div id="floor">FLOOR 1</div>
+      <div id="objective">Clear the floor</div>
+    </div>
+
+    <!-- top right: minimap + run score -->
+    <div id="mapbox">
+      <canvas id="minimap"></canvas>
+      <div id="score">0 kills &middot; 0 floors</div>
+    </div>
+
+    <!-- bottom left: health -->
+    <div id="health">
+      <div class="label">VITALS</div>
+      <div id="health-row">
+        <div id="health-bar"><div id="health-fill"></div></div>
+        <div id="health-value">100</div>
+      </div>
+    </div>
+
+    <!-- bottom right: weapon + ammo -->
+    <div id="gunbox">
+      <div id="weapon">1 &middot; Sidearm</div>
+      <div id="ammo">12 / 12</div>
+    </div>
+
+    <div id="toast"></div>
   </div>
-  <div id="score"></div>
+
+  <!-- Death screen. Also pointer-events: none — the restart click is
+       handled by the same pointer-lock listener as the overlay. -->
+  <div id="gameover">
+    <div class="panel">
+      <div class="go-title">TERMINATED</div>
+      <div class="go-stats">
+        <div class="stat"><span id="go-floor">1</span><label>floor reached</label></div>
+        <div class="stat"><span id="go-kills">0</span><label>hostiles down</label></div>
+      </div>
+      <div class="go-cta">Click to restart</div>
+    </div>
+  </div>
 
   <script type="module" src="/src/main.js"></script>
 </body>

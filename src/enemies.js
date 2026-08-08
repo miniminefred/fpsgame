@@ -13,16 +13,58 @@ const RADIUS = 0.36;
 const EYE = 1.55;
 const SIGHT = 22;          // metres they can notice you at, with line of sight
 const HEARING = 15;        // metres your gunfire carries without line of sight
-const ENGAGE = 15;         // start shooting inside this
-const PREFERRED = 7;       // range they try to hold
+const PREFERRED = 7;       // range a shooter tries to hold
 const TOO_CLOSE = 3.5;
 const GIVE_UP = 7;         // seconds of no contact before they settle down
 const DEATH_TIME = 2.2;
 const HIT_FLASH = 0.1;
+const SWING_TIME = 0.5;    // wind-up plus follow-through on a melee swing
 
-const SUIT = 0x41464e;
-const SHIRT = 0xd9dde1;
 const SKIN = 0xbe9a78;
+
+// Staff. Every type is the same rig with different numbers and a different
+// suit, which keeps them readable at a glance in a grey corridor: the colour of
+// the visor tells you what is about to happen to you.
+//
+// Multipliers are applied to the floor's base tuning (see tuningFor in
+// game.js), so types scale with depth instead of going obsolete.
+const TYPES = {
+  intern: {
+    // Cheap, quick, and always in a group. Dies to a look but closes fast.
+    name: 'Intern', hp: 0.4, speed: 1.55, damage: 0.5, rate: 0.55, spread: 1,
+    range: 1.9, melee: true, scale: 0.9, blunt: ['keyboard', 'stapler', 'mug'],
+    suit: 0x5d6675, shirt: 0xeceee9, visor: 0xffd24a, unlockFloor: 1, weight: 3,
+  },
+  facilities: {
+    // Swings a fire extinguisher. Slower than an intern, hits far harder.
+    name: 'Facilities', hp: 1.5, speed: 1.15, damage: 1.6, rate: 1.2, spread: 1,
+    range: 2.2, melee: true, scale: 1.05, blunt: ['extinguisher', 'chairLeg'],
+    suit: 0x2d3a2e, shirt: 0xf0a63c, visor: 0xff8a3a, unlockFloor: 2, weight: 2,
+  },
+  analyst: {
+    name: 'Analyst', hp: 1, speed: 1, damage: 1, rate: 1, spread: 1,
+    range: 15, melee: false, scale: 1,
+    suit: 0x41464e, shirt: 0xd9dde1, visor: 0xff4d3d, unlockFloor: 1, weight: 4,
+  },
+  sysadmin: {
+    // Fast, inaccurate chip damage — the one that punishes standing still.
+    name: 'Sysadmin', hp: 0.8, speed: 1.12, damage: 0.45, rate: 0.4, spread: 1.7,
+    range: 13, melee: false, scale: 0.97,
+    suit: 0x2f4448, shirt: 0xbfe3d8, visor: 0x63e8ff, unlockFloor: 3, weight: 3,
+  },
+  security: {
+    // Close-range bruiser: hits hard, misses at distance, keeps coming.
+    name: 'Security', hp: 1.7, speed: 0.98, damage: 1.5, rate: 1.15, spread: 2.1,
+    range: 9, melee: false, scale: 1.07,
+    suit: 0x272c33, shirt: 0xffc93a, visor: 0xffa23a, unlockFloor: 4, weight: 3,
+  },
+  manager: {
+    // Slow, tanky, accurate at range. Deal with it or leave the floor.
+    name: 'Manager', hp: 2.7, speed: 0.82, damage: 1.9, rate: 1.6, spread: 0.55,
+    range: 21, melee: false, scale: 1.14,
+    suit: 0x1c2126, shirt: 0xd8c08a, visor: 0xc060ff, unlockFloor: 6, weight: 2,
+  },
+};
 
 // Shared across every enemy — only the materials are per-instance, so a hit
 // flash on one doesn't light up the whole floor.
@@ -35,6 +77,17 @@ const GEO = {
   arm: new THREE.BoxGeometry(0.14, 0.54, 0.14),
   leg: new THREE.BoxGeometry(0.17, 0.86, 0.19),
   gun: new THREE.BoxGeometry(0.1, 0.14, 0.42),
+};
+
+// What the melee staff have picked up off their desks. Each is a shaft plus a
+// business end, built along -Z so it points the way the arm swings.
+const BLUNT = {
+  keyboard: { shaft: null, head: [0.42, 0.03, 0.15], headMat: 'plastic', reach: 0.30 },
+  extinguisher: { shaft: [0.07, 0.07, 0.10], head: [0.15, 0.15, 0.40], headMat: 'accent', reach: 0.34 },
+  chairLeg: { shaft: [0.05, 0.05, 0.44], head: [0.13, 0.13, 0.13], headMat: 'metal', reach: 0.46 },
+  stapler: { shaft: null, head: [0.09, 0.09, 0.26], headMat: 'metal', reach: 0.22 },
+  monitor: { shaft: [0.05, 0.05, 0.16], head: [0.44, 0.30, 0.05], headMat: 'screen', reach: 0.30 },
+  mug: { shaft: null, head: [0.11, 0.12, 0.11], headMat: 'paper', reach: 0.18 },
 };
 
 export class Enemies {
@@ -61,7 +114,18 @@ export class Enemies {
     this.tuning = tuning;
 
     const spots = this._spawnPoints(layout, nav, rng, tuning.count);
-    for (const spot of spots) this._add(spot.x, spot.z, rng, tuning);
+    for (const spot of spots) {
+      this._add(spot.x, spot.z, rng, tuning, pickType(layout.floorNumber, rng));
+    }
+  }
+
+  // Head count per type on this floor — the HUD and the debug harness use it.
+  get roster() {
+    const counts = {};
+    for (const e of this.items) {
+      if (e.alive) counts[e.type.name] = (counts[e.type.name] ?? 0) + 1;
+    }
+    return counts;
   }
 
   // Walkable tiles well away from where the player arrives, spread over as many
@@ -92,17 +156,23 @@ export class Enemies {
     return spots;
   }
 
-  _add(x, z, rng, tuning) {
+  _add(x, z, rng, tuning, type) {
     const group = new THREE.Group();
     group.position.set(x, 0, z);
     group.rotation.y = rng.range(0, Math.PI * 2);
+    group.scale.setScalar(type.scale);
 
     const mats = {
-      suit: new THREE.MeshStandardMaterial({ color: SUIT, roughness: 0.85 }),
-      shirt: new THREE.MeshStandardMaterial({ color: SHIRT, roughness: 0.9 }),
+      suit: new THREE.MeshStandardMaterial({ color: type.suit, roughness: 0.85 }),
+      shirt: new THREE.MeshStandardMaterial({ color: type.shirt, roughness: 0.9 }),
       skin: new THREE.MeshStandardMaterial({ color: SKIN, roughness: 0.8 }),
-      visor: new THREE.MeshBasicMaterial({ color: 0xff4d3d }),
+      visor: new THREE.MeshBasicMaterial({ color: type.visor }),
       gun: new THREE.MeshStandardMaterial({ color: 0x24272b, roughness: 0.5, metalness: 0.4 }),
+      plastic: new THREE.MeshStandardMaterial({ color: 0x33373c, roughness: 0.8 }),
+      metal: new THREE.MeshStandardMaterial({ color: 0x9aa0a6, roughness: 0.4, metalness: 0.5 }),
+      accent: new THREE.MeshStandardMaterial({ color: 0xb63b2c, roughness: 0.55 }),
+      screen: new THREE.MeshStandardMaterial({ color: 0x1d2833, roughness: 0.35 }),
+      paper: new THREE.MeshStandardMaterial({ color: 0xe8e4d8, roughness: 0.85 }),
     };
 
     const mesh = (geo, mat, px, py, pz) => {
@@ -125,12 +195,42 @@ export class Enemies {
     const legR = mesh(GEO.leg, mats.suit, 0.12, 0.43, 0);
     const gun = mesh(GEO.gun, mats.gun, 0.3, 1.1, -0.3);
 
+    // Melee staff drop the gun and swing whatever was on their desk instead.
+    gun.visible = !type.melee;
+    let blunt = null;
+    let bluntSpec = null;
+    if (type.melee) {
+      const kind = rng.pick(type.blunt);
+      bluntSpec = BLUNT[kind];
+      blunt = new THREE.Group();
+
+      if (bluntSpec.shaft) {
+        const [sw, sh, sl] = bluntSpec.shaft;
+        const shaft = new THREE.Mesh(new THREE.BoxGeometry(sw, sh, sl), mats.plastic);
+        shaft.position.z = -sl / 2;
+        shaft.castShadow = true;
+        blunt.add(shaft);
+      }
+
+      const [hw, hh, hl] = bluntSpec.head;
+      const head2 = new THREE.Mesh(new THREE.BoxGeometry(hw, hh, hl), mats[bluntSpec.headMat]);
+      head2.position.z = -(bluntSpec.shaft ? bluntSpec.shaft[2] : 0) - hl / 2;
+      head2.castShadow = true;
+      blunt.add(head2);
+
+      // Held in the right hand, which is what the swing animation drives.
+      blunt.position.set(0.32, 1.12, -0.16);
+      group.add(blunt);
+    }
+
     const enemy = {
       group, mats, torso, head, armL, armR, legL, legR, gun,
+      blunt, bluntReach: bluntSpec ? bluntSpec.reach : 0,
+      type,
       x, z,
       yaw: group.rotation.y,
-      health: tuning.health,
-      maxHealth: tuning.health,
+      health: tuning.health * type.hp,
+      maxHealth: tuning.health * type.hp,
       alive: true,
       state: 'idle',
       timer: rng.range(0, 1),
@@ -141,6 +241,9 @@ export class Enemies {
       hitFlash: 0,
       deathTime: 0,
       knockX: 0, knockZ: 0,
+      swing: 0,
+      swingLanded: true,
+      dist: Infinity,
       strafe: rng.chance(0.5) ? 1 : -1,
     };
 
@@ -193,6 +296,7 @@ export class Enemies {
       const dz = pz - e.z;
       const dist = Math.hypot(dx, dz) || 0.001;
       const sees = dist < SIGHT && this.nav.losClear(e.x, e.z, px, pz);
+      e.dist = dist;
 
       if (sees) { e.contact = 0; e.lastSeen = { x: px, z: pz }; }
       else e.contact += dt;
@@ -222,18 +326,18 @@ export class Enemies {
         break;
 
       case 'chase':
-        if (sees && dist < ENGAGE) e.state = 'fight';
+        if (sees && dist < e.type.range) e.state = 'fight';
         else if (e.contact > GIVE_UP) { e.state = 'idle'; e.lastSeen = null; }
         break;
 
       case 'fight':
-        if (!sees || dist > ENGAGE + 3) { e.state = 'chase'; }
+        if (!sees || dist > e.type.range + 3) { e.state = 'chase'; }
         break;
     }
   }
 
   _move(e, dt, dx, dz, dist, sees) {
-    const speed = this.tuning.speed;
+    const speed = this.tuning.speed * e.type.speed;
     let vx = 0, vz = 0;
 
     if (e.state === 'chase' && e.lastSeen) {
@@ -242,15 +346,18 @@ export class Enemies {
       else if (dist > 1.2) { vx = (dx / dist) * speed * 0.5; vz = (dz / dist) * speed * 0.5; }
     } else if (e.state === 'fight') {
       // Hold a firing distance and sidestep, so a firefight isn't two statues.
+      // Melee types have no standoff to hold — they just keep coming.
       const nx = dx / dist, nz = dz / dist;
       let advance = 0;
-      if (dist > PREFERRED + 1.5) advance = 1;
+      if (e.type.melee) advance = dist > 1.1 ? 1 : 0;
+      else if (dist > PREFERRED + 1.5) advance = 1;
       else if (dist < TOO_CLOSE) advance = -1;
 
       vx = nx * advance * speed;
       vz = nz * advance * speed;
-      vx += -nz * e.strafe * speed * 0.45;
-      vz += nx * e.strafe * speed * 0.45;
+      const circle = e.type.melee ? 0.15 : 0.45;
+      vx += -nz * e.strafe * speed * circle;
+      vz += nx * e.strafe * speed * circle;
     }
 
     // Decaying shove from being shot.
@@ -306,17 +413,40 @@ export class Enemies {
 
   _shoot(e, dt, dist, sees, px, py, pz, player, effects, audio, hud) {
     e.fireCooldown -= dt;
-    if (e.state !== 'fight' || !sees || dist > ENGAGE) return;
+
+    // A swing already in flight connects part-way through, and only if you're
+    // still inside the weapon's reach when it comes down.
+    if (e.swing > 0 && !e.swingLanded && e.swing <= SWING_TIME * 0.45) {
+      e.swingLanded = true;
+      if (dist < e.type.range + e.bluntReach) {
+        const damage = this.tuning.damage * e.type.damage;
+        player.takeDamage(damage);
+        hud.damage(Math.min(1, damage / 22));
+        audio.ping(false);
+      }
+    }
+
+    if (e.state !== 'fight' || !sees || dist > e.type.range) return;
     if (e.fireCooldown > 0) return;
 
-    e.fireCooldown = this.tuning.fireInterval * (0.75 + Math.random() * 0.5);
+    const type = e.type;
+    e.fireCooldown = this.tuning.fireInterval * type.rate * (0.75 + Math.random() * 0.5);
+
+    // Melee types don't shoot: they swing, and the hit lands mid-swing rather
+    // than on the wind-up, so you get a moment to back out of reach.
+    if (type.melee) {
+      e.swing = SWING_TIME;
+      e.swingLanded = false;
+      audio.click(0.42, 0.3);
+      return;
+    }
 
     // Muzzle in world space, from the gun the model is actually holding.
     e.gun.getWorldPosition(this._muzzle);
 
     // Sample the spread as a real angle, then turn it into a miss distance at
     // the player's range: distance genuinely protects you.
-    const angle = this.tuning.spread * Math.sqrt(Math.random());
+    const angle = this.tuning.spread * type.spread * Math.sqrt(Math.random());
     const miss = Math.tan(angle) * dist;
     const hit = miss < 0.5;
 
@@ -330,11 +460,13 @@ export class Enemies {
 
     effects.tracer(this._muzzle, this._aim);
     effects.impact(this._muzzle, this._v.set(0, 1, 0), 0xffca7a);
-    audio.shot({ pitch: 0.62, punch: 0.5, decay: 0.1 });
+    // Heavier types fire lower and slower, so you can hear what's shooting you.
+    audio.shot({ pitch: 0.72 / type.scale, punch: 0.4 * type.damage + 0.25, decay: 0.1 });
 
     if (hit) {
-      player.takeDamage(this.tuning.damage);
-      hud.damage(Math.min(1, this.tuning.damage / 25));
+      const damage = this.tuning.damage * type.damage;
+      player.takeDamage(damage);
+      hud.damage(Math.min(1, damage / 25));
     }
   }
 
@@ -347,13 +479,30 @@ export class Enemies {
     e.legR.rotation.x = -swing;
     e.group.position.y = moving ? Math.abs(Math.sin(e.walkPhase)) * 0.045 : 0;
 
-    // Weapon comes up as soon as they mean it.
+    // Weapon comes up as soon as they mean it. Melee types instead throw both
+    // arms forward on the swing and drop them again.
     const aiming = e.state === 'fight';
-    const armX = aiming ? -1.45 : swing * -0.5;
-    e.armL.rotation.x = lerp(e.armL.rotation.x, aiming ? -1.2 : -swing * 0.5, 1 - Math.exp(-10 * dt));
-    e.armR.rotation.x = lerp(e.armR.rotation.x, armX, 1 - Math.exp(-10 * dt));
-    e.gun.position.set(0.3, aiming ? 1.32 : 1.1, aiming ? -0.55 : -0.3);
-    e.gun.rotation.x = aiming ? 0 : 0.5;
+    if (e.swing > 0) e.swing -= dt;
+
+    if (e.type.melee) {
+      // Wind up behind the head, then bring it down hard. The weapon rides the
+      // right arm so the two read as one motion.
+      const winding = e.swing > SWING_TIME * 0.55;
+      const arm = e.swing > 0 ? (winding ? 1.5 : -2.4) : (aiming ? -0.9 : -swing * 0.5);
+      const k = 1 - Math.exp(-(e.swing > 0 ? 24 : 9) * dt);
+      e.armL.rotation.x = lerp(e.armL.rotation.x, arm * 0.6, k);
+      e.armR.rotation.x = lerp(e.armR.rotation.x, arm, k);
+      if (e.blunt) {
+        e.blunt.rotation.x = lerp(e.blunt.rotation.x, arm + 0.5, k);
+        e.blunt.position.y = 1.12 + Math.sin(e.walkPhase) * 0.02;
+      }
+    } else {
+      const armX = aiming ? -1.45 : swing * -0.5;
+      e.armL.rotation.x = lerp(e.armL.rotation.x, aiming ? -1.2 : -swing * 0.5, 1 - Math.exp(-10 * dt));
+      e.armR.rotation.x = lerp(e.armR.rotation.x, armX, 1 - Math.exp(-10 * dt));
+      e.gun.position.set(0.3, aiming ? 1.32 : 1.1, aiming ? -0.55 : -0.3);
+      e.gun.rotation.x = aiming ? 0 : 0.5;
+    }
 
     if (e.hitFlash > 0) {
       e.hitFlash -= dt;
@@ -389,6 +538,22 @@ export class Enemies {
   }
 
   dispose() { this.clear(); }
+}
+
+// Weighted pick from the types unlocked at this depth. Early floors are all
+// analysts and interns; the nastier staff join as you descend, and because
+// weights are relative the mix keeps shifting rather than simply adding.
+function pickType(floorNumber, rng) {
+  const pool = Object.values(TYPES).filter((t) => t.unlockFloor <= floorNumber);
+  let total = 0;
+  for (const t of pool) total += t.weight;
+
+  let roll = rng() * total;
+  for (const t of pool) {
+    roll -= t.weight;
+    if (roll <= 0) return t;
+  }
+  return TYPES.analyst;
 }
 
 const lerp = (a, b, t) => a + (b - a) * t;

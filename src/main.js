@@ -10,6 +10,7 @@ import { GunAudio } from './audio.js';
 import { Hud } from './hud.js';
 import { Minimap } from './minimap.js';
 import { Shooting } from './shooting.js';
+import { Physics } from './physics.js';
 import { Game } from './game.js';
 
 const renderer = createRenderer();
@@ -31,13 +32,15 @@ const enemies = new Enemies(scene);
 const audio = new GunAudio();
 const lighting = createLighting(scene);
 
+const physics = new Physics();
 const weapons = new Weapons(camera, (i, name) => hud.setWeapon(i, name));
 const shooting = new Shooting({
-  camera, controls: player.controls, keys, weapons, effects, enemies, hud, audio,
+  camera, controls: player.controls, keys, weapons, effects, enemies, hud, audio, physics,
 });
 
 const game = new Game({
-  scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting,
+  scene, camera, player, weapons, shooting, enemies,
+  effects, audio, hud, minimap, lighting, physics,
 });
 
 onDigitKeys((n) => {
@@ -51,6 +54,12 @@ addEventListener('resize', () => weapons.layout());
 addEventListener('mousedown', () => game.restartIfDead());
 
 game.start();
+
+// Dev-only handle for poking at a running floor from the console. Stripped from
+// production builds by the bundler.
+if (import.meta.env.DEV) {
+  window.dev = { game, player, enemies, shooting, physics, scene, camera, weapons };
+}
 
 const timer = new Timer();
 

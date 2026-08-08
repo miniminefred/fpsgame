@@ -16,6 +16,7 @@ import * as THREE from 'three';
 
 const POOL = 12;
 const REHOME_INTERVAL = 0.12;  // seconds between reassignments
+const MAX_RANGE = 18;          // metres — beyond this a fixture never gets a light
 
 const SUN_DIR = new THREE.Vector3(0.28, 1, 0.2).normalize();
 const SUN_DIST = 30;
@@ -69,6 +70,7 @@ export function createLighting(scene) {
   const center = new THREE.Vector3();
 
   let fixtures = [];
+  let visible = null;            // (x, z) => boolean, set per floor
   let sinceRehome = REHOME_INTERVAL;
   const best = [];
 
@@ -76,6 +78,17 @@ export function createLighting(scene) {
     fixtures = list ?? [];
     sinceRehome = REHOME_INTERVAL;
     for (const l of lights) l.intensity = 0;
+  }
+
+  // The pool lights cast no shadows — twelve shadowed point lights would cost
+  // six cube faces each — so on their own they shine straight through walls and
+  // light up the ceiling of the room next door. Filtering candidates by line of
+  // sight fixes that far more cheaply than shadow maps: a fixture you cannot
+  // see cannot light you. Pass a (ax,az,bx,bz) => boolean clear-line test.
+  function setOcclusion(losClear) {
+    visible = losClear
+      ? (px, pz, fx, fz) => losClear(px, pz, fx, fz)
+      : null;
   }
 
   function update(dt, position) {
@@ -104,6 +117,12 @@ export function createLighting(scene) {
       const dy = f.y - position.y;
       const dz = f.z - position.z;
       const d2 = dx * dx + dy * dy + dz * dz;
+
+      // Distance first — it rejects most of the floor for the price of a
+      // multiply, so the line-of-sight walk only runs on nearby fixtures.
+      if (d2 > MAX_RANGE * MAX_RANGE) continue;
+      if (visible && !visible(position.x, position.z, f.x, f.z)) continue;
+
       if (best.length < POOL) {
         best.push({ f, d2 });
         if (best.length === POOL) best.sort((a, b) => a.d2 - b.d2);
@@ -134,5 +153,5 @@ export function createLighting(scene) {
     sun.dispose();
   }
 
-  return { setFixtures, update, dispose, sun };
+  return { setFixtures, setOcclusion, update, dispose, sun };
 }

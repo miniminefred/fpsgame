@@ -330,6 +330,20 @@ export class Physics {
     return !!h && h.body.sleepState === Body.SLEEPING;
   }
 
+  /**
+   * Take a prop out of the world. Needed because props are destructible: the
+   * intact body is removed and replaced by one body per fragment, and the
+   * fragments are themselves removed once they have settled and timed out.
+   * Without this the body count would only ever grow over a run.
+   */
+  remove(h) {
+    if (!this.world || !h) return;
+    const i = this.props.indexOf(h);
+    if (i === -1) return;
+    this.props.splice(i, 1);
+    this.world.removeBody(h.body);
+  }
+
   /** Release everything. The world and its bodies are dropped together. */
   dispose() {
     this.world = null;
