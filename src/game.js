@@ -21,6 +21,12 @@ const PULSE_FAST = 0.55;       // ...and at nearly dead
 const BREATH_INTERVAL = 1.4;
 const BREATH_SPEED = 4;        // moving at least this fast to be out of breath
 
+// Leaning on a desk reports a collision every frame, so without this a single
+// shove would be a hundred scrapes a second. The audio engine plays everything
+// it is asked to, by design — so deciding that continuous contact is one shove
+// has to happen here, where the collision is actually understood.
+const SHOVE_INTERVAL = 0.4;
+
 export class Game {
   constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction }) {
     this.scene = scene;
@@ -62,7 +68,10 @@ export class Game {
         PUSH_IMPULSE * this.player.dt,
         { x: this.player.object.position.x, y: 0.45, z: this.player.object.position.z }
       );
-      this.audio.propShove(collider.push.group.position);
+      if (this.shoveTimer <= 0) {
+        this.shoveTimer = SHOVE_INTERVAL;
+        this.audio.propShove(collider.push.group.position);
+      }
     };
 
     this.player.onStep = (sprinting) => this.audio.step(sprinting);
@@ -73,6 +82,7 @@ export class Game {
 
     this.pulseTimer = 0;
     this.breathTimer = 0;
+    this.shoveTimer = 0;
 
     this.shooting.onPropHit = (dyn, dir, point, damage) =>
       this.destruction.damageProp(dyn, dir, point, damage);
@@ -230,6 +240,7 @@ export class Game {
   // are running, and how close you are to not needing to.
   _vitals(dt) {
     const player = this.player;
+    if (this.shoveTimer > 0) this.shoveTimer -= dt;
     if (player.dead) return;
 
     if (player.keys.sprint && player.speed > BREATH_SPEED && player.airTime === 0) {

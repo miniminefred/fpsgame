@@ -230,12 +230,15 @@ the library plus one method per thing that can happen.
 
 Three rules earned their place the hard way:
 
-- **Nothing is rate-limited.** A dropped shot is silence, and silence mid-burst reads as
-  the gun jamming. An SMG at 900 rpm firing a 0.7 s clip is ~10 shots ringing at once
-  before anything else joins in; a firefight peaks around 66 concurrent voices. The
-  limiter on the master bus keeps the sum in range — a voice budget must not. The one
-  exception is `minGap`, used only where a single throat makes the sound (the player has
-  one set of lungs).
+- **There is no voice cap and no throttle, anywhere.** Whatever the game says happened
+  gets played, however many are already ringing. A dropped shot is silence, silence
+  mid-burst reads as the gun jamming, and nothing errors — so the fault is invisible from
+  inside the game. An SMG at 900 rpm firing a 0.7 s clip is ~10 shots overlapping before
+  anything else joins in, and a firefight stacks a room of return fire, impacts, boots
+  and screaming on top. The brickwall limiter on the master bus is the only thing holding
+  the sum inside full scale, which is where that job belongs. Deciding a sound *should
+  not have been asked for* is the caller's job: continuous contact with a desk is one
+  shove, and `game.js` — which understands the collision — is what says so.
 - **Clips are measured and conditioned at decode.** Generated audio arrives at wildly
   inconsistent levels: the first pass drew three pistol takes at 1/50th the loudness of
   the shotgun's, which played as silence and read as the gun randomly misfiring. Takes
@@ -252,6 +255,11 @@ fault from inside the game.
 
 Enemy types name a vocal set with `voice` (`enemy` staff who shout at you, `zombie`,
 `robot`), so a new type gets its own throat by adding four files.
+
+Every prop carries a `substance` (`gen/props.js`), which picks its impact, break and
+settle clips from one table in `audio.js` — a filing cabinet and a pot plant have no
+business sounding alike when shot, destroyed, or landing. Window glazing and ceiling
+tubes are building, not furniture, so their `kind` names their substance instead.
 
 ### Destruction (`destruction.js` + `gen/geom.js` + `physics.js`)
 Everything on a floor can be destroyed: all furniture, the window glazing, and the ceiling
