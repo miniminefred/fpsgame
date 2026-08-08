@@ -22,6 +22,18 @@ editor required, and backed by by far the largest ecosystem / documentation corp
 web 3D engine — the most reliable target for an AI writing everything by hand. Vite gives us
 real modules, npm dependencies, HMR, and a production build with zero config friction.
 
+## Launching a session
+
+Desktop shortcut **Create FPS** runs `..\launch-fpsgame.ps1`, a thin wrapper over
+`C:\Users\alfred\projects\launch-claude.ps1 -Game fpsgame`. That script opens a
+**Windows Terminal** tab hosting **PowerShell 7**, forces UTF-8 in and out so Claude's TUI
+(box drawing, spinners) renders correctly, `cd`s here, runs `npm install` if `node_modules`
+is missing, then starts `claude`. `-NoExit` keeps the shell in this directory after Claude
+exits, ready for `npm` / `git`.
+
+No `.bat`/cmd launchers exist any more — the whole chain is PowerShell. The launcher lives
+in the parent directory, so it is outside this repo and not version-controlled here.
+
 ## Rules for every session
 
 ### 1. Commit every change immediately
