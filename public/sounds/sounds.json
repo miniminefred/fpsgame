@@ -1,43 +1,203 @@
 {
   "outDir": ".",
   "sounds": [
-    { "name": "pistol-fire", "text": "single dry pistol shot, close mic, no reverb, no music", "duration": 0.9, "influence": 0.65, "variants": 3 },
-    { "name": "smg-fire", "text": "single submachine gun shot, fast snappy crack, close mic, dry, no music", "duration": 0.7, "influence": 0.65, "variants": 3 },
-    { "name": "shotgun-fire", "text": "pump shotgun blast, deep, close mic, dry, no music", "duration": 1.4, "influence": 0.65, "variants": 3 },
-    { "name": "rifle-fire", "text": "single assault rifle shot, sharp crack, close mic, dry, no music", "duration": 0.9, "influence": 0.65, "variants": 3 },
-    { "name": "sniper-fire", "text": "single heavy sniper rifle shot, deep boom with a sharp crack, close mic, dry, no music", "duration": 1.6, "influence": 0.65, "variants": 2 },
-
-    { "name": "mag-out", "text": "empty magazine ejected from a rifle and dropping free, mechanical, close mic, dry", "duration": 0.7, "influence": 0.7, "variants": 2 },
-    { "name": "mag-in", "text": "fresh magazine clicked into a rifle and bolt released, mechanical, close mic, dry", "duration": 0.8, "influence": 0.7, "variants": 2 },
-    { "name": "dry-fire", "text": "trigger click on an empty chamber, close mic, dry", "duration": 0.5, "influence": 0.75, "variants": 2 },
-
-    { "name": "enemy-fire", "text": "single dirty makeshift gunshot, flat crack, heard from across a room, dry, no music", "duration": 0.8, "influence": 0.6, "variants": 3 },
-    { "name": "melee-swing", "text": "heavy blunt object swung fast through the air, whoosh, close mic, dry", "duration": 0.6, "influence": 0.7, "variants": 2 },
-    { "name": "melee-hit", "text": "blunt metal object striking a body, dull heavy thud, close mic, dry, no music", "duration": 0.6, "influence": 0.7, "variants": 2 },
-
-    { "name": "enemy-alert", "text": "human male startled aggressive snarl, short, close mic, no words, no music", "duration": 1.0, "influence": 0.6, "variants": 3 },
-    { "name": "enemy-pain", "text": "human male grunt of pain, short, close mic, no words, no music", "duration": 0.8, "influence": 0.6, "variants": 3 },
-    { "name": "enemy-death", "text": "human male dying groan collapsing, close mic, no words, no music", "duration": 1.5, "influence": 0.6, "variants": 3 },
-    { "name": "enemy-idle", "text": "human male low irritated muttering breath, close mic, no words, no music", "duration": 1.6, "influence": 0.55, "variants": 2 },
-
-    { "name": "hit-flesh", "text": "bullet hitting flesh, wet thud, close mic, no music", "duration": 0.6, "influence": 0.7, "variants": 3 },
-    { "name": "impact-wall", "text": "bullet impact on painted concrete wall, sharp crack with dust and small debris, dry", "duration": 0.6, "influence": 0.7, "variants": 3 },
-
-    { "name": "player-hurt", "text": "human male sharp pained exhale taking a hit, close mic, no words, no music", "duration": 0.8, "influence": 0.6, "variants": 3 },
-    { "name": "player-death", "text": "human male final gasp and body dropping to a hard floor, close mic, no words, no music", "duration": 2.0, "influence": 0.6 },
-
-    { "name": "glass-break", "text": "large glass pane shattering and falling onto a concrete floor, close mic, dry", "duration": 1.8, "influence": 0.65, "variants": 3 },
-    { "name": "prop-break", "text": "wooden office desk collapsing, panels splintering and clattering onto a hard floor, dry", "duration": 1.8, "influence": 0.65, "variants": 3 },
-    { "name": "tube-break", "text": "fluorescent tube bursting, glass pop and fine debris, close mic, dry", "duration": 1.2, "influence": 0.7, "variants": 2 },
-
-    { "name": "step", "text": "single footstep on office carpet, soft, close mic, dry", "duration": 0.5, "influence": 0.6, "variants": 4 },
-    { "name": "land", "text": "single boot landing on carpeted concrete after a jump, heavy, close mic, dry", "duration": 0.7, "influence": 0.65, "variants": 2 },
-    { "name": "enemy-step", "text": "single heavy boot step on office carpet, close mic, dry", "duration": 0.5, "influence": 0.6, "variants": 3 },
-
-    { "name": "floor-clear", "text": "short positive synthetic two tone confirmation chime, clean, no music", "duration": 1.5, "influence": 0.7 },
-    { "name": "descend", "text": "heavy metal service hatch grinding open, industrial, dry, no music", "duration": 2.5, "influence": 0.65 },
-
-    { "name": "amb-office", "text": "office air conditioning hum with distant fluorescent buzz, no music, no voices", "duration": 26, "loop": true },
-    { "name": "amb-drone", "text": "empty corridor room tone, low uneasy hum, no music, no voices", "duration": 26, "loop": true }
+    {
+      "name": "amb-drone",
+      "text": "empty corridor room tone, low uneasy hum, no music, no voices",
+      "duration": 26.0,
+      "loop": true
+    },
+    {
+      "name": "amb-office",
+      "text": "office air conditioning hum with distant fluorescent buzz, no music, no voices",
+      "duration": 26.0,
+      "loop": true
+    },
+    {
+      "name": "descend",
+      "text": "heavy metal service hatch grinding open, industrial, dry, no music",
+      "duration": 2.5,
+      "influence": 0.65
+    },
+    {
+      "name": "dry-fire",
+      "text": "trigger click on an empty chamber, close mic, dry",
+      "duration": 0.5,
+      "influence": 0.75,
+      "variants": 2
+    },
+    {
+      "name": "enemy-alert",
+      "text": "human male startled aggressive snarl, short, close mic, no words, no music",
+      "duration": 1.0,
+      "influence": 0.6,
+      "variants": 3
+    },
+    {
+      "name": "enemy-death",
+      "text": "human male dying groan collapsing, close mic, no words, no music",
+      "duration": 1.5,
+      "influence": 0.6,
+      "variants": 3
+    },
+    {
+      "name": "enemy-fire",
+      "text": "single dirty makeshift gunshot, flat crack, heard from across a room, dry, no music",
+      "duration": 0.8,
+      "influence": 0.6,
+      "variants": 3
+    },
+    {
+      "name": "enemy-idle",
+      "text": "human male low irritated muttering breath, close mic, no words, no music",
+      "duration": 1.6,
+      "influence": 0.55,
+      "variants": 2
+    },
+    {
+      "name": "enemy-pain",
+      "text": "human male grunt of pain, short, close mic, no words, no music",
+      "duration": 0.8,
+      "influence": 0.6,
+      "variants": 3
+    },
+    {
+      "name": "enemy-step",
+      "text": "single heavy boot step on office carpet, close mic, dry",
+      "duration": 0.5,
+      "influence": 0.6,
+      "variants": 3
+    },
+    {
+      "name": "floor-clear",
+      "text": "short positive synthetic two tone confirmation chime, clean, no music",
+      "duration": 1.5,
+      "influence": 0.7
+    },
+    {
+      "name": "glass-break",
+      "text": "large glass pane shattering and falling onto a concrete floor, close mic, dry",
+      "duration": 1.8,
+      "influence": 0.65,
+      "variants": 3
+    },
+    {
+      "name": "hit-flesh",
+      "text": "bullet hitting flesh, wet thud, close mic, no music",
+      "duration": 0.6,
+      "influence": 0.7,
+      "variants": 3
+    },
+    {
+      "name": "impact-wall",
+      "text": "bullet impact on painted concrete wall, sharp crack with dust and small debris, dry",
+      "duration": 0.6,
+      "influence": 0.7,
+      "variants": 3
+    },
+    {
+      "name": "land",
+      "text": "single boot landing on carpeted concrete after a jump, heavy, close mic, dry",
+      "duration": 0.7,
+      "influence": 0.65,
+      "variants": 2
+    },
+    {
+      "name": "mag-in",
+      "text": "fresh magazine clicked into a rifle and bolt released, mechanical, close mic, dry",
+      "duration": 0.8,
+      "influence": 0.7,
+      "variants": 2
+    },
+    {
+      "name": "mag-out",
+      "text": "empty magazine ejected from a rifle and dropping free, mechanical, close mic, dry",
+      "duration": 0.7,
+      "influence": 0.7,
+      "variants": 2
+    },
+    {
+      "name": "melee-hit",
+      "text": "blunt metal object striking a body, dull heavy thud, close mic, dry, no music",
+      "duration": 0.6,
+      "influence": 0.7,
+      "variants": 2
+    },
+    {
+      "name": "melee-swing",
+      "text": "heavy blunt object swung fast through the air, whoosh, close mic, dry",
+      "duration": 0.6,
+      "influence": 0.7,
+      "variants": 2
+    },
+    {
+      "name": "pistol-fire",
+      "text": "single dry pistol shot, close mic, no reverb, no music",
+      "duration": 0.9,
+      "influence": 0.65,
+      "variants": 3
+    },
+    {
+      "name": "player-death",
+      "text": "human male final gasp and body dropping to a hard floor, close mic, no words, no music",
+      "duration": 2.0,
+      "influence": 0.6
+    },
+    {
+      "name": "player-hurt",
+      "text": "human male sharp pained exhale taking a hit, close mic, no words, no music",
+      "duration": 0.8,
+      "influence": 0.6,
+      "variants": 3
+    },
+    {
+      "name": "prop-break",
+      "text": "wooden office desk collapsing, panels splintering and clattering onto a hard floor, dry",
+      "duration": 1.8,
+      "influence": 0.65,
+      "variants": 3
+    },
+    {
+      "name": "rifle-fire",
+      "text": "single assault rifle shot, sharp crack, close mic, dry, no music",
+      "duration": 0.9,
+      "influence": 0.65,
+      "variants": 3
+    },
+    {
+      "name": "shotgun-fire",
+      "text": "pump shotgun blast, deep, close mic, dry, no music",
+      "duration": 1.4,
+      "influence": 0.65,
+      "variants": 3
+    },
+    {
+      "name": "smg-fire",
+      "text": "single submachine gun shot, fast snappy crack, close mic, dry, no music",
+      "duration": 0.7,
+      "influence": 0.65,
+      "variants": 3
+    },
+    {
+      "name": "sniper-fire",
+      "text": "single heavy sniper rifle shot, deep boom with a sharp crack, close mic, dry, no music",
+      "duration": 1.6,
+      "influence": 0.65,
+      "variants": 2
+    },
+    {
+      "name": "step",
+      "text": "single footstep on office carpet, soft, close mic, dry",
+      "duration": 0.5,
+      "influence": 0.6,
+      "variants": 4
+    },
+    {
+      "name": "tube-break",
+      "text": "fluorescent tube bursting, glass pop and fine debris, close mic, dry",
+      "duration": 1.2,
+      "influence": 0.7,
+      "variants": 2
+    }
   ]
 }
