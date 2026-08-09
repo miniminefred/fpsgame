@@ -184,6 +184,27 @@ always fully connected from the spawn, and two doorways never merge into one wid
 (each room cuts its own door, so without a minimum wall stub the second lands flush
 against the first).
 
+### Hall doors (`cutHallDoors` in `gen/layout.js` + `buildHallDoors` in `gen/build.js`)
+The corridors get doors of their own — otherwise the hallway network is one continuous
+open loop, the one part of the building that reads as a level rather than as an office.
+They are the exception to almost everything the room doorways do, and all of it falls out
+of there being no wall across a corridor to cut a hole in:
+
+- They span the corridor **wall to wall** (3 m, against a room doorway's 1.5 m), so the
+  width invariant is different for them — `hall: true` is what says so, and
+  `validate-layout.mjs` checks `6.hall-*` instead of `6.door-width`.
+- They **swing**. A retracted panel goes inside the wall beside its opening
+  (`slidePocketSide`), and beside a corridor there is one tile of wall with somebody's
+  office behind it. So a hall door is two hinged leaves that fold back flat against the
+  corridor walls, which is what the doors they are modelled on do anyway. `doors.js` drives
+  both kinds off one `open` number — sliding is a translation, swinging is a rotation.
+- Placement is entirely the swing: a leaf needs the wall it folds onto to be *there* for
+  its own length, and proving that also refuses junctions (at a crossing the flanking wall
+  is the other corridor) and keeps a leaf from swinging across a room's doorway and sealing
+  it. Cut after `connectAll`, against the finished floor.
+- **Never locked.** They are on no room, so `assignLocks` never sees them; a badged door
+  across the one route everybody takes would be a floor locked in half.
+
 ### Geometry batching (`gen/geom.js`)
 A floor is tens of thousands of tiles. Runs of tiles are merged into maximal rectangles
 first (`gen/rects.js`), then batched **per material and per 12 m chunk**. Material-only
