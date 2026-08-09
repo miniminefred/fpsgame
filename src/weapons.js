@@ -26,9 +26,15 @@ const WEAPONS = [
     sound: 'smg-fire',
   },
   {
+    // The one gun with a range profile rather than a range number. Up close it
+    // is the most lethal thing you own — twelve pellets at 26 puts down anything
+    // on the roster in one trigger pull. Past a few metres the cone opens and
+    // each pellet softens, so the same shot that erases a Reanimated at two
+    // metres is an irritation at fifteen. See `falloff` in shooting.js.
     name: 'Shotgun', file: 'models/3_shotgun.glb', length: 0.58, flip: false, yaw: 0,
-    rpm: 75, auto: false, damage: 14, pellets: 9, spread: 0.055,
-    kick: 0.045, punch: 1.25, mag: 6, reload: 2.4, range: 45,
+    rpm: 75, auto: false, damage: 26, pellets: 12, spread: 0.095,
+    falloffFrom: 4, falloffTo: 18, falloffMin: 0.25,
+    kick: 0.055, punch: 1.35, mag: 6, reload: 2.4, range: 45,
     sound: 'shotgun-fire',
   },
   {
@@ -67,6 +73,9 @@ export class Weapons {
     this.camera = camera;
     this.onChange = onChange;      // (index, name) => void, for the HUD
     this.rigs = new Array(WEAPONS.length).fill(null);
+    // Where each gun's barrel ends, in that gun's rig space. Measured off the
+    // geometry once the model lands — see measureMuzzle.
+    this.muzzles = new Array(WEAPONS.length).fill(null);
     this.active = 0;
     this.count = WEAPONS.length;
     this.handX = this._computeX();
@@ -131,6 +140,7 @@ export class Weapons {
 
     this.camera.add(rig);
     this.rigs[i] = rig;
+    this.muzzles[i] = measureMuzzle(rig, cfg);
   }
 
   /**
@@ -209,9 +219,19 @@ export class Weapons {
     this.onChange?.(index, WEAPONS[index].name);
   }
 
-  // Muzzle tip in camera space: the barrel runs along -z from the hand anchor.
+  /**
+   * Muzzle tip in camera space. Taken through the rig's live transform rather
+   * than from a fixed offset, so the flash and the tracer both leave the barrel
+   * where the barrel actually is this frame — mid-recoil, mid-reload, mid-swing.
+   */
   muzzleLocal(out = this._muzzle) {
-    return out.set(this.handX, HAND_Y, HAND_Z - this.stats.length * 0.5);
+    const rig = this.rigs[this.active];
+    const local = this.muzzles[this.active];
+    if (!rig || !local) {
+      return out.set(this.handX, HAND_Y, HAND_Z - this.stats.length * 0.5);
+    }
+    rig.updateMatrix();
+    return out.copy(local).applyMatrix4(rig.matrix);
   }
 
   // Same point in world space — where tracers should start from.
@@ -226,6 +246,7 @@ export class Weapons {
 
     const p = this.muzzleLocal();
     this.flashGroup.position.copy(p);
+    this._aimFlash();
     // Sprites do not turn with their parent, so the star spins itself. Its
     // material angle is the only thing that changes shot to shot, and it is
     // enough: nine spikes never land in the same place twice.
@@ -237,6 +258,15 @@ export class Weapons {
 
     this.flashLight.position.copy(p);
     this.flashLight.intensity = 6 * this.stats.punch;
+  }
+
+  // Parks the flash on the live muzzle, turned the way the barrel is turned so
+  // the plume goes down the bore rather than down the camera's -Z.
+  _aimFlash() {
+    this.flashGroup.position.copy(this.muzzleLocal());
+    const rig = this.rigs[this.active];
+    if (rig) this.flashGroup.quaternion.copy(rig.quaternion);
+    this.flashLight.position.copy(this.flashGroup.position);
   }
 
   // Plays the reload as a full roll of the gun out of and back into view.
@@ -260,6 +290,10 @@ export class Weapons {
         // Squared: full brightness for an instant and then gone. A flash that
         // fades off linearly reads as a lamp being switched off.
         const k = (this.flash / FLASH_TIME) ** 2;
+        // Re-read every frame: the gun is mid-recoil and mid-reload while the
+        // flash is lit, and a flash pinned to where the barrel WAS reads as a
+        // sprite hanging in the air next to the gun.
+        this._aimFlash();
         this.flashStar.material.opacity = k;
         this.flashHalo.material.opacity = k * 0.85;
         // The plume is the fastest thing here — the gas is past the muzzle
@@ -296,3 +330,61 @@ export class Weapons {
     rig.rotation.z = 0;
   }
 }
+
+/**
+ * Where the barrel actually ends, in the rig's own space.
+ *
+ * The old answer was "half the configured length in front of the hand", which
+ * is the middle of the front face of the model's bounding box — and a gun is
+ * not a box. On a pistol that puts the flash a hand's width below the bore,
+ * hanging over the trigger guard; on the sniper it sits inside the scope.
+ *
+ * So it is measured off the geometry instead. Take every vertex in the frontmost
+ * slice of the model and average it: the frontmost thing on a gun IS the muzzle,
+ * and averaging a slice rather than taking one extreme vertex stops a foresight
+ * or a sling loop from dragging the answer off the bore.
+ */
+const MUZZLE_SLICE = 0.07;   // fraction of the model's depth counted as "the end"
+
+export function measureMuzzle(rig, cfg) {
+  rig.updateMatrixWorld(true);
+
+  const v = new THREE.Vector3();
+  const local = new THREE.Vector3();
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  const points = [];
+
+  rig.traverse((o) => {
+    const pos = o.isMesh && o.geometry?.getAttribute('position');
+    if (!pos) return;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      rig.worldToLocal(local.copy(v));
+      points.push(local.x, local.y, local.z);
+      if (local.z < minZ) minZ = local.z;
+      if (local.z > maxZ) maxZ = local.z;
+    }
+  });
+
+  if (!points.length || !Number.isFinite(minZ)) {
+    return new THREE.Vector3(0, 0, -(cfg.length ?? 0.4) * 0.5);
+  }
+
+  const cut = minZ + (maxZ - minZ) * MUZZLE_SLICE;
+  let sx = 0, sy = 0, n = 0;
+  for (let i = 0; i < points.length; i += 3) {
+    if (points[i + 2] > cut) continue;
+    sx += points[i]; sy += points[i + 1]; n++;
+  }
+
+  const out = new THREE.Vector3(n ? sx / n : 0, n ? sy / n : 0, minZ - 0.02);
+  // Per-gun correction, for the ones where the frontmost slice is not the bore
+  // — a shotgun's magazine tube reaches as far forward as its barrel, and the
+  // average of the two lands between them.
+  const nudge = cfg.muzzle;
+  if (nudge) out.set(out.x + (nudge[0] ?? 0), out.y + (nudge[1] ?? 0), out.z + (nudge[2] ?? 0));
+  return out;
+}
+
+export { WEAPONS };

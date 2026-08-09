@@ -207,8 +207,14 @@ export class Shooting {
 
       this.effects.tracer(this._muzzle, hit.point);
 
+      // What is left of the round at this range. Only the shotgun declares a
+      // falloff: a pellet is a ball of soft lead with no ballistic profile
+      // whatsoever, and everything else here is a rifle round that does not care
+      // how far away you were standing.
+      const damage = stats.damage * falloff(hit.distance, stats);
+
       if (enemy) {
-        const outcome = this.enemies.hit(hit.object, stats.damage);
+        const outcome = this.enemies.hit(hit.object, damage);
         this.effects.impact(hit.point, this._normal, HIT_COLOR);
         this.audio.bulletHitFlesh(hit.point);
         // The vocal is played from here rather than from enemies.hit, because
@@ -226,7 +232,7 @@ export class Shooting {
         this.physics?.impulse(dyn.handle, dir, IMPULSE * stats.punch, hit.point);
         // The impact sound comes back through onPropHit, which is the only side
         // that knows what the prop is made of.
-        this.onPropHit?.(dyn, dir, hit.point, stats.damage);
+        this.onPropHit?.(dyn, dir, hit.point, damage);
       }
 
       this.effects.impact(hit.point, this._normal, WORLD_COLOR);
@@ -236,7 +242,7 @@ export class Shooting {
       // outlives the desk, and hangs in the air once it has been shot apart.
       // It is also the only thing that sounds like a wall — a destructible
       // answers in its own material, from destruction.js.
-      if (!dyn && !this.onSurfaceHit?.(hit, dir, stats.damage)) {
+      if (!dyn && !this.onSurfaceHit?.(hit, dir, damage)) {
         this.effects.decal(hit.point, this._normal);
         this.audio.bulletHitWall(hit.point, this._normal);
       }
@@ -264,4 +270,21 @@ export class Shooting {
     this.hud.setAmmo(this.mag, this.weapons.stats.mag, this.reloading);
     this.hud.setScore(this.kills, this.hits);
   }
+}
+
+/**
+ * How much of a round's damage survives the distance it travelled. Flat 1 for
+ * anything that does not declare a falloff.
+ *
+ * This is the second half of what makes the shotgun a shotgun. The first half is
+ * the cone, which is what makes it miss at range; this is what makes the pellets
+ * that DO land at range stop mattering. Either one alone gives you a gun that is
+ * merely inaccurate or merely weak — together they give you one that owns a
+ * doorway and embarrasses you across an open floor.
+ */
+function falloff(distance, stats) {
+  const from = stats.falloffFrom;
+  if (!from || !(distance > from)) return 1;
+  const k = Math.min(1, (distance - from) / Math.max(0.01, stats.falloffTo - from));
+  return 1 + (stats.falloffMin - 1) * k;
 }

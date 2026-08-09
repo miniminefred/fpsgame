@@ -315,7 +315,7 @@ function tuningFor(floor) {
     // the old count left them feeling abandoned rather than dangerous. Doubled
     // again on top of that — a floor this size swallows thirty people without
     // ever feeling occupied, and the walk between contacts was the dead part.
-    count: Math.min(152, 32 + Math.round(t * 10)),
+    count: Math.min(200, 70 + Math.round(t * 18)),
     health: Math.min(260, 100 + t * 10),
     damage: Math.min(18, 7 + t * 0.7),
     speed: Math.min(4.2, 2.5 + t * 0.09),

@@ -311,7 +311,11 @@ export class Enemies {
     if (!rooms.length) return spots;
 
     const minDist = 14;
-    for (let pass = 0; spots.length < count && pass < 8; pass++) {
+    // One spot per room per pass, so the passes have to outnumber the enemies
+    // per room — at seventy-plus on a twenty-room floor, eight passes ran out
+    // long before the roster did and every floor quietly shipped half of it.
+    const passes = Math.max(8, Math.ceil(count / Math.max(1, rooms.length)) + 4);
+    for (let pass = 0; spots.length < count && pass < passes; pass++) {
       for (const room of rooms) {
         if (spots.length >= count) break;
         for (let tries = 0; tries < 12; tries++) {

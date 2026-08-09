@@ -1066,10 +1066,10 @@
     },
     {
       "name": "shotgun-fire",
-      "text": "single enormous 12 gauge shotgun blast, deep booming report with heavy low end, close mic, dry, no reverb, no pump action, no music",
-      "duration": 1.6,
-      "influence": 0.85,
-      "variants": 4
+      "text": "enormous 12 gauge shotgun blast at close range, huge deep booming low end and a hard percussive slam, thick body, long decaying tail, close mic, dry, no music, no voices",
+      "duration": 2.0,
+      "influence": 0.8,
+      "variants": 5
     },
     {
       "name": "smg-fire",

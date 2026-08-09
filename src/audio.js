@@ -32,7 +32,9 @@ import { Sfx } from './sfx.js';
 const LIBRARY = {
   'pistol-fire':  { variants: 3, gain: 0.80, pitch: 0.05 },
   'smg-fire':     { variants: 3, gain: 0.62, pitch: 0.06 },
-  'shotgun-fire': { variants: 4, gain: 1.15, pitch: 0.04 },
+  // Five takes and mixed hot: it is the loudest thing in the building and
+  // the whole point of carrying it.
+  'shotgun-fire': { variants: 5, gain: 1.35, pitch: 0.035 },
   'rifle-fire':   { variants: 3, gain: 0.80, pitch: 0.05 },
   'sniper-fire':  { variants: 2, gain: 1.00, pitch: 0.03 },
 
