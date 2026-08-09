@@ -202,8 +202,37 @@ of there being no wall across a corridor to cut a hole in:
   its own length, and proving that also refuses junctions (at a crossing the flanking wall
   is the other corridor) and keeps a leaf from swinging across a room's doorway and sealing
   it. Cut after `connectAll`, against the finished floor.
-- **Never locked.** They are on no room, so `assignLocks` never sees them; a badged door
-  across the one route everybody takes would be a floor locked in half.
+- **They carry readers like everything else** — but they are the only lock in the game that
+  can stand between the player and the rest of the floor, so both tiers are *proved*:
+  - **Grey**, only where the corridor network goes round. `goesRound` seals the door and
+    re-floods; if anything that was reachable stops being reachable, it does not get the
+    lock. The test is cumulative, so two doors that each have a way round can never shut
+    the last one between them.
+  - **White** on the rest, which is the same badge already on every room door.
+
+  A grey hall door costs a detour; a white one costs the first thirty seconds. Neither can
+  cost the run. The reader mounts differently from a room's — a hall door's only wall is the
+  corridor's side, running the other way — so it turns 90°, stands proud of that wall, and
+  steps back *against* the swing so an open leaf never folds over it.
+
+### The prologue (`freeThePrologue` in `gen/layout.js`)
+White is the one lock you meet holding nothing, so it is the one the floor has to prove it
+can hand you a key to. With every reader still red, the lifts must reach `PROLOGUE_MIN`
+tiles of corridor at least `PROLOGUE_REACH` from spawn — somewhere to stand the first body.
+If not, the reader comes off the doorway on the edge of the region and it asks again: hall
+doors first (freeing one costs only its reader), then room doorways fronting a corridor
+(freeing one costs that room its lock entirely, so the white pass skips any room with a
+`free` door). It terminates by construction — freeing doorways only grows the region, and
+freeing all of them is a floor with no readers on it.
+
+`layout.prologue` is that region, handed to `_cardOutside` so the guaranteed first contact
+is somebody the player can actually walk to.
+
+This caught a **pre-existing** bug the day it was written, and not a subtle one: on about
+one floor in seven the lobby's only doorway was shared with a neighbouring room, that room's
+white pass badged it, and the floor began with the player sealed in the lift lobby holding
+nothing. It had nothing to do with hall doors — it needed a check that asked the question,
+and hall doors are what made anybody ask it. `8.hall-prologue` in `validate-layout.mjs`.
 
 ### Geometry batching (`gen/geom.js`)
 A floor is tens of thousands of tiles. Runs of tiles are merged into maximal rectangles
@@ -382,14 +411,17 @@ rules**, and conflating them is the mistake to avoid:
 
 **White is the staff badge.** It goes on *every* room with a door — the exit room
 included, the spawn lobby excluded (a reader on the room you start inside is a
-floor you cannot leave). Every employee carries one. So white is not really a lock,
-it is the first thirty seconds of a floor before you have taken a badge off
-somebody, and picking one up opens ~180 doors at once.
+floor you cannot leave) — and on most of the doors across the corridors too. Every
+employee carries one. So white is not really a lock, it is the first thirty
+seconds of a floor before you have taken a badge off somebody, and picking one up
+opens ~190 doors at once. What guarantees you can take that first badge is the
+prologue pass above.
 
 **Grey, blue, yellow and black are real locks.** Grey goes on 2–4 back-of-house
-rooms and also opens white doors; blue opens the one security office, yellow the
-one broom closet, and neither substitutes for anything else; black opens the
-manager's office and, being the last card you get, everything else too.
+rooms, a few hall doors that have a way round them, and also opens white doors;
+blue opens the one security office, yellow the one broom closet, and neither
+substitutes for anything else; black opens the manager's office and, being the
+last card you get, everything else too.
 
 Card holders: every hostile carries white; a guaranteed single holder carries grey
 instead, plus `CARD_SPARE_CHANCE` extra grey. Yellow and blue are not dealt that
@@ -444,8 +476,10 @@ checks `8.*`, plus `5.lock-sealed` in `validate-props.mjs`):
   the card is behind the door and in front of it a hundred times over. What makes
   the *first* one reachable is `_cardOutside` in `enemies.js`: a floor is
   guaranteed `OUTSIDE_MIN` hostiles standing in corridors, one within
-  `FIRST_CONTACT` metres of the lifts. Without that guarantee a floor is corridors
-  and two hundred shut rooms.
+  `FIRST_CONTACT` metres of the lifts — and, since the corridors got readers too,
+  standing inside `layout.prologue`, which is the part of the floor you can walk
+  to before you have badged anything. Without both halves of that guarantee a
+  floor is a lift lobby and two hundred shut doors.
 - **Every** opening into a locked room is locked, not just the ones that room cut,
   and a door is never *downgraded* — the white pass uses `??=`. Two staff-only
   rooms are never allowed to share a doorway at all, because whichever tier that
