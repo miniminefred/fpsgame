@@ -264,41 +264,62 @@ model's name is not its size: the `printer` model is a 24 cm desktop unit, which
 floor-standing prop uses `copier`.
 
 ### Keycards (`keycards.js` + `assignLocks` in `gen/layout.js`)
-Some rooms are behind a badge reader. Five cards: **white** and **grey** go on
-ordinary and back-of-house rooms and are a ladder (grey opens white doors);
-**blue** opens the security office and **yellow** the broom closet, and neither
-substitutes for anything else; **black** opens the manager's office and, being the
-last card you get, everything else too. Cards do not travel between floors.
+Every door in the building has a badge reader beside it. Cards do not travel
+between floors. The five fall into **two groups governed by completely different
+rules**, and conflating them is the mistake to avoid:
 
-Every hostile can be carrying one, and killing them drops it. The floor guarantees
-one holder per lock it placed — except black, which is not dealt at all: it comes
-off **the last hostile on the floor**, so it is impossible to get early and
-impossible to miss. Everyone else is a `CARD_SPARE_CHANCE` roll.
+**White is the staff badge.** It goes on *every* room with a door — the exit room
+included, the spawn lobby excluded (a reader on the room you start inside is a
+floor you cannot leave). Every employee carries one. So white is not really a lock,
+it is the first thirty seconds of a floor before you have taken a badge off
+somebody, and picking one up opens ~180 doors at once.
 
-Two rules make the whole thing survivable, and both are proved rather than hoped
-for (`tools/validate-layout.mjs`, checks `8.*`):
+**Grey, blue, yellow and black are real locks.** Grey goes on 2–4 back-of-house
+rooms and also opens white doors; blue opens the one security office, yellow the
+one broom closet, and neither substitutes for anything else; black opens the
+manager's office and, being the last card you get, everything else too.
 
-- **Nothing you need is behind a card.** The spawn and exit rooms are never
-  locked, and a room is only locked if filling it in solid still leaves every
-  other room and the exit reachable from the spawn. A floor can be cleared and
-  descended without finding a single card.
-- **No card is behind the door it opens, or behind another door.** A candidate is
-  only locked if it is reachable with every lock already placed treated as solid,
-  so locks never chain — and `enemies.js` refuses to spawn anyone inside a locked
-  room, which is what stops a holder ending up on the wrong side of their own
-  card. That also means a badged room is worth nothing to `hostileCount`, so a
-  locked door can never be what stops a floor being cleared.
+Card holders: every hostile carries white; guaranteed single holders carry grey,
+blue and yellow instead, plus `CARD_SPARE_CHANCE` extra grey. **Black is not dealt
+at all** — it comes off *the last hostile on the floor*, so it is impossible to get
+early and impossible to miss. A card only becomes a pickup if the player doesn't
+already hold that tier, or a floor would bury itself in two hundred white cards.
 
-Locking a room means locking **every** opening into it, not just the ones that
-room cut — the room next door cuts its own doors and a back way in is not a lock.
-It also means the doorway must be able to hold a panel at all, which is why
-`slidePocketSide` lives in `layout.js` rather than in the builder that fits doors.
+The invariants, all proved rather than hoped for (`tools/validate-layout.mjs`,
+checks `8.*`, plus `5.lock-sealed` in `validate-props.mjs`):
 
-A badged door is shut to the enemies too, at the nav grid rather than in
-`doors.js`: the flow field must not route a chase through a door the chaser cannot
-open, or the whole floor piles up against it. Badging in is permanent, and the
-moment it happens the opening goes back into nav (`nav.openTiles`) so the floor
-can follow you in.
+- **The four real locks are loot, never the route.** Filling every staff-only room
+  in solid still leaves every white room and the exit reachable from spawn — the
+  floor is clearable and descendable **on the white card alone**.
+- **No card is behind the door it opens, or behind another card's door.** Each
+  staff-only room must be reachable with the other three shut, and `enemies.js`
+  never spawns anyone inside one — so those rooms are worth nothing to
+  `hostileCount` either.
+- **White is safe because it is everywhere.** Staff *do* work in white rooms, so
+  the card is behind the door and in front of it a hundred times over. What makes
+  the *first* one reachable is `_cardOutside` in `enemies.js`: a floor is
+  guaranteed `OUTSIDE_MIN` hostiles standing in corridors, one within
+  `FIRST_CONTACT` metres of the lifts. Without that guarantee a floor is corridors
+  and two hundred shut rooms.
+- **Every** opening into a locked room is locked, not just the ones that room cut,
+  and a door is never *downgraded* — the white pass uses `??=`. Two staff-only
+  rooms are never allowed to share a doorway at all, because whichever tier that
+  door took, the other room would be openable with the wrong card.
+- A doorway must be able to hold a panel, which is why `slidePocketSide` lives in
+  `layout.js` and not in the builder that fits doors. ~2 rooms a floor miss out on
+  a lock for this reason (a WARN, not a FAIL).
+
+A badged door is shut to the enemies too, at the nav grid rather than in `doors.js`
+— the flow field must not route a chase through a door the chasers cannot open.
+What clears a lock is **picking up the card, not walking up to the door**: every
+door that badge fits goes live at once and hands its opening back to nav
+(`nav.openTiles`). Unlocking per-approach would leave the building sealed to its
+own occupants until the player had personally visited all two hundred doorways.
+
+Readers are two `InstancedMesh`es per floor (plate + lamp) rather than a mesh each,
+which is what makes two hundred of them affordable and makes turning one green a
+colour write. Minimap tints staff-only rooms only — tinting white would tint the
+whole map.
 
 ### Sound (`sfx.js` + `audio.js` + `public/sounds/`)
 Everything audible is a generated MP3 (see the `sound-generation` skill; `sounds.json`
