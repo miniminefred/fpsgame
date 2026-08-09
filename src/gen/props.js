@@ -314,6 +314,248 @@ export const PROPS = {
       p.obstacle(-1.5, -0.65, 1.5, 0.65, H);
     },
   },
+
+  // --- what the back-of-house rooms are made of -----------------------------
+
+  bookshelf: {
+    w: 1.09, d: 0.39, model: 'bookshelf', hp: 80, substance: 'wood',
+    build(p, rng) {
+      const H = 2.0;
+      for (const sx of [-0.52, 0.52]) p.box('laminateDark', sx - 0.025, 0, -0.19, sx + 0.025, H, 0.19);
+      p.box('laminateDark', -0.54, 0, 0.16, 0.54, H, 0.19);   // back panel
+      for (let i = 0; i < 5; i++) {
+        const y = 0.12 + i * 0.44;
+        p.box('laminateDark', -0.5, y, -0.19, 0.5, y + 0.03, 0.19);
+        // Ring binders, leaning against each other in a run that stops short.
+        let x = -0.48;
+        const run = rng.range(0.4, 0.96);
+        while (x < -0.48 + run) {
+          const w = Math.min(rng.range(0.04, 0.09), -0.48 + run - x);
+          if (w < 0.03) break;
+          p.box(rng.chance(0.6) ? 'paper' : 'cardboard', x, y + 0.03, -0.16, x + w, y + 0.03 + rng.range(0.24, 0.34), 0.14);
+          x += w + 0.005;
+        }
+      }
+      p.obstacle(-0.545, -0.195, 0.545, 0.195, H);
+    },
+  },
+
+  crate: {
+    w: 0.8, d: 0.8, model: 'crate', hp: 45, substance: 'wood',
+    build(p, rng) {
+      const H = 0.78;
+      p.box('cardboard', -0.39, 0, -0.39, 0.39, H, 0.39);
+      // Bracing battens, proud of the faces so it reads as boards not a carton.
+      for (const y of [0.06, H - 0.12]) {
+        p.box('laminateDark', -0.4, y, -0.4, 0.4, y + 0.06, 0.4);
+      }
+      if (rng.chance(0.5)) p.box('hazard', -0.16, H * 0.5, -0.4, 0.16, H * 0.62, -0.395);
+      p.obstacle(-0.4, -0.4, 0.4, 0.4, H);
+    },
+  },
+
+  // Pallet plus what is stacked on it: the model is the pallet alone, so the
+  // stack is a second model dropped on top and the collider has to be told the
+  // combined height rather than the pallet's 19 cm.
+  pallet: {
+    w: 1.02, d: 1.2, model: 'pallet', hp: 40, substance: 'cardboard',
+    obstacleTop: 1.29,
+    desktop: [{ key: 'box_stack' }],
+    build(p, rng) {
+      for (const sz of [-0.5, 0, 0.5]) {
+        p.box('laminateDark', -0.5, 0, sz - 0.07, 0.5, 0.1, sz + 0.07);
+      }
+      for (let i = 0; i < 5; i++) {
+        const x = -0.5 + i * 0.21;
+        p.box('cardboard', x, 0.1, -0.59, x + 0.16, 0.19, 0.59);
+      }
+      // The stack: cartons in courses, each a little smaller than the one below.
+      let y = 0.19;
+      const courses = rng.int(2, 3);
+      for (let i = 0; i < courses; i++) {
+        const hw = 0.44 - i * 0.05;
+        const hd = 0.31 - i * 0.03;
+        const h = rng.range(0.3, 0.4);
+        p.box('cardboard', -hw, y, -hd, hw, y + h, hd);
+        p.box('paper', -hw * 0.4, y + h * 0.4, -hd - 0.004, hw * 0.4, y + h * 0.62, -hd + 0.004);
+        y += h;
+      }
+      p.obstacle(-0.51, -0.6, 0.51, 0.6, 1.29);
+    },
+  },
+
+  lockers: {
+    // No model in the set, and a bank of lockers is four boxes and a handle —
+    // cheap to author and the clearest thing you can put in a staff room.
+    w: 1.8, d: 0.56, hp: 100, substance: 'metal',
+    build(p, rng) {
+      const H = 1.85;
+      p.box('metal', -0.9, 0.06, -0.25, 0.9, H, 0.25);
+      p.box('metalDark', -0.88, 0, -0.23, 0.88, 0.06, 0.23);   // plinth
+      for (let i = 0; i < 4; i++) {
+        const x = -0.9 + i * 0.45;
+        p.box('metalDark', x + 0.02, 0.1, -0.26, x + 0.43, H - 0.03, -0.245);
+        p.box('metal', x + 0.36, 0.85, -0.27, x + 0.4, 1.0, -0.255);       // handle
+        // Vent slots at head height, and the odd door left hanging open.
+        for (let v = 0; v < 3; v++) {
+          p.box('plastic', x + 0.1, H - 0.16 + v * 0.04, -0.265, x + 0.35, H - 0.14 + v * 0.04, -0.26);
+        }
+        // A door left ajar would be the nice touch, but it swings outside the
+        // footprint and the fit test never knew about it. A dented one instead.
+        if (rng.chance(0.2)) p.box('metal', x + 0.08, 0.3, -0.252, x + 0.3, 0.62, -0.244);
+      }
+      // Depth covers the handles, which stand 2 cm proud of the doors.
+      p.obstacle(-0.9, -0.28, 0.9, 0.25, H);
+    },
+  },
+
+  whiteboard: {
+    // Freestanding on castors rather than the wall-hung model, because a prop
+    // that has to hang at 0.85 m needs placement machinery nothing else wants.
+    w: 1.8, d: 0.5, hp: 30, substance: 'wood',
+    build(p, rng) {
+      p.box('paper', -0.85, 1.02, -0.03, 0.85, 1.94, 0.03);          // the board
+      p.box('metal', -0.88, 0.98, -0.05, 0.88, 1.02, 0.05);          // pen tray
+      p.box('metal', -0.88, 1.94, -0.04, 0.88, 1.98, 0.04);
+      for (const sx of [-0.78, 0.78]) {
+        p.box('metal', sx - 0.03, 0.06, -0.03, sx + 0.03, 1.98, 0.03);
+        p.box('metalDark', sx - 0.04, 0, -0.24, sx + 0.04, 0.06, 0.24);  // castor bar
+      }
+      // Somebody's diagram, still up.
+      if (rng.chance(0.8)) p.box('screen', -0.5, 1.3, -0.035, 0.2, 1.7, -0.031);
+      p.obstacle(-0.88, -0.24, 0.88, 0.24, 1.98);
+    },
+  },
+
+  roundTable: {
+    w: 2.11, d: 2.11, model: 'round_table', hp: 90, substance: 'wood',
+    build(p, rng) {
+      const H = 0.75;
+      // A disc, near enough: three overlapping slabs read as round from eye
+      // height and cost four boxes instead of a lathe.
+      p.box('laminate', -1.03, H - 0.05, -0.62, 1.03, H, 0.62);
+      p.box('laminate', -0.62, H - 0.05, -1.03, 0.62, H, 1.03);
+      p.box('laminate', -0.86, H - 0.05, -0.86, 0.86, H, 0.86);
+      p.box('metalDark', -0.09, 0, -0.09, 0.09, H - 0.05, 0.09);
+      p.box('metalDark', -0.38, 0, -0.38, 0.38, 0.05, 0.38);
+      if (rng.chance(0.7)) p.box('paper', 0.2, H, -0.1, 0.34, H + 0.11, 0.04);
+      p.obstacle(-1.03, -1.03, 1.03, 1.03, H);
+    },
+  },
+
+  stool: {
+    w: 0.5, d: 0.5, mass: 7, hp: 25, substance: 'plastic',
+    build(p) {
+      p.box('fabric', -0.2, 0.58, -0.2, 0.2, 0.64, 0.2);
+      for (const sx of [-0.15, 0.15]) {
+        for (const sz of [-0.15, 0.15]) {
+          p.box('metal', sx - 0.02, 0, sz - 0.02, sx + 0.02, 0.58, sz + 0.02);
+        }
+      }
+      p.box('metal', -0.17, 0.22, -0.17, 0.17, 0.26, 0.17);   // foot ring
+      p.obstacle(-0.21, -0.21, 0.21, 0.21, 0.64);
+    },
+  },
+
+  trashCan: {
+    w: 0.44, d: 0.44, mass: 4, hp: 12, substance: 'plastic',
+    build(p, rng) {
+      p.box('plastic', -0.19, 0, -0.19, 0.19, 0.56, 0.19);
+      p.box('metalDark', -0.21, 0.56, -0.21, 0.21, 0.6, 0.21);
+      // Overflowing, because nobody on this floor empties anything.
+      if (rng.chance(0.6)) p.box('paper', -0.14, 0.6, -0.14, 0.1, 0.72, 0.12);
+      p.obstacle(-0.21, -0.21, 0.21, 0.21, 0.6);
+    },
+  },
+
+  recyclingBin: {
+    w: 1.22, d: 0.51, model: 'recycling_bin', hp: 30, substance: 'plastic',
+    build(p) {
+      const lids = ['hazard', 'plant', 'screen'];
+      for (let i = 0; i < 3; i++) {
+        const x = -0.6 + i * 0.41;
+        p.box('plastic', x, 0, -0.25, x + 0.37, 0.9, 0.25);
+        p.box(lids[i], x, 0.9, -0.25, x + 0.37, 0.96, 0.25);
+        p.box('metalDark', x + 0.08, 0.94, -0.12, x + 0.29, 0.98, 0.12);   // slot
+      }
+      p.obstacle(-0.61, -0.255, 0.61, 0.255, 0.98);
+    },
+  },
+
+  mopBucket: {
+    w: 0.62, d: 0.72, model: 'mop_bucket', hp: 14, substance: 'plastic',
+    build(p) {
+      p.box('plastic', -0.24, 0.06, -0.24, 0.24, 0.42, 0.24);
+      p.box('metalDark', -0.26, 0, -0.26, 0.26, 0.06, 0.26);      // castor frame
+      p.box('metal', -0.2, 0.42, -0.05, 0.2, 0.6, 0.15);          // wringer
+      p.box('metal', -0.03, 0.4, -0.3, 0.03, 0.98, -0.24);        // mop handle
+      p.box('fabric', -0.09, 0.1, -0.33, 0.09, 0.4, -0.21);       // the head
+      p.obstacle(-0.26, -0.34, 0.26, 0.26, 0.6);
+    },
+  },
+
+  extinguisher: {
+    w: 0.21, d: 0.31, model: 'fire_extinguisher', hp: 12, substance: 'metal',
+    build(p) {
+      p.box('hazard', -0.09, 0.02, -0.09, 0.09, 0.44, 0.09);
+      p.box('metalDark', -0.09, 0, -0.09, 0.09, 0.02, 0.09);
+      p.box('metalDark', -0.04, 0.44, -0.04, 0.04, 0.52, 0.04);
+      p.box('metal', -0.06, 0.5, -0.12, 0.06, 0.55, 0.06);        // horn
+      p.obstacle(-0.1, -0.15, 0.1, 0.15, 0.55);
+    },
+  },
+
+  receptionDesk: {
+    w: 1.13, d: 0.55, model: 'reception_desk', hp: 85, substance: 'wood',
+    build(p, rng) {
+      const H = 1.1;
+      p.box('laminateDark', -0.56, 0, -0.27, 0.56, H - 0.05, 0.2);   // front bulkhead
+      p.box('laminate', -0.56, H - 0.05, -0.27, 0.56, H, 0.27);      // transaction top
+      p.box('laminate', -0.5, 0.72, -0.2, 0.5, 0.76, 0.26);          // work surface behind
+      if (rng.chance(0.8)) {
+        p.box('metalDark', -0.2, 0.76, 0.06, 0.2, 0.78, 0.2);
+        p.box('screenOn', -0.18, 0.78, 0.1, 0.18, 1.02, 0.13);
+      }
+      p.obstacle(-0.565, -0.275, 0.565, 0.275, H);
+    },
+  },
+
+  armchair: {
+    w: 1.25, d: 0.95, model: 'armchair', hp: 55, substance: 'fabric',
+    build(p) {
+      p.box('fabric', -0.5, 0.12, -0.4, 0.5, 0.44, 0.4);
+      p.box('fabric', -0.5, 0.44, 0.24, 0.5, 0.82, 0.44);      // back
+      p.box('fabric', -0.62, 0.36, -0.44, -0.46, 0.62, 0.44);  // arms
+      p.box('fabric', 0.46, 0.36, -0.44, 0.62, 0.62, 0.44);
+      p.box('metalDark', -0.5, 0, -0.36, 0.5, 0.12, 0.36);
+      p.obstacle(-0.625, -0.475, 0.625, 0.475, 0.44);
+    },
+  },
+
+  workbench: {
+    // The IT bay's bench: a steel frame, a pegboard, and whatever was being
+    // fixed on it when the floor went bad.
+    w: 2.0, d: 0.8, hp: 85, substance: 'metal',
+    build(p, rng) {
+      const H = 0.9;
+      p.box('laminate', -0.98, H - 0.06, -0.38, 0.98, H, 0.38);
+      for (const sx of [-0.92, 0.92]) {
+        p.box('metal', sx - 0.05, 0, -0.36, sx + 0.05, H - 0.06, 0.36);
+      }
+      p.box('metal', -0.9, 0.2, -0.34, 0.9, 0.26, 0.34);         // lower shelf
+      p.box('metalDark', -0.95, H, 0.3, 0.95, H + 0.7, 0.36);    // pegboard
+      // Guts of whatever is being worked on: towers, boards, a spool of cable.
+      const towers = rng.int(1, 3);
+      for (let i = 0; i < towers; i++) {
+        const x = -0.8 + i * 0.62;
+        p.box('metalDark', x, H, -0.24, x + 0.22, H + 0.44, 0.02);
+        if (rng.chance(0.6)) p.box('led', x + 0.16, H + 0.3, -0.25, x + 0.2, H + 0.34, -0.24);
+      }
+      if (rng.chance(0.7)) p.box('plastic', 0.3, H, 0.06, 0.72, H + 0.05, 0.3);
+      if (rng.chance(0.6)) p.box('screen', 0.44, H, -0.3, 0.86, H + 0.02, -0.06);
+      p.obstacle(-0.99, -0.39, 0.99, 0.39, H);
+    },
+  },
 };
 
 // --- placement --------------------------------------------------------------
@@ -358,7 +600,10 @@ export function tryPlace(sink, kind, cx, cz, rot, rng) {
     const yaw = -rot * Math.PI / 2;
     sink.beginStatic(spec.hp, spec.substance);
     sink.model(spec.model, cx, 0, cz, yaw);
-    sink.obstacle(cx - w, cz - d, cx + w, cz + d, model.height);
+    // The model's own height, unless the prop stands something on top of itself
+    // — a pallet is 19 cm and the stack on it is over a metre, and a collider
+    // you can walk through is worse than no pallet at all.
+    sink.obstacle(cx - w, cz - d, cx + w, cz + d, spec.obstacleTop ?? model.height);
 
     // Anything that belongs on top of it — a monitor on a desk, say.
     if (spec.desktop) {
