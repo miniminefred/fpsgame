@@ -310,6 +310,18 @@ harmless staff are the only ones in an actual colour: white for the Panicking St
 brown for the Night Cleaner, yellow for the Courier. So hue says threat, shade says which
 one, and no two types share a visor.
 
+**A round is worth what it is worth where it lands** (`HIT_ZONES`). All six boxes of the
+human rig stop bullets — head ×2.2, torso ×1, each arm and leg ×0.55 — and every one
+carries its own `hitScale` on `userData`, so `enemies.hit` is the only code that has to
+know. Limbs used to stop nothing at all, on the grounds that a 14 cm arm box makes hit
+detection arbitrary. That is true, and it is an argument for a limb hit being *cheap*, not
+for it being nothing: a round through somebody's forearm that does not scratch them is the
+more obvious lie, and it is the one the player sees, because the tracer ends on the wall
+behind a man who did not react. A rat and the floor cleaner have two boxes, not six, and
+the loop skips whatever a rig does not have. On death every box's `enemy` back-reference
+is cleared while its `isEnemyPart` flag stays, which is what makes the next round walk
+through the corpse instead of being spent on it.
+
 Melee types swing office junk (fire extinguishers, keyboards, monitors) and land the hit
 part-way through the swing, so you can back out of reach. A weapon declares how it is
 carried when idle (`rest` in `BLUNT`), because a mop is not held out in front like a
