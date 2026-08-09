@@ -18,30 +18,35 @@ import { getFx } from './fx-textures.js';
 // at the top and opens the building, which it can afford to do because of when
 // it arrives: it comes off the last hostile on the floor, so by the time you
 // hold it there is nobody left to use it against.
+//
+// White is the odd one and the reason the ladder matters: it is on every door on
+// the floor and in every employee's pocket, so it is less a lock than the
+// opening minute of a floor. What that costs and what pays for it is all in
+// assignLocks; nothing in here needs to know.
 
 export const CARDS = {
   white: {
     name: 'White', color: 0xf0f2f5, edge: 0x8b9199,
     // Everything below this rank on the ladder opens too.
-    rank: 1, blurb: 'Staff',
+    rank: 1,
   },
   grey: {
     name: 'Grey', color: 0x9aa3ad, edge: 0x4b5157,
-    rank: 2, blurb: 'Restricted',
+    rank: 2,
   },
   black: {
     name: 'Black', color: 0x24272c, edge: 0xb99b4e,
-    rank: 3, blurb: 'Executive',
+    rank: 3,
   },
   // Off the ladder entirely: one door each, and no amount of seniority below
   // executive substitutes for them.
   blue: {
     name: 'Blue', color: 0x3fa0ff, edge: 0x1b4f80,
-    rank: 0, blurb: 'Security',
+    rank: 0,
   },
   yellow: {
     name: 'Yellow', color: 0xffc93a, edge: 0x8a6a12,
-    rank: 0, blurb: 'Facilities',
+    rank: 0,
   },
 };
 
@@ -135,11 +140,11 @@ const SPIN = 1.6;              // radians a second
 const HALO = 0.62;             // metres across, and always facing you
 const PICKUP_R = 1.15;         // metres — forgiving, you are running past it
 const PICKUP_Y = 2.0;          // ...but not through the ceiling of the floor below
+
 export class Keycards {
-  constructor({ scene, audio, hud, wallet }) {
+  constructor({ scene, audio, wallet }) {
     this.scene = scene;
     this.audio = audio;
-    this.hud = hud;
     this.wallet = wallet;
     this.items = [];
 

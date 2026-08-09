@@ -57,7 +57,7 @@ destruction.extinguishers = extinguishers;
 
 const doors = new Doors({ scene, audio });
 const wallet = new Wallet();
-const keycards = new Keycards({ scene, audio, hud, wallet });
+const keycards = new Keycards({ scene, audio, wallet });
 
 const game = new Game({
   scene, camera, player, weapons, shooting, enemies,
