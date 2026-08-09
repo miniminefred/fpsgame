@@ -53,6 +53,15 @@ const GIVE_UP = 7;         // seconds of no contact before they settle down
 // What an explosion is worth as a throw, at the seat of it. Above anything a gun
 // can do, which is the point of standing next to one. See splash.
 const BLAST_PUNCH = 3.5;
+// What a round is worth by where it lands. A head is worth more than a chest and
+// a chest more than a limb, which is the ordering every shooter has and the one
+// the player is already aiming as if it were true.
+//
+// The spread is what makes it worth having: at 2.2 the head is what turns a gun
+// that needs three rounds into one that needs one, and at 0.55 a limb is a hit
+// you notice you should not have taken rather than a miss. Anything narrower
+// than this and the tiers stop being decisions.
+const HIT_ZONES = { head: 2.2, torso: 1, limb: 0.55 };
 const DEATH_TIME = 2.2;
 const HIT_FLASH = 0.1;
 const SWING_TIME = 0.5;    // wind-up plus follow-through on a melee swing
@@ -872,17 +881,32 @@ export class Enemies {
       enemy.voiceTimer = type.panic ? rng.range(0.2, 2.5) : rng.range(3, 14);
     }
 
-    // Only the torso and head stop bullets; hitboxes on limbs this narrow
-    // would make hit detection feel arbitrary.
-    torso.userData.enemy = enemy;
-    head.userData.enemy = enemy;
-    head.userData.headshot = 2.2;
-    torso.userData.isEnemyPart = true;
-    head.userData.isEnemyPart = true;
+    // Where a bullet can land, and what it is worth there.
+    //
+    // Limbs used to stop nothing at all, on the grounds that the box on an arm
+    // is 14 cm across and catching one instead of the chest is luck rather than
+    // aim. That is true, and it is an argument for a limb hit being CHEAP, not
+    // for it being nothing: a round that goes through somebody's forearm and
+    // does not scratch them is the more obvious lie, and it is the one the
+    // player sees, because the tracer ends on the wall behind a man who did not
+    // react. So all six boxes stop a round now and the arithmetic carries the
+    // meaning instead.
+    enemy.hitboxes = [];
+    for (const [mesh, scale] of [
+      [head, HIT_ZONES.head], [torso, HIT_ZONES.torso],
+      [armL, HIT_ZONES.limb], [armR, HIT_ZONES.limb],
+      [legL, HIT_ZONES.limb], [legR, HIT_ZONES.limb],
+    ]) {
+      if (!mesh) continue;              // a rat has a body and a head and that is all
+      mesh.userData.enemy = enemy;
+      mesh.userData.hitScale = scale;
+      mesh.userData.isEnemyPart = true;
+      enemy.hitboxes.push(mesh);
+      this.meshes.push(mesh);
+    }
 
     this.scene.add(group);
     this.items.push(enemy);
-    this.meshes.push(torso, head);
     return enemy;
   }
 
@@ -898,7 +922,7 @@ export class Enemies {
   hit(mesh, damage, dir = null, point = null, punch = 1) {
     const e = mesh.userData?.enemy;
     if (!e || !e.alive) return null;
-    return this._damage(e, damage * (mesh.userData.headshot ?? 1),
+    return this._damage(e, damage * (mesh.userData.hitScale ?? 1),
       dir ? { dir, point, mesh, punch } : null);
   }
 
@@ -926,8 +950,11 @@ export class Enemies {
     // A dead machine stops making machine noise. Nothing else clears this, and
     // the loop would otherwise run on out of a wreck for the rest of the floor.
     if (e.motor) { this.audio?.stopMotor(e.motor); e.motor = null; }
-    e.torso.userData.enemy = null;
-    e.head.userData.enemy = null;
+    // Every box this one was stopping rounds with goes quiet at once. They stay
+    // in the raycast list — shooting.js walks past anything flagged as a body
+    // part with nobody behind it — so the next round goes through the corpse
+    // rather than being spent on it.
+    for (const m of e.hitboxes) m.userData.enemy = null;
     // Hand the body to the solver. It can refuse — no physics, no skeleton, or
     // simply too many already falling — and refusing costs nothing, because the
     // animation below is still sitting there.
