@@ -214,7 +214,7 @@ export class Game {
     this.player.setColliders([...level.colliders, ...this.pushColliders]);
     // The doors own colliders that are already in that list; all they do at
     // runtime is drop them below the floor when the panel is out of the way.
-    this.doors?.setDoors(level.doors);
+    this.doors?.setDoors(level.doors, level.nav);
     this.player.placeAt(level.spawn.x, level.spawn.z);
 
     this.enemies.spawn(level.layout, level.nav, rng, tuningFor(this.floor));

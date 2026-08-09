@@ -1,4 +1,4 @@
-import { SOLID, isOpen } from './gen/layout.js';
+import { isOpen } from './gen/layout.js';
 
 // Navigation over the floor's tile grid.
 //
@@ -46,6 +46,35 @@ export class NavGrid {
         if (!this.walk[ty * this.W + tx]) continue;
         if (this.clear(this.wx(tx), this.wz(ty), BODY_RADIUS)) this.fits[ty * this.W + tx] = 1;
       }
+    }
+
+    // And a third grid: what you can see THROUGH. It starts as the shell — a
+    // wall stops a line and nothing else does, because furniture is chest high
+    // and a doorway with no door in it is a hole.
+    //
+    // It is separate from `walk` because the two questions genuinely differ in
+    // both directions. A filing cabinet is walkable-through-no but see-over-yes;
+    // a shut door is the reverse of nothing — it is no to both, but only while
+    // it happens to be shut, and doors.js is what knows that. See setSight.
+    this.sight = new Uint8Array(this.W * this.H);
+    for (let i = 0; i < this.W * this.H; i++) this.sight[i] = isOpen(this.tiles[i]) ? 1 : 0;
+  }
+
+  /**
+   * A door just opened or shut, and a shut door is not a window.
+   *
+   * This is the one part of the nav grid that changes several times a second,
+   * and it is driven from doors.js rather than sampled here because the door is
+   * what knows how far along its travel it is. Only the panel's own tiles are
+   * touched, so two doorways into the same room stay independent.
+   */
+  setSight(indices, clear) {
+    if (!indices?.length) return;
+    const v = clear ? 1 : 0;
+    for (const i of indices) {
+      // Never open a line through something the building itself is made of.
+      if (v && !isOpen(this.tiles[i])) continue;
+      this.sight[i] = v;
     }
   }
 
@@ -111,9 +140,16 @@ export class NavGrid {
     return true;
   }
 
-  // Nothing solid between two points at the same height. Sampled rather than
-  // stepped exactly — walls are half a metre thick, so quarter-metre samples
-  // cannot slip through one.
+  // Nothing solid between two points at the same height — walls, and whatever
+  // doors are shut right now. Sampled rather than stepped exactly: walls are
+  // half a metre thick and a door panel fills its whole tile, so quarter-metre
+  // samples cannot slip through either.
+  //
+  // This one function is what decides whether an enemy has seen you, and — since
+  // their fire is not a raycast against the building — whether they can shoot
+  // you. It also decides which ceiling fixtures may light you (lighting.js) and
+  // which way round a corner a sound arrives from (soundPath below). All three
+  // want the same answer, which is why they share it.
   losClear(ax, az, bx, bz) {
     const dx = bx - ax;
     const dz = bz - az;
@@ -125,7 +161,7 @@ export class NavGrid {
       const t = i / steps;
       const tx = this.tx(ax + dx * t);
       const ty = this.ty(az + dz * t);
-      if (!this.inBounds(tx, ty) || this.tiles[ty * this.W + tx] === SOLID) return false;
+      if (!this.inBounds(tx, ty) || !this.sight[ty * this.W + tx]) return false;
     }
     return true;
   }

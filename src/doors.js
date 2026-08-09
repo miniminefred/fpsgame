@@ -69,13 +69,18 @@ export class Doors {
    * panel or the pair of leaves, the collider it owns, and how it gets out of
    * the way.
    */
-  setDoors(list) {
+  setDoors(list, nav = null) {
     this.items = list ?? [];
+    // The nav grid, purely so a shut panel can stop a line of sight through its
+    // doorway — see _place. A doorway with no door fitted in it never gets one
+    // of these calls, so it stays the hole it is.
+    this.nav = nav;
     for (const door of this.items) {
       door.open = 0;
       door.hold = 0;
       door.moving = false;
       door.refuseTimer = 0;
+      door.opaque = false;   // ...until the first _place says otherwise
       this._place(door);
     }
   }
@@ -187,6 +192,22 @@ export class Doors {
         door.baseZ + door.dirZ * slide);
     }
 
-    door.collider.top = door.open < CLEAR_AT ? door.height : -1;
+    // One threshold for both of the things a panel does when it is in the way:
+    // it stops you walking through, and it stops anyone looking through. They
+    // are the same fact and it would be strange for them to disagree by a frame.
+    //
+    // Sight matters more than it sounds like it should. An enemy's fire is not a
+    // raycast against the building — they shoot when they can see you (see
+    // _shoot in enemies.js) — so a doorway that stays transparent while a panel
+    // stands in it is a doorway they shoot you through. And a BADGED door never
+    // opens at all, so this is also what puts a locked room genuinely out of
+    // sight rather than merely out of reach.
+    const shut = door.open < CLEAR_AT;
+    door.collider.top = shut ? door.height : -1;
+
+    if (shut !== door.opaque) {
+      door.opaque = shut;
+      this.nav?.setSight(door.navTiles, !shut);
+    }
   }
 }
