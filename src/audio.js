@@ -470,6 +470,31 @@ export class GameAudio {
   doorOpen(point) { this._placed('door-open', point); }
   doorClose(point) { this._placed('door-close', point); }
 
+  // --- badge readers ------------------------------------------------------------
+  //
+  // The three keycard sounds are the one part of the set that is borrowed rather
+  // than generated: a reader accepting a card, refusing one, and a card being
+  // picked up off the carpet. They are pitched well away from the clips they are
+  // borrowed from — a refusal is a dry-fire click dropped most of an octave, a
+  // long way from the sound of your own gun going nowhere — so nothing here is
+  // mistakable for the thing it came from. Dedicated clips would still be
+  // better; see the sound-generation skill.
+
+  /** Card accepted: the reader clunks and the panel starts moving. */
+  doorUnlock(point) {
+    this._placed('door-open', point, { gain: 1.3, rate: 1.24 });
+  }
+
+  /** Card refused, or no card at all. */
+  doorRefused(point) {
+    this._placed('dry-fire', point, { gain: 0.9, rate: 0.62 });
+  }
+
+  /** A keycard picked up off the floor. */
+  keycardPickup(point) {
+    this._placed('heal', point, { gain: 0.8, rate: 1.35 });
+  }
+
   /** Furniture shoved aside by the player walking into it. */
   propShove(point) {
     this._placed('prop-shove', point);

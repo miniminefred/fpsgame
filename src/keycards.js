@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getFx } from './fx-textures.js';
 
 // Keycards: what the staff are carrying, and what it opens.
 //
@@ -45,6 +46,13 @@ export const CARDS = {
 };
 
 export const CARD_TIERS = Object.keys(CARDS);
+
+// The lamp on a badge reader. Here rather than in the two files that use it —
+// gen/build.js builds the reader, doors.js turns it green — because a reader
+// that says "open" in one colour and is built in another is the kind of bug you
+// only notice from inside the game.
+export const READER_LIT = 0xff3b30;
+export const READER_OPEN = 0x3ddc6b;
 
 // The order the HUD lists them in — the ladder first, low to high, then the two
 // one-door keys. Not Object.keys order, so the strip reads as a rank.
@@ -98,24 +106,32 @@ export class Wallet {
 
   opens(lock) { return !lock || this.keyFor(lock) !== null; }
 
-  list() { return HUD_ORDER.filter((t) => this.held.has(t)); }
+  /** What the HUD draws: rank order, with the colour already in CSS form. */
+  list() {
+    return HUD_ORDER.filter((t) => this.held.has(t)).map((tier) => ({
+      tier,
+      name: CARDS[tier].name,
+      css: `#${CARDS[tier].color.toString(16).padStart(6, '0')}`,
+    }));
+  }
 }
 
 // --- cards on the floor -----------------------------------------------------
 
-const CARD_W = 0.11;           // a card is 86 x 54 mm; this is generous, on
-const CARD_H = 0.07;           // purpose — a real one is invisible on carpet
-const CARD_T = 0.006;
-const REST_Y = 0.55;           // metres it floats at
-const BOB = 0.055;
+// A real keycard is 86 x 54 mm, and at that size, on grey carpet, in an office
+// with half its lights out, it is not so much hard to see as invisible. So this
+// one is twice life size and hanging in the air with a light behind it. Nothing
+// about that is realistic and all of it is legibility: the one thing a pickup
+// may not be is missable.
+const CARD_W = 0.17;
+const CARD_H = 0.108;
+const CARD_T = 0.008;
+const REST_Y = 0.62;           // metres it floats at
+const BOB = 0.06;
 const SPIN = 1.6;              // radians a second
+const HALO = 0.62;             // metres across, and always facing you
 const PICKUP_R = 1.15;         // metres — forgiving, you are running past it
 const PICKUP_Y = 2.0;          // ...but not through the ceiling of the floor below
-
-// Cards read as a pickup rather than as litter because they float and turn, and
-// because of the glow under them: a card lying flat on grey carpet in a dark
-// office is genuinely impossible to see, and the one thing a pickup may not be
-// is missable.
 export class Keycards {
   constructor({ scene, audio, hud, wallet }) {
     this.scene = scene;
@@ -125,7 +141,6 @@ export class Keycards {
     this.items = [];
 
     this.geo = new THREE.BoxGeometry(CARD_W, CARD_H, CARD_T);
-    this.glowGeo = new THREE.PlaneGeometry(0.46, 0.46);
     this.mats = new Map();     // tier -> { card, glow }
     this._t = 0;
   }
@@ -145,12 +160,17 @@ export class Keycards {
         roughness: 0.45,
         metalness: 0.1,
       }),
-      glow: new THREE.MeshBasicMaterial({
-        color: spec.color,
+      // The halo behind the card. Additive, so it brightens whatever it is in
+      // front of instead of painting a pale square on it — a flat disc on a dark
+      // floor reads as a rug, which is the opposite of what a pickup wants. The
+      // black card gets a warmer, stronger one: its own colour glows at nothing.
+      glow: new THREE.SpriteMaterial({
+        map: getFx().glow,
+        color: tier === 'black' ? spec.edge : spec.color,
         transparent: true,
-        opacity: 0.16,
+        opacity: tier === 'black' ? 0.75 : 0.55,
+        blending: THREE.AdditiveBlending,
         depthWrite: false,
-        side: THREE.DoubleSide,
       }),
     };
     this.mats.set(tier, m);
@@ -165,20 +185,20 @@ export class Keycards {
     const group = new THREE.Group();
     group.position.set(x, y, z);
 
+    // The halo goes in FIRST and the card on top of it, so the card is always
+    // read against its own light rather than lost in it.
+    const halo = new THREE.Sprite(glow);
+    halo.scale.set(HALO, HALO, 1);
+    halo.position.y = REST_Y;
+    group.add(halo);
+
     const mesh = new THREE.Mesh(this.geo, card);
     mesh.position.y = REST_Y;
     mesh.rotation.z = 0.35;
     group.add(mesh);
 
-    // A pool of light on the carpet, flat and unlit, so the card announces
-    // itself from across a room without needing a light near it.
-    const pool = new THREE.Mesh(this.glowGeo, glow);
-    pool.rotation.x = -Math.PI / 2;
-    pool.position.y = 0.02;
-    group.add(pool);
-
     this.scene.add(group);
-    const item = { tier, group, mesh, x, y, z, phase: Math.random() * 6.283 };
+    const item = { tier, group, mesh, halo, x, y, z, phase: Math.random() * 6.283 };
     this.items.push(item);
     return item;
   }
@@ -194,7 +214,9 @@ export class Keycards {
     for (let i = this.items.length - 1; i >= 0; i--) {
       const item = this.items[i];
       item.mesh.rotation.y += SPIN * dt;
-      item.mesh.position.y = REST_Y + Math.sin(this._t * 2.1 + item.phase) * BOB;
+      const y = REST_Y + Math.sin(this._t * 2.1 + item.phase) * BOB;
+      item.mesh.position.y = y;
+      item.halo.position.y = y;
 
       if (Math.abs(py - item.y) > PICKUP_Y) continue;
       if (Math.hypot(px - item.x, pz - item.z) > PICKUP_R) continue;

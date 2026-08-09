@@ -162,7 +162,14 @@ export function generateLayout(seed, floorNumber) {
     : spawnRoom;
 
   assignRoles(live, spawnRoom, exitRoom, rng);
-  const locks = assignLocks(tiles, W, H, live, doors, spawnRoom, exitRoom, dist, rng);
+  // On its own stream, not the floor's. Everything downstream of here — the
+  // furniture in every room on the floor — draws from `rng`, so spending a
+  // variable number of numbers on picking locks would re-roll the contents of a
+  // building that has nothing to do with them. It showed up immediately as a
+  // mailroom, three hundred metres from the nearest badge reader, furnishing
+  // itself shut.
+  const locks = assignLocks(tiles, W, H, live, doors, spawnRoom, exitRoom, dist,
+    makeRng(seed ^ 0x5bf03635));
 
   const layout = {
     seed, floorNumber, W, H, TILE,

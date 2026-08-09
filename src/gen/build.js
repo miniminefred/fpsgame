@@ -9,7 +9,7 @@ import {
   TILE, WALL_H, CEIL_H, DOOR_H,
   SOLID, ROOM, CORRIDOR, DOOR, isOpen, worldX, worldZ, slidePocketSide,
 } from './layout.js';
-import { CARDS } from '../keycards.js';
+import { CARDS, READER_LIT } from '../keycards.js';
 
 // Turns an abstract floorplan into everything the game needs: batched meshes,
 // collision AABBs, a nav grid for the enemies, and the list of ceiling lights
@@ -529,8 +529,6 @@ function buildSlidingDoors(layout, scene, materials, doors, colliders, objects, 
 // --- badge readers ----------------------------------------------------------
 
 const READER_H = 1.15;         // metres up the jamb — where your hand goes
-export const READER_LIT = 0xff3b30;   // locked
-export const READER_OPEN = 0x3ddc6b;  // badged in
 
 // The panel on a locked door looks exactly like the panel on an unlocked one,
 // and a door that silently refuses to open reads as a bug rather than as a lock.
