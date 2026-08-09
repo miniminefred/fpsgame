@@ -68,6 +68,14 @@ const FIRST_CONTACT = 34;      // metres from the lifts
 const OUTSIDE_MIN = 5;
 const MIN_SPAWN_GAP = 11;      // ...but never close enough to be there on arrival
 
+// The cleaning staff. Doing rounds in the corridors, plus the two on their
+// break in the broom closet. See _janitors.
+const JANITORS = [1, 3];
+const CLOSET_JANITORS = 2;
+// How far a seated body drops, and how far its legs come up to meet the floor.
+const SIT_DROP = 0.42;
+const SIT_LEGS = -1.5;         // radians — straight out in front
+
 // Staff. Every type is the same rig with different numbers and a different
 // suit, which keeps them readable at a glance in a grey corridor: the colour of
 // the visor tells you what is about to happen to you.
@@ -129,6 +137,23 @@ const TYPES = {
     suit: 0x33502c, shirt: 0x8fb063, visor: 0x66ff4d, voice: 'zombie',
     unlockFloor: 1, weight: 3,
   },
+  janitor: {
+    // The only person on the floor in a uniform, and the only one carrying a
+    // yellow card. Everything about him is built to be recognised before he is
+    // in range: blue trousers and a blue cap against a yellow shirt is the one
+    // colour scheme in the building that is not grey, and the mop gives him
+    // nearly a metre of reach — the longest swing on the floor by some way, so
+    // the tell has to arrive early enough to back out of.
+    //
+    // Placed by hand rather than rolled (`weight: 0`), because how many there
+    // are and where they are is the whole point of him: one to three doing
+    // rounds, and two more sitting in the broom closet. See _janitors.
+    name: 'Janitor', hp: 1.6, speed: 1.08, damage: 1.35, rate: 1.3, spread: 1,
+    range: 2.6, melee: true, scale: 1.03, blunt: ['mop'],
+    suit: 0x2f4d8a, shirt: 0xf2c93c, pants: 0x2f4d8a, cap: 0x2f4d8a,
+    visor: 0xb9bec4, unlockFloor: 1, weight: 0,
+  },
+
   // --- the neutrals -----------------------------------------------------------
   //
   // Nobody on this side of the roster is fighting you, and none of them counts
@@ -336,8 +361,70 @@ export class Enemies {
     }
 
     this._cardOutside(layout, nav, rng, tuning);
+    this._janitors(layout, nav, rng, tuning);
     this._manager(layout, nav, rng, tuning);
     this._dealCards(layout, rng);
+  }
+
+  /**
+   * The cleaning staff: a few doing rounds, and the two on their break.
+   *
+   * They are the only source of the yellow card, so where they stand is a
+   * correctness question rather than a flavour one. The ones on rounds go in the
+   * corridors — outside every lock, which is what guarantees the card is
+   * reachable with nothing in your pocket — and the two in the broom closet are
+   * marked `behindLock` so they are not dealt one. Two men sitting in the room
+   * their own key opens, holding that key, is the exact failure the whole
+   * keycard system is built to avoid.
+   *
+   * So the closet is the same shape as the manager's office one tier down: you
+   * take the card off somebody in a hallway, and it buys you a door with two
+   * more of them behind it who did not hear you coming.
+   */
+  _janitors(layout, nav, rng, tuning) {
+    // On rounds. Corridors, because a mop is used in corridors and because that
+    // is the one place on the floor no card can shut you out of.
+    const free = this.corridors.filter((s) => !this._behindALock(layout, s.x, s.z));
+    const away = free.filter((s) =>
+      Math.hypot(s.x - layout.spawn.x, s.z - layout.spawn.z) > MIN_SPAWN_GAP);
+    // Standing on the lift lobby is worse than being close to it, so the
+    // distance filter is a preference rather than a requirement.
+    const spots = away.length ? away : free;
+
+    let onRounds = 0;
+    for (let i = rng.int(JANITORS[0], JANITORS[1]); i > 0 && spots.length; i--) {
+      const spot = rng.pick(spots);
+      this._add(spot.x, spot.z, rng, tuning, TYPES.janitor);
+      onRounds++;
+    }
+
+    // And the two on their break, sitting it out behind their own door.
+    //
+    // They only exist if somebody outside is carrying the key to it. The two of
+    // them count toward clearing the floor, so seating them behind a door with
+    // no reachable yellow card anywhere would be a floor that cannot be
+    // finished — the one bug this whole system is arranged to make impossible.
+    const closet = layout.locks?.find((l) => l.tier === 'yellow');
+    if (!closet || !onRounds) return;
+
+    const room = closet.room;
+    let seated = 0;
+    for (let tries = 0; tries < 60 && seated < CLOSET_JANITORS; tries++) {
+      const tx = rng.int(room.x0, room.x1 - 1);
+      const ty = rng.int(room.y0, room.y1 - 1);
+      if (!nav.walkable(tx, ty)) continue;
+      const x = nav.wx(tx), z = nav.wz(ty);
+      if (!nav.clear(x, z, RADIUS)) continue;
+      if (this.items.some((e) => e.seated && Math.hypot(e.x - x, e.z - z) < 0.9)) continue;
+
+      const e = this._add(x, z, rng, tuning, TYPES.janitor);
+      e.behindLock = true;
+      // They get up the moment anything happens — see _animate. Until then they
+      // are on the floor with their backs to a shelf, which is what a broom
+      // closet is for.
+      e.seated = true;
+      seated++;
+    }
   }
 
   /**
@@ -465,15 +552,27 @@ export class Enemies {
    */
   _dealCards(layout, rng) {
     // `behindLock` is excluded: the manager's pockets are behind the manager's
-    // door, so anything dealt to him is a key locked in with its own lock.
+    // door, so anything dealt to him is a key locked in with its own lock. The
+    // same goes for the two janitors sitting in the broom closet.
     const hostiles = rng.shuffle(this.items.filter((e) => !e.neutral && !e.behindLock));
     for (const e of hostiles) e.card = 'white';
 
     const tiers = [...new Set((layout.locks ?? []).map((l) => l.tier))]
       .filter((t) => t !== 'black' && t !== 'white');
 
+    // Yellow is not dealt with the rest: it belongs to the cleaning staff and to
+    // nobody else, so it goes to every janitor on rounds rather than to whoever
+    // came up first in the shuffle. Which makes the broom closet a room you open
+    // because of who you shot, not because of what fell out of a body.
+    if (tiers.includes('yellow')) {
+      for (const e of hostiles) if (e.type === TYPES.janitor) e.card = 'yellow';
+    }
+
     let i = 0;
     for (const tier of tiers) {
+      if (tier === 'yellow') continue;
+      // Never take a card off a janitor to hand out somebody else's.
+      while (i < hostiles.length && hostiles[i].card === 'yellow') i++;
       if (i >= hostiles.length) break;
       hostiles[i++].card = tier;
     }
@@ -581,7 +680,7 @@ export class Enemies {
 
     const enemy = {
       group, mats, ownGeo, torso, head, armL, armR, legL, legR, gun,
-      blunt, bluntReach: rig.bluntReach,
+      blunt, bluntReach: rig.bluntReach, bluntRest: rig.bluntRest ?? 0.5,
       // Rat parts. Null on everything else, and the animation branches on the
       // rig rather than on the type, so a second four-legged thing costs a rig
       // and nothing else.
@@ -628,9 +727,14 @@ export class Enemies {
       // animation down — see _die.
       bones: rig.bones ?? null,
       ragdoll: false,
-      // Set on the one person who works behind a real lock — see _manager. It
-      // keeps them out of openHostileCount and out of the card deal.
+      // Set on the people who work behind a real lock — the manager, and the two
+      // janitors on their break. It keeps them out of openHostileCount and out
+      // of the card deal.
       behindLock: false,
+      // Sitting it out until something happens. See _animateSeated.
+      seated: false,
+      // The materials a hit whitens: whatever this one is actually wearing.
+      flash: rig.flash ?? [],
     };
 
     if (type.neutral) {
@@ -1158,6 +1262,19 @@ export class Enemies {
     if (e.rig === 'rat') return this._animateRat(e, dt, audio);
     if (e.rig === 'roomba') return this._animateRoomba(e, dt, audio);
 
+    // Sitting is a state of the body, not of the AI: the moment they stop being
+    // idle they are standing up, and from then on they animate like anybody
+    // else. Which means nothing downstream — pathing, swinging, ragdolling —
+    // ever has to know this was a thing.
+    if (e.seated && e.state !== 'idle') {
+      e.seated = false;
+      // Everything else the seated pose touched is written every frame by the
+      // walk cycle below and recovers on its own; the torso lean is not, so it
+      // is the one thing that has to be put back by hand.
+      e.torso.rotation.x = 0;
+    }
+    if (e.seated) return this._animateSeated(e, dt);
+
     const moving = e.state === 'chase' || e.state === 'fight' || e.state === 'wander';
     e.walkPhase += dt * (moving ? 9 : 1.4);
 
@@ -1188,7 +1305,11 @@ export class Enemies {
       e.armL.rotation.x = lerp(e.armL.rotation.x, arm * 0.6, k);
       e.armR.rotation.x = lerp(e.armR.rotation.x, arm, k);
       if (e.blunt) {
-        e.blunt.rotation.x = lerp(e.blunt.rotation.x, arm + 0.5, k);
+        // Held out in front while it is being used, and carried the way its own
+        // kind is carried the rest of the time — which for a mop is dragging,
+        // head on the floor. See BLUNT in rigs.js.
+        const want = e.swing > 0 || aiming ? arm + 0.5 : e.bluntRest;
+        e.blunt.rotation.x = lerp(e.blunt.rotation.x, want, k);
         e.blunt.position.y = 1.12 + Math.sin(e.walkPhase) * 0.02;
       }
     } else {
@@ -1202,8 +1323,42 @@ export class Enemies {
     if (e.hitFlash > 0) {
       e.hitFlash -= dt;
       const k = Math.max(0, e.hitFlash / HIT_FLASH);
-      e.mats.suit.emissive.setScalar(k * 0.9);
-      e.mats.skin.emissive.setScalar(k * 0.9);
+      for (const m of e.flash) m.emissive.setScalar(k * 0.9);
+    }
+  }
+
+  /**
+   * On the floor with their legs out in front of them, mop across the knees.
+   *
+   * Done by dropping the whole rig and folding the legs forward rather than by
+   * authoring a second skeleton: the hip joint is already at the top of the leg
+   * (see rigs.js), so rotating there is genuinely what sitting down does, and the
+   * bones ragdolls.js reads are the ones it was always going to read.
+   *
+   * The lean is a slow breath rather than a pose held rigid — two men waiting out
+   * a shift should not read as two mannequins somebody left in a cupboard.
+   */
+  _animateSeated(e, dt) {
+    e.walkPhase += dt * 0.9;
+    const breath = Math.sin(e.walkPhase) * 0.03;
+
+    e.group.position.y = -SIT_DROP;
+    e.legL.rotation.x = SIT_LEGS;
+    e.legR.rotation.x = SIT_LEGS - 0.12;
+    e.armL.rotation.x = -0.35 + breath;
+    e.armR.rotation.x = -0.5 + breath;
+    e.torso.rotation.x = 0.12 + breath;
+    if (e.blunt) {
+      // Mop across the lap, handle out, which is where you put it when you are
+      // not using it and is also why it is the first thing back in his hands.
+      e.blunt.rotation.x = -1.35;
+      e.blunt.position.y = 0.82;
+    }
+
+    if (e.hitFlash > 0) {
+      e.hitFlash -= dt;
+      const k = Math.max(0, e.hitFlash / HIT_FLASH);
+      for (const m of e.flash) m.emissive.setScalar(k * 0.9);
     }
   }
 
@@ -1252,8 +1407,7 @@ export class Enemies {
     if (e.hitFlash > 0) {
       e.hitFlash -= dt;
       const k = Math.max(0, e.hitFlash / HIT_FLASH);
-      e.mats.suit.emissive.setScalar(k * 0.9);
-      e.mats.skin.emissive.setScalar(k * 0.9);
+      for (const m of e.flash) m.emissive.setScalar(k * 0.9);
     }
   }
 
@@ -1275,7 +1429,7 @@ export class Enemies {
     if (e.hitFlash > 0) {
       e.hitFlash -= dt;
       const k = Math.max(0, e.hitFlash / HIT_FLASH);
-      e.mats.suit.emissive.setScalar(k * 0.9);
+      for (const m of e.flash) m.emissive.setScalar(k * 0.9);
     }
   }
 
