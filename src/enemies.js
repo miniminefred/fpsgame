@@ -60,6 +60,14 @@ const SWING_TIME = 0.5;    // wind-up plus follow-through on a melee swing
 // is not a key, it is confetti.
 const CARD_SPARE_CHANCE = 0.06;
 
+// The prologue. Until the player has a white card the only people they can reach
+// are the ones in the corridors, so these two numbers decide how long a floor
+// takes to start: how far the first one may be, and how many there are at all.
+// See _cardOutside.
+const FIRST_CONTACT = 34;      // metres from the lifts
+const OUTSIDE_MIN = 5;
+const MIN_SPAWN_GAP = 11;      // ...but never close enough to be there on arrival
+
 // Staff. Every type is the same rig with different numbers and a different
 // suit, which keeps them readable at a glance in a grey corridor: the colour of
 // the visor tells you what is about to happen to you.
@@ -317,33 +325,57 @@ export class Enemies {
   }
 
   /**
-   * Somebody with a badge, standing where no badge is needed to reach them.
+   * The people with a badge who are standing where no badge is needed to reach
+   * them.
    *
-   * This is the load-bearing guarantee of the whole keycard system, and it is
-   * one line of consequence from a single decision: white is on every door.
-   * Every employee is carrying a white card, but nearly every employee is behind
-   * a white door, and a floor where the first card is behind the first lock is a
-   * floor with nothing on it but corridors.
+   * This is the load-bearing guarantee of the whole keycard system, and it falls
+   * out of one decision: white is on every door. Every employee is carrying a
+   * white card and nearly every employee is behind a white door, so until you
+   * have taken one off somebody the floor is a corridor network with two hundred
+   * shut rooms off it. Nobody comes out to meet you either — a badged door is
+   * shut to the staff as well, at the nav grid.
    *
-   * Corridors are never locked, so one hostile in a corridor settles it forever.
-   * Usually there are several already — security does rounds — but a theme is
-   * allowed to say there are none (nobody patrols an Infestation), and "usually"
-   * is not a guarantee. So if the floor ended up with nobody outside a lock, it
-   * gets one or two of whatever is working this floor: on an Infestation that is
-   * something shambling down a hallway, which is what an Infestation looks like
-   * anyway.
+   * So the opening of a floor is a short prologue, and this decides how short.
+   * One hostile in a corridor would technically satisfy the invariant and would
+   * make every floor start with a five-minute walk looking for one man. A
+   * handful, with at least one close enough to walk into, makes it thirty
+   * seconds: find somebody, take the badge, and the building comes on.
+   *
+   * Security patrols usually cover this already, but a theme is allowed to say
+   * there are none — nobody does rounds on an Infestation — so the top-up is
+   * whatever is working this floor rather than more security. On an Infestation
+   * that is something shambling down a hallway, which is what an Infestation
+   * looks like anyway.
    */
   _cardOutside(layout, nav, rng, tuning) {
-    const outside = this.items.some((e) => !e.neutral && !this._behindALock(layout, e.x, e.z));
-    if (outside) return;
+    const free = (x, z) => !this._behindALock(layout, x, z);
+    let have = 0;
+    let nearest = Infinity;
+    for (const e of this.items) {
+      if (e.neutral || !free(e.x, e.z)) continue;
+      have++;
+      nearest = Math.min(nearest, Math.hypot(e.x - layout.spawn.x, e.z - layout.spawn.z));
+    }
 
-    const spots = this.corridors.filter((s) =>
-      Math.hypot(s.x - layout.spawn.x, s.z - layout.spawn.z) > 10 && !this._behindALock(layout, s.x, s.z));
+    // Sorted by how far the walk is, so the top-up fills in from the near end —
+    // the point is the first contact, not the head count.
+    const spots = this.corridors
+      .filter((s) => free(s.x, s.z))
+      .map((s) => ({ s, d: Math.hypot(s.x - layout.spawn.x, s.z - layout.spawn.z) }))
+      .filter((e) => e.d > MIN_SPAWN_GAP)
+      .sort((a, b) => a.d - b.d);
     if (!spots.length) return;
 
-    for (let i = rng.int(1, 2); i > 0; i--) {
-      const spot = rng.pick(spots);
-      this._add(spot.x, spot.z, rng, tuning, pickType(layout.floorNumber, rng, this.theme));
+    // Somebody inside FIRST_CONTACT of the lifts, and OUTSIDE_MIN of them in
+    // total. Both are floors, not targets: a floor that already has a patrol
+    // walking past the lobby gets nothing added.
+    if (nearest > FIRST_CONTACT && spots[0].d <= FIRST_CONTACT) {
+      this._add(spots[0].s.x, spots[0].s.z, rng, tuning, pickType(layout.floorNumber, rng, this.theme));
+      have++;
+    }
+    for (let i = 1; have < OUTSIDE_MIN && i < spots.length; i++, have++) {
+      const spot = rng.pick(spots.slice(0, Math.max(8, (spots.length * 0.4) | 0)));
+      this._add(spot.s.x, spot.s.z, rng, tuning, pickType(layout.floorNumber, rng, this.theme));
     }
   }
 

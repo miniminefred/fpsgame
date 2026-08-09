@@ -141,7 +141,7 @@ const IDS = [
   ['4.geom-soft', 'WARN', `ROOM REACH    (geometric) >= ${GEOM_SOFT * 100}% of the passable floor of a room reachable`],
   ['4.nav-inflation', 'WARN', 'ROOM REACH    nav grid does not seal a gap a body can physically pass'],
 
-  ['5.connected', 'FAIL', 'CONNECTIVITY  every unbadged room reachable from spawn AFTER furnishing'],
+  ['5.connected', 'FAIL', 'CONNECTIVITY  every room reachable from spawn AFTER furnishing (cards in hand)'],
   ['5.lock-sealed', 'FAIL', 'KEYCARDS      every badged room sealed from the nav grid'],
   ['5.walk-orphan', 'WARN', 'CONNECTIVITY  no walkable tile stranded from spawn by furniture'],
   ['5.spawn-walk', 'FAIL', 'CONNECTIVITY  spawn tile itself is walkable'],
@@ -614,19 +614,27 @@ function validate(seed, floorNumber) {
   const spawnWalk = inb(sx, sy) && walk[idx(sx, sy)] === 1;
   if (!spawnWalk) check('5.spawn-walk').fail(id, 'spawn tile is not walkable after furnishing');
 
-  const reach = floodWalk(walk, W, H, spawnWalk ? [idx(sx, sy)] : nearestWalk(walk, W, H, sx, sy));
+  // This validator is about what FURNITURE did to the floor, and locks are not
+  // furniture. Every door in the building starts badged (see gen/layout.js), so
+  // the shipped nav grid has almost the whole floor sealed off — flooding that
+  // would report two hundred rooms as unreachable and say nothing about the
+  // desks. So reachability is measured on the grid the player has once they are
+  // carrying a card: locked doorways handed back, exactly as doors.js does.
+  //
+  // The locks then get checked the other way round, on the REAL grid, by
+  // 5.lock-sealed below — a lock that failed to seal is as much a bug as one
+  // that sealed something it shouldn't have.
+  const open = Uint8Array.from(walk);
+  for (const door of level.doors) {
+    if (!door.lock) continue;
+    for (const i of door.navTiles) if (isOpen(layout.tiles[i])) open[i] = 1;
+  }
 
-  // Badged rooms are SUPPOSED to be sealed off here: gen/build.js closes their
-  // doorways in the nav grid, and doors.js hands the tiles back the moment the
-  // player badges in (see the keycard notes in gen/layout.js). So they are
-  // excluded from "stranded" and from "unreachable", and then checked the other
-  // way round below — a lock that failed to seal is as much a bug as one that
-  // sealed something it shouldn't have.
-  const locked = layout.locked ?? new Uint8Array(W * H);
+  const reach = floodWalk(open, W, H, spawnWalk ? [idx(sx, sy)] : nearestWalk(open, W, H, sx, sy));
 
   let walkTotal = 0, walkReached = 0;
   for (let i = 0; i < W * H; i++) {
-    if (walk[i] && !locked[i]) { walkTotal++; if (reach[i]) walkReached++; }
+    if (open[i]) { walkTotal++; if (reach[i]) walkReached++; }
   }
   if (walkTotal - walkReached > 0) {
     const n = walkTotal - walkReached;
@@ -636,28 +644,30 @@ function validate(seed, floorNumber) {
     // a storage room".
     const seenStrand = new Uint8Array(W * H);
     for (let i = 0; i < W * H; i++) {
-      if (!walk[i] || reach[i] || seenStrand[i] || locked[i]) continue;
-      const region = floodWalk(walk, W, H, [i], (j) => !reach[j]);
+      if (!open[i] || reach[i] || seenStrand[i]) continue;
+      const region = floodWalk(open, W, H, [i], (j) => !reach[j]);
       let size = 0;
       for (let j = 0; j < W * H; j++) if (region[j]) { size++; seenStrand[j] = 1; }
       if (size > stats.biggestStrand) { stats.biggestStrand = size; stats.biggestStrandCase = id; }
     }
   }
 
-  const cutOff = [];
-  const leaked = [];
-  rooms.forEach((r, ri) => {
-    let any = false;
-    for (let y = r.y0; y < r.y1 && !any; y++) for (let x = r.x0; x < r.x1; x++) if (reach[idx(x, y)]) { any = true; break; }
-    if (r.lock) { if (any) leaked.push(`${r.role}#${ri}(${r.lock})`); }
-    else if (!any) cutOff.push(`${r.role}#${ri}`);
-  });
+  const inside = (grid, r) => {
+    for (let y = r.y0; y < r.y1; y++) for (let x = r.x0; x < r.x1; x++) if (grid[idx(x, y)]) return true;
+    return false;
+  };
+
+  const cutOff = rooms.filter((r) => !inside(reach, r)).map((r, i) => `${r.role}#${i}`);
   if (cutOff.length) {
     check('5.connected').fail(id, `${cutOff.length} rooms unreachable from spawn: ${cutOff.slice(0, 3).join(',')}`);
   }
-  // A badged room the enemies can walk into is a lock with a hole in it, and it
-  // is invisible from inside the game until a floor's worth of staff comes out
-  // of the manager's office.
+
+  // And now the other way round, on the grid as it actually ships. A badged room
+  // the enemies can walk into is a lock with a hole in it, and it is invisible
+  // from inside the game until a floor's worth of staff comes out of the
+  // manager's office.
+  const shutReach = floodWalk(walk, W, H, spawnWalk ? [idx(sx, sy)] : nearestWalk(walk, W, H, sx, sy));
+  const leaked = rooms.filter((r) => r.lock && inside(shutReach, r)).map((r, i) => `${r.role}#${i}(${r.lock})`);
   if (leaked.length) {
     check('5.lock-sealed').fail(id, `${leaked.length} badged rooms open to the nav grid: ${leaked.slice(0, 3).join(',')}`);
   }

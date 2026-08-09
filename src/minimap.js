@@ -115,16 +115,21 @@ export class Minimap {
         (exitRoom.x1 - exitRoom.x0) * s, (exitRoom.y1 - exitRoom.y0) * s);
     }
 
-    // Badged rooms, hatched in the colour of the card that opens them. Which
-    // room needs which card is the one thing about a lock you want to know from
-    // somewhere other than standing in front of it — the reader on the jamb
-    // answers it too late to plan a route around.
+    // The rooms behind a REAL lock, tinted in the colour of the card that opens
+    // them. Which room needs which card is the one thing about a lock you want
+    // to know from somewhere other than standing in front of it — the reader on
+    // the jamb answers it too late to plan a route around.
+    //
+    // White is deliberately not on here. It is on every room on the floor, so
+    // drawing it would tint the entire map one colour and say nothing; and by
+    // the time you have walked anywhere it is not a lock any more. What is worth
+    // marking is the four rooms that are still shut.
     //
     // Drawn into the static plan, not stamped per frame, because a lock is a
     // property of the floor: the door opening does not move the room, and a
     // reader that has gone green is a detail for the corridor, not the map.
-    for (const { room, tier } of level.locks || []) {
-      const spec = CARDS[tier];
+    for (const { room, tier, staffOnly } of level.locks || []) {
+      const spec = staffOnly ? CARDS[tier] : null;
       if (!spec) continue;
       const css = `#${spec.color.toString(16).padStart(6, '0')}`;
       g.fillStyle = css;
