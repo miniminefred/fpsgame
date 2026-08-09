@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import { READER_OPEN } from './keycards.js';
 
 // Sliding doors.
 //
@@ -19,6 +19,19 @@ import * as THREE from 'three';
 //
 // The only thing that ever really blocks is the player's own collider, and only
 // while the panel is more than half shut.
+//
+// Badged doors are the one exception to all of the above, and they break the
+// rule in the narrowest way they can. The sensor still decides everything — it
+// just refuses to see you until you are carrying the card, and never sees the
+// staff at all. That last part matters more than it looks: a locked door the
+// staff can open is a locked door somebody eventually holds open for you, and
+// the enemies walk into these constantly. Their side of it is handled at the nav
+// grid, which has the opening closed until you badge in (see gen/build.js).
+//
+// And badging in is permanent. A door you have opened once stays open for the
+// rest of the floor — partly because re-reading a card you already own is
+// theatre, and mostly because that is the moment the opening goes back into the
+// nav grid, and taking it away again would strand whoever walked through it.
 
 const SENSE = 2.8;             // metres from the opening that trips the sensor
 const SPEED = 3.4;             // fraction of the panel's width travelled per second
@@ -29,11 +42,23 @@ const HOLD = 0.9;              // seconds it stays open after the last body leav
 // do — and worse for the crowd behind you, who all stop dead against it.
 const CLEAR_AT = 0.28;
 
+// How often one locked door will tell you it is locked. Per door, because
+// standing between two of them should name both cards, not alternate.
+const REFUSE_GAP = 2.2;
+
 export class Doors {
   constructor({ scene, audio }) {
     this.scene = scene;
     this.audio = audio;
     this.items = [];
+
+    // Set by game.js. `wallet` is what the player is carrying; the two callbacks
+    // are the door reporting what its sensor decided, since what a floor does
+    // about an opened door — hand the tiles back to nav, say so on the HUD — is
+    // not the door's business.
+    this.wallet = null;
+    this.onUnlock = null;
+    this.onRefused = null;
   }
 
   /**
@@ -46,8 +71,16 @@ export class Doors {
       door.open = 0;
       door.hold = 0;
       door.moving = false;
+      door.refuseTimer = 0;
       this._place(door);
     }
+  }
+
+  /** Every door on this floor still asking for a card. */
+  get lockedCount() {
+    let n = 0;
+    for (const door of this.items) if (door.lock) n++;
+    return n;
   }
 
   clear() {
@@ -65,8 +98,27 @@ export class Doors {
     const pz = player.object.position.z;
 
     for (const door of this.items) {
-      let near = Math.hypot(px - door.x, pz - door.z) < SENSE;
-      if (!near) {
+      if (door.refuseTimer > 0) door.refuseTimer -= dt;
+
+      const playerNear = Math.hypot(px - door.x, pz - door.z) < SENSE;
+      let near = playerNear;
+
+      if (door.lock) {
+        // Badged. Nobody but the player trips this sensor, and the player only
+        // trips it holding the card — at which point the lock is gone for good.
+        if (!playerNear) {
+          near = false;
+        } else if (this.wallet?.opens(door.lock)) {
+          this._unlock(door);
+        } else {
+          near = false;
+          if (door.refuseTimer <= 0) {
+            door.refuseTimer = REFUSE_GAP;
+            this.audio?.doorRefused(door.at);
+            this.onRefused?.(door);
+          }
+        }
+      } else if (!near) {
         for (const e of enemies) {
           if (!e.alive) continue;
           if (Math.hypot(e.x - door.x, e.z - door.z) < SENSE) { near = true; break; }
@@ -96,6 +148,17 @@ export class Doors {
 
       this._place(door);
     }
+  }
+
+  // Badged in. The lock is dropped, the reader goes green, and the opening is
+  // handed back to the nav grid — which is what lets the floor follow you in,
+  // and is why this can only ever happen once.
+  _unlock(door) {
+    const tier = door.lock;
+    door.lock = null;
+    if (door.reader) door.reader.lamp.material.color.setHex(READER_OPEN);
+    this.audio?.doorUnlock(door.at);
+    this.onUnlock?.(door, tier);
   }
 
   // Panel position, and the collider that follows it. The collider is retired
