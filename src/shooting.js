@@ -49,9 +49,9 @@ export class Shooting {
     this.kills = 0;
     this.hits = 0;
 
-    // Ammo per weapon slot; the reserve is effectively infinite.
-    this.mags = [];
-    for (let i = 0; i < weapons.count; i++) this.mags.push(weapons.statsAt(i).mag);
+    // Ammo per weapon slot; the reserve is effectively infinite. Filled by
+    // refill() below, which is also what every new floor calls.
+    this.mags = new Array(weapons.count).fill(0);
 
     this._aim = new THREE.Vector3();
     this._dir = new THREE.Vector3();
@@ -63,11 +63,31 @@ export class Shooting {
     // same way lets us clamp recoil without fighting the controls.
     this._euler = new THREE.Euler(0, 0, 0, 'YXZ');
 
-    this._syncHud();
+    this.refill();
   }
 
   get mag() { return this.mags[this.weapons.active]; }
   get reloading() { return this.reloadLeft > 0; }
+
+  /**
+   * Full magazines in everything, and nothing left half-loaded.
+   *
+   * Called on arrival at every floor (see game.js). The reserve was always
+   * infinite, so this is not about supply — it is about not carrying the last
+   * thirty seconds of the previous floor into the first thirty of the next one.
+   * Coming out of the lift with an empty shotgun is a floor that opens by taking
+   * a decision away from you rather than giving you one.
+   *
+   * The rig's own reload animation is stood down too, or a descent taken
+   * mid-reload arrives with the gun still dipped over a magazine that is already
+   * full.
+   */
+  refill() {
+    for (let i = 0; i < this.mags.length; i++) this.mags[i] = this.weapons.statsAt(i).mag;
+    this.reloadLeft = 0;
+    this.weapons.startReload(0);
+    this._syncHud();
+  }
 
   // Called once per floor with that floor's geometry plus its enemies.
   setHittables(list) {

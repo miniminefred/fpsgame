@@ -216,6 +216,14 @@ export class Game {
     // runtime is drop them below the floor when the panel is out of the way.
     this.doors?.setDoors(level.doors, level.nav);
     this.player.placeAt(level.spawn.x, level.spawn.z);
+    // You step out of the lift with your sidearm out and everything loaded. The
+    // arrival is the one moment in a floor where the game gets to put you
+    // straight, and both halves of that are about starting from a known place:
+    // the pistol because it is the gun the floor is balanced around at the door,
+    // and full magazines because the alternative is a floor that opens with a
+    // reload you did not choose.
+    this.weapons.select(0);
+    this.shooting.refill();
 
     this.enemies.spawn(level.layout, level.nav, rng, tuningFor(this.floor));
 
