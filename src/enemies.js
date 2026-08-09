@@ -246,8 +246,20 @@ export class Enemies {
     this.corridors = collectCorridors(layout, nav);
 
     const spots = this._spawnPoints(layout, nav, rng, tuning.count);
+    // A room holds a team, not a headcount. Whoever is in a room is in it
+    // together — same type, working the same job — because a room of one intern,
+    // one manager and one sentry is a spawn list, and a room of three interns is
+    // a room. Some rooms get nobody, which is what makes the occupied ones feel
+    // deliberate rather than sprinkled.
+    let team = null;
+    let left = 0;
     for (const spot of spots) {
-      this._add(spot.x, spot.z, rng, tuning, pickType(layout.floorNumber, rng, this.theme));
+      if (left <= 0 || spot.room !== team?.room) {
+        team = { room: spot.room, type: pickType(layout.floorNumber, rng, this.theme) };
+        left = rng.chance(0.45) ? 1 : (rng.chance(0.72) ? 2 : 3);
+      }
+      left--;
+      this._add(spot.x, spot.z, rng, tuning, team.type);
     }
 
     // A handful of neutrals on every floor, placed rather than rolled: they are
@@ -303,36 +315,51 @@ export class Enemies {
     return counts;
   }
 
-  // Walkable tiles well away from where the player arrives, spread over as many
-  // different rooms as possible so a floor is never one big ambush.
+  /**
+   * Walkable tiles well away from where the player arrives.
+   *
+   * Room by room rather than scattered, and each spot remembers which room it
+   * came from, because who ends up standing together is decided from that (see
+   * spawn). Rooms are visited in a shuffled order and a random number of spots
+   * are taken from each, so the floor gets crowded rooms, quiet rooms and empty
+   * ones instead of an even sprinkle of exactly one person everywhere.
+   */
   _spawnPoints(layout, nav, rng, count) {
     const spots = [];
     const rooms = rng.shuffle(layout.rooms.filter((r) => r.role !== 'lobby'));
     if (!rooms.length) return spots;
 
     const minDist = 14;
-    // One spot per room per pass, so the passes have to outnumber the enemies
+    // One group per room per pass, so the passes have to outnumber the enemies
     // per room — at seventy-plus on a twenty-room floor, eight passes ran out
     // long before the roster did and every floor quietly shipped half of it.
     const passes = Math.max(8, Math.ceil(count / Math.max(1, rooms.length)) + 4);
+
     for (let pass = 0; spots.length < count && pass < passes; pass++) {
       for (const room of rooms) {
         if (spots.length >= count) break;
-        for (let tries = 0; tries < 12; tries++) {
-          const tx = rng.int(room.x0, room.x1 - 1);
-          const ty = rng.int(room.y0, room.y1 - 1);
-          if (!nav.walkable(tx, ty)) continue;
+        // How many this room takes this time round. Most of the floor's empty
+        // rooms come from here rather than from being skipped outright: a room
+        // that draws nobody on every pass simply never gets anybody.
+        const want = rng.chance(0.28) ? 0 : rng.int(1, 3);
 
-          const x = nav.wx(tx), z = nav.wz(ty);
-          // A single walkable tile is not enough: movement tests a whole body
-          // radius, so a tile wedged against furniture is one an enemy can
-          // stand on but never leave. Spawning there makes it a statue.
-          if (!nav.clear(x, z, RADIUS)) continue;
-          if (Math.hypot(x - layout.spawn.x, z - layout.spawn.z) < minDist) continue;
-          if (spots.some((s) => Math.hypot(s.x - x, s.z - z) < 1.6)) continue;
+        for (let placed = 0; placed < want && spots.length < count; placed++) {
+          for (let tries = 0; tries < 14; tries++) {
+            const tx = rng.int(room.x0, room.x1 - 1);
+            const ty = rng.int(room.y0, room.y1 - 1);
+            if (!nav.walkable(tx, ty)) continue;
 
-          spots.push({ x, z });
-          break;
+            const x = nav.wx(tx), z = nav.wz(ty);
+            // A single walkable tile is not enough: movement tests a whole body
+            // radius, so a tile wedged against furniture is one an enemy can
+            // stand on but never leave. Spawning there makes it a statue.
+            if (!nav.clear(x, z, RADIUS)) continue;
+            if (Math.hypot(x - layout.spawn.x, z - layout.spawn.z) < minDist) continue;
+            if (spots.some((s) => Math.hypot(s.x - x, s.z - z) < 1.6)) continue;
+
+            spots.push({ x, z, room });
+            break;
+          }
         }
       }
     }

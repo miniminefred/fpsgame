@@ -157,36 +157,18 @@ export class Weapons {
    * Plus a point light, which is the only part of it that touches the room.
    */
   _buildMuzzleFlash() {
-    const fx = getFx();
-    const sprite = (map, color, scale) => {
-      const s = new THREE.Sprite(new THREE.SpriteMaterial({
-        map, color, transparent: true, blending: THREE.AdditiveBlending,
-        depthWrite: false, depthTest: false,
-      }));
-      s.scale.setScalar(scale);
-      s.renderOrder = 1000;
-      s.frustumCulled = false;
-      return s;
-    };
-
-    this.flashGroup = new THREE.Group();
-    this.flashHalo = sprite(fx.glow, 0xffb356, 0.44);
-    this.flashStar = sprite(fx.flash, 0xffffff, 0.30);
-
-    // The plume points down -z, the way the barrel does. A cone rather than a
-    // quad so it survives being looked at from the side, which is exactly what
-    // happens every time the gun kicks.
-    const coneGeo = new THREE.ConeGeometry(0.055, 0.2, 8, 1, true);
-    coneGeo.rotateX(-Math.PI / 2);
-    coneGeo.translate(0, 0, -0.1);
-    this.flashPlume = new THREE.Mesh(coneGeo, new THREE.MeshBasicMaterial({
-      color: 0xffd08a, transparent: true, blending: THREE.AdditiveBlending,
-      depthWrite: false, depthTest: false, side: THREE.DoubleSide,
-    }));
-    this.flashPlume.renderOrder = 1000;
-    this.flashPlume.frustumCulled = false;
-
-    this.flashGroup.add(this.flashHalo, this.flashPlume, this.flashStar);
+    const { group, halo, star, plume } = makeMuzzleFlash();
+    this.flashGroup = group;
+    this.flashHalo = halo;
+    this.flashStar = star;
+    this.flashPlume = plume;
+    // Drawn over the world and never clipped by it: the viewmodel hugs the near
+    // plane, and a flash that depth-tests against a wall you are standing next
+    // to disappears into it.
+    for (const part of [halo, star, plume]) {
+      part.material.depthTest = false;
+      part.renderOrder = 1000;
+    }
     this.flashGroup.visible = false;
     this.camera.add(this.flashGroup);
 
@@ -388,3 +370,50 @@ export function measureMuzzle(rig, cfg) {
 }
 
 export { WEAPONS };
+
+/**
+ * The muzzle flash, in three parts, because a flash is not one thing:
+ *
+ *   star   the burn itself, spun to a new angle every shot
+ *   halo   a soft ball of light around it, which is what makes the star read as
+ *          bright rather than as a picture of a star
+ *   plume  a stubby cone thrown forward down the barrel line, so the flash has
+ *          somewhere to go instead of hanging flat in the air
+ *
+ * Exported so /dev-guns.html shows the same object the game does. The first
+ * version of that harness built its own copy and the two drifted immediately,
+ * which meant the placement was tuned against a flash nobody would ever see.
+ *
+ * Sized against the guns rather than by eye: a pistol is 0.30 units of barrel,
+ * so a 0.30 star is a flash the length of the whole weapon. These are what fit
+ * a barrel — the shot's own `punch` scales them from there.
+ */
+export function makeMuzzleFlash() {
+  const fx = getFx();
+  const sprite = (map, color, scale) => {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({
+      map, color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+    }));
+    s.scale.setScalar(scale);
+    s.frustumCulled = false;
+    return s;
+  };
+
+  const halo = sprite(fx.glow, 0xffb356, 0.20);
+  const star = sprite(fx.flash, 0xffffff, 0.145);
+
+  // A cone rather than a quad so it survives being looked at from the side,
+  // which is exactly what happens every time the gun kicks.
+  const coneGeo = new THREE.ConeGeometry(0.026, 0.10, 8, 1, true);
+  coneGeo.rotateX(-Math.PI / 2);
+  coneGeo.translate(0, 0, -0.05);
+  const plume = new THREE.Mesh(coneGeo, new THREE.MeshBasicMaterial({
+    color: 0xffd08a, transparent: true, opacity: 0.55,
+    blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+  }));
+  plume.frustumCulled = false;
+
+  const group = new THREE.Group();
+  group.add(halo, plume, star);
+  return { group, halo, star, plume };
+}

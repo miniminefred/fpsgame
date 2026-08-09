@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { WEAPONS, measureMuzzle } from './weapons.js';
-import { getFx } from './fx-textures.js';
+import { WEAPONS, measureMuzzle, makeMuzzleFlash } from './weapons.js';
 
 // Contact sheet for placing the muzzle flash.
 //
@@ -58,30 +57,12 @@ scene.add(key);
 
 const tiles = [];
 
-// One lit flash per tile, built the same way weapons.js builds the real one so
-// what is on screen here is what is on screen in the game.
+// One lit flash per tile — the game's own, imported rather than rebuilt. An
+// earlier version of this harness made its own copy and the two drifted inside
+// a day, which meant the placement was being tuned against a flash that only
+// ever existed here.
 function makeFlash() {
-  const fx = getFx();
-  const group = new THREE.Group();
-
-  const sprite = (map, color, scale) => {
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({
-      map, color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
-    }));
-    s.scale.setScalar(scale);
-    return s;
-  };
-
-  const coneGeo = new THREE.ConeGeometry(0.055, 0.2, 8, 1, true);
-  coneGeo.rotateX(-Math.PI / 2);
-  coneGeo.translate(0, 0, -0.1);
-  const plume = new THREE.Mesh(coneGeo, new THREE.MeshBasicMaterial({
-    color: 0xffd08a, transparent: true, opacity: 0.55,
-    blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
-  }));
-
-  group.add(sprite(fx.glow, 0xffb356, 0.44), plume, sprite(fx.flash, 0xffffff, 0.30));
-  return group;
+  return makeMuzzleFlash().group;
 }
 
 // A cross at the measured muzzle point, so its position is readable even with
