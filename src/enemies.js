@@ -183,13 +183,17 @@ const BYSTANDERS = [TYPES.cleaner, TYPES.courier];
 // replace the roster — it tilts it, and floors keep their own character without
 // any of them becoming one enemy repeated. Picked per floor, and named on the
 // way in so you know what you have walked into before it reaches you.
+// `light` is how much of the building's lighting is still on, and it is the
+// theme's second job: the name tells you what is working this floor, and the
+// dark tells you before you have finished reading it. Infestation is the
+// darkest — whatever came up the stairwell went through the switchboard first.
 const THEMES = [
-  { name: 'Business as usual', weight: 4, boost: {} },
-  { name: 'Infestation', weight: 3, boost: { reanimated: 7, intern: 2 } },
-  { name: 'Automated', weight: 3, boost: { sentry: 7, sysadmin: 3 } },
-  { name: 'Lockdown', weight: 2, boost: { security: 6, manager: 4 } },
-  { name: 'Night shift', weight: 2, boost: { reanimated: 4, sentry: 4, facilities: 3 } },
-  { name: 'All-hands', weight: 2, boost: { analyst: 6, intern: 5, manager: 3 } },
+  { name: 'Business as usual', weight: 4, light: 1, boost: {} },
+  { name: 'Infestation', weight: 3, light: 0.34, boost: { reanimated: 7, intern: 2 } },
+  { name: 'Automated', weight: 3, light: 0.9, boost: { sentry: 7, sysadmin: 3 } },
+  { name: 'Lockdown', weight: 2, light: 0.75, boost: { security: 6, manager: 4 } },
+  { name: 'Night shift', weight: 2, light: 0.5, boost: { reanimated: 4, sentry: 4, facilities: 3 } },
+  { name: 'All-hands', weight: 2, light: 1, boost: { analyst: 6, intern: 5, manager: 3 } },
 ];
 
 export class Enemies {

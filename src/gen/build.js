@@ -27,6 +27,25 @@ const GLASS_HP = 1;
 const PANEL_HP = 1;
 const GLASS_OFFSET = 0.03;     // metres the glazing sits in front of the sky
 
+// Not every room got the same refit. The rooms staff and visitors see are lit
+// with cool white panels; the rooms nobody was ever meant to stand in still have
+// the old warm tubes in them, running a little dimmer and a long way yellower.
+//
+// It is a small difference on any one fixture and a large one across a room, and
+// it does the job three walls of signage would otherwise have to: you can tell
+// from the doorway whether you have walked into somewhere that matters.
+const FRONT_OF_HOUSE = { key: 'panel', color: 0xfff4de, intensity: 16 };
+const BACK_OF_HOUSE = { key: 'panelWarm', color: 0xffd89a, intensity: 12 };
+const GRADE = {
+  storage: BACK_OF_HOUSE,
+  archive: BACK_OF_HOUSE,
+  utility: BACK_OF_HOUSE,
+  mailroom: BACK_OF_HOUSE,
+  copyroom: BACK_OF_HOUSE,
+  itbay: BACK_OF_HOUSE,
+  server: BACK_OF_HOUSE,
+};
+
 export function buildLevel(scene, layout) {
   const { materials } = getAssets();
   const { W, H, tiles, rng } = layout;
@@ -341,17 +360,20 @@ function paneQuad(axis, at, a0, a1, y0, y1, facingPositive) {
 function buildCeilingLights(layout, batcher, materials, fixtures, destructibles) {
   const { W, H, tiles } = layout;
 
-  const addFixture = (x, z, alongX) => {
+  const addFixture = (x, z, alongX, grade = FRONT_OF_HOUSE) => {
     const hw = alongX ? 0.62 : 0.16;
     const hd = alongX ? 0.16 : 0.62;
 
     const spans = batcher.beginSpans();
-    batcher.add('panel', materials.panel,
+    batcher.add(grade.key, materials[grade.key],
       slab(x - hw, z - hd, x + hw, z + hd, CEIL_H - 0.015, false),
       { castShadow: false, receiveShadow: false });
     batcher.endSpans();
 
-    const fixture = { x, y: CEIL_H - 0.12, z, color: 0xfff4de, intensity: 16, distance: 11 };
+    const fixture = {
+      x, y: CEIL_H - 0.12, z,
+      color: grade.color, intensity: grade.intensity, distance: 11,
+    };
     fixtures.push(fixture);
 
     // Shooting the tube out kills both halves of a fixture at once: the
@@ -365,8 +387,8 @@ function buildCeilingLights(layout, batcher, materials, fixtures, destructibles)
       navTiles: [],
       fixtures: [fixture],
       parts: [
-        { material: materials.panel, x0: x - hw, y0: CEIL_H - 0.05, z0: z - hd, x1: x, y1: CEIL_H - 0.02, z1: z + hd },
-        { material: materials.panel, x0: x, y0: CEIL_H - 0.05, z0: z - hd, x1: x + hw, y1: CEIL_H - 0.02, z1: z + hd },
+        { material: materials[grade.key], x0: x - hw, y0: CEIL_H - 0.05, z0: z - hd, x1: x, y1: CEIL_H - 0.02, z1: z + hd },
+        { material: materials[grade.key], x0: x, y0: CEIL_H - 0.05, z0: z - hd, x1: x + hw, y1: CEIL_H - 0.02, z1: z + hd },
       ],
       broken: false,
     });
@@ -379,9 +401,10 @@ function buildCeilingLights(layout, batcher, materials, fixtures, destructibles)
     const nz = Math.max(1, Math.round((z1 - z0) / LIGHT_PITCH));
     const alongX = (x1 - x0) >= (z1 - z0);
 
+    const grade = GRADE[room.role] ?? FRONT_OF_HOUSE;
     for (let i = 0; i < nx; i++) {
       for (let j = 0; j < nz; j++) {
-        addFixture(x0 + (x1 - x0) * ((i + 0.5) / nx), z0 + (z1 - z0) * ((j + 0.5) / nz), alongX);
+        addFixture(x0 + (x1 - x0) * ((i + 0.5) / nx), z0 + (z1 - z0) * ((j + 0.5) / nz), alongX, grade);
       }
     }
   }

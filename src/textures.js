@@ -47,6 +47,9 @@ function build() {
 
       // --- ceiling light panels and windows (unlit so they stay bright)
       panel: new THREE.MeshBasicMaterial({ color: 0xfdfbf2 }),
+      // The tube nobody replaced, in the rooms nobody visits. Warm and a shade
+      // down on the cool panels next door, which is the whole point of it.
+      panelWarm: new THREE.MeshBasicMaterial({ color: 0xf6e2b4 }),
       window: new THREE.MeshBasicMaterial({ map: texture(skyPane()), color: 0xffffff }),
       // The glazing itself, a few centimetres in front of the sky: nearly
       // invisible until a light catches it, which is the point — you notice the

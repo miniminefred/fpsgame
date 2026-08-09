@@ -18,6 +18,12 @@ const POOL = 12;
 const REHOME_INTERVAL = 0.12;  // seconds between reassignments
 const MAX_RANGE = 18;          // metres — beyond this a fixture never gets a light
 
+// Rest levels for the three fill lights. A floor's theme scales all three (see
+// setMood), so they have to be recorded rather than read back off the lights.
+const BASE_HEMI = 0.82;
+const BASE_AMBIENT = 0.36;
+const BASE_SUN = 0.85;
+
 const SUN_DIR = new THREE.Vector3(0.28, 1, 0.2).normalize();
 const SUN_DIST = 30;
 const RADIUS = 16;             // half-size of the shadowed region around the player
@@ -31,13 +37,13 @@ export function createLighting(scene) {
   // Enough that no room is ever unreadable, but not so much that the fixtures
   // stop mattering — the pools of light under the ceiling tubes are what give
   // a flat white corridor any shape at all.
-  const hemi = new THREE.HemisphereLight(0xe8f0f8, 0x484c52, 0.82);
+  const hemi = new THREE.HemisphereLight(0xe8f0f8, 0x484c52, BASE_HEMI);
   scene.add(hemi);
 
-  const ambient = new THREE.AmbientLight(0xc6cfd8, 0.36);
+  const ambient = new THREE.AmbientLight(0xc6cfd8, BASE_AMBIENT);
   scene.add(ambient);
 
-  const sun = new THREE.DirectionalLight(0xfff4e2, 0.85);
+  const sun = new THREE.DirectionalLight(0xfff4e2, BASE_SUN);
   sun.castShadow = true;
   sun.shadow.mapSize.set(MAP, MAP);
 
@@ -75,12 +81,31 @@ export function createLighting(scene) {
   let fixtures = [];
   let visible = null;            // (x, z) => boolean, set per floor
   let sinceRehome = REHOME_INTERVAL;
+  let dim = 1;                   // this floor's mood, see setMood
   const best = [];
 
   function setFixtures(list) {
     fixtures = list ?? [];
     sinceRehome = REHOME_INTERVAL;
     for (const l of lights) l.intensity = 0;
+  }
+
+  /**
+   * How lit this floor is, as a multiplier on everything that is not a fixture.
+   * The tubes themselves keep their own brightness — a dark floor with dark
+   * ceiling panels reads as a rendering fault rather than as a dark floor. What
+   * comes down is the fill: the hemisphere, the ambient and the contact sun, so
+   * the pools under the fixtures stay put and everything between them goes.
+   *
+   * Which is exactly what a floor that has half its lights off looks like, and
+   * it costs nothing — no lights are added or removed, so nothing recompiles.
+   */
+  function setMood(level = 1) {
+    const k = Math.max(0.15, level);
+    hemi.intensity = BASE_HEMI * k;
+    ambient.intensity = BASE_AMBIENT * k;
+    sun.intensity = BASE_SUN * (0.45 + k * 0.55);
+    dim = k;
   }
 
   // A shot-out ceiling tube or a broken window. Dropping it from the candidate
@@ -160,7 +185,11 @@ export function createLighting(scene) {
       light.distance = f.distance;
       // Fade the furthest ones out so a fixture swapping in doesn't pop.
       const edge = f.distance * f.distance;
-      light.intensity = f.intensity * Math.max(0, 1 - pick.d2 / (edge * 2.5));
+      // Fixtures dim with the floor too, but only halfway: the tubes are the
+      // last thing to go, and a room with no pools of light in it at all is
+      // not moody, it is broken.
+      light.intensity = f.intensity * (0.5 + dim * 0.5)
+        * Math.max(0, 1 - pick.d2 / (edge * 2.5));
     }
   }
 
@@ -170,5 +199,5 @@ export function createLighting(scene) {
     sun.dispose();
   }
 
-  return { setFixtures, removeFixture, setOcclusion, update, dispose, sun };
+  return { setFixtures, removeFixture, setOcclusion, setMood, update, dispose, sun };
 }

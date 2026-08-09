@@ -133,6 +133,9 @@ export class Game {
     // straight through the plaster.
     this.audio.setNav(level.nav);
     this.lighting.setFixtures(level.fixtures);
+    // How much of this floor's lighting is still on. Read off the theme, which
+    // enemies.spawn has already rolled by this point.
+    this.lighting.setMood(this.enemies.theme?.light ?? 1);
     this.lighting.setOcclusion((ax, az, bx, bz) => level.nav.losClear(ax, az, bx, bz));
     this.minimap.setLevel(level.map);
 
