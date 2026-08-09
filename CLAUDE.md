@@ -93,6 +93,8 @@ src/
   main.js         Bootstrap: wires modules, runs the render loop
   game.js         The run: floor progression and difficulty curves
   destruction.js  Everything coming apart: damage routing, debris, its lifecycle
+  ragdolls.js     Jointed bodies for everything that dies, and their lifecycle
+  rigs.js         What the staff, the vermin and the cleaner are made of
   level.js        One floor's lifecycle — generate, animate the exit, dispose
   scene.js        Renderer, camera, fog
   lighting.js     Fill light + a pooled set of ceiling lights that follow the player
@@ -262,6 +264,43 @@ wrong way), so `model-table.js` records the yaw and scale that put each at real-
 facing -Z. Check a new entry in `/dev-models.html` before trusting it, and beware that a
 model's name is not its size: the `printer` model is a 24 cm desktop unit, which is why the
 floor-standing prop uses `copier`.
+
+### Ragdolls (`ragdolls.js` + `bones` in `rigs.js`)
+Everything that dies falls over properly: staff, Reanimated, Sentry Units, rats
+and the floor cleaner. The **skeleton is declared in `rigs.js`** next to the
+geometry it describes — a `bones` array of `{parts, size, at, mass, joint}` in
+unscaled rig space — because that file is the one that knows an arm is 0.54 long.
+`ragdolls.js` only knows how to hand that to the solver and take it back.
+
+A person is six bones and five `ConeTwistConstraint`s (hips fused into the
+trunk); a rat and the cleaner are one `whole: true` bone each, since jointing a
+27 cm rat is nine bodies spent on a blur.
+
+The lifecycle mirrors `destruction.js`, because it is the same problem — something
+cheap becomes expensive and that has to be bounded:
+
+- **ACTIVE** — jointed bodies, solver-driven. Capped at `MAX_ACTIVE` (10).
+  Going over does **not** refuse the new one; it settles the *oldest* early,
+  because whatever you just shot is what you are looking at.
+- **SETTLED** — bodies removed, meshes frozen where they landed. Free.
+- **SINKING** — through the floor and gone. `MAX_CORPSES` (26) total.
+
+Ragdolling is always allowed to fail — no physics, no skeleton, cap reached mid-
+teardown — and `_die` in `enemies.js` still holds the old toppling animation as
+the fallback.
+
+Two things earned their comments the hard way. Jointed bodies are their own
+collision group **that does not collide with itself** (`GROUP_JOINTED` in
+`physics.js`): constraints pulling a limb into the torso while contacts shove it
+out is how a ragdoll vibrates itself across a room. And the shot impulse is
+multiplied by bone mass before it reaches the solver, which makes `HIT_IMPULSE` a
+change in *speed* — one number tunes a rat and a manager alike, and 4 m/s is about
+where a body stops falling and starts being launched.
+
+`enemies.hit()` carries the bullet's direction and contact point purely so the
+killing shot can throw the bone it landed on; `splash()` synthesises an outward
+one. Explosions need nothing else — ragdoll bones are ordinary dynamic bodies, so
+`physics.blast()` already sweeps them.
 
 ### Keycards (`keycards.js` + `assignLocks` in `gen/layout.js`)
 Every door in the building has a badge reader beside it. Cards do not travel
