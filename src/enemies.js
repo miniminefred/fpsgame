@@ -57,11 +57,15 @@ const BLAST_PUNCH = 3.5;
 // a chest more than a limb, which is the ordering every shooter has and the one
 // the player is already aiming as if it were true.
 //
-// The spread is what makes it worth having: at 2.2 the head is what turns a gun
-// that needs three rounds into one that needs one, and at 0.55 a limb is a hit
-// you notice you should not have taken rather than a miss. Anything narrower
-// than this and the tiers stop being decisions.
-const HIT_ZONES = { head: 2.2, torso: 1, limb: 0.55 };
+// The ordering is the whole of it and the SPREAD is deliberately tiny — a nudge,
+// not a rule. A head worth double turns every gun into a one-shot gun against
+// anything that is not armoured, and a limb worth half turns a clean hit at
+// twenty metres into a punishment for the 14 cm of arm that happened to be in
+// front of the chest. Neither of those is aim, they are luck with a multiplier
+// on it. At a tenth either way the head is still the shot worth taking and a
+// limb still costs you something, and no single round decides a fight on
+// geometry the player could not have controlled.
+const HIT_ZONES = { head: 1.12, torso: 1, limb: 0.92 };
 const DEATH_TIME = 2.2;
 const HIT_FLASH = 0.1;
 const SWING_TIME = 0.5;    // wind-up plus follow-through on a melee swing
