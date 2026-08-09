@@ -241,10 +241,19 @@ to load, the prop silently falls back to its boxes.
 Every model-backed prop still authors a `build()` of boxes, and it now earns its keep twice:
 as that fallback, and as the pieces the prop breaks into. `tryPlace` runs it through
 `sink.captureBoxes()` — a dry run that collects the boxes without drawing them — so the
-model is what you see and the boxes are only what it falls apart into. The debris therefore
-wears the procedural palette rather than the GLB's, which is a deliberate trade: a desk that
-bursts into pale laminate panels reads fine in the half-second it takes to land, and the
-alternative is slicing model geometry at runtime.
+model is what you see and the boxes are only what it falls apart into.
+
+Those boxes are then painted from the model, so the ruins look like the thing that was
+standing there rather than somebody else's furniture. At load, each material group in a GLB
+is reduced to one flat colour plus a scatter of surface points, and every fragment takes the
+colour of whichever group it contains most of (`paintDebris`) — a red extinguisher throws
+red pieces, a plant throws green ones, and nothing has to slice model geometry at runtime.
+Two details are load-bearing. Every sample carries the surface AREA it stands for, because
+counting points lets a keypad modelled from forty little quads outvote the whole panel it
+sits on, and a fragment the size of the machine comes out keypad-grey. And a fragment that
+touches none of the models — a rack's stock, the cartons on a pallet, the monitor above a
+desk — keeps the palette it was authored in, because for those boxes the palette is what you
+were looking at.
 
 Models arrive at arbitrary scale facing arbitrary directions (28 of 71 were facing the
 wrong way), so `model-table.js` records the yaw and scale that put each at real-world size
