@@ -1374,7 +1374,7 @@ export class Enemies {
       if (dist < e.type.range + e.bluntReach) {
         const damage = this.tuning.damage * e.type.damage;
         player.takeDamage(damage);
-        hud.damage(Math.min(1, damage / 22));
+        hud.damage(Math.min(1, damage / 22), e.x, e.z);
         audio.meleeHit();
       }
     }
@@ -1421,7 +1421,7 @@ export class Enemies {
     if (hit) {
       const damage = this.tuning.damage * type.damage;
       player.takeDamage(damage);
-      hud.damage(Math.min(1, damage / 25));
+      hud.damage(Math.min(1, damage / 25), e.x, e.z);
     }
   }
 

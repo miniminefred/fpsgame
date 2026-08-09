@@ -61,6 +61,35 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
   transition: opacity 0.06s linear;
 }
 
+/* Hit direction — a wedge per recent hit, swung around the crosshair to point
+   at whoever landed it. The container is a zero-sized point at the exact centre
+   of the screen; each wedge is offset outward from it and then rotated ABOUT it
+   (transform-origin is the centre expressed in the wedge's own box), which is
+   what lets one CSS rotation put it anywhere on the ring. */
+#hitdirs {
+  position: absolute; left: 50%; top: 50%;
+  width: 0; height: 0;
+}
+.hitdir {
+  position: absolute;
+  left: -56px; top: -150px;
+  width: 112px; height: 30px;
+  transform-origin: 56px 150px;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+/* The chevron itself: a broad arrowhead pointing outward, brightest at its
+   leading edge so it reads as coming from out there rather than sitting there. */
+.hitdir::before {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(to bottom,
+    rgba(255, 72, 58, 0.98) 0%,
+    rgba(226, 34, 24, 0.72) 55%,
+    rgba(190, 16, 12, 0.28) 100%);
+  clip-path: polygon(50% 0%, 100% 100%, 50% 58%, 0% 100%);
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.75));
+}
+
 /* ---------------------------------------------------------------- crosshair */
 #crosshair {
   position: absolute; left: 50%; top: 50%;

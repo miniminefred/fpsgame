@@ -337,7 +337,9 @@ export class Extinguishers {
     if (dist < BLAST_RADIUS) {
       const damage = BLAST_DAMAGE * (1 - dist / BLAST_RADIUS);
       this.player.takeDamage(damage);
-      this.hud?.damage(Math.min(1, damage / 25));
+      // The seat of the blast, so being caught by one points at the cylinder
+      // rather than at nothing.
+      this.hud?.damage(Math.min(1, damage / 25), at.x, at.z);
     }
 
     // And what is left of the cylinder.

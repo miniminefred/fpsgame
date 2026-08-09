@@ -40,6 +40,17 @@
   <div id="hud">
     <div id="vignette"></div>
 
+    <!-- Which way the last few hits came from. A fixed pool of wedges swung
+         around the crosshair; hud.js owns how many and what they mean. -->
+    <div id="hitdirs">
+      <div class="hitdir"></div>
+      <div class="hitdir"></div>
+      <div class="hitdir"></div>
+      <div class="hitdir"></div>
+      <div class="hitdir"></div>
+      <div class="hitdir"></div>
+    </div>
+
     <div id="crosshair"></div>
   <div id="lock-hint">Mouse capture unavailable &mdash; move the mouse to look</div>
     <div id="hitmarker"></div>

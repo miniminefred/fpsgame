@@ -10,6 +10,25 @@ const KILL_S = 0.20;       // kill marker lingers a little longer
 const VIGNETTE_DECAY = 2.4; // full-strength damage flash fades in ~0.4 s
 const TOAST_FADE = 0.35;
 
+// Hit direction wedges. The pool is fixed and matches the markup — running out
+// is not a failure case, it just means the oldest one is reused, and six is well
+// past the point where any more would be readable anyway.
+const HITDIR_S = 1.15;         // seconds a wedge lives
+const HITDIR_HOLD = 0.35;      // ...held at full before it starts fading
+// Two hits from about the same place refresh one wedge instead of stacking two
+// on top of each other. An SMG burst is one attacker, and it should look like
+// one attacker.
+const HITDIR_MERGE = 0.3;      // radians
+
+const TAU = Math.PI * 2;
+// Shortest signed angle from a to b.
+const angleDelta = (a, b) => {
+  let d = (b - a) % TAU;
+  if (d > Math.PI) d -= TAU;
+  if (d < -Math.PI) d += TAU;
+  return d;
+};
+
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 export class Hud {
@@ -39,6 +58,26 @@ export class Hud {
     this._marker = 0;    // seconds of hitmarker left
     this._vignette = 0;  // 0..1 damage flash
     this._toast = 0;     // seconds of toast left
+
+    // Where the player is and which way they are looking, refreshed every frame
+    // by game.js. The wedges need it because they point at a WORLD direction:
+    // turning has to swing them, which is the entire point of them.
+    this._eyeX = 0;
+    this._eyeZ = 0;
+    this._facing = 0;
+
+    // `world` is the compass bearing of whoever landed the hit, fixed at the
+    // moment it landed. Nothing re-aims it afterwards — it is a memory of where
+    // the shot came from, not a tracker.
+    this._hitdirs = [...document.querySelectorAll('#hitdirs .hitdir')]
+      .map((el) => ({ el, life: 0, world: 0, strength: 0 }));
+  }
+
+  // Called every frame from game.js, before anything that reads it.
+  setFacing(x, z, yaw) {
+    this._eyeX = x;
+    this._eyeZ = z;
+    this._facing = yaw;
   }
 
   // --- persistent readouts ---------------------------------------------------
@@ -101,11 +140,44 @@ export class Hud {
     this._marker = kill ? KILL_S : HIT_S;
   }
 
-  // Red vignette pulse when the player takes a hit. `intensity` is 0..1; a
-  // stronger hit overrides a fading one rather than stacking with it.
-  damage(intensity = 0.6) {
+  /**
+   * The player took a hit. `intensity` is 0..1 and drives the red rim; a
+   * stronger hit overrides a fading one rather than stacking with it.
+   *
+   * `sx`/`sz` are where it came from, and they are what turn "I am being hit"
+   * into "I am being hit from behind and to the left", which is the difference
+   * between a number going down and a decision. Leave them out and only the rim
+   * fires — some damage genuinely has no direction.
+   */
+  damage(intensity = 0.6, sx = null, sz = null) {
     this._vignette = Math.max(this._vignette, clamp01(intensity));
     this.vignetteEl.style.opacity = String(this._vignette);
+    if (sx === null || sz === null) return;
+
+    const dx = sx - this._eyeX;
+    const dz = sz - this._eyeZ;
+    // Standing inside the blast has no direction to point at.
+    if (Math.hypot(dx, dz) < 0.4) return;
+
+    const world = Math.atan2(dx, dz);
+    const strength = 0.55 + clamp01(intensity) * 0.45;
+
+    // Same attacker as one already showing? Refresh that wedge rather than
+    // spending another on the same information.
+    let slot = null;
+    for (const w of this._hitdirs) {
+      if (w.life > 0 && Math.abs(angleDelta(w.world, world)) < HITDIR_MERGE) { slot = w; break; }
+    }
+    // Otherwise the deadest one — a free slot if there is one, and the oldest
+    // live wedge if there is not.
+    if (!slot) {
+      slot = this._hitdirs[0];
+      for (const w of this._hitdirs) if (w.life < slot.life) slot = w;
+    }
+
+    slot.world = world;
+    slot.life = HITDIR_S;
+    slot.strength = Math.max(slot.strength, strength);
   }
 
   // Big centred toast: "FLOOR 3", "FLOOR CLEAR", "EXIT UNLOCKED".
@@ -152,6 +224,39 @@ export class Hud {
       this._toast -= dt;
       if (this._toast <= TOAST_FADE) this.toastEl.classList.remove('show');
       if (this._toast <= 0) this._toast = 0;
+    }
+
+    this._placeHitDirs(dt);
+  }
+
+  /**
+   * Swing the live wedges round to where their attackers are.
+   *
+   * Re-aimed every frame rather than at the moment of the hit, because the whole
+   * job of the thing is that turning toward the shot brings its wedge up to the
+   * top of the screen. A fixed screen angle would rotate with you and point at
+   * nothing.
+   *
+   * Screen angle 0 is straight ahead, and it grows clockwise, which is what CSS
+   * rotate() already does — so once the bearing is worked out relative to the
+   * facing there is nothing left to convert.
+   */
+  _placeHitDirs(dt) {
+    for (const w of this._hitdirs) {
+      if (w.life <= 0) continue;
+
+      w.life -= dt;
+      if (w.life <= 0) {
+        w.life = 0;
+        w.strength = 0;
+        w.el.style.opacity = '0';
+        continue;
+      }
+
+      const deg = (this._facing + Math.PI - w.world) * 180 / Math.PI;
+      const fade = Math.min(1, w.life / (HITDIR_S - HITDIR_HOLD));
+      w.el.style.transform = `rotate(${deg}deg)`;
+      w.el.style.opacity = String(fade * w.strength);
     }
   }
 }

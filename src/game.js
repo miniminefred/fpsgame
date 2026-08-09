@@ -330,6 +330,10 @@ export class Game {
       this._vitals(dt);
     }
 
+    // Before setHealth, because the hit wedges are aimed off this and a hit
+    // arriving this frame should be aimed from where the player is now.
+    this.hud.setFacing(
+      this.player.object.position.x, this.player.object.position.z, this.player.yaw);
     this.hud.setHealth(this.player.health, this.player.maxHealth);
     this.hud.setScore(this.kills, this.floorsCleared);
     this.minimap.update(
