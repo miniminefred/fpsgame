@@ -13,6 +13,10 @@ const WORLD_COLOR = 0xffe0a0; // impact flash on world geometry
 const PITCH_LIMIT = 1.5;      // ~86°: recoil must not tip the view past vertical
 const IMPULSE = 7;            // N·s per unit of weapon punch, into loose props
 
+// Inside this many metres a killing shot is worth its weapon's full `throwMul`;
+// from here it fades to nothing at the weapon's own `throwTo`. See throwPunch.
+const THROW_NEAR = 3;
+
 export class Shooting {
   constructor({ camera, controls, keys, weapons, effects, enemies, hud, audio, physics, casings }) {
     this.camera = camera;
@@ -214,9 +218,11 @@ export class Shooting {
       const damage = stats.damage * falloff(hit.distance, stats);
 
       if (enemy) {
-        // The direction and the contact point go with the damage: if this is the
-        // shot that kills them, it is what the ragdoll is thrown by.
-        const outcome = this.enemies.hit(hit.object, damage, dir, hit.point);
+        // The direction, the contact point and the weight of the shot go with
+        // the damage: if this is the shot that kills them, it is all of what the
+        // ragdoll is thrown by.
+        const outcome = this.enemies.hit(hit.object, damage, dir, hit.point,
+          throwPunch(stats, hit.distance));
         this.effects.impact(hit.point, this._normal, HIT_COLOR);
         this.audio.bulletHitFlesh(hit.point);
         // The vocal is played from here rather than from enemies.hit, because
@@ -284,6 +290,33 @@ export class Shooting {
  * merely inaccurate or merely weak — together they give you one that owns a
  * doorway and embarrasses you across an open floor.
  */
+/**
+ * How hard a killing shot throws the body it lands in — the weapon's own weight,
+ * multiplied up as the range closes. ragdolls.js spends it; see HIT_IMPULSE.
+ *
+ * Range is in it because the same shotgun shell is two completely different
+ * events at two metres and at twenty, and only one of them should take somebody
+ * off their feet. But the range each gun keeps it over is the gun's own
+ * (`throwTo`), not one shared curve, because that IS the difference between
+ * them: the shotgun owns a doorway and nothing further, and the sniper is a
+ * rifle round that arrives across the floor with everything it left with. Two
+ * guns that throw bodies, and you have to be in two completely different places
+ * to see either of them do it.
+ *
+ * It is deliberately not the damage falloff above: that is about what a
+ * spreading pattern still has left, and this is about how much of the shot the
+ * body absorbed at once. The curve is linear rather than inverse-square for the
+ * same reason blast is — the honest one puts everything in the last metre and
+ * leaves every other range looking identical.
+ */
+function throwPunch(stats, distance) {
+  const to = stats.throwTo ?? THROW_NEAR;
+  const k = clamp01((to - distance) / Math.max(0.01, to - THROW_NEAR));
+  return (stats.punch ?? 1) * (1 + ((stats.throwMul ?? 1) - 1) * k);
+}
+
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+
 function falloff(distance, stats) {
   const from = stats.falloffFrom;
   if (!from || !(distance > from)) return 1;

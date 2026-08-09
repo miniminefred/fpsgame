@@ -12,17 +12,26 @@ import { getFx } from './fx-textures.js';
 // projectile, `pellets` projectiles per shot, `spread` cone half-angle in
 // radians, `kick` view recoil per shot in radians, `mag`/`reload` ammo handling,
 // `sound` the clip in the sound library this gun fires (see audio.js).
+//
+// `throwMul`/`throwTo` are how hard a KILLING shot throws the body, and over
+// what range that survives — the point-blank multiplier on the gun's `punch`,
+// and the distance at which there is nothing left of it. They are per-weapon
+// rather than one curve because the two heavy guns are heavy in different
+// shapes: a shotgun is devastating in a doorway and irrelevant across a room,
+// and a rifle round reaching thirty metres arrives with everything it left
+// with. A pistol barely gets to do this at all, which is what makes it read as
+// a pistol. See throwPunch in shooting.js.
 const WEAPONS = [
   {
     name: 'Pistol', file: 'models/1_pistol.glb', length: 0.30, flip: false, yaw: 0,
     rpm: 420, auto: false, damage: 34, pellets: 1, spread: 0.004,
-    kick: 0.016, punch: 0.75, mag: 12, reload: 1.1, range: 200,
+    kick: 0.016, punch: 0.75, throwMul: 1.15, throwTo: 5, mag: 12, reload: 1.1, range: 200,
     sound: 'pistol-fire',
   },
   {
     name: 'SMG', file: 'models/2_smg.glb', length: 0.42, flip: false, yaw: 0,
     rpm: 900, auto: true, damage: 16, pellets: 1, spread: 0.019,
-    kick: 0.011, punch: 0.65, mag: 30, reload: 1.4, range: 160,
+    kick: 0.011, punch: 0.65, throwMul: 1.1, throwTo: 5, mag: 30, reload: 1.4, range: 160,
     sound: 'smg-fire',
   },
   {
@@ -34,19 +43,19 @@ const WEAPONS = [
     name: 'Shotgun', file: 'models/3_shotgun.glb', length: 0.58, flip: false, yaw: 0,
     rpm: 75, auto: false, damage: 26, pellets: 12, spread: 0.095,
     falloffFrom: 4, falloffTo: 18, falloffMin: 0.25,
-    kick: 0.055, punch: 1.35, mag: 6, reload: 2.4, range: 45,
+    kick: 0.055, punch: 1.35, throwMul: 2.1, throwTo: 7, mag: 6, reload: 2.4, range: 45,
     sound: 'shotgun-fire',
   },
   {
     name: 'Assault Rifle', file: 'models/4_assault_rifle.glb', length: 0.62, flip: false, yaw: 0,
     rpm: 620, auto: true, damage: 26, pellets: 1, spread: 0.011,
-    kick: 0.019, punch: 0.95, mag: 30, reload: 1.9, range: 300,
+    kick: 0.019, punch: 0.95, throwMul: 1.35, throwTo: 12, mag: 30, reload: 1.9, range: 300,
     sound: 'rifle-fire',
   },
   {
     name: 'Sniper Rifle', file: 'models/5_sniper.glb', length: 0.80, flip: false, yaw: 0,
     rpm: 48, auto: false, damage: 130, pellets: 1, spread: 0.0008,
-    kick: 0.06, punch: 1.4, mag: 5, reload: 2.8, range: 500,
+    kick: 0.06, punch: 1.4, throwMul: 2.0, throwTo: 34, mag: 5, reload: 2.8, range: 500,
     sound: 'sniper-fire',
   },
 ];

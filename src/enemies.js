@@ -50,6 +50,9 @@ const FLEE_AWAY = 4;           // metres a flee destination must gain on you
 const PREFERRED = 7;       // range a shooter tries to hold
 const TOO_CLOSE = 3.5;
 const GIVE_UP = 7;         // seconds of no contact before they settle down
+// What an explosion is worth as a throw, at the seat of it. Above anything a gun
+// can do, which is the point of standing next to one. See splash.
+const BLAST_PUNCH = 3.5;
 const DEATH_TIME = 2.2;
 const HIT_FLASH = 0.1;
 const SWING_TIME = 0.5;    // wind-up plus follow-through on a melee swing
@@ -869,16 +872,17 @@ export class Enemies {
   /**
    * A bullet landed. Returns 'kill' | 'hit' | null (already down).
    *
-   * `dir` and `point` are the shot itself, and they are carried this far for one
-   * reason: if this is the killing hit, the ragdoll needs to be thrown the way
-   * the bullet was going, from the part it went into. A body that folds straight
-   * down whatever hit it is a body that died of natural causes.
+   * `dir`, `point` and `punch` are the shot itself, and they are carried this
+   * far for one reason: if this is the killing hit, the ragdoll needs to be
+   * thrown the way the bullet was going, from the part it went into, as hard as
+   * the gun that fired it. A body that folds straight down whatever hit it is a
+   * body that died of natural causes.
    */
-  hit(mesh, damage, dir = null, point = null) {
+  hit(mesh, damage, dir = null, point = null, punch = 1) {
     const e = mesh.userData?.enemy;
     if (!e || !e.alive) return null;
     return this._damage(e, damage * (mesh.userData.headshot ?? 1),
-      dir ? { dir, point, mesh } : null);
+      dir ? { dir, point, mesh, punch } : null);
   }
 
   // Damage from any source, once it is known who took it and how much.
@@ -947,6 +951,11 @@ export class Enemies {
           ? { x: (e.x - x) * k, y: 0.55, z: (e.z - z) * k }
           : { x: 0, y: 1, z: 0 },
         point: { x: e.x, y: 0.9, z: e.z },
+        // An explosion is the heaviest thing that happens to anybody on this
+        // floor, and it falls off the same way its damage does — everything
+        // near the seat of it leaves the ground, and the ones at the rim are
+        // knocked over. See _throw in ragdolls.js.
+        punch: BLAST_PUNCH * (1 - dist / radius),
       };
 
       const outcome = this._damage(e, damage * (1 - dist / radius), blast);

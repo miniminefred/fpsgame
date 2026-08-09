@@ -53,7 +53,37 @@ const SINK_DEPTH = 1.4;
 // falling and starts being launched. The rest of the skeleton is dragged along by
 // the joints, so a torso hit moves the WHOLE person at closer to 2 m/s.
 const HIT_IMPULSE = 4;
-const HIT_LIFT = 0.35;         // fraction of the impulse redirected upward
+
+// ...and past that is the whole point of the heavy guns. `hit.punch` is the
+// shot's own weight, which is the weapon's `punch` scaled up over the weapon's
+// own range as it closes (see throwPunch in shooting.js) — so a shotgun in
+// somebody's chest is 2.8, a sniper round at twenty metres is 2, and a pistol is
+// 0.8 wherever it was fired from. The floor matters as much as the ceiling:
+// every death still has to look like being shot rather than switched off.
+const THROW_MIN = 0.8;
+const THROW_MAX = 2.9;
+
+// Three things change together as a shot gets heavier, and it is all three
+// together that turn a fall into a launch:
+//
+//  - LIFT, how much of the shove is redirected upward. A light hit spins
+//    somebody where they stand; a heavy one takes them off their feet, and a
+//    body that never leaves the floor cannot look thrown no matter how fast it
+//    slides.
+//  - SHARE, how much of it goes into the WHOLE skeleton rather than into the one
+//    bone the bullet hit. This is the difference between a person being thrown
+//    and an arm being yanked while the body stays put: at the light end almost
+//    all of it lands on the bone that stopped the round, which whips the limb and
+//    leaves the fall to gravity; at the heavy end half of it is dealt to every
+//    bone at once, so the body leaves as one thing and comes apart in the air.
+//
+// The remainder always goes into the hit bone at the contact POINT, which is
+// what puts the spin on — physics.js clamps the lever arm to the bone's own
+// radius, so a heavy hit tumbles hard without the torque going to infinity.
+const HIT_LIFT = 0.35;
+const HIT_LIFT_HARD = 0.8;
+const BODY_SHARE = 0.15;
+const BODY_SHARE_HARD = 0.5;
 
 export class Ragdolls {
   constructor({ scene, physics }) {
@@ -87,7 +117,14 @@ export class Ragdolls {
     // Make room before building anything, so the new body is inside the cap
     // rather than one over it.
     while (this.activeCount >= MAX_ACTIVE) {
-      const oldest = this.items.find((i) => i.state === 'active');
+      // The oldest one that has already stopped moving, and only failing that
+      // the oldest outright. Settling freezes a body exactly where it is, and
+      // now that a heavy shot genuinely throws people across a room, "where it
+      // is" is regularly two metres off the floor — a corpse hanging in mid-air
+      // is a far worse thing to look at than one extra body simulating for
+      // another second.
+      const active = this.items.filter((i) => i.state === 'active');
+      const oldest = active.find((i) => i.quiet > 0) ?? active[0];
       if (!oldest) break;
       this._settle(oldest);
     }
@@ -182,18 +219,46 @@ export class Ragdolls {
     // room for no visible reason.
     const kx = clamp(enemy.knockX ?? 0, -3, 3);
     const kz = clamp(enemy.knockZ ?? 0, -3, 3);
-    if (kx || kz) {
-      for (const p of item.parts) this.physics.setVelocity(p.handle, { x: kx, y: 0, z: kz });
+
+    if (!hit?.dir) {
+      if (kx || kz) {
+        for (const p of item.parts) this.physics.setVelocity(p.handle, { x: kx, y: 0, z: kz });
+      }
+      return;
     }
 
-    if (!hit?.dir) return;
+    // How heavy this shot was, and how far up the scale from a shove to a
+    // launch that puts it. Everything below is a lerp on `t`.
+    const punch = clamp(hit.punch ?? 1, THROW_MIN, THROW_MAX);
+    const t = (punch - THROW_MIN) / (THROW_MAX - THROW_MIN);
+    const speed = HIT_IMPULSE * punch;
+    const share = BODY_SHARE + (BODY_SHARE_HARD - BODY_SHARE) * t;
+
+    // The shot, tilted upward and made a unit vector — the lift has to change
+    // the direction without also lengthening it, or the heavy end would be
+    // getting a quiet extra 20% it was never given.
+    const lift = HIT_LIFT + (HIT_LIFT_HARD - HIT_LIFT) * t;
+    let dx = hit.dir.x, dy = (hit.dir.y ?? 0) + lift, dz = hit.dir.z;
+    const len = Math.hypot(dx, dy, dz) || 1;
+    dx /= len; dy /= len; dz /= len;
+
+    // The whole skeleton leaves together. This is one setVelocity per bone
+    // rather than an impulse, so it is exactly the same change in speed for a
+    // 34 kg trunk and a 4 kg forearm and the body stays a body on the way out.
+    const carry = speed * share;
+    for (const p of item.parts) {
+      this.physics.setVelocity(p.handle, {
+        x: kx + dx * carry,
+        y: dy * carry,
+        z: kz + dz * carry,
+      });
+    }
+
+    // And the rest of it into the bone that actually stopped the round, at the
+    // point it stopped it — which is where the tumble comes from.
     const target = this._boneFor(item, hit) ?? item.parts[0];
-    const dir = {
-      x: hit.dir.x,
-      y: (hit.dir.y ?? 0) + HIT_LIFT,
-      z: hit.dir.z,
-    };
-    this.physics.impulse(target.handle, dir, HIT_IMPULSE * (target.bone.mass ?? 1), hit.point);
+    const rest = speed * (1 - share) * (target.bone.mass ?? 1);
+    this.physics.impulse(target.handle, { x: dx, y: dy, z: dz }, rest, hit.point);
   }
 
   // Which bone took the shot. The hit mesh is a torso or a head — the only two
