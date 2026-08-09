@@ -254,6 +254,20 @@ export class Enemies {
     return n;
   }
 
+  /**
+   * Hostiles you can get to without opening anything you have not got the card
+   * for. Everyone on the floor except the manager, sitting behind his own door.
+   *
+   * This is what decides when the black card drops: the moment this reaches zero
+   * the player has killed everyone they are able to, and the card has to be on
+   * the carpet or the floor cannot be finished. See game.js.
+   */
+  get openHostileCount() {
+    let n = 0;
+    for (const e of this.items) if (e.alive && !e.neutral && !e.behindLock) n++;
+    return n;
+  }
+
   // Populates a floor. `tuning` scales with depth — see game.js.
   spawn(layout, nav, rng, tuning) {
     this.clear();
@@ -322,7 +336,45 @@ export class Enemies {
     }
 
     this._cardOutside(layout, nav, rng, tuning);
+    this._manager(layout, nav, rng, tuning);
     this._dealCards(layout, rng);
+  }
+
+  /**
+   * The manager, in the manager's office, behind the manager's door.
+   *
+   * He is the only person on the floor who works behind a real lock, and he is
+   * the reason the black card is worth having: every other badged room is loot
+   * you can walk past, and this one is the last thing between you and the lift.
+   *
+   * That inverts the usual rule — the black room IS on the critical path, where
+   * grey, blue and yellow never are — and it only works because of when his card
+   * arrives. The black card comes off the last hostile OUTSIDE this room (see
+   * game.js), so by the time he is the only one left you are already holding the
+   * key to his door. There is no order of events in which the floor locks up.
+   *
+   * He is a Manager whatever floor this is, `unlockFloor` notwithstanding. A
+   * manager's office with an intern in it is a joke that only works once, and
+   * the room is announced by a black keycard — it has to be worth the walk back.
+   */
+  _manager(layout, nav, rng, tuning) {
+    const lock = layout.locks?.find((l) => l.tier === 'black');
+    if (!lock) return;
+
+    const room = lock.room;
+    for (let tries = 0; tries < 40; tries++) {
+      const tx = rng.int(room.x0, room.x1 - 1);
+      const ty = rng.int(room.y0, room.y1 - 1);
+      if (!nav.walkable(tx, ty)) continue;
+      const x = nav.wx(tx), z = nav.wz(ty);
+      if (!nav.clear(x, z, RADIUS)) continue;
+
+      const boss = this._add(x, z, rng, tuning, TYPES.manager);
+      // What keeps him out of openHostileCount, and out of _dealCards — a card
+      // in his pocket is a card behind his own door.
+      boss.behindLock = true;
+      return;
+    }
   }
 
   /**
@@ -412,7 +464,9 @@ export class Enemies {
    * be a skeleton key without unlocking the floor early.
    */
   _dealCards(layout, rng) {
-    const hostiles = rng.shuffle(this.items.filter((e) => !e.neutral));
+    // `behindLock` is excluded: the manager's pockets are behind the manager's
+    // door, so anything dealt to him is a key locked in with its own lock.
+    const hostiles = rng.shuffle(this.items.filter((e) => !e.neutral && !e.behindLock));
     for (const e of hostiles) e.card = 'white';
 
     const tiers = [...new Set((layout.locks ?? []).map((l) => l.tier))]
@@ -574,6 +628,9 @@ export class Enemies {
       // animation down — see _die.
       bones: rig.bones ?? null,
       ragdoll: false,
+      // Set on the one person who works behind a real lock — see _manager. It
+      // keeps them out of openHostileCount and out of the card deal.
+      behindLock: false,
     };
 
     if (type.neutral) {

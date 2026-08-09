@@ -114,11 +114,15 @@ export class Game {
    * it would actually change what you can open — which also means the drop you
    * DO see is always worth walking over to.
    *
-   * The black card is the exception to all of it, and it is the reason the
-   * manager's office is worth walking back for: it is not carried by anybody in
-   * particular, it is what the LAST hostile on the floor turns out to have been
-   * holding. Impossible to get early, impossible to miss, and impossible to lose
-   * — you cannot clear a floor without producing it.
+   * The black card is the exception to all of it, and it is the last beat of a
+   * floor. It is not carried by anybody in particular: it is what the last
+   * hostile you can REACH turns out to have been holding — the second-last on
+   * the floor, because the manager is still sitting behind his own door and you
+   * have not been able to get at him.
+   *
+   * So the order is fixed and cannot come out wrong. Clear the floor, find you
+   * are one short, find the card on the last body, and go and open the one door
+   * on the floor you have been walking past all this time.
    */
   _onEnemyDeath(e) {
     if (!this.keycards) return;
@@ -130,15 +134,20 @@ export class Game {
       this.keycards.drop(e.card, at.x, 0, at.z);
     }
 
-    if (e.neutral || this.enemies.hostileCount > 0) return;
+    if (e.neutral || this.droppedBlack) return;
+    if (this.enemies.openHostileCount > 0) return;
     if (!this.level.current?.layout.locks?.some((l) => l.tier === 'black')) return;
+
     // Offset a little in case they were also carrying something, so two cards
     // never float inside each other.
-    this.keycards.drop('black', at.x + (e.card ? 0.55 : 0), 0, at.z);
-    // Not announced here. This fires on the same frame as the floor going
-    // clear, and _checkFloorState's toast would land on top of it a few lines
-    // later — so the two are said as one thing, which they are.
     this.droppedBlack = true;
+    this.keycards.drop('black', at.x + (e.card ? 0.55 : 0), 0, at.z);
+    // Only worth saying if somebody is actually still in there. If the black
+    // room ended up empty this was simply the last kill, and the pickup toast
+    // says everything there is to say.
+    if (this.enemies.hostileCount > 0) {
+      this.hud.message('BLACK KEYCARD DROPPED — ONE LEFT, AND YOU KNOW WHERE', 2600);
+    }
   }
 
   /**
@@ -329,9 +338,9 @@ export class Game {
     if (!this.cleared && remaining === 0) {
       this.cleared = true;
       this.floorsCleared++;
-      this.hud.message(this.droppedBlack
-        ? 'FLOOR CLEAR — THE LAST ONE HAD A BLACK KEYCARD'
-        : 'FLOOR CLEAR — FIND THE EXIT', 2600);
+      // No longer competes with the black card: that now drops one kill earlier,
+      // on the last hostile outside the manager's office.
+      this.hud.message('FLOOR CLEAR — FIND THE EXIT', 2200);
       this.audio.floorClear();
     }
     this._syncObjective(remaining);

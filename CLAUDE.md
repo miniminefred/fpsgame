@@ -157,6 +157,17 @@ dev-sounds.html   Measures the whole sound set and flags clips to regenerate
 
 ## Key systems
 
+### Backing a prop against a wall (`edgeProp` in `gen/rooms.js`)
+Props are authored facing **-z** (`gen/props.js`), and `edgeProp`'s side number
+**is** the quarter turn that puts that face into the room: 0 = the +z wall, 1 =
+-x, 2 = -z, 3 = +x. The two even sides used to be swapped, which stood every
+vending machine, whiteboard and reception desk on the ±z walls with its front to
+the plaster, and aimed `deskAgainstWall`'s chair into the wall so those desks came
+out with nobody sitting at them. Invisible on a grey box; instantly obvious the
+moment something with eight lit screens went in. `edgeProp` returns *where* it
+landed (`{cx, cz, rot, side}`) so a room can put a chair in front of what it just
+placed — `seatFacing` does that.
+
 ### Floor generation (`gen/layout.js`)
 Real office floors are not mazes, so the generator does not build one. It carves a corridor
 spine first (2-4 vertical, 1-3 horizontal bands, guaranteed to intersect, so the corridor
@@ -319,17 +330,29 @@ one broom closet, and neither substitutes for anything else; black opens the
 manager's office and, being the last card you get, everything else too.
 
 Card holders: every hostile carries white; guaranteed single holders carry grey,
-blue and yellow instead, plus `CARD_SPARE_CHANCE` extra grey. **Black is not dealt
-at all** — it comes off *the last hostile on the floor*, so it is impossible to get
-early and impossible to miss. A card only becomes a pickup if the player doesn't
-already hold that tier, or a floor would bury itself in two hundred white cards.
+blue and yellow instead, plus `CARD_SPARE_CHANCE` extra grey. A card only becomes
+a pickup if the player doesn't already hold that tier and none is already lying
+about, or a floor would bury itself in two hundred white cards.
+
+**Black is different, and it is the last beat of a floor.** The Manager sits in
+the manager's office, behind the black door (`_manager` in `enemies.js`) — he is
+the only person on the floor who works behind a real lock, which means the black
+room *is* on the critical path where grey, blue and yellow never are. It works
+because of when his card arrives: black is not dealt to anybody, it comes off
+**the last hostile you can reach** — the second-last on the floor, since he is
+unreachable. So the order cannot come out wrong: clear the floor, find you are one
+short, find the card on the last body, go and open the one door you have been
+walking past. `enemies.openHostileCount` (hostiles not `behindLock`) is what times
+it. He is a Manager on every floor regardless of `unlockFloor` — a manager's
+office with an intern in it is a joke that only works once.
 
 The invariants, all proved rather than hoped for (`tools/validate-layout.mjs`,
 checks `8.*`, plus `5.lock-sealed` in `validate-props.mjs`):
 
-- **The four real locks are loot, never the route.** Filling every staff-only room
-  in solid still leaves every white room and the exit reachable from spawn — the
-  floor is clearable and descendable **on the white card alone**.
+- **Grey, blue and yellow are loot, never the route.** Filling every staff-only
+  room in solid still leaves every white room and the exit reachable from spawn.
+  Black is the deliberate exception — see the Manager above — and it is safe
+  because his card is always on a body you can already reach.
 - **No card is behind the door it opens, or behind another card's door.** Each
   staff-only room must be reachable with the other three shut, and `enemies.js`
   never spawns anyone inside one — so those rooms are worth nothing to
