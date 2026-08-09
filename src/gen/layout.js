@@ -196,6 +196,12 @@ export function generateLayout(seed, floorNumber) {
     // over a floor — enemies, vermin — can keep out of rooms they would be
     // locked into. See enemies.js.
     locked: lockedMask(W, H, locks),
+    // And every tile they can reach on arrival with nothing in their pocket,
+    // which is a different question now that the corridors have readers on them
+    // too: it is where the FIRST white card has to be standing. See
+    // _cardOutside in enemies.js and hallLocks below.
+    prologue: prologueRegion(tiles, W, H,
+      Math.round(spawnRoom.cx), Math.round(spawnRoom.cy), doors),
     rng,
   };
 
@@ -712,6 +718,21 @@ const LOCK_PLAN = [
 // it either, so nothing dangles.
 const LOCK_TRIES = 10;
 
+// How many hall doors want a real lock rather than the staff badge. They only
+// get one where the corridor network offers a way round — see hallLocks — so
+// this is a wish rather than a count.
+const HALL_GREY = 0.3;
+
+// The prologue: what has to be reachable from the lifts with every door on the
+// floor still shut. It is where the first white card comes from, so it is not a
+// preference — a floor that pens you into a stub with nobody standing in it is a
+// floor you cannot start. Both numbers are in tiles, and they are deliberately
+// looser than the enemies-side rule they are protecting (MIN_SPAWN_GAP = 11 in
+// enemies.js): layout guarantees the room exists, _cardOutside puts somebody in
+// it, and the guarantee has to be the bigger of the two.
+const PROLOGUE_REACH = 14;
+const PROLOGUE_MIN = 24;
+
 function assignLocks(tiles, W, H, rooms, doors, spawnRoom, exitRoom, dist, rng) {
   const sx = Math.round(spawnRoom.cx), sy = Math.round(spawnRoom.cy);
   const centre = (r) => Math.round(r.cy) * W + Math.round(r.cx);
@@ -766,6 +787,16 @@ function assignLocks(tiles, W, H, rooms, doors, spawnRoom, exitRoom, dist, rng) 
     }
   }
 
+  // The doors across the corridors, which is the last tier decided before white
+  // goes on everything left.
+  hallLocks(sealed, W, H, sx, sy, doors, reach, rng);
+
+  // And now the one thing white cannot check for itself. Everything above is a
+  // lock you meet with an empty pocket, walk away from, and come back to; white
+  // is the one you meet before you have anything at all, so the floor has to
+  // guarantee a way out of the lobby to somebody worth shooting.
+  freeThePrologue(tiles, W, H, sx, sy, doors);
+
   // And white on everything else, with no proof and no flood fill, because
   // there is nothing to prove: white is not a card you go and find, it is a card
   // the next person you shoot is already carrying. The only rooms it skips are
@@ -781,6 +812,11 @@ function assignLocks(tiles, W, H, rooms, doors, spawnRoom, exitRoom, dist, rng) 
     const onRoom = doorsOnRoom(doors, room);
     if (!onRoom.length) continue;
     if (onRoom.some((d) => slidePocketSide(tiles, W, H, d) === 0)) continue;
+    // A doorway the prologue needs standing open cannot be badged, and a room
+    // with one does not get a lock at all — the same deal as the line above, and
+    // for the same reason: half a lock is worse than none, because the reader
+    // beside it would be lying.
+    if (onRoom.some((d) => d.free)) continue;
 
     room.lock = 'white';
     // Never DOWNGRADE a door. A white room next to the archive shares that
@@ -792,6 +828,186 @@ function assignLocks(tiles, W, H, rooms, doors, spawnRoom, exitRoom, dist, rng) 
 
   return locks;
 }
+
+/**
+ * Badging the doors across the corridors.
+ *
+ * Every other lock in the building is on a room, and a room is a dead end you
+ * choose to open. A corridor is the route, so a reader on one is the only lock
+ * in this game that can stand between the player and the rest of the floor —
+ * which is why nothing here is left to chance. Two rules, and the floor is safe
+ * whichever way the dice fall:
+ *
+ *  - **A real lock only where the network goes round.** A hall door may take
+ *    grey, but only if sealing it strands nothing that was reachable before.
+ *    Corridors are a network with more than one way through most of it, so this
+ *    is often true — and where it is, the door costs you a detour rather than
+ *    the run. The test is cumulative: each door is judged against the floor the
+ *    already-badged ones left behind, so two doors that each have a way round
+ *    can never be allowed to shut the last one between them.
+ *
+ *  - **Everything else takes white**, which is the same badge that is already on
+ *    every room door on the floor and in every employee's pocket. It costs the
+ *    first thirty seconds of a floor and nothing after that.
+ *
+ * White is what makes the second rule need a guarantee of its own, and that is
+ * freeThePrologue below rather than anything here — it is not really a question
+ * about hall doors, as it turns out. It is a question about the first thirty
+ * seconds of a floor, which hall doors made sharper and did not invent.
+ */
+function hallLocks(sealed, W, H, sx, sy, doors, reach, rng) {
+  for (const d of rng.shuffle(doors.filter((x) => x.hall))) {
+    if (rng.chance(HALL_GREY) && goesRound(sealed, W, H, sx, sy, d, reach)) {
+      d.lock = 'grey';
+      sealDoor(sealed, W, d);
+      reach = bfs(sealed, W, H, sx, sy);
+    } else {
+      d.lock = 'white';
+    }
+  }
+}
+
+/**
+ * Leave the player a way out of the lobby, and somebody to meet.
+ *
+ * Every other lock on this floor is fine to walk up to with nothing in your
+ * pocket: you look at the reader, you go and shoot somebody, you come back.
+ * White is not, because white is on EVERYTHING — so on arrival the building is
+ * shut, and the only cards on the floor are in the pockets of people on the far
+ * side of it. The floor has to hand you the first one.
+ *
+ * Nothing above proves that. The room passes prove things about the floor once
+ * you hold a white card; this is the one question asked of the floor before you
+ * hold anything, and the answer has to be yes on every seed. So: shut every door
+ * on the floor, flood from the lifts, and if what is left is too small to stand
+ * the first body in, take the reader off the doorway on the edge of it and ask
+ * again. Corridor-fronting doorways go first because corridor is what
+ * _cardOutside stands people in, and the nearest one goes first because the
+ * point is a short prologue rather than a large one.
+ *
+ * It terminates in something playable by construction: freeing doorways only
+ * ever grows the region, and freeing all of them is a floor with no readers on
+ * it at all.
+ *
+ * This found a real bug the day it was written, and an old one — on about one
+ * floor in seven the lobby's only doorway was shared with a neighbouring room,
+ * that room's white pass badged it, and the floor began with the player sealed
+ * in the lift lobby holding nothing. It had nothing to do with hall doors; it
+ * needed a check that asked the question, and hall doors are what made anybody
+ * ask it.
+ */
+function freeThePrologue(tiles, W, H, sx, sy, doors) {
+  for (let guard = 0; guard <= doors.length; guard++) {
+    // Every door shut except the ones already freed — an accurate model, since
+    // white is about to go on everything that is still undecided.
+    const shut = Uint8Array.from(tiles);
+    for (const d of doors) if (!d.free) sealDoor(shut, W, d);
+
+    const dist = bfs(shut, W, H, sx, sy);
+    let corridor = 0;
+    for (let i = 0; i < dist.length; i++) {
+      if (dist[i] >= PROLOGUE_REACH && tiles[i] === CORRIDOR) corridor++;
+    }
+    if (corridor >= PROLOGUE_MIN) return;
+
+    let best = null;
+    let bestKey = Infinity;
+    for (const d of doors) {
+      if (d.free) continue;
+      // A doorway already carrying a real tier is the one thing that may not be
+      // freed: its room has been marked staff-only and emptied of everybody who
+      // works there, and a reader on the room with none on this doorway is the
+      // lock undone. Hall doors are exempt — there is no room behind them to
+      // contradict.
+      if (d.lock && !d.hall) continue;
+      const at = doorTouching(d, W, dist);
+      if (at < 0) continue;
+      // Hall doors go first because freeing one costs nothing but the reader:
+      // freeing a ROOM's doorway costs that room its lock entirely (see the
+      // white pass), so it is the second choice, and then only where it fronts a
+      // corridor. Nearest to the lifts within each group, because the point is a
+      // short prologue rather than a large one.
+      const rank = d.hall ? 0 : (opensOntoCorridor(d, W, tiles) ? 1e6 : 2e6);
+      const key = rank + at;
+      if (key >= bestKey) continue;
+      best = d; bestKey = key;
+    }
+    if (!best) return;
+
+    best.free = true;
+    best.lock = null;
+  }
+}
+
+// Is either side of this doorway a corridor? Corridor is where the first
+// card-holder stands, so it is what the prologue is counting.
+function opensOntoCorridor(d, W, tiles) {
+  for (let y = d.y0; y < d.y1; y++) {
+    for (let x = d.x0; x < d.x1; x++) {
+      const sides = d.vertical
+        ? [(y * W) + x - 1, (y * W) + x + 1]
+        : [((y - 1) * W) + x, ((y + 1) * W) + x];
+      for (const i of sides) if (tiles[i] === CORRIDOR) return true;
+    }
+  }
+  return false;
+}
+
+// Could you still get everywhere with this door shut? The door's own tiles are
+// exempt — they are solid in the trial and are the one thing that is allowed to
+// stop being reachable.
+function goesRound(sealed, W, H, sx, sy, door, reach) {
+  const trial = Uint8Array.from(sealed);
+  sealDoor(trial, W, door);
+  const after = bfs(trial, W, H, sx, sy);
+
+  for (let i = 0; i < after.length; i++) {
+    if (reach[i] >= 0 && after[i] < 0 && !doorHasTile(door, W, i)) return false;
+  }
+  return true;
+}
+
+/**
+ * What the player can reach on arrival, holding nothing: a flood from the lifts
+ * that refuses to cross any doorway with a reader on it. freeThePrologue above
+ * has already guaranteed there is something out there; this is what hands the
+ * region to enemies.js so it can put somebody in it.
+ */
+function prologueRegion(tiles, W, H, sx, sy, doors) {
+  const open = Uint8Array.from(tiles);
+  for (const d of doors) if (d.lock) sealDoor(open, W, d);
+  return bfs(open, W, H, sx, sy);
+}
+
+// How far into the region a door's nearest tile is, or -1 if it is not on its
+// edge at all. Doors are sealed in that flood, so a locked door bordering the
+// region is found by its NEIGHBOURS being reachable, not its own tiles.
+function doorTouching(d, W, dist) {
+  let best = -1;
+  for (let y = d.y0; y < d.y1; y++) {
+    for (let x = d.x0; x < d.x1; x++) {
+      const sides = d.vertical
+        ? [(y * W) + x - 1, (y * W) + x + 1]
+        : [((y - 1) * W) + x, ((y + 1) * W) + x];
+      for (const i of sides) {
+        if (i < 0 || i >= dist.length || dist[i] < 0) continue;
+        if (best < 0 || dist[i] < best) best = dist[i];
+      }
+    }
+  }
+  return best;
+}
+
+function sealDoor(tiles, W, d) {
+  for (let y = d.y0; y < d.y1; y++) {
+    for (let x = d.x0; x < d.x1; x++) tiles[y * W + x] = SOLID;
+  }
+}
+
+const doorHasTile = (d, W, i) => {
+  const x = i % W, y = (i / W) | 0;
+  return x >= d.x0 && x < d.x1 && y >= d.y0 && y < d.y1;
+};
 
 // Would sealing `candidate` strand anything? Every other room has to keep a way
 // in from the spawn, and so does the exit. A room already locked counts as

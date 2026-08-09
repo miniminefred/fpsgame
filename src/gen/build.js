@@ -74,8 +74,12 @@ export function buildLevel(scene, layout) {
   buildCeilingLights(layout, batcher, materials, fixtures, destructibles);
   // Doors are their own meshes rather than batched geometry, for the obvious
   // reason: a batched thing cannot move.
-  buildSlidingDoors(layout, scene, materials, doors, colliders, objects, rng);
-  buildHallDoors(layout, scene, materials, doors, colliders);
+  // One instanced set of badge readers for every door on the floor, whichever
+  // kind it is — a reader on a hall door has to look like a reader on an office.
+  const readers = new BadgeReaders(scene, objects, layout.doors.length);
+  buildSlidingDoors(layout, scene, materials, doors, colliders, readers, rng);
+  buildHallDoors(layout, scene, materials, doors, colliders, readers);
+  readers.finish();
 
   const sink = makeSink(layout, batcher, materials,
     { blocked, occupied, reserved, colliders, dynamics, destructibles });
@@ -455,10 +459,9 @@ const DOOR_PANEL_H = DOOR_H - 0.04;
 // because assignLocks has to ask the same question before it badges a room. A
 // floor with a few open doorways on it reads as a floor with a few open doorways
 // on it, which is what an office looks like anyway.
-function buildSlidingDoors(layout, scene, materials, doors, colliders, objects, rng) {
+function buildSlidingDoors(layout, scene, materials, doors, colliders, readers, rng) {
   const geo = new THREE.BoxGeometry(1, 1, 1);
   const { W } = layout;
-  const readers = new BadgeReaders(scene, objects, layout.doors.length);
 
   for (const d of layout.doors) {
     // The ones across the corridors are hinged, not hung on a runner, and they
@@ -529,8 +532,6 @@ function buildSlidingDoors(layout, scene, materials, doors, colliders, objects, 
       reader: d.lock ? readers.add(d, cx, cz, x1, z1) : null,
     });
   }
-
-  readers.finish();
 }
 
 /**
@@ -544,10 +545,12 @@ function buildSlidingDoors(layout, scene, materials, doors, colliders, objects, 
  * Both leaves are ONE door as far as doors.js is concerned. They share a sensor
  * because they are one doorway, they share a sound because two identical door
  * noises a millisecond apart is a flam rather than a pair of doors, and they
- * share a collider because two leaves shut is exactly the opening.
+ * share a collider because two leaves shut is exactly the opening. They share
+ * one badge reader too, for the same reason: it is one doorway.
  */
-function buildHallDoors(layout, scene, materials, doors, colliders) {
+function buildHallDoors(layout, scene, materials, doors, colliders, readers) {
   const geo = new THREE.BoxGeometry(1, 1, 1);
+  const { W } = layout;
 
   for (const d of layout.doors) {
     if (!d.hall) continue;
@@ -601,16 +604,22 @@ function buildHallDoors(layout, scene, materials, doors, colliders) {
     };
     colliders.push(collider);
 
+    // The corridor tiles this doorway occupies. A locked one is shut to the nav
+    // grid as well as to the player, and unlocking it has to hand them back —
+    // which for a hall door is a whole wing of the floor rejoining the chase.
+    const navTiles = [];
+    for (let ty = d.y0; ty < d.y1; ty++) {
+      for (let tx = d.x0; tx < d.x1; tx++) navTiles.push(ty * W + tx);
+    }
+
     doors.push({
       root, leaves, collider,
       x: cx, z: cz,
       at: new THREE.Vector3(cx, 1.2, cz),
       height: DOOR_PANEL_H,
-      // Never badged, and nav never hears about them: an opening that opens for
-      // anybody who walks up to it is an opening.
-      lock: null,
-      navTiles: [],
-      reader: null,
+      lock: d.lock ?? null,
+      navTiles,
+      reader: d.lock ? readers.add(d, cx, cz, x1, z1) : null,
     });
   }
 }
@@ -618,6 +627,11 @@ function buildHallDoors(layout, scene, materials, doors, colliders) {
 // --- badge readers ----------------------------------------------------------
 
 const READER_H = 1.15;         // metres up the jamb — where your hand goes
+// Hall doors only: how far back along the corridor the reader sits from the door
+// line, and how deep into the side wall — the rest of the plate stands proud of
+// it. See add().
+const READER_STEP = 0.45;
+const READER_PROUD = 0.06;
 
 /**
  * A badge reader beside every badged doorway.
@@ -674,8 +688,28 @@ class BadgeReaders {
     const i = this.plates.count++;
     this.lamps.count++;
 
-    this._p.set(d.vertical ? cx : x1 + 0.16, READER_H, d.vertical ? z1 + 0.16 : cz);
-    this._q.setFromAxisAngle(UP, d.vertical ? 0 : Math.PI / 2);
+    if (d.hall) {
+      // A doorway in a wall mounts its reader in that wall, just past the
+      // opening, where you walk straight at it. A doorway ACROSS a corridor has
+      // no such wall — the only one it touches is the corridor's own side,
+      // running the other way — so this one turns ninety degrees, beds into that
+      // side wall and stands most of its depth PROUD of it, which is how a
+      // reader in a hallway is actually mounted and the only way it is visible
+      // at all edge-on.
+      //
+      // And it steps back off the door line, against the swing: both leaves fold
+      // flat onto these same walls, and a reader on that side would be a box
+      // sticking through an open door.
+      const back = READER_STEP * -(d.swing ?? 1);
+      this._p.set(
+        d.vertical ? cx + back : x1 + READER_PROUD,
+        READER_H,
+        d.vertical ? z1 + READER_PROUD : cz + back);
+      this._q.setFromAxisAngle(UP, d.vertical ? Math.PI / 2 : 0);
+    } else {
+      this._p.set(d.vertical ? cx : x1 + 0.16, READER_H, d.vertical ? z1 + 0.16 : cz);
+      this._q.setFromAxisAngle(UP, d.vertical ? 0 : Math.PI / 2);
+    }
     this._m.compose(this._p, this._q, this._s);
     this.plates.setMatrixAt(i, this._m);
     this.lamps.setMatrixAt(i, this._m);

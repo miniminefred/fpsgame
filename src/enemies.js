@@ -592,7 +592,13 @@ export class Enemies {
    * looks like anyway.
    */
   _cardOutside(layout, nav, rng, tuning) {
-    const free = (x, z) => !this._behindALock(layout, x, z);
+    // "Outside a lock" is not enough on its own any more: the corridors have
+    // readers on them too, so a corridor can be outside every ROOM lock and
+    // still be on the far side of a hall door the player has no badge for.
+    // `layout.prologue` is what they can actually walk to on arrival holding
+    // nothing, and the generator guarantees there is room out there to stand in
+    // (see hallLocks).
+    const free = (x, z) => !this._behindALock(layout, x, z) && this._reachable(layout, x, z);
     let have = 0;
     let nearest = Infinity;
     for (const e of this.items) {
@@ -621,6 +627,17 @@ export class Enemies {
       const spot = rng.pick(spots.slice(0, Math.max(8, (spots.length * 0.4) | 0)));
       this._add(spot.s.x, spot.s.z, rng, tuning, pickType(layout.floorNumber, rng, this.theme));
     }
+  }
+
+  // Can the player get here before they have badged anything at all? Only the
+  // first white card cares — everything else on the floor is placed for a player
+  // who is already holding one.
+  _reachable(layout, x, z) {
+    if (!layout.prologue) return true;
+    const tx = Math.floor((x - layout.ox) / layout.TILE);
+    const ty = Math.floor((z - layout.oz) / layout.TILE);
+    if (tx < 0 || ty < 0 || tx >= layout.W || ty >= layout.H) return false;
+    return layout.prologue[ty * layout.W + tx] >= 0;
   }
 
   _behindALock(layout, x, z) {

@@ -23,6 +23,8 @@ const SEEDS_PER_FLOOR = Number(argVal('--seeds', 30));
 const FLOORS = 15;
 const MAX_EXAMPLES = 6;
 const PAD = 2;            // must match layout.js
+const PROLOGUE_REACH = 14; // ...and so must these two, from hallLocks
+const PROLOGUE_MIN = 24;
 const MAX_ROOM_DEPTH = 2; // rooms deeper than this from a corridor are a WARN
 
 // ---------------------------------------------------------------------------
@@ -83,6 +85,7 @@ const IDS = [
   ['8.lock-chain', 'FAIL', 'KEYCARD       no staff-only room is behind another staff-only room'],
   ['8.lock-spawn', 'FAIL', 'KEYCARD       spawn room unlocked, exit room never staff-only'],
   ['8.lock-doors', 'FAIL', 'KEYCARD       every opening into a locked room is locked'],
+  ['8.hall-prologue', 'FAIL', 'KEYCARD       corridor to stand the first card-holder in, every door shut'],
   ['8.lock-tiers', 'WARN', 'KEYCARD       floor has a black, a blue and a yellow lock'],
   ['8.lock-white', 'WARN', 'KEYCARD       every room but the lobby is behind a badge reader'],
   ['7.zero-rooms', 'FAIL', 'DEGENERATE    floor has 0 rooms'],
@@ -161,7 +164,8 @@ const stats = {
   corridorShare: [], walkableShare: [], doorCounts: [], doorsPerRoom: [],
   exitDist: [], roles: new Map(), roleBranch: { openplan85: 0, mid40: 0, longThin: 0, small: 0 },
   depth: new Map(), vCorr: new Map(), hCorr: new Map(),
-  abutPairs: 0, deadDoors: 0, alcoveDoors: 0, totalDoors: 0, hallDoors: 0,
+  abutPairs: 0, deadDoors: 0, alcoveDoors: 0, totalDoors: 0, hallDoors: 0, hallLocked: 0,
+  prologue: [],
   orphanTiles: [], noCorridorRooms: 0, totalRooms: 0,
   lockTiers: new Map(), lockCounts: [],
 };
@@ -402,12 +406,48 @@ function validate(seed, floorNumber) {
     for (const r of staffOnly) {
       for (let y = r.y0; y < r.y1; y++) for (let x = r.x0; x < r.x1; x++) shut[idx(x, y)] = SOLID;
     }
+    // A hall door on a real lock is shut in this model too, and it is the one
+    // that could actually cut the floor in half — a badged corridor is not a
+    // dead end you choose to open, it is the route. hallLocks only grants one
+    // where the network goes round; this is where that gets proved.
+    const hallDoors = (L.doors ?? []).filter((d) => d.hall);
+    for (const d of hallDoors) {
+      if (!d.lock || d.lock === 'white') continue;
+      stats.hallLocked++;
+      for (let y = d.y0; y < d.y1; y++) for (let x = d.x0; x < d.x1; x++) shut[idx(x, y)] = SOLID;
+    }
     const shutDist = spawnOpen ? flood(shut, W, H, sx, sy, isOpen) : new Int32Array(W * H).fill(-1);
     const stranded = rooms.filter((r) =>
       !r.staffOnly && shutDist[idx(Math.round((r.x0 + r.x1) / 2), Math.round((r.y0 + r.y1) / 2))] < 0);
     if (stranded.length || (inb(ex, ey) && shutDist[idx(ex, ey)] < 0)) {
       check('8.lock-progress').fail(id,
         `${stranded.length} white rooms + exit=${inb(ex, ey) && shutDist[idx(ex, ey)] >= 0} cut off with the real locks shut`);
+    }
+
+    // The prologue, which is the other half of badging the corridors and the
+    // half that can silently cost a run rather than a room.
+    //
+    // Every other lock on this floor is fine to meet with an empty pocket: you
+    // walk past it, shoot somebody, come back. White is different because it is
+    // on EVERYTHING, so until the first badge is in hand the building is shut —
+    // and now that includes the hallways. So with every reader on the floor
+    // still red, the lifts have to be able to reach enough corridor to stand the
+    // first body in. Nobody reachable is a floor that cannot be started, and
+    // that is invisible from inside the game until you have walked all of it.
+    const allShut = Uint8Array.from(tiles);
+    for (const d of L.doors ?? []) {
+      if (!d.lock) continue;
+      for (let y = d.y0; y < d.y1; y++) for (let x = d.x0; x < d.x1; x++) allShut[idx(x, y)] = SOLID;
+    }
+    const preDist = spawnOpen ? flood(allShut, W, H, sx, sy, isOpen) : new Int32Array(W * H).fill(-1);
+    let prologue = 0;
+    for (let i = 0; i < preDist.length; i++) {
+      if (preDist[i] >= PROLOGUE_REACH && tiles[i] === CORRIDOR) prologue++;
+    }
+    stats.prologue.push(prologue);
+    if (prologue < PROLOGUE_MIN) {
+      check('8.hall-prologue').fail(id,
+        `only ${prologue} corridor tiles reachable from the lifts with every door shut`);
     }
 
     // Each staff-only room has to be walkable-up-to while the OTHER three are
@@ -615,6 +655,7 @@ if (stats.exitDist.length) {
 console.log(`corridor spine      vertical count ${hist(stats.vCorr)}   horizontal count ${hist(stats.hCorr)}`);
 console.log(`room depth from corridor  ${hist(stats.depth)}   (${stats.noCorridorRooms}/${stats.totalRooms} = ${fmt(100 * stats.noCorridorRooms / stats.totalRooms)}% have no corridor door)`);
 console.log(`door pathologies    ${stats.abutPairs} merged/abutting pairs, ${stats.deadDoors} sealed both sides, ${stats.alcoveDoors} open on one side only (of ${stats.totalDoors}, ${stats.hallDoors} across a hall)`);
+console.log(`hall doors          ${stats.hallLocked} on a real lock; prologue corridor min ${Math.min(...stats.prologue)} median ${median(stats.prologue)} max ${Math.max(...stats.prologue)} tiles`);
 if (stats.orphanTiles.length) {
   console.log(`orphan open tiles   ${stats.orphanTiles.length} floors, ${stats.orphanTiles.reduce((a, b) => a + b, 0)} tiles, worst floor ${hi(stats.orphanTiles)}`);
 }
