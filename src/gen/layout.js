@@ -162,12 +162,18 @@ export function generateLayout(seed, floorNumber) {
     : spawnRoom;
 
   assignRoles(live, spawnRoom, exitRoom, rng);
+  const locks = assignLocks(tiles, W, H, live, doors, spawnRoom, exitRoom, dist, rng);
 
   const layout = {
     seed, floorNumber, W, H, TILE,
     ox: -W * TILE / 2, oz: -H * TILE / 2,
     tiles, rooms: live, doors,
     spawnRoom, exitRoom,
+    locks,
+    // Every tile behind a badge reader, so the things that scatter themselves
+    // over a floor — enemies, vermin — can keep out of rooms they would be
+    // locked into. See enemies.js.
+    locked: lockedMask(W, H, locks),
     rng,
   };
 
@@ -418,6 +424,40 @@ function connectAll(tiles, W, H, rooms, doors, vBand, hBand, rng) {
   }
 }
 
+/**
+ * Which way a sliding panel in this doorway could retract, or 0 for neither.
+ *
+ * A retracted panel has to go somewhere, and where it goes is inside the wall
+ * beside the opening — so the wall has to BE there: the full width of the panel,
+ * on the same line, solid the whole way. Near a corner it is not, and a door
+ * fitted there would slide out into the corridor and hang in mid-air at right
+ * angles to its own frame.
+ *
+ * It lives here rather than in gen/build.js, which is what actually fits the
+ * doors, because assignLocks has to ask the same question: a doorway that cannot
+ * hold a panel cannot hold a locked one either, and a lock with no door in it is
+ * a hole with a badge reader next to it.
+ */
+export function slidePocketSide(tiles, W, H, door, prefer = 1) {
+  const at = (tx, ty) => (tx >= 0 && ty >= 0 && tx < W && ty < H ? tiles[ty * W + tx] : SOLID);
+  const span = door.vertical ? door.y1 - door.y0 : door.x1 - door.x0;
+
+  const fits = (dir) => {
+    for (let i = 1; i <= span; i++) {
+      if (door.vertical) {
+        const ty = dir > 0 ? door.y1 - 1 + i : door.y0 - i;
+        if (at(door.x0, ty) !== SOLID) return false;
+      } else {
+        const tx = dir > 0 ? door.x1 - 1 + i : door.x0 - i;
+        if (at(tx, door.y0) !== SOLID) return false;
+      }
+    }
+    return true;
+  };
+
+  return fits(prefer) ? prefer : fits(-prefer) ? -prefer : 0;
+}
+
 // Breadth-first tile distances over open floor. -1 means unreachable.
 export function bfs(tiles, W, H, sx, sy) {
   const dist = new Int32Array(W * H).fill(-1);
@@ -508,4 +548,178 @@ function assignRoles(rooms, spawnRoom, exitRoom, rng) {
 
   spawnRoom.role = 'lobby';
   exitRoom.role = 'exit';
+}
+
+// --- keycard locks ----------------------------------------------------------
+//
+// Some rooms are badged. Which card opens which lock is keycards.js's business;
+// this decides WHICH rooms get one, and the entire job here is making sure a
+// lock can never cost you the floor. Two rules, both proved by construction
+// rather than hoped for:
+//
+//   Nothing you need is behind a card. The spawn and exit rooms are never
+//   locked, and a room is only locked if FILLING IT IN SOLID still leaves every
+//   other room and the exit reachable from the spawn. So a floor can be cleared
+//   and descended without ever finding a single card — a locked room is loot,
+//   never the route.
+//
+//   No card is behind the door it opens, or behind another door. A candidate is
+//   only locked if it is reachable with every lock placed so far already treated
+//   as solid, so locks never chain into each other; and `locked` below marks the
+//   tiles so enemies.js can refuse to spawn anybody inside one, which is what
+//   stops the person carrying a card ending up on the wrong side of it.
+//
+// The cost is a flood fill per candidate, on a grid the generator has already
+// flooded several times. It is worth it: this is the one part of the floor that,
+// when it goes wrong, cannot be walked around.
+
+// The back-of-house roles that read as "staff only" from the doorway — they are
+// what the grey card is for. White goes on anything.
+const GREY_ROLES = new Set(['server', 'archive', 'itbay', 'mailroom', 'utility', 'storage']);
+
+// In order, because the ones with a room role of their own have to get first
+// pick: a manager's office can only be a room of roughly office size, whereas a
+// white lock will happily go on whatever is left.
+const LOCK_PLAN = [
+  // The manager sits as far from the lifts as the floor allows, which is both
+  // how offices work and where you want the last room on the floor to be.
+  { tier: 'black', role: 'manager', count: [1, 1], far: true,
+    fits: (r) => r.areaM2 >= 14 && r.areaM2 <= 70 },
+  { tier: 'blue', role: 'security', count: [1, 1],
+    fits: (r) => r.areaM2 >= 14 && r.areaM2 <= 70 },
+  { tier: 'yellow', role: 'closet', count: [1, 1],
+    fits: (r) => r.areaM2 <= 34 },
+  { tier: 'grey', count: [1, 2], fits: (r) => GREY_ROLES.has(r.role) },
+  { tier: 'white', count: [1, 3], fits: () => true },
+];
+
+// How many candidates a tier will flood-fill before giving up on itself. A floor
+// that cannot place a lock simply does not have that lock — there is no card for
+// it either, so nothing dangles.
+const LOCK_TRIES = 10;
+
+function assignLocks(tiles, W, H, rooms, doors, spawnRoom, exitRoom, dist, rng) {
+  const sx = Math.round(spawnRoom.cx), sy = Math.round(spawnRoom.cy);
+  const centre = (r) => Math.round(r.cy) * W + Math.round(r.cx);
+
+  // The floor as it will look with every lock shut. Locks are cumulative, so a
+  // candidate is judged against the floor the previous locks left behind.
+  const sealed = Uint8Array.from(tiles);
+  let reach = bfs(sealed, W, H, sx, sy);
+
+  const locks = [];
+  for (const step of LOCK_PLAN) {
+    const wanted = rng.int(step.count[0], step.count[1]);
+
+    let pool = rooms.filter((r) =>
+      !r.lock && r !== spawnRoom && r !== exitRoom && step.fits(r));
+    // A role-bearing lock would rather not eat one of the flavour rooms the
+    // floor was promised, so unforced rooms go first.
+    pool = rng.shuffle(pool).sort((a, b) => (a.forcedRole ? 1 : 0) - (b.forcedRole ? 1 : 0));
+    if (step.far) pool.sort((a, b) => (dist[centre(b)] ?? 0) - (dist[centre(a)] ?? 0));
+
+    let placed = 0;
+    for (const room of pool.slice(0, LOCK_TRIES)) {
+      if (placed >= wanted) break;
+
+      // Behind a lock already placed: locking it would put its key behind two
+      // doors, and the second one may be the one this key opens.
+      if (reach[centre(room)] < 0) continue;
+
+      const onRoom = doorsOnRoom(doors, room);
+      if (!onRoom.length) continue;
+      // Every way in has to be shuttable. One opening on the room with no wall
+      // to retract a panel into is a lock you walk straight around.
+      if (onRoom.some((d) => slidePocketSide(tiles, W, H, d) === 0)) continue;
+      if (!survivesWithout(sealed, W, H, sx, sy, rooms, room, locks, exitRoom, onRoom)) continue;
+
+      room.lock = step.tier;
+      if (step.role) { room.role = step.role; room.forcedRole = true; }
+      for (const d of onRoom) d.lock = step.tier;
+      locks.push({ room, tier: step.tier, doors: onRoom });
+
+      fillRoom(sealed, W, room, SOLID);
+      reach = bfs(sealed, W, H, sx, sy);
+      placed++;
+    }
+  }
+
+  return locks;
+}
+
+// Would sealing `candidate` strand anything? Every other room has to keep a way
+// in from the spawn, and so does the exit. A room already locked counts as
+// reachable if any of ITS doorway tiles still is — its interior is solid in this
+// model, but you will be opening that door with a card, and the door is the part
+// that has to stay in front of you.
+function survivesWithout(sealed, W, H, sx, sy, rooms, candidate, locks, exitRoom, ownDoors) {
+  const trial = Uint8Array.from(sealed);
+  fillRoom(trial, W, candidate, SOLID);
+
+  const after = bfs(trial, W, H, sx, sy);
+  const reached = (i) => after[i] >= 0;
+
+  for (const r of rooms) {
+    if (r === candidate || r.lock) continue;
+    if (!reached(Math.round(r.cy) * W + Math.round(r.cx))) return false;
+  }
+  // The doors of everything locked, the candidate's own included — a room you
+  // can never walk up to is a room whose card does nothing.
+  if (!ownDoors.some((d) => anyDoorTile(d, W, reached))) return false;
+  for (const lock of locks) {
+    if (!lock.doors.some((d) => anyDoorTile(d, W, reached))) return false;
+  }
+  return reached(Math.round(exitRoom.cy) * W + Math.round(exitRoom.cx));
+}
+
+const anyDoorTile = (d, W, reached) => {
+  for (let y = d.y0; y < d.y1; y++) {
+    for (let x = d.x0; x < d.x1; x++) if (reached(y * W + x)) return true;
+  }
+  return false;
+};
+
+function fillRoom(tiles, W, room, value) {
+  for (let y = room.y0; y < room.y1; y++) {
+    for (let x = room.x0; x < room.x1; x++) tiles[y * W + x] = value;
+  }
+}
+
+/**
+ * Every doorway on a room's boundary, whoever cut it.
+ *
+ * A room's own `doors` list holds only the openings IT cut. The room next door
+ * may well have cut its own into the same shared wall, and half a lock is no
+ * lock at all — so locking a room means locking every opening that leads into
+ * it, which is what this finds.
+ */
+function doorsOnRoom(doors, room) {
+  const inside = (x, y) => x >= room.x0 && x < room.x1 && y >= room.y0 && y < room.y1;
+  return doors.filter((d) => {
+    for (let y = d.y0; y < d.y1; y++) {
+      for (let x = d.x0; x < d.x1; x++) {
+        if (d.vertical ? (inside(x - 1, y) || inside(x + 1, y))
+          : (inside(x, y - 1) || inside(x, y + 1))) return true;
+      }
+    }
+    return false;
+  });
+}
+
+// One byte per tile: 1 for anything inside a locked room or in one of its
+// doorways. Cheap to build once and the only thing the runtime needs to answer
+// "is this spot behind a card".
+function lockedMask(W, H, locks) {
+  const mask = new Uint8Array(W * H);
+  for (const { room, doors } of locks) {
+    for (let y = room.y0; y < room.y1; y++) {
+      for (let x = room.x0; x < room.x1; x++) mask[y * W + x] = 1;
+    }
+    for (const d of doors) {
+      for (let y = d.y0; y < d.y1; y++) {
+        for (let x = d.x0; x < d.x1; x++) mask[y * W + x] = 1;
+      }
+    }
+  }
+  return mask;
 }

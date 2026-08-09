@@ -7,8 +7,9 @@ import { furnish } from './rooms.js';
 import { modelInfo, stampModel, paintDebris } from './models.js';
 import {
   TILE, WALL_H, CEIL_H, DOOR_H,
-  SOLID, ROOM, CORRIDOR, DOOR, isOpen, worldX, worldZ,
+  SOLID, ROOM, CORRIDOR, DOOR, isOpen, worldX, worldZ, slidePocketSide,
 } from './layout.js';
+import { CARDS } from '../keycards.js';
 
 // Turns an abstract floorplan into everything the game needs: batched meshes,
 // collision AABBs, a nav grid for the enemies, and the list of ceiling lights
@@ -44,6 +45,8 @@ const GRADE = {
   copyroom: BACK_OF_HOUSE,
   itbay: BACK_OF_HOUSE,
   server: BACK_OF_HOUSE,
+  closet: BACK_OF_HOUSE,
+  security: BACK_OF_HOUSE,
 };
 
 export function buildLevel(scene, layout) {
@@ -71,7 +74,7 @@ export function buildLevel(scene, layout) {
   buildCeilingLights(layout, batcher, materials, fixtures, destructibles);
   // Doors are their own meshes rather than batched geometry, for the obvious
   // reason: a batched thing cannot move.
-  buildSlidingDoors(layout, scene, materials, doors, colliders, rng);
+  buildSlidingDoors(layout, scene, materials, doors, colliders, objects, rng);
 
   const sink = makeSink(layout, batcher, materials,
     { blocked, occupied, reserved, colliders, dynamics, destructibles });
@@ -96,6 +99,20 @@ export function buildLevel(scene, layout) {
   // Walkable = open floor the enemies can actually stand on.
   const walk = new Uint8Array(W * H);
   for (let i = 0; i < W * H; i++) walk[i] = isOpen(tiles[i]) && !blocked[i] ? 1 : 0;
+
+  // A badged door is shut to the enemies too, so it is shut to the nav grid: the
+  // flow field must not route a chase through a door the chaser cannot open, or
+  // the whole pursuit piles up against it. Only the OPENING is closed, not the
+  // room behind it — the moment the player badges in, doors.js hands these exact
+  // tiles back with nav.openTiles and the floor follows them through.
+  //
+  // This is safe for the same reason the locks are: assignLocks proved that
+  // sealing every locked room leaves the rest of the floor connected, so closing
+  // their doorways cannot strand anybody.
+  for (const door of doors) {
+    if (!door.lock) continue;
+    for (const i of door.navTiles) walk[i] = 0;
+  }
 
   return {
     layout,
@@ -432,44 +449,22 @@ function buildCeilingLights(layout, batcher, materials, fixtures, destructibles)
 
 const DOOR_T = 0.09;           // panel thickness
 const DOOR_PANEL_H = DOOR_H - 0.04;
-// A retracted panel has to go somewhere, and where it goes is inside the wall
-// next to the opening. So the wall has to BE there: the full width of the panel,
-// on the same line, solid the whole way, and one tile deep on both faces. Near a
-// corner it is not, and a door fitted there would slide out into the corridor
-// and hang in mid-air at right angles to its own frame. Those doorways simply
-// do not get a door — a floor with a few open doorways on it reads as a floor
-// with a few open doorways on it, which is what an office looks like anyway.
-function slidePocket(layout, door, dir) {
-  const { W, H, tiles } = layout;
-  const at = (tx, ty) => (tx >= 0 && ty >= 0 && tx < W && ty < H ? tiles[ty * W + tx] : SOLID);
-
-  const span = door.vertical ? door.y1 - door.y0 : door.x1 - door.x0;
-  for (let i = 1; i <= span; i++) {
-    if (door.vertical) {
-      const ty = dir > 0 ? door.y1 - 1 + i : door.y0 - i;
-      // The wall line itself must be solid, and so must the tile either side of
-      // it — otherwise the "wall" is one tile of jamb with a room behind it.
-      if (at(door.x0, ty) !== SOLID) return false;
-    } else {
-      const tx = dir > 0 ? door.x1 - 1 + i : door.x0 - i;
-      if (at(tx, door.y0) !== SOLID) return false;
-    }
-  }
-  return true;
-}
-
-function buildSlidingDoors(layout, scene, materials, doors, colliders, rng) {
+// Which doorways get a panel. Where a retracted one goes — and why some
+// openings cannot take one at all — is slidePocketSide's business, in layout.js,
+// because assignLocks has to ask the same question before it badges a room. A
+// floor with a few open doorways on it reads as a floor with a few open doorways
+// on it, which is what an office looks like anyway.
+function buildSlidingDoors(layout, scene, materials, doors, colliders, objects, rng) {
   const geo = new THREE.BoxGeometry(1, 1, 1);
+  const { W } = layout;
 
   for (const d of layout.doors) {
     // Not every doorway has a door in it. Some were taken off their runners
-    // years ago and nobody replaced them.
-    if (!rng.chance(0.55)) continue;
+    // years ago and nobody replaced them — but never the badged ones, and the
+    // generator has already checked that every one of those can hold a panel.
+    if (!d.lock && !rng.chance(0.55)) continue;
 
-    const dir = rng.chance(0.5) ? 1 : -1;
-    const side = slidePocket(layout, d, dir) ? dir
-      : slidePocket(layout, d, -dir) ? -dir
-        : 0;
+    const side = slidePocketSide(layout.tiles, layout.W, layout.H, d, rng.chance(0.5) ? 1 : -1);
     if (!side) continue;
 
     const x0 = worldX(layout, d.x0), x1 = worldX(layout, d.x1);
@@ -503,6 +498,15 @@ function buildSlidingDoors(layout, scene, materials, doors, colliders, rng) {
     };
     colliders.push(collider);
 
+    // The tiles this opening occupies. A locked door is closed to the nav grid
+    // as well as to the player (see buildLevel), and unlocking it has to hand
+    // them back — which is the same job destruction.js does when a prop that
+    // was standing in the way stops existing.
+    const navTiles = [];
+    for (let ty = d.y0; ty < d.y1; ty++) {
+      for (let tx = d.x0; tx < d.x1; tx++) navTiles.push(ty * W + tx);
+    }
+
     doors.push({
       mesh, collider,
       x: cx, z: cz,
@@ -514,8 +518,64 @@ function buildSlidingDoors(layout, scene, materials, doors, colliders, rng) {
       // the jamb rather than flush with it.
       travel: width * 1.02,
       height: DOOR_PANEL_H,
+      // null on an ordinary door; a card tier on a badged one. See doors.js.
+      lock: d.lock ?? null,
+      navTiles,
+      reader: d.lock ? buildBadgeReader(scene, objects, d, cx, cz, x0, x1, z0, z1) : null,
     });
   }
+}
+
+// --- badge readers ----------------------------------------------------------
+
+const READER_H = 1.15;         // metres up the jamb — where your hand goes
+export const READER_LIT = 0xff3b30;   // locked
+export const READER_OPEN = 0x3ddc6b;  // badged in
+
+// The panel on a locked door looks exactly like the panel on an unlocked one,
+// and a door that silently refuses to open reads as a bug rather than as a lock.
+// So the lock is stated on the wall before you are close enough for the sensor
+// to have decided anything, and it states two separate things: the lamp says
+// locked or open, in red and green, and the plate around it is the colour of the
+// card that opens it. Which card you need is a question you want answered from
+// the far end of a corridor; whether you have already been through is one you
+// only ask standing in front of it.
+//
+// One box, sunk into the jamb at the end of the opening and poking a couple of
+// centimetres out of BOTH faces of the wall, because a doorway has two sides and
+// you may well arrive at either.
+function buildBadgeReader(scene, objects, d, cx, cz, x0, x1, z0, z1) {
+  const group = new THREE.Group();
+  const spec = CARDS[d.lock] ?? CARDS.white;
+
+  const plate = new THREE.Mesh(
+    new THREE.BoxGeometry(d.vertical ? 0.56 : 0.15, 0.2, d.vertical ? 0.15 : 0.56),
+    new THREE.MeshStandardMaterial({
+      color: spec.color,
+      emissive: spec.color,
+      emissiveIntensity: 0.22,
+      roughness: 0.6,
+      metalness: 0.25,
+    }));
+  plate.userData.ownMaterial = true;
+  group.add(plate);
+
+  // The lamp, a shade proud of the plate on each face so it is never edge-on.
+  const lamp = new THREE.Mesh(
+    new THREE.BoxGeometry(d.vertical ? 0.6 : 0.07, 0.075, d.vertical ? 0.07 : 0.6),
+    new THREE.MeshBasicMaterial({ color: READER_LIT }));
+  lamp.userData.ownMaterial = true;
+  group.add(lamp);
+
+  // Just past the end of the opening, inside the jamb.
+  group.position.set(
+    d.vertical ? cx : x1 + 0.16,
+    READER_H,
+    d.vertical ? z1 + 0.16 : cz);
+
+  scene.add(group);
+  objects.push(group);
+  return { group, lamp };
 }
 
 // --- furnishing -------------------------------------------------------------

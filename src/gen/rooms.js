@@ -342,6 +342,55 @@ function deskAgainstWall(sink, { x0, z0, x1, z1 }, rng) {
   return false;
 }
 
+// --- the three rooms you need a card for ------------------------------------
+//
+// All three are behind a badge reader (see assignLocks in gen/layout.js), so
+// each one is a room you had to work to stand in. That buys them the right to
+// look like somewhere: the payoff for a keycard is seeing the room, so none of
+// them may furnish as "a private office with a different label on the door".
+
+// Corner office. A desk you sit BEHIND with the visitor's chairs in front of it,
+// which is the whole silhouette — nobody else on the floor gets seating that
+// faces the wrong way.
+function managerOffice(sink, bounds, rng) {
+  const { x0, z0, x1, z1 } = bounds;
+  if (!deskAgainstWall(sink, bounds, rng)) {
+    tryPlace(sink, 'desk', (x0 + x1) / 2, (z0 + z1) / 2, rng.int(0, 3), rng);
+  }
+  edgeProp(sink, bounds, 'bookshelf', rng);
+  if (rng.chance(0.8)) edgeProp(sink, bounds, 'cabinet', rng);
+  if (rng.chance(0.7)) edgeProp(sink, bounds, 'sofa', rng);
+  if (rng.chance(0.6)) edgeProp(sink, bounds, 'armchair', rng);
+  edgeProp(sink, bounds, 'plant', rng);
+  if (rng.chance(0.5)) edgeProp(sink, bounds, 'plant', rng);
+  if (rng.chance(0.5)) {
+    tryPlace(sink, 'coffeeTable', (x0 + x1) / 2, (z0 + z1) / 2, rng.int(0, 3), rng);
+  }
+}
+
+// The room the cameras come back to: a desk of screens against one wall, racks
+// and lockers against the others, and nothing in the middle to walk into.
+function securityOffice(sink, bounds, rng) {
+  edgeProp(sink, bounds, 'workbench', rng);
+  edgeProp(sink, bounds, 'serverRack', rng);
+  if (rng.chance(0.8)) edgeProp(sink, bounds, 'lockers', rng);
+  if (rng.chance(0.7)) edgeProp(sink, bounds, 'cabinet', rng);
+  if (rng.chance(0.6)) deskAgainstWall(sink, bounds, rng);
+  edgeProp(sink, bounds, 'extinguisher', rng);
+  wallClutter(sink, bounds, ['shelving', 'trashCan'], 30, rng);
+}
+
+// A broom closet is small, and the point of it is that the walls are the room:
+// everything against them and one body's width of floor down the middle.
+function broomCloset(sink, bounds, rng) {
+  edgeProp(sink, bounds, 'mopBucket', rng);
+  edgeProp(sink, bounds, 'shelving', rng);
+  if (rng.chance(0.7)) edgeProp(sink, bounds, 'lockers', rng);
+  if (rng.chance(0.6)) edgeProp(sink, bounds, 'recyclingBin', rng);
+  edgeProp(sink, bounds, 'trashCan', rng);
+  scatter(sink, bounds, ['crateStack'], 11, rng);
+}
+
 function lobby(sink, bounds, rng) {
   edgeProp(sink, bounds, 'plant', rng);
   if (rng.chance(0.7)) edgeProp(sink, bounds, 'sofa', rng);
@@ -366,6 +415,9 @@ const ROLES = {
   canteen,
   reception,
   office: privateOffice,
+  manager: managerOffice,
+  security: securityOffice,
+  closet: broomCloset,
   lobby,
   exit: lobby,
 };
