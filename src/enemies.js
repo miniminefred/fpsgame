@@ -588,10 +588,16 @@ export class Enemies {
     const speed = this.tuning.speed * e.type.speed * (e.flee > 0 ? FLEE_SPEED : 1);
     const movedX = this._tryMove(e, dir.x * speed * dt, 0);
     const movedZ = this._tryMove(e, 0, dir.z * speed * dt);
-    // Wedged against something the grid thinks is passable. One more plan.
+    // Wedged against something the grid thinks is passable. Sidestep first —
+    // it is usually a doorway they are half a metre to the side of — and only
+    // make a whole new plan if that gets nowhere either.
     if (!movedX && !movedZ) {
       e.stuck += dt;
-      if (e.stuck > 0.4) this._repick(e);
+      const step = speed * dt;
+      if (!this._tryMove(e, -dir.z * e.strafe * step, dir.x * e.strafe * step)) {
+        e.strafe *= -1;
+      }
+      if (e.stuck > 0.6) this._repick(e);
     } else {
       e.stuck = 0;
     }
@@ -699,8 +705,22 @@ export class Enemies {
     }
   }
 
+  /**
+   * Walk. The route comes off the shared distance field; everything here is
+   * about the last metre of it, which is where a floor full of people actually
+   * comes unstuck — in a doorway, behind each other.
+   *
+   * A doorway is 1.5 m and a body is 0.72 m across, so two of them fit through
+   * it side by side with nothing to spare. That is the geometry that has to be
+   * survived, and three things here do it: they stop shoving each other in tight
+   * spots, they stop circling in them, and when they do get wedged they sidestep
+   * along the wall instead of standing there pushing into it.
+   */
   _move(e, dt, dx, dz, dist, sees) {
     const speed = this.tuning.speed * e.type.speed;
+    // "Tight" is anywhere a body and a half does not fit: a doorway, the gap
+    // between two desks, the corner of a stairwell.
+    const tight = !this.nav.clear(e.x, e.z, RADIUS * 1.7);
     let vx = 0, vz = 0;
 
     if (e.state === 'chase' && e.lastSeen) {
@@ -718,7 +738,9 @@ export class Enemies {
 
       vx = nx * advance * speed;
       vz = nz * advance * speed;
-      const circle = e.type.melee ? 0.15 : 0.45;
+      // Circling is for open floor. In a doorway it is just grinding along the
+      // jamb, and with a queue behind you it is what turns a doorway into a plug.
+      const circle = tight ? 0 : (e.type.melee ? 0.15 : 0.45);
       vx += -nz * e.strafe * speed * circle;
       vz += nx * e.strafe * speed * circle;
     }
@@ -732,12 +754,33 @@ export class Enemies {
     if (vx || vz) {
       const blockedX = !this._tryMove(e, vx * dt, 0);
       const blockedZ = !this._tryMove(e, 0, vz * dt);
-      // Bounced off a wall while circling? Circle the other way instead of
-      // grinding along it.
-      if ((blockedX || blockedZ) && e.state === 'fight') e.strafe *= -1;
+
+      if (blockedX && blockedZ) {
+        // Nose-first into something. Axis-splitting already handles a wall you
+        // hit at an angle; what is left is walking straight at one, which is
+        // what a doorway you are half a metre to the side of looks like. So
+        // sidestep — one way, then the other — and let the field take over
+        // again as soon as anything opens up.
+        e.stuck += dt;
+        const len = Math.hypot(vx, vz) || 1;
+        const px = -vz / len, pz = vx / len;
+        const step = speed * dt;
+        if (!this._tryMove(e, px * e.strafe * step, pz * e.strafe * step)) {
+          e.strafe *= -1;
+          this._tryMove(e, px * e.strafe * step, pz * e.strafe * step);
+        }
+      } else {
+        e.stuck = 0;
+        // Bounced off a wall while circling? Circle the other way instead of
+        // grinding along it.
+        if ((blockedX || blockedZ) && e.state === 'fight') e.strafe *= -1;
+      }
     }
 
-    this._separate(e, dt);
+    // Not in a doorway. Two bodies that barely fit through one will push each
+    // other into the jamb and both stop, and everyone behind them stops too —
+    // so in tight spots they queue instead of jostling.
+    if (!tight) this._separate(e, dt);
 
     e.group.position.x = e.x;
     e.group.position.z = e.z;
