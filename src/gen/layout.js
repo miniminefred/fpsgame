@@ -723,15 +723,27 @@ const LOCK_TRIES = 10;
 // this is a wish rather than a count.
 const HALL_GREY = 0.3;
 
-// The prologue: what has to be reachable from the lifts with every door on the
-// floor still shut. It is where the first white card comes from, so it is not a
-// preference — a floor that pens you into a stub with nobody standing in it is a
-// floor you cannot start. Both numbers are in tiles, and they are deliberately
-// looser than the enemies-side rule they are protecting (MIN_SPAWN_GAP = 11 in
-// enemies.js): layout guarantees the room exists, _cardOutside puts somebody in
-// it, and the guarantee has to be the bigger of the two.
-const PROLOGUE_REACH = 14;
-const PROLOGUE_MIN = 24;
+/**
+ * How far from the lifts the first person the player can reach has to be, in
+ * METRES: far enough not to be standing on the doormat, near enough that finding
+ * them is not the floor.
+ *
+ * Exported because enemies.js measures the same thing against the same number
+ * (see _cardOutside), and the two drifting apart is not a hypothetical — it
+ * already shipped once. This file guaranteed corridor at 14 *tiles walked* and
+ * enemies.js wanted corridor at 11 *metres straight-line*, which is 22 tiles, so
+ * the guarantee was both in the wrong unit and weaker than the thing it was
+ * protecting. Result: about one floor in forty had nobody the player could reach
+ * and could not be started at all. One constant, one unit, one place.
+ */
+export const FIRST_CONTACT_GAP = 11;
+
+// How many corridor tiles past that gap have to be reachable with every door
+// shut. Counted in tiles rather than in standable spots because the generator
+// runs before a stick of furniture is placed and cannot know which of them a
+// filing cabinet will end up in — so it is deliberately generous, and
+// _cardOutside has a fallback for the rest.
+const PROLOGUE_MIN = 40;
 
 function assignLocks(tiles, W, H, rooms, doors, spawnRoom, exitRoom, dist, rng) {
   const sx = Math.round(spawnRoom.cx), sy = Math.round(spawnRoom.cy);
@@ -795,7 +807,7 @@ function assignLocks(tiles, W, H, rooms, doors, spawnRoom, exitRoom, dist, rng) 
   // lock you meet with an empty pocket, walk away from, and come back to; white
   // is the one you meet before you have anything at all, so the floor has to
   // guarantee a way out of the lobby to somebody worth shooting.
-  freeThePrologue(tiles, W, H, sx, sy, doors);
+  freeThePrologue(tiles, W, H, sx, sy, spawnRoom.cx, spawnRoom.cy, doors);
 
   // And white on everything else, with no proof and no flood fill, because
   // there is nothing to prove: white is not a card you go and find, it is a card
@@ -896,7 +908,10 @@ function hallLocks(sealed, W, H, sx, sy, doors, reach, rng) {
  * needed a check that asked the question, and hall doors are what made anybody
  * ask it.
  */
-function freeThePrologue(tiles, W, H, sx, sy, doors) {
+// `sx`/`sy` are the tile the flood starts from; `cx`/`cy` are the spawn POINT in
+// fractional tiles, which is what layout.spawn denotes and what distances are
+// measured from. They are not the same number and must not be conflated.
+function freeThePrologue(tiles, W, H, sx, sy, cx, cy, doors) {
   for (let guard = 0; guard <= doors.length; guard++) {
     // Every door shut except the ones already freed — an accurate model, since
     // white is about to go on everything that is still undecided.
@@ -904,11 +919,7 @@ function freeThePrologue(tiles, W, H, sx, sy, doors) {
     for (const d of doors) if (!d.free) sealDoor(shut, W, d);
 
     const dist = bfs(shut, W, H, sx, sy);
-    let corridor = 0;
-    for (let i = 0; i < dist.length; i++) {
-      if (dist[i] >= PROLOGUE_REACH && tiles[i] === CORRIDOR) corridor++;
-    }
-    if (corridor >= PROLOGUE_MIN) return;
+    if (prologueRoom(tiles, W, dist, cx, cy) >= PROLOGUE_MIN) return;
 
     let best = null;
     let bestKey = Infinity;
@@ -937,6 +948,31 @@ function freeThePrologue(tiles, W, H, sx, sy, doors) {
     best.free = true;
     best.lock = null;
   }
+}
+
+/**
+ * Corridor the player can reach on arrival and that is far enough out to stand
+ * somebody in — the exact set _cardOutside will be drawing from.
+ *
+ * Straight-line from the lifts, not walked, because straight-line is what
+ * enemies.js measures and this only means anything if the two agree. Walked
+ * distance is always the larger of the two, so a guarantee written in it looks
+ * satisfied while leaving nowhere legal to stand.
+ */
+function prologueRoom(tiles, W, dist, cx, cy) {
+  const gap = FIRST_CONTACT_GAP / TILE;
+  let n = 0;
+  for (let i = 0; i < dist.length; i++) {
+    if (dist[i] < 0 || tiles[i] !== CORRIDOR) continue;
+    // Tile CENTRE against the spawn point, in fractional tiles — the same two
+    // points enemies.js puts into the same subtraction. Measuring from the
+    // rounded spawn tile instead is half a tile out, which sounds like nothing
+    // and moved this count by nine tiles at an eleven metre radius.
+    const dx = (i % W) + 0.5 - cx;
+    const dy = ((i / W) | 0) + 0.5 - cy;
+    if (dx * dx + dy * dy > gap * gap) n++;
+  }
+  return n;
 }
 
 // Is either side of this doorway a corridor? Corridor is where the first

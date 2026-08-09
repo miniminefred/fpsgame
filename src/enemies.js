@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BODY_RADIUS as RADIUS } from './nav.js';
-import { CORRIDOR, STAFF_ONLY, worldX, worldZ } from './gen/layout.js';
+import { CORRIDOR, STAFF_ONLY, FIRST_CONTACT_GAP, worldX, worldZ } from './gen/layout.js';
 import { buildRig } from './rigs.js';
 
 // The people still working here.
@@ -82,7 +82,11 @@ const CARD_SPARE_CHANCE = 0.06;
 // See _cardOutside.
 const FIRST_CONTACT = 34;      // metres from the lifts
 const OUTSIDE_MIN = 5;
-const MIN_SPAWN_GAP = 11;      // ...but never close enough to be there on arrival
+// ...but never close enough to be there on arrival. Imported rather than
+// written down again: gen/layout.js guarantees there is corridor beyond this
+// distance that the player can reach with no card, and a second copy of the
+// number here is how that guarantee quietly stopped being about the same thing.
+const MIN_SPAWN_GAP = FIRST_CONTACT_GAP;
 
 // The cleaning staff. Doing rounds in the corridors, plus the two on their
 // break in the broom closet. See _janitors.
@@ -620,13 +624,22 @@ export class Enemies {
       nearest = Math.min(nearest, Math.hypot(e.x - layout.spawn.x, e.z - layout.spawn.z));
     }
 
-    // Sorted by how far the walk is, so the top-up fills in from the near end —
-    // the point is the first contact, not the head count.
-    const spots = this.corridors
-      .filter((s) => free(s.x, s.z))
-      .map((s) => ({ s, d: Math.hypot(s.x - layout.spawn.x, s.z - layout.spawn.z) }))
-      .filter((e) => e.d > MIN_SPAWN_GAP)
-      .sort((a, b) => a.d - b.d);
+    // Every corridor tile they can reach, sorted by how far it is — the top-up
+    // fills in from the near end, because the point is the first contact rather
+    // than the head count.
+    //
+    // Taken off the tile grid rather than off `this.corridors`, which is every
+    // tenth tile: sampling is fine for picking a patrol route and is not fine
+    // here, because ten qualifying tiles can sample down to one and then lose
+    // that one to a filing cabinet. This is the guarantee, so it looks at all of
+    // them.
+    const all = this._prologueSpots(layout, nav);
+    const far = all.filter((e) => e.d > MIN_SPAWN_GAP);
+    // The gap is a preference, not a requirement. gen/layout.js guarantees there
+    // is corridor beyond it, but furniture is placed after that promise is made
+    // and could in principle fill every last standable tile — and a body on the
+    // doormat is a worse floor, while a body nowhere at all is not a floor.
+    const spots = far.length ? far : all;
     if (!spots.length) return;
 
     // Somebody inside FIRST_CONTACT of the lifts, and OUTSIDE_MIN of them in
@@ -640,6 +653,34 @@ export class Enemies {
       const spot = rng.pick(spots.slice(0, Math.max(8, (spots.length * 0.4) | 0)));
       this._add(spot.s.x, spot.s.z, rng, tuning, pickType(layout.floorNumber, rng, this.theme));
     }
+  }
+
+  /**
+   * Every standable corridor tile the player can reach holding nothing, nearest
+   * to the lifts first.
+   *
+   * This is the enemies-side half of the prologue guarantee, and it is written
+   * against the tile grid on purpose — see the note where it is called. The
+   * layout counts these same tiles before any furniture exists (prologueRoom in
+   * gen/layout.js); this counts what is actually left standable once the floor
+   * is furnished, which is always the smaller number and is the one that decides
+   * whether a floor can be started.
+   */
+  _prologueSpots(layout, nav) {
+    const { W, H, tiles } = layout;
+    const out = [];
+    for (let ty = 0; ty < H; ty++) {
+      for (let tx = 0; tx < W; tx++) {
+        const i = ty * W + tx;
+        if (tiles[i] !== CORRIDOR) continue;
+        if (layout.locked?.[i]) continue;
+        if (layout.prologue && layout.prologue[i] < 0) continue;
+        const x = nav.wx(tx), z = nav.wz(ty);
+        if (!nav.clear(x, z, RADIUS)) continue;
+        out.push({ s: { x, z }, d: Math.hypot(x - layout.spawn.x, z - layout.spawn.z) });
+      }
+    }
+    return out.sort((a, b) => a.d - b.d);
   }
 
   // Can the player get here before they have badged anything at all? Only the

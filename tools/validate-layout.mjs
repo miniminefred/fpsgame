@@ -11,7 +11,7 @@
 //   FAIL — a hard invariant the game depends on (unwinnable floor, broken mesh).
 //   WARN — the floor still works but the generation quality is off.
 
-import { generateLayout, TILE, SOLID, ROOM, CORRIDOR, DOOR, isOpen } from '../src/gen/layout.js';
+import { generateLayout, TILE, SOLID, ROOM, CORRIDOR, DOOR, isOpen, FIRST_CONTACT_GAP } from '../src/gen/layout.js';
 
 const args = process.argv.slice(2);
 const argVal = (flag, dflt) => {
@@ -23,8 +23,11 @@ const SEEDS_PER_FLOOR = Number(argVal('--seeds', 30));
 const FLOORS = 15;
 const MAX_EXAMPLES = 6;
 const PAD = 2;            // must match layout.js
-const PROLOGUE_REACH = 14; // ...and so must these two, from hallLocks
-const PROLOGUE_MIN = 24;
+// ...and so must these, from hallLocks. FIRST_CONTACT_GAP is METRES straight
+// line from the lifts, which is what enemies.js measures too — the whole bug
+// this check exists for was these being tiles-walked at one end and
+// metres-straight-line at the other.
+const PROLOGUE_MIN = 40;
 const MAX_ROOM_DEPTH = 2; // rooms deeper than this from a corridor are a WARN
 
 // ---------------------------------------------------------------------------
@@ -440,14 +443,20 @@ function validate(seed, floorNumber) {
       for (let y = d.y0; y < d.y1; y++) for (let x = d.x0; x < d.x1; x++) allShut[idx(x, y)] = SOLID;
     }
     const preDist = spawnOpen ? flood(allShut, W, H, sx, sy, isOpen) : new Int32Array(W * H).fill(-1);
+    // Measured in world metres from L.spawn — the same two points enemies.js
+    // subtracts in _cardOutside. Deriving a spawn TILE and measuring from that
+    // instead is half a tile out and quietly moves this count.
     let prologue = 0;
     for (let i = 0; i < preDist.length; i++) {
-      if (preDist[i] >= PROLOGUE_REACH && tiles[i] === CORRIDOR) prologue++;
+      if (preDist[i] < 0 || tiles[i] !== CORRIDOR) continue;
+      const wx = ((i % W) + 0.5) * TILE + L.ox;
+      const wz = (((i / W) | 0) + 0.5) * TILE + L.oz;
+      if (Math.hypot(wx - L.spawn.x, wz - L.spawn.z) > FIRST_CONTACT_GAP) prologue++;
     }
     stats.prologue.push(prologue);
     if (prologue < PROLOGUE_MIN) {
       check('8.hall-prologue').fail(id,
-        `only ${prologue} corridor tiles reachable from the lifts with every door shut`);
+        `only ${prologue} corridor tiles past the first-contact gap with every door shut`);
     }
 
     // Each staff-only room has to be walkable-up-to while the OTHER three are
