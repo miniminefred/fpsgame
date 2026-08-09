@@ -343,7 +343,14 @@ function validate(seed, floorNumber) {
   // ---- split walls from furniture ----------------------------------------
   const walls = [];
   const furn = [];
-  for (const c of colliders) (c.top === WALL_H ? walls : furn).push(c);
+  for (const c of colliders) {
+    // Sliding doors are neither. They stand in a doorway by design and retract
+    // out of it for anybody who walks up, so counting one as furniture fails
+    // every doorway invariant, and counting one as wall would have the
+    // reachability walk route around a door that opens.
+    if (c.door) continue;
+    (c.top === WALL_H ? walls : furn).push(c);
+  }
 
   stats.wallColliders.push(walls.length);
   stats.staticPerFloor.push(furn.length);
@@ -868,6 +875,10 @@ function buildGeomGrid(layout, colliders, radius) {
 
   // Cell centre sits at (gx + 0.5) * CS + ox.
   for (const c of colliders) {
+    // A sliding door is open by the time anybody reaches it, so it does not
+    // block a body — carving it out here would report every room behind a door
+    // as physically cut off from the spawn.
+    if (c.door) continue;
     const gx0 = Math.max(0, Math.ceil((c.minX - radius - ox) / CS - 0.5));
     const gx1 = Math.min(GW - 1, Math.floor((c.maxX + radius - ox) / CS - 0.5));
     const gy0 = Math.max(0, Math.ceil((c.minZ - radius - oz) / CS - 0.5));

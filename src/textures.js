@@ -44,6 +44,10 @@ function build() {
       ceiling: std(ceiling, 0xffffff, 0.95),
       trim: flat(0xa9aaa8, 0.75),
       doorframe: flat(0x8e9095, 0.6),
+      // The panel that slides in the frame. A shade darker than its own frame
+      // so a shut door reads as a shut door from down the corridor rather than
+      // as a wall the same colour as everything else.
+      doorPanel: std(texture(doorPanelFace()), 0xffffff, 0.5, { metalness: 0.2 }),
 
       // --- ceiling light panels and windows (unlit so they stay bright)
       panel: new THREE.MeshBasicMaterial({ color: 0xfdfbf2 }),
@@ -110,6 +114,52 @@ function speckle(g, w, h, count, paint, size = 2) {
       }
     }
   }
+}
+
+// The sliding door panel: a brushed steel leaf with a vision strip and a kick
+// plate. Drawn at panel proportions rather than tiled like a wall — this is the
+// one texture in the building that maps to a specific object at a specific size,
+// so the UVs on the door mesh are its own rather than world-space.
+function doorPanelFace() {
+  const [c, g] = makeCanvas(PX, PX);
+
+  g.fillStyle = '#8b9199';
+  g.fillRect(0, 0, PX, PX);
+
+  // Vertical brushing.
+  g.strokeStyle = 'rgba(255,255,255,0.05)';
+  g.lineWidth = 1;
+  for (let x = 0; x < PX; x += 2) {
+    g.globalAlpha = 0.3 + Math.random() * 0.7;
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x, PX); g.stroke();
+  }
+  g.globalAlpha = 1;
+
+  // Vision strip at head height, and the rail it sits in.
+  g.fillStyle = '#3a4650';
+  g.fillRect(PX * 0.2, PX * 0.16, PX * 0.6, PX * 0.3);
+  g.fillStyle = 'rgba(190,225,255,0.30)';
+  g.fillRect(PX * 0.21, PX * 0.17, PX * 0.58, PX * 0.28);
+  g.strokeStyle = '#6e757d';
+  g.lineWidth = 3;
+  g.strokeRect(PX * 0.2, PX * 0.16, PX * 0.6, PX * 0.3);
+
+  // Kick plate along the bottom, scuffed by twenty years of trolleys.
+  g.fillStyle = '#767c84';
+  g.fillRect(0, PX * 0.82, PX, PX * 0.18);
+  g.strokeStyle = 'rgba(40,44,48,0.5)';
+  g.lineWidth = 2;
+  g.beginPath(); g.moveTo(0, PX * 0.82); g.lineTo(PX, PX * 0.82); g.stroke();
+
+  speckle(g, PX, PX, 400, (ctx) => {
+    ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.08})`;
+  }, 2);
+
+  // The leading edge, darker so a closed door reads as a seam and not a wall.
+  g.fillStyle = 'rgba(30,34,38,0.55)';
+  g.fillRect(0, 0, PX * 0.02, PX);
+
+  return c;
 }
 
 // Flat painted drywall: near-uniform, with just enough grain to catch the light.

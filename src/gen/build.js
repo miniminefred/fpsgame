@@ -61,6 +61,7 @@ export function buildLevel(scene, layout) {
   const reserved = new Uint8Array(W * H);  // doorways, spawn, exit — keep clear
   const dynamics = [];                     // loose props handed to the physics world
   const destructibles = [];                // everything static that can be shot apart
+  const doors = [];                        // sliding panels, see doors.js
 
   reserveClearances(layout, reserved);
 
@@ -68,6 +69,9 @@ export function buildLevel(scene, layout) {
   buildDoorFrames(layout, batcher, materials);
   buildWindows(layout, batcher, materials, fixtures, destructibles);
   buildCeilingLights(layout, batcher, materials, fixtures, destructibles);
+  // Doors are their own meshes rather than batched geometry, for the obvious
+  // reason: a batched thing cannot move.
+  buildSlidingDoors(layout, scene, materials, doors, colliders, rng);
 
   const sink = makeSink(layout, batcher, materials,
     { blocked, occupied, reserved, colliders, dynamics, destructibles });
@@ -84,6 +88,8 @@ export function buildLevel(scene, layout) {
     meshes.push(...dyn.group.children);
   }
 
+  for (const door of doors) objects.push(door.mesh);
+
   const exitObject = buildExit(scene, layout, fixtures);
   objects.push(exitObject);
 
@@ -98,6 +104,7 @@ export function buildLevel(scene, layout) {
     colliders,
     dynamics,
     destructibles,
+    doors,
     fixtures,
     exitObject,
     nav: { W, H, TILE, ox: layout.ox, oz: layout.oz, walk, tiles },
@@ -418,6 +425,96 @@ function buildCeilingLights(layout, batcher, materials, fixtures, destructibles)
       const runX = tiles[ty * W + tx - 4] === CORRIDOR && tiles[ty * W + tx + 4] === CORRIDOR;
       addFixture(worldX(layout, tx + 0.5), worldZ(layout, ty + 0.5), runX);
     }
+  }
+}
+
+// --- sliding doors ----------------------------------------------------------
+
+const DOOR_T = 0.09;           // panel thickness
+const DOOR_PANEL_H = DOOR_H - 0.04;
+// A retracted panel has to go somewhere, and where it goes is inside the wall
+// next to the opening. So the wall has to BE there: the full width of the panel,
+// on the same line, solid the whole way, and one tile deep on both faces. Near a
+// corner it is not, and a door fitted there would slide out into the corridor
+// and hang in mid-air at right angles to its own frame. Those doorways simply
+// do not get a door — a floor with a few open doorways on it reads as a floor
+// with a few open doorways on it, which is what an office looks like anyway.
+function slidePocket(layout, door, dir) {
+  const { W, H, tiles } = layout;
+  const at = (tx, ty) => (tx >= 0 && ty >= 0 && tx < W && ty < H ? tiles[ty * W + tx] : SOLID);
+
+  const span = door.vertical ? door.y1 - door.y0 : door.x1 - door.x0;
+  for (let i = 1; i <= span; i++) {
+    if (door.vertical) {
+      const ty = dir > 0 ? door.y1 - 1 + i : door.y0 - i;
+      // The wall line itself must be solid, and so must the tile either side of
+      // it — otherwise the "wall" is one tile of jamb with a room behind it.
+      if (at(door.x0, ty) !== SOLID) return false;
+    } else {
+      const tx = dir > 0 ? door.x1 - 1 + i : door.x0 - i;
+      if (at(tx, door.y0) !== SOLID) return false;
+    }
+  }
+  return true;
+}
+
+function buildSlidingDoors(layout, scene, materials, doors, colliders, rng) {
+  const geo = new THREE.BoxGeometry(1, 1, 1);
+
+  for (const d of layout.doors) {
+    // Not every doorway has a door in it. Some were taken off their runners
+    // years ago and nobody replaced them.
+    if (!rng.chance(0.55)) continue;
+
+    const dir = rng.chance(0.5) ? 1 : -1;
+    const side = slidePocket(layout, d, dir) ? dir
+      : slidePocket(layout, d, -dir) ? -dir
+        : 0;
+    if (!side) continue;
+
+    const x0 = worldX(layout, d.x0), x1 = worldX(layout, d.x1);
+    const z0 = worldZ(layout, d.y0), z1 = worldZ(layout, d.y1);
+    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+    const width = d.vertical ? z1 - z0 : x1 - x0;
+
+    const mesh = new THREE.Mesh(geo, materials.doorPanel);
+    mesh.scale.set(
+      d.vertical ? DOOR_T : width,
+      DOOR_PANEL_H,
+      d.vertical ? width : DOOR_T);
+    mesh.position.set(cx, DOOR_PANEL_H / 2, cz);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+
+    // The collider is the closed footprint. It is not retired when the door
+    // opens — its `top` is dropped below the floor instead, which is how every
+    // other collider in this game says "walk through me" (see player.js).
+    const collider = {
+      minX: d.vertical ? cx - DOOR_T / 2 : x0,
+      maxX: d.vertical ? cx + DOOR_T / 2 : x1,
+      minZ: d.vertical ? z0 : cz - DOOR_T / 2,
+      maxZ: d.vertical ? z1 : cz + DOOR_T / 2,
+      top: DOOR_PANEL_H,
+      // Not furniture. It stands in a doorway on purpose and it is out of the
+      // way whenever anybody is there, so the checks that police what may block
+      // a doorway have to be able to tell it apart from a filing cabinet.
+      door: true,
+    };
+    colliders.push(collider);
+
+    doors.push({
+      mesh, collider,
+      x: cx, z: cz,
+      at: new THREE.Vector3(cx, 1.2, cz),
+      baseX: cx, baseZ: cz,
+      dirX: d.vertical ? 0 : side,
+      dirZ: d.vertical ? side : 0,
+      // A hair further than its own width, so the leading edge finishes inside
+      // the jamb rather than flush with it.
+      travel: width * 1.02,
+      height: DOOR_PANEL_H,
+    });
   }
 }
 

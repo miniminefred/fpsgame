@@ -13,6 +13,7 @@ import { Shooting } from './shooting.js';
 import { Physics } from './physics.js';
 import { Destruction } from './destruction.js';
 import { Extinguishers } from './extinguishers.js';
+import { Doors } from './doors.js';
 import { Casings } from './casings.js';
 import { loadModels } from './gen/models.js';
 import { modelKeysUsed } from './gen/props.js';
@@ -53,9 +54,11 @@ const extinguishers = new Extinguishers({
 // through destruction to take the furniture around it with it.
 destruction.extinguishers = extinguishers;
 
+const doors = new Doors({ scene, audio });
+
 const game = new Game({
   scene, camera, player, weapons, shooting, enemies,
-  effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, casings,
+  effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, doors, casings,
 });
 
 onDigitKeys((n) => {
@@ -77,7 +80,7 @@ addEventListener('mousedown', () => {
 // production builds by the bundler.
 if (import.meta.env.DEV) {
   window.dev = {
-    game, player, enemies, shooting, keys, physics, destruction, extinguishers,
+    game, player, enemies, shooting, keys, physics, destruction, extinguishers, doors,
     scene, camera, weapons, renderer, audio, casings,
   };
 }

@@ -112,6 +112,20 @@
       "influence": 0.65
     },
     {
+      "name": "door-close",
+      "text": "automatic sliding office door closing and latching shut, panel gliding then a soft solid thud as it seats, close mic, dry, no music, no voices",
+      "duration": 1.4,
+      "influence": 0.75,
+      "variants": 3
+    },
+    {
+      "name": "door-open",
+      "text": "automatic sliding office door opening, smooth pneumatic hiss and soft mechanical rumble of a panel gliding into a wall pocket, close mic, dry, no music, no voices",
+      "duration": 1.4,
+      "influence": 0.75,
+      "variants": 3
+    },
+    {
       "name": "dry-fire",
       "text": "trigger click on an empty chamber, close mic, dry",
       "duration": 0.5,

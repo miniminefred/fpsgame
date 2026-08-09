@@ -28,7 +28,7 @@ const BREATH_SPEED = 4;        // moving at least this fast to be out of breath
 const SHOVE_INTERVAL = 0.4;
 
 export class Game {
-  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, casings }) {
+  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, doors, casings }) {
     this.scene = scene;
     this.camera = camera;
     this.player = player;
@@ -43,6 +43,7 @@ export class Game {
     this.physics = physics;
     this.destruction = destruction;
     this.extinguishers = extinguishers;
+    this.doors = doors;
     this.casings = casings;
 
     this.level = new Level(scene);
@@ -119,6 +120,9 @@ export class Game {
     this._initPhysics(level);
     this.destruction.setLevel(level);
     this.player.setColliders([...level.colliders, ...this.pushColliders]);
+    // The doors own colliders that are already in that list; all they do at
+    // runtime is drop them below the floor when the panel is out of the way.
+    this.doors?.setDoors(level.doors);
     this.player.placeAt(level.spawn.x, level.spawn.z);
 
     this.enemies.spawn(level.layout, level.nav, rng, tuningFor(this.floor));
@@ -206,6 +210,7 @@ export class Game {
       }
       this.destruction.update(dt);
       this.extinguishers?.update(dt);
+      this.doors?.update(dt, this.player, this.enemies.items);
       this.casings?.update(dt);
     }
 

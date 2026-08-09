@@ -32,6 +32,7 @@ export class Level {
       colliders: built.colliders,
       dynamics: built.dynamics,
       destructibles: built.destructibles,
+      doors: built.doors,
       fixtures: built.fixtures,
       exitObject: built.exitObject,
       spawn: layout.spawn,

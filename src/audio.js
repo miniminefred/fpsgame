@@ -60,7 +60,13 @@ const LIBRARY = {
   // a throttle here.
   'enemy-idle':  { variants: 2, gain: 0.45, pitch: 0.10 },
   // The staffer with somewhere to be. Loud, because he is not confiding in you.
-  panic:         { variants: 40, gain: 0.85, pitch: 0.05 },
+  //
+  // Fourteen, not the forty that are on disk. panic-15..40 were generated and
+  // are still there, and this number is the only thing standing between them and
+  // the game — but the original fourteen are the ones that land, and a set is
+  // only as good as its worst line, because that is the one you hear on the
+  // floor you are losing.
+  panic:         { variants: 14, gain: 0.85, pitch: 0.05 },
   // The contractors, once somebody starts shooting. Their emergency is not his:
   // they are agency staff, this is not their floor, and they would like that on
   // the record while they leave.
@@ -146,6 +152,11 @@ const LIBRARY = {
   land: { variants: 2, gain: 0.50, pitch: 0.10 },
 
   'shell-casing': { variants: 3, gain: 0.28, pitch: 0.16 },
+
+  // The sliding doors. Placed rather than played flat, because the one you can
+  // hear and cannot see is the interesting one: something opened a door.
+  'door-open':  { variants: 3, gain: 0.55, pitch: 0.06 },
+  'door-close': { variants: 3, gain: 0.50, pitch: 0.06 },
 
   'floor-clear': { gain: 0.55, pitch: 0.01 },
   descend:       { gain: 0.70, pitch: 0.02 },
@@ -454,6 +465,10 @@ export class GameAudio {
   /** An extinguisher holed and venting, and the bang at the end of that. */
   extinguisherJet(point) { this._placed('extinguisher-jet', point); }
   extinguisherBurst(point) { this._placed('extinguisher-burst', point); }
+
+  /** A sliding door, from wherever in the building it is. */
+  doorOpen(point) { this._placed('door-open', point); }
+  doorClose(point) { this._placed('door-close', point); }
 
   /** Furniture shoved aside by the player walking into it. */
   propShove(point) {

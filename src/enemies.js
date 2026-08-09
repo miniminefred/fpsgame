@@ -197,16 +197,18 @@ const BYSTANDERS = [TYPES.cleaner, TYPES.courier];
 // theme's second job: the name tells you what is working this floor, and the
 // dark tells you before you have finished reading it. Infestation is the
 // darkest — whatever came up the stairwell went through the switchboard first.
-// `rats` is how many are in the walls tonight. One is an office with a rat in
+// `rats` is how many are in the walls tonight — one is an office with a rat in
 // it, which is a joke you notice once; six is an infestation, which is the name
-// on the door.
+// on the door. `patrols` is how many security are walking the corridors rather
+// than waiting in a room, and it is zero on the floors where nobody is still
+// doing their rounds.
 const THEMES = [
-  { name: 'Business as usual', weight: 4, light: 1, rats: [1, 1], boost: {} },
-  { name: 'Infestation', weight: 3, light: 0.34, rats: [4, 6], boost: { reanimated: 7, intern: 2 } },
-  { name: 'Automated', weight: 3, light: 0.9, rats: [0, 1], boost: { sentry: 7, sysadmin: 3 } },
-  { name: 'Lockdown', weight: 2, light: 0.75, rats: [1, 1], boost: { security: 6, manager: 4 } },
-  { name: 'Night shift', weight: 2, light: 0.5, rats: [2, 3], boost: { reanimated: 4, sentry: 4, facilities: 3 } },
-  { name: 'All-hands', weight: 2, light: 1, rats: [1, 1], boost: { analyst: 6, intern: 5, manager: 3 } },
+  { name: 'Business as usual', weight: 4, light: 1, rats: [1, 1], patrols: [1, 3], boost: {} },
+  { name: 'Infestation', weight: 3, light: 0.34, rats: [4, 6], patrols: [0, 0], boost: { reanimated: 7, intern: 2 } },
+  { name: 'Automated', weight: 3, light: 0.9, rats: [0, 1], patrols: [1, 2], boost: { sentry: 7, sysadmin: 3 } },
+  { name: 'Lockdown', weight: 2, light: 0.75, rats: [1, 1], patrols: [3, 4], boost: { security: 6, manager: 4 } },
+  { name: 'Night shift', weight: 2, light: 0.5, rats: [2, 3], patrols: [1, 2], boost: { reanimated: 4, sentry: 4, facilities: 3 } },
+  { name: 'All-hands', weight: 2, light: 1, rats: [1, 1], patrols: [2, 4], boost: { analyst: 6, intern: 5, manager: 3 } },
 ];
 
 export class Enemies {
@@ -260,6 +262,19 @@ export class Enemies {
       }
       left--;
       this._add(spot.x, spot.z, rng, tuning, team.type);
+    }
+
+    // Security on the corridors. Everyone else is found where they work, which
+    // makes a floor a series of rooms you clear; a patrol is the one thing that
+    // comes to YOU, down a hallway you have already been down. On an Infestation
+    // there is nobody left doing rounds.
+    const [patMin, patMax] = this.theme.patrols ?? [1, 3];
+    if (patMax > 0 && this.corridors.length) {
+      for (let i = rng.int(patMin, patMax); i > 0; i--) {
+        const spot = rng.pick(this.corridors);
+        if (Math.hypot(spot.x - layout.spawn.x, spot.z - layout.spawn.z) < 12) continue;
+        this._add(spot.x, spot.z, rng, tuning, TYPES.security);
+      }
     }
 
     // A handful of neutrals on every floor, placed rather than rolled: they are
