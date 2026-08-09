@@ -1,5 +1,6 @@
 import { Level, distanceToExit } from './level.js';
 import { makeRng, randomSeed } from './gen/rng.js';
+import { CARDS } from './keycards.js';
 
 // The run: generate a floor, clear it, take the exit down, repeat forever.
 //
@@ -28,7 +29,7 @@ const BREATH_SPEED = 4;        // moving at least this fast to be out of breath
 const SHOVE_INTERVAL = 0.4;
 
 export class Game {
-  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, doors, casings }) {
+  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, doors, casings, keycards, wallet }) {
     this.scene = scene;
     this.camera = camera;
     this.player = player;
@@ -45,6 +46,8 @@ export class Game {
     this.extinguishers = extinguishers;
     this.doors = doors;
     this.casings = casings;
+    this.keycards = keycards;
+    this.wallet = wallet;
 
     this.level = new Level(scene);
     // Player-facing colliders for this floor's loose props, refreshed from the
@@ -91,6 +94,50 @@ export class Game {
       this.destruction.damageProp(dyn, dir, point, damage);
     this.shooting.onSurfaceHit = (hit, dir, damage) =>
       this.destruction.damageSurface(hit, dir, damage);
+
+    this.enemies.onDeath = (e) => this._onEnemyDeath(e);
+    if (this.doors) {
+      this.doors.wallet = this.wallet;
+      this.doors.onUnlock = (door, tier) => this._onDoorUnlocked(door, tier);
+      this.doors.onRefused = (door) => this._onDoorRefused(door);
+    }
+    this.wallet.onChange = () => this.hud.setKeycards(this.wallet.list());
+  }
+
+  // --- keycards ---------------------------------------------------------------
+
+  /**
+   * Somebody went down. If they were carrying a card it lands where they did.
+   *
+   * The black card is the exception, and it is the reason the manager's office
+   * is worth walking back for: it is not carried by anybody in particular, it is
+   * what the LAST hostile on the floor turns out to have been holding. That
+   * makes it impossible to get early, impossible to miss, and impossible to lose
+   * — you cannot clear a floor without producing it.
+   */
+  _onEnemyDeath(e) {
+    if (!this.keycards) return;
+    const at = e.group.position;
+    if (e.card) this.keycards.drop(e.card, at.x, 0, at.z);
+
+    if (e.neutral || this.enemies.hostileCount > 0) return;
+    if (!this.level.current?.layout.locks?.some((l) => l.tier === 'black')) return;
+    // Offset a little in case they were also carrying something, so two cards
+    // never float inside each other.
+    this.keycards.drop('black', at.x + (e.card ? 0.55 : 0), 0, at.z);
+    this.hud.message('THE LAST ONE WAS CARRYING A BLACK KEYCARD', 2400);
+  }
+
+  _onDoorUnlocked(door, tier) {
+    // The opening goes back into the nav grid, so the floor can follow you in.
+    // Until this moment the enemies have had it closed — see gen/build.js.
+    this.level.current?.nav.openTiles(door.navTiles);
+    this.hud.message(`${(CARDS[tier]?.name ?? '').toUpperCase()} DOOR UNLOCKED`, 1500);
+  }
+
+  _onDoorRefused(door) {
+    const spec = CARDS[door.lock];
+    this.hud.message(`LOCKED — NEEDS A ${(spec?.name ?? '').toUpperCase()} KEYCARD`, 1400);
   }
 
   // Fresh run from floor 1.
@@ -114,6 +161,10 @@ export class Game {
     this.destruction.clear();
     this.extinguishers?.clear();
     this.casings?.clear();
+    // Cards do not travel between floors. A building where the card you found on
+    // eight opens nine has exactly one locked door in it, on floor one.
+    this.keycards?.clear();
+    this.wallet?.clear();
 
     const level = this.level.generate(seed, this.floor);
 
@@ -212,6 +263,7 @@ export class Game {
       this.extinguishers?.update(dt);
       this.doors?.update(dt, this.player, this.enemies.items);
       this.casings?.update(dt);
+      this.keycards?.update(dt, this.player);
     }
 
     if (this.state === 'playing') {

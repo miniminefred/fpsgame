@@ -54,6 +54,12 @@ const DEATH_TIME = 2.2;
 const HIT_FLASH = 0.1;
 const SWING_TIME = 0.5;    // wind-up plus follow-through on a melee swing
 
+// How many of the staff, beyond the guaranteed holders, are carrying a spare
+// keycard. Low on purpose: at seventy to two hundred people a floor even this
+// leaves a dozen or so on the carpet, and a card you trip over every ten seconds
+// is not a key, it is confetti.
+const CARD_SPARE_CHANCE = 0.06;
+
 // Staff. Every type is the same rig with different numbers and a different
 // suit, which keeps them readable at a glance in a grey corridor: the colour of
 // the visor tells you what is about to happen to you.
@@ -218,6 +224,7 @@ export class Enemies {
     this.meshes = [];       // what bullets test against
     this.time = 0;
     this.shoutTimer = 0;    // floor-wide, so only one of them calls you out
+    this.onDeath = null;    // set by game.js — see _damage
     this._v = new THREE.Vector3();
     this._muzzle = new THREE.Vector3();
     this._aim = new THREE.Vector3();
@@ -304,6 +311,50 @@ export class Enemies {
     for (const spot of this._loose(layout, nav, rng, 1)) {
       this._add(spot.x, spot.z, rng, tuning, TYPES.roomba);
     }
+
+    this._dealCards(layout, rng);
+  }
+
+  /**
+   * Who is carrying a keycard.
+   *
+   * Dealt after everyone is placed rather than during placement, because the
+   * question it has to answer is about the floor as a whole: every lock on it
+   * needs a holder, and none of those holders may be standing behind a door
+   * their own card opens. The second half is free — _spawnPoints and _loose both
+   * refuse tiles inside a locked room — so this only has to deal.
+   *
+   * Only hostiles carry. The neutrals are the people you are explicitly allowed
+   * to walk past, and putting the security card in a cleaner's pocket turns
+   * "you never have to shoot these" into a lie told once per floor.
+   *
+   * Black is not dealt at all. It comes off the last hostile standing, which is
+   * both why the manager's office is the last room on the floor and why it can
+   * be a skeleton key without unlocking the floor early.
+   */
+  _dealCards(layout, rng) {
+    const tiers = [...new Set((layout.locks ?? []).map((l) => l.tier))]
+      .filter((t) => t !== 'black');
+    if (!tiers.length) return;
+
+    const hostiles = rng.shuffle(this.items.filter((e) => !e.neutral));
+    let i = 0;
+    for (const tier of tiers) {
+      if (i >= hostiles.length) break;
+      hostiles[i++].card = tier;
+    }
+
+    // Then spares, drawn only from the ladder cards this floor actually has a
+    // door for — a white card on a floor with no white doors is a pickup that
+    // teaches you pickups do not matter. Spares exist so that a card is
+    // something the floor hands you on the way past rather than something you
+    // hunt one specific body for, which is what a single holder among a hundred
+    // and forty staff would be.
+    const spares = tiers.filter((t) => t === 'white' || t === 'grey');
+    if (!spares.length) return;
+    for (; i < hostiles.length; i++) {
+      if (rng.chance(CARD_SPARE_CHANCE)) hostiles[i].card = rng.pick(spares);
+    }
   }
 
   // Walkable spots anywhere on the floor, spawn included — used for things that
@@ -314,6 +365,7 @@ export class Enemies {
       const tx = rng.int(0, layout.W - 1);
       const ty = rng.int(0, layout.H - 1);
       if (!nav.walkable(tx, ty)) continue;
+      if (layout.locked?.[ty * layout.W + tx]) continue;
       const x = nav.wx(tx), z = nav.wz(ty);
       if (!nav.clear(x, z, RADIUS)) continue;
       spots.push({ x, z });
@@ -341,7 +393,12 @@ export class Enemies {
    */
   _spawnPoints(layout, nav, rng, count) {
     const spots = [];
-    const rooms = rng.shuffle(layout.rooms.filter((r) => r.role !== 'lobby'));
+    // Nobody works in a badged room. It is the rule that makes keycards
+    // survivable: a floor cannot be cleared through a door you have not got the
+    // card for, and the person carrying that card cannot be behind it. It costs
+    // three or four rooms of headcount out of a hundred and forty, which is
+    // nothing next to a floor that cannot be finished.
+    const rooms = rng.shuffle(layout.rooms.filter((r) => r.role !== 'lobby' && !r.lock));
     if (!rooms.length) return spots;
 
     const minDist = 14;
@@ -423,6 +480,9 @@ export class Enemies {
       strafe: rng.chance(0.5) ? 1 : -1,
       voiceTimer: rng.range(1, 14),   // staggered, or a floor mutters in chorus
       lastStep: 0,
+      // The keycard on their belt, if any. Dealt after the whole floor is
+      // placed — see _dealCards.
+      card: null,
       // Vermin only: bolt, stop, bolt again.
       darting: true, dartTimer: rng.range(0.2, 1), moving: true,
       // Where a neutral is currently headed — the toilet, the next corridor to
@@ -482,6 +542,10 @@ export class Enemies {
     if (e.motor) { this.audio?.stopMotor(e.motor); e.motor = null; }
     e.torso.userData.enemy = null;
     e.head.userData.enemy = null;
+    // Whatever they were carrying is now on the carpet. What that means — a
+    // keycard, the black card off the last one standing — is game.js's, because
+    // it is about the floor and this file is about the person.
+    this.onDeath?.(e);
     return 'kill';
   }
 
