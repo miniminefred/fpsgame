@@ -24,6 +24,12 @@ const GEO = {
   arm: new THREE.BoxGeometry(0.14, 0.54, 0.14),
   leg: new THREE.BoxGeometry(0.17, 0.86, 0.19),
   gun: new THREE.BoxGeometry(0.1, 0.14, 0.42),
+  // A soft cap: a crown and a peak over the eyes. Only the janitor wears one so
+  // far, and it is doing the same job as a visor colour — it is what you
+  // recognise from the far end of a corridor, before the mop is close enough to
+  // matter.
+  cap: new THREE.BoxGeometry(0.28, 0.09, 0.28),
+  capPeak: new THREE.BoxGeometry(0.24, 0.03, 0.11),
 
   // Vermin. A rat is about as long as a keyboard, which is small enough that
   // every part of it has to earn its polygons: a body, a head, a snout to say
@@ -40,7 +46,20 @@ const GEO = {
 
 // What the melee staff have picked up off their desks. Each is a shaft plus a
 // business end, built along -Z so it points the way the arm swings.
+//
+// `rest` is how it is carried when nobody is swinging it, in radians about X —
+// positive lifts the business end. Everything picked up off a desk is held out
+// in front, which is the default; a mop is not carried, it is dragged, and its
+// head belongs on the floor.
 const BLUNT = {
+  // The longest thing anybody on the floor swings, and the only one with a soft
+  // end. The head is deliberately fat and yellow: at a metre of reach you need
+  // to read the arc coming from further away than a stapler, and the yellow is
+  // what ties the man to the card in his pocket.
+  mop: {
+    shaft: [0.045, 0.045, 0.86], head: [0.2, 0.14, 0.22], headMat: 'mophead',
+    reach: 0.88, rest: -1.15,
+  },
   keyboard: { shaft: null, head: [0.42, 0.03, 0.15], headMat: 'plastic', reach: 0.30 },
   extinguisher: { shaft: [0.07, 0.07, 0.10], head: [0.15, 0.15, 0.40], headMat: 'accent', reach: 0.34 },
   chairLeg: { shaft: [0.05, 0.05, 0.44], head: [0.13, 0.13, 0.13], headMat: 'metal', reach: 0.46 },
@@ -98,6 +117,18 @@ function buildHuman(type, rng) {
     gun: new THREE.MeshStandardMaterial({ color: 0x24272b, roughness: 0.5, metalness: 0.4 }),
   };
 
+  // Almost everybody on this floor is dressed in one colour with a shirt front
+  // showing, so `suit` does the torso, the arms and the legs alike. A type that
+  // declares `pants` is dressed instead — separate legs, and a torso that is the
+  // shirt rather than a jacket over one. It is the difference between staff and
+  // somebody in a uniform, and it is worth two materials.
+  if (type.pants) {
+    mats.pants = new THREE.MeshStandardMaterial({ color: type.pants, roughness: 0.9 });
+  }
+  if (type.cap) {
+    mats.cap = new THREE.MeshStandardMaterial({ color: type.cap, roughness: 0.9 });
+  }
+
   // Only melee staff need the junk-weapon palette, and only they pay for it.
   if (type.melee) {
     Object.assign(mats, {
@@ -106,22 +137,36 @@ function buildHuman(type, rng) {
       accent: new THREE.MeshStandardMaterial({ color: 0xb63b2c, roughness: 0.55 }),
       screen: new THREE.MeshStandardMaterial({ color: 0x1d2833, roughness: 0.35 }),
       paper: new THREE.MeshStandardMaterial({ color: 0xe8e4d8, roughness: 0.85 }),
+      mophead: new THREE.MeshStandardMaterial({ color: 0xe8c33a, roughness: 1 }),
     });
   }
 
   const ownGeo = [];
   const mesh = part(group);
 
-  const torso = mesh(GEO.torso, mats.suit, 0, 1.16, 0);
-  const hips = mesh(GEO.hips, mats.suit, 0, 0.96, 0);
-  const shirt = mesh(GEO.shirt, mats.shirt, 0, 1.18, -0.155);   // open collar and shirt front
+  // In a uniform the shirt IS the torso and the trousers are their own colour;
+  // otherwise it is one suit with a shirt front showing at the collar.
+  const upper = mats.pants ? mats.shirt : mats.suit;
+  const lower = mats.pants ?? mats.suit;
+
+  const torso = mesh(GEO.torso, upper, 0, 1.16, 0);
+  const hips = mesh(GEO.hips, lower, 0, 0.96, 0);
+  const shirt = mesh(GEO.shirt, mats.pants ? mats.suit : mats.shirt, 0, 1.18, -0.155);
   const head = mesh(GEO.head, mats.skin, 0, 1.63, 0);
   const visor = mesh(GEO.visor, mats.visor, 0, 1.65, -0.13);
-  const armL = mesh(GEO.arm, mats.suit, -0.32, 1.15, 0);
-  const armR = mesh(GEO.arm, mats.suit, 0.32, 1.15, 0);
-  const legL = mesh(GEO.leg, mats.suit, -0.12, 0.43, 0);
-  const legR = mesh(GEO.leg, mats.suit, 0.12, 0.43, 0);
+  const armL = mesh(GEO.arm, upper, -0.32, 1.15, 0);
+  const armR = mesh(GEO.arm, upper, 0.32, 1.15, 0);
+  const legL = mesh(GEO.leg, lower, -0.12, 0.43, 0);
+  const legR = mesh(GEO.leg, lower, 0.12, 0.43, 0);
   const gun = mesh(GEO.gun, mats.gun, 0.3, 1.1, -0.3);
+
+  // The cap, if this one wears one. Peak over the eyes, which is on the -z face
+  // like everything else that faces forward.
+  const cap = [];
+  if (mats.cap) {
+    cap.push(mesh(GEO.cap, mats.cap, 0, 1.79, 0));
+    cap.push(mesh(GEO.capPeak, mats.cap, 0, 1.76, -0.18));
+  }
 
   // Melee staff drop the gun and swing whatever was on their desk instead.
   gun.visible = !type.melee;
@@ -158,6 +203,12 @@ function buildHuman(type, rng) {
     rig: 'human', group, mats, ownGeo, torso, head,
     armL, armR, legL, legR, gun, blunt,
     bluntReach: bluntSpec ? bluntSpec.reach : 0,
+    bluntRest: bluntSpec?.rest ?? 0.5,
+    // What goes white when this one is shot. It has to be whatever they are
+    // actually WEARING, not the one material that used to be everything: a
+    // janitor's suit colour is a strip of collar, and flashing only that reads
+    // as the shot missing.
+    flash: flashSet(mats),
     // Six bones for a person: a trunk, a head and four limbs. The hips are part
     // of the trunk rather than a bone of their own — a jointed waist is the
     // single most expensive way to make a corpse look drunk, and at this
@@ -168,7 +219,7 @@ function buildHuman(type, rng) {
     // cone: they are supposed to fly.
     bones: [
       { parts: [torso, hips, shirt], size: [0.5, 0.62, 0.3], at: [0, 1.16, 0], mass: 34 },
-      { parts: [head, visor], size: [0.26, 0.28, 0.26], at: [0, 1.63, 0], mass: 5,
+      { parts: [head, visor, ...cap], size: [0.26, 0.28, 0.26], at: [0, 1.63, 0], mass: 5,
         joint: { to: 0, at: [0, 1.48, 0], angle: 0.65, twist: 0.5 } },
       { parts: [armL], size: [0.14, 0.54, 0.14], at: [-0.32, 1.15, 0], mass: 4,
         joint: { to: 0, at: [-0.27, 1.41, 0], angle: 1.4, twist: 0.8 } },
@@ -247,7 +298,7 @@ function buildRat(type, rng) {
   return {
     rig: 'rat', group, mats, ownGeo: [], torso, head,
     armL: null, armR: null, legL: null, legR: null, gun: null, blunt: null,
-    bluntReach: 0, legs, tail,
+    bluntReach: 0, legs, tail, flash: flashSet(mats),
     // One bone, and `whole` says so: the entire rig rides a single body rather
     // than being taken apart. A rat is 27 cm long with 3 cm legs, and jointing
     // those would be five constraints and four extra bodies spent on something
@@ -316,7 +367,7 @@ function buildRoomba(type, rng) {
   return {
     rig: 'roomba', group, mats, ownGeo, torso, head,
     armL: null, armR: null, legL: null, legR: null, gun: null, blunt: null,
-    bluntReach: 0, brush,
+    bluntReach: 0, brush, flash: flashSet(mats),
     // A disc, simulated as the box it fits inside. The corners are a lie the
     // solver tells and the eye does not catch, because what a shot floor cleaner
     // does is flip onto its back and skid — and a box flips and skids. A real
@@ -325,6 +376,14 @@ function buildRoomba(type, rng) {
     // is sliding under a desk.
     bones: [{ whole: true, size: [0.34, 0.1, 0.34], at: [0, 0.055, 0], mass: 3.5 }],
   };
+}
+
+// The materials a hit flash whitens: the body and what it has on, never the
+// visor (it is the one colour that has to keep meaning what it means) and never
+// the gun. MeshBasicMaterial has no `emissive`, which is what filters those two
+// out without naming them.
+function flashSet(mats) {
+  return Object.values(mats).filter((m) => m.emissive);
 }
 
 // Adds a shadow-casting box at a position, and hands it back.
