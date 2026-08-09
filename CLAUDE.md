@@ -346,9 +346,33 @@ multiplied by bone mass before it reaches the solver, which makes `HIT_IMPULSE` 
 change in *speed* — one number tunes a rat and a manager alike, and 4 m/s is about
 where a body stops falling and starts being launched.
 
-`enemies.hit()` carries the bullet's direction and contact point purely so the
-killing shot can throw the bone it landed on; `splash()` synthesises an outward
-one. Explosions need nothing else — ragdoll bones are ordinary dynamic bodies, so
+**How hard is the gun's, and how hard depends on where you were standing.** A
+killing shot carries a `punch` — `throwPunch` in `shooting.js` — which is the
+weapon's own `punch` multiplied up as the range closes, over a range the weapon
+declares itself (`throwMul`/`throwTo` in `weapons.js`). That last part is the
+whole design: one shared falloff makes every heavy gun the same gun. A shotgun
+gets 2.1× and loses it all by 7 m, so it throws bodies in a doorway and nowhere
+else; a sniper gets 2× spread over 34 m, because a rifle round arrives across the
+floor with what it left with; a pistol gets 1.15× and never really does this.
+
+`ragdolls.js` spends that on three things at once, all lerped from the same
+number, and it is the three together that turn a fall into a launch: **speed**
+(`HIT_IMPULSE × punch`, 3 m/s to ~11), **lift** (how much is redirected upward —
+a body that stays on the floor cannot look thrown), and **share** (how much goes
+into the whole skeleton rather than the one bone that was hit — the difference
+between a person being thrown and an arm being yanked while the body stays put).
+The remainder always goes into the hit bone *at the contact point*, which is
+where the tumble comes from. An explosion is `BLAST_PUNCH`, above anything a gun
+can do, falling off the way its damage does.
+
+One consequence worth knowing: bodies are now regularly airborne, so the
+`MAX_ACTIVE` eviction settles the oldest ragdoll that has **stopped moving**
+rather than the oldest outright — settling freezes a body exactly where it is,
+and a corpse hanging in mid-air is worse than one extra body simulating.
+
+`enemies.hit()` carries the bullet's direction, contact point and punch purely so
+the killing shot can throw the bone it landed on; `splash()` synthesises an
+outward one. Explosions need nothing else — ragdoll bones are ordinary dynamic bodies, so
 `physics.blast()` already sweeps them.
 
 ### Keycards (`keycards.js` + `assignLocks` in `gen/layout.js`)
