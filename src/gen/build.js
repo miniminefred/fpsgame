@@ -4,7 +4,7 @@ import { maskToRects } from './rects.js';
 import { Batcher, boxBetween, slab, applyWorldUVs } from './geom.js';
 import { tryPlace } from './props.js';
 import { furnish } from './rooms.js';
-import { modelInfo, stampModel } from './models.js';
+import { modelInfo, stampModel, paintDebris } from './models.js';
 import {
   TILE, WALL_H, CEIL_H, DOOR_H,
   SOLID, ROOM, CORRIDOR, DOOR, isOpen, worldX, worldZ,
@@ -507,6 +507,10 @@ function makeSink(layout, batcher, materials, masks) {
       return boxes;
     },
 
+    // Gives captured boxes the colours of the models stamped in their place, so
+    // the wreckage is recognisably the thing that was standing there.
+    paintDebris,
+
     // --- static props ------------------------------------------------------
 
     beginStatic(hp, substance) {
@@ -538,8 +542,11 @@ function makeSink(layout, batcher, materials, masks) {
         colliders: r.colliders,
         navTiles: r.navTiles,
         fixtures: [],
+        // A captured box may already carry the colour of the model that was
+        // drawn over it (see `paintDebris`); anything else wears the palette it
+        // was authored in.
         parts: (debris ? [...debris, ...r.boxes] : r.boxes)
-          .map((b) => ({ ...b, material: materials[b.key] })),
+          .map((b) => ({ ...b, material: b.material ?? materials[b.key] })),
         broken: false,
       });
     },

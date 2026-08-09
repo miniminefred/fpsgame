@@ -611,6 +611,10 @@ export function tryPlace(sink, kind, cx, cz, rot, rng) {
     // The quarter turns rotate the front from -Z toward +X, which is a negative
     // rotation about Y in Three's right-handed frame.
     const yaw = -rot * Math.PI / 2;
+    // Every model drawn for this prop, so the debris can be painted in their
+    // colours rather than the palette the fallback boxes were authored in.
+    const stamps = [{ key: spec.model, x: cx, y: 0, z: cz, yaw }];
+
     sink.beginStatic(spec.hp, spec.substance);
     sink.model(spec.model, cx, 0, cz, yaw);
 
@@ -633,10 +637,18 @@ export function tryPlace(sink, kind, cx, cz, rot, rng) {
       for (const item of spec.desktop) {
         if (rng.chance(item.chance ?? 1)) {
           const [ox, oz] = QUARTER[rot & 3](item.x ?? 0, item.z ?? 0);
-          sink.model(item.key, cx + ox, item.y ?? model.height, cz + oz, yaw + (item.yaw ?? 0));
+          const stamp = {
+            key: item.key,
+            x: cx + ox, y: item.y ?? model.height, z: cz + oz,
+            yaw: yaw + (item.yaw ?? 0),
+          };
+          sink.model(stamp.key, stamp.x, stamp.y, stamp.z, stamp.yaw);
+          stamps.push(stamp);
         }
       }
     }
+
+    sink.paintDebris(debris, stamps);
     sink.endStatic(debris);
   } else {
     // Static boxes: the geometry it is drawn with is already the geometry it
