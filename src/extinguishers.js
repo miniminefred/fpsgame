@@ -20,10 +20,35 @@ import { getFx } from './fx-textures.js';
 // extinguisher itself.
 
 const FUSE = [1.1, 1.8];       // seconds of flight before it lets go
-const THRUST = 26;             // newtons out of the puncture
-const WOBBLE = 5;              // ...of which this much wanders, so it never flies straight
+const MASS = 6;                // kilos of steel and pressurised nothing
+// Thrust has to beat its own weight by a wide margin or the cylinder just sits
+// there hissing: 6 kg weighs 59 N, so anything under that is a fire
+// extinguisher having a bad day rather than one leaving the room.
+const THRUST = 190;            // newtons out of the puncture
+const WOBBLE = 60;             // ...of which this much wanders, so it never flies straight
 const JET_OFFSET = 0.16;       // metres off centre the thrust is applied, which is the tumble
-const SPIN_UP = 9;             // one-off kick at the puncture, so it leaves in a hurry
+const SPIN_UP = 22;            // one-off kick at the puncture, so it leaves in a hurry
+
+// Thrust plus a wall is a press, not a flight: the cylinder drives itself into
+// the plaster, prop-against-world friction is 0.45 with next to no bounce, and
+// it stays there hissing until the fuse runs out. So a stall is watched for and
+// broken. The kick goes back the way it came — which is the best guess at the
+// wall's normal that costs nothing — with a hard upward bias and a long lever
+// arm, so it comes off the wall spinning and pointing somewhere new.
+const STALL_SPEED = 1.4;       // m/s under which it is not really going anywhere
+const STALL_TIME = 0.1;        // ...and for how long before that counts
+const KICK = 16;               // N·s off the wall
+const KICK_ARM = 0.5;          // metres of lever on that kick, i.e. how hard it tumbles
+// Two windows follow a kick, and they are different lengths for different
+// reasons. The jet is cut briefly so 190 N does not simply re-pin it inside two
+// frames — but only briefly, or a cylinder scraping along the floor spends its
+// whole life being kicked with the jet off and never goes anywhere. The heading
+// is held for longer, because the kick's own motion must not become the heading:
+// that turns the next kick around and the thing hovers at the wall arguing with
+// itself until the fuse runs out.
+const KICK_HOLD = 0.25;
+const KICK_CUT = 0.1;
+const LIFT_FLOOR = 0.3;        // the thrust may never point further down than this
 
 const BLAST_RADIUS = 4.4;
 const BLAST_DAMAGE = 55;       // at the centre, falling off to nothing at the rim
@@ -52,6 +77,7 @@ export class Extinguishers {
     this._jet = new THREE.Vector3();
     this._thrust = new THREE.Vector3();
     this._at = new THREE.Vector3();
+    this._move = new THREE.Vector3();
     this._up = new THREE.Vector3(0, 1, 0);
 
     const glow = getFx().glow;
@@ -104,7 +130,7 @@ export class Extinguishers {
     const handle = this.physics?.addBox({
       size: { x: Math.max(0.12, maxX - minX), y: Math.max(0.2, maxY - minY), z: Math.max(0.12, maxZ - minZ) },
       position: { x: cx, y: cy, z: cz },
-      mass: 9,
+      mass: MASS,
     });
 
     // The kick that gets it off the floor, away from the shot and upward. After
@@ -120,6 +146,12 @@ export class Extinguishers {
       puffDebt: 0,
       parts,
       substance: entry.substance,
+      // Where it was last frame and which way it was going, so a stall can be
+      // told from a turn and broken back the way it came.
+      last: new THREE.Vector3(cx, cy, cz),
+      heading: new THREE.Vector3(0, 1, 0),
+      stalled: 0,
+      recover: 0,
     });
 
     this.audio.extinguisherJet(group.position);
@@ -145,15 +177,31 @@ export class Extinguishers {
         // the entire difference between a firework and a bottle rocket.
         this._at.copy(group.position).addScaledVector(this._jet, JET_OFFSET);
         this._thrust.copy(this._jet).negate();
-        this.physics.impulse(
-          rocket.handle, this._thrust,
-          (THRUST + Math.random() * WOBBLE) * dt, this._at);
+
+        // The one place the physics is cheated, and only where it has to be.
+        // Land the thing on its head and the jet points at the ceiling, which
+        // means 190 N holding it against the carpet: it stops dead, hisses for a
+        // second and a half and goes off where it fell. So once it has stopped
+        // going anywhere the thrust is not allowed to point below the horizon
+        // any more. In free flight it stays honest — the lie is what gets it off
+        // the floor, not what flies it around the room.
+        if (rocket.stalled > 0 && this._thrust.y < LIFT_FLOOR) {
+          this._thrust.y = LIFT_FLOOR;
+          this._thrust.normalize();
+        }
+        if (rocket.recover <= KICK_HOLD - KICK_CUT) {
+          this.physics.impulse(
+            rocket.handle, this._thrust,
+            (THRUST + Math.random() * WOBBLE) * dt, this._at);
+        }
 
         rocket.puffDebt += PUFF_RATE * dt;
         while (rocket.puffDebt >= 1) {
           rocket.puffDebt -= 1;
           this._puff(this._at, this._jet);
         }
+
+        this._unstick(rocket, dt);
       }
 
       rocket.fuse -= dt;
@@ -188,6 +236,54 @@ export class Extinguishers {
 
   // --- internals --------------------------------------------------------------
 
+  /**
+   * Keeps it off the walls. Measured from where it actually got to rather than
+   * from the solver's velocity, because being pinned and being slow look
+   * identical to the solver and quite different on the floor: a body driving
+   * itself into plaster has plenty of force on it and is going nowhere.
+   */
+  _unstick(rocket, dt) {
+    const now = rocket.group.position;
+    this._move.copy(now).sub(rocket.last);
+    rocket.last.copy(now);
+
+    if (rocket.recover > 0) {
+      // Coming off a wall. Whatever it does in this window is the kick's doing,
+      // not its own, and must not be mistaken for where it was trying to go.
+      rocket.recover -= dt;
+      rocket.stalled = 0;
+      return;
+    }
+
+    const speed = this._move.length() / Math.max(dt, 1e-4);
+    if (speed > STALL_SPEED) {
+      rocket.heading.copy(this._move).normalize();
+      rocket.stalled = 0;
+      return;
+    }
+
+    rocket.stalled += dt;
+    if (rocket.stalled < STALL_TIME) return;
+    rocket.stalled = 0;
+    rocket.recover = KICK_HOLD;
+
+    // Back the way it came, upward, and never quite the same twice — two kicks
+    // along the same line would just walk it up the wall.
+    this._thrust.copy(rocket.heading).negate();
+    this._thrust.y = Math.abs(this._thrust.y) + 0.9;
+    this._thrust.x += (Math.random() - 0.5) * 1.2;
+    this._thrust.z += (Math.random() - 0.5) * 1.2;
+    this._thrust.normalize();
+
+    // Applied a long way off centre, so it leaves spinning and the jet is
+    // pointing somewhere else by the time it lands.
+    this._at.set(
+      now.x + (Math.random() - 0.5) * KICK_ARM,
+      now.y + (Math.random() - 0.5) * KICK_ARM,
+      now.z + (Math.random() - 0.5) * KICK_ARM);
+    this.physics.impulse(rocket.handle, this._thrust, KICK, this._at);
+  }
+
   _puff(at, dir) {
     const p = this.puffs[this.puffCursor];
     this.puffCursor = (this.puffCursor + 1) % this.puffs.length;
@@ -211,6 +307,11 @@ export class Extinguishers {
     // The bang, then the flash, then a last shove of gas in every direction.
     this.audio.extinguisherBurst(at);
     this.effects.impact(at, this._up, 0xfff0cc, 7);
+    // And a mark on the carpet underneath, which is the only part of this that
+    // is still there in a minute's time. Clipped to the floor like any other, so
+    // one going off in a doorway does not paint the wall it is up against.
+    this._at.set(at.x, 0.02, at.z);
+    this.effects.decal(this._at, this._up, 0.75);
     for (let i = 0; i < 26; i++) {
       this._jet.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
       this._puff(at, this._jet);

@@ -103,6 +103,10 @@ export class Physics {
 
     this.world = null;
     this.props = [];
+    // The suspended ceiling, as far as the solver is concerned. Mirrors CEIL_H
+    // in gen/layout.js; kept as a field so nothing here has to import the
+    // floorplan to know how tall a room is.
+    this.ceilingY = 3.0;
     // Static bodies, keyed by the level collider they were built from, so a
     // destroyed prop can take its own collision away with it.
     this._statics = new Map();
@@ -196,6 +200,22 @@ export class Physics {
       // A cannon Plane faces +Z; tip it to face +Y.
       ground.quaternion.setFromAxisAngle(new Vec3(1, 0, 0), -Math.PI / 2);
       this.world.addBody(ground);
+
+      // And a lid. Nothing the player can throw gets near the ceiling, but a
+      // holed extinguisher is not thrown — it flies, and without this it leaves
+      // through the roof and goes off somewhere over the car park.
+      const ceiling = new Body({
+        mass: 0,
+        type: Body.STATIC,
+        shape: new Plane(),
+        material: this._worldMat,
+        position: new Vec3(0, this.ceilingY, 0),
+        collisionFilterGroup: GROUP_WORLD,
+        collisionFilterMask: GROUP_PROP,
+      });
+      ceiling.quaternion.setFromAxisAngle(new Vec3(1, 0, 0), Math.PI / 2);
+      this.world.addBody(ceiling);
+
       this._hasGround = true;
     }
 

@@ -167,14 +167,14 @@ export class Effects {
    * mark came from; its object is skipped while probing, because a wall cannot
    * be used to prove its own width.
    */
-  decal(point, normal) {
+  decal(point, normal, size = 0) {
     // Tangent frame, spun at random so the splat never lands the same way twice.
     frame(normal, this._u, this._v, Math.random() * Math.PI * 2);
 
     this._nu.copy(this._u).negate();
     this._nv.copy(this._v).negate();
 
-    const want = DECAL_MIN + Math.random() * (DECAL_MAX - DECAL_MIN);
+    const want = size || DECAL_MIN + Math.random() * (DECAL_MAX - DECAL_MIN);
     const right = this._reach(point, normal, this._u, want);
     const left = this._reach(point, normal, this._nu, want);
     const up = this._reach(point, normal, this._v, want);
