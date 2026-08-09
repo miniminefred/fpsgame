@@ -214,7 +214,9 @@ export class Shooting {
       const damage = stats.damage * falloff(hit.distance, stats);
 
       if (enemy) {
-        const outcome = this.enemies.hit(hit.object, damage);
+        // The direction and the contact point go with the damage: if this is the
+        // shot that kills them, it is what the ragdoll is thrown by.
+        const outcome = this.enemies.hit(hit.object, damage, dir, hit.point);
         this.effects.impact(hit.point, this._normal, HIT_COLOR);
         this.audio.bulletHitFlesh(hit.point);
         // The vocal is played from here rather than from enemies.hit, because

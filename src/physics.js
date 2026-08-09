@@ -1,6 +1,6 @@
 import {
-  Body, Box, ContactMaterial, Material, ObjectCollisionMatrix, Plane, Quaternion,
-  SAPBroadphase, Vec3, World,
+  Body, Box, ConeTwistConstraint, ContactMaterial, Material, ObjectCollisionMatrix,
+  Plane, Quaternion, SAPBroadphase, Vec3, World,
 } from 'cannon-es';
 
 // Rigid-body simulation for loose office props — the chairs, cardboard boxes,
@@ -51,8 +51,19 @@ const KILL_Y = -40;             // fell out of the world (should be impossible)
 
 // Collision filtering. Props collide with the world and with each other; the
 // static world never needs to be told it is touching itself.
+//
+// Jointed bodies — the limbs of a ragdoll — are their own group, and the group
+// deliberately does NOT collide with itself. A chain of boxes held together by
+// constraints that is also being pushed apart by its own contacts is the classic
+// way to make a ragdoll vibrate itself across a room: the shoulder constraint
+// pulls the arm into the torso, the contact solver shoves it back out, and the
+// two fight at 60 Hz forever. Every part still collides with the building and
+// with the furniture, which is all you actually look at. The cost is that two
+// corpses lie through each other, which is a far smaller lie than a corpse
+// having a seizure.
 const GROUP_WORLD = 1;
 const GROUP_PROP = 2;
+const GROUP_JOINTED = 4;
 
 /**
  * Stock SAPBroadphase tests `needBroadphaseCollision` *before* the sorted-axis
@@ -195,7 +206,7 @@ export class Physics {
         shape: new Plane(),
         material: this._worldMat,
         collisionFilterGroup: GROUP_WORLD,
-        collisionFilterMask: GROUP_PROP,
+        collisionFilterMask: GROUP_PROP | GROUP_JOINTED,
       });
       // A cannon Plane faces +Z; tip it to face +Y.
       ground.quaternion.setFromAxisAngle(new Vec3(1, 0, 0), -Math.PI / 2);
@@ -211,7 +222,7 @@ export class Physics {
         material: this._worldMat,
         position: new Vec3(0, this.ceilingY, 0),
         collisionFilterGroup: GROUP_WORLD,
-        collisionFilterMask: GROUP_PROP,
+        collisionFilterMask: GROUP_PROP | GROUP_JOINTED,
       });
       ceiling.quaternion.setFromAxisAngle(new Vec3(1, 0, 0), Math.PI / 2);
       this.world.addBody(ceiling);
@@ -235,7 +246,7 @@ export class Physics {
         position: new Vec3((b.minX + b.maxX) / 2, h / 2, (b.minZ + b.maxZ) / 2),
         material: this._worldMat,
         collisionFilterGroup: GROUP_WORLD,
-        collisionFilterMask: GROUP_PROP,
+        collisionFilterMask: GROUP_PROP | GROUP_JOINTED,
       });
       this.world.addBody(body);
       this._statics.set(b, body);
@@ -261,7 +272,7 @@ export class Physics {
    * about Y. Returns null if the description is unusable, so a bad prop can
    * never take the whole floor down with it.
    */
-  addBox({ size, position, yaw = 0, mass = 1 }) {
+  addBox({ size, position, yaw = 0, mass = 1, jointed = false, angularDamping }) {
     if (!this.world || !size || !position) return null;
     const sx = size.x, sy = size.y, sz = size.z;
     if (!(sx > 1e-4) || !(sy > 1e-4) || !(sz > 1e-4)) return null;
@@ -277,12 +288,18 @@ export class Physics {
       quaternion,
       material: this._propMat,
       linearDamping: LINEAR_DAMPING,
-      angularDamping: ANGULAR_DAMPING,
+      angularDamping: Number.isFinite(angularDamping) ? angularDamping : ANGULAR_DAMPING,
       allowSleep: true,
       sleepSpeedLimit: SLEEP_SPEED_LIMIT,
       sleepTimeLimit: SLEEP_TIME_LIMIT,
-      collisionFilterGroup: GROUP_PROP,
-      collisionFilterMask: GROUP_WORLD | GROUP_PROP,
+      collisionFilterGroup: jointed ? GROUP_JOINTED : GROUP_PROP,
+      // cannon pairs two bodies only when EACH one's group is in the other's
+      // mask, so leaving GROUP_JOINTED out of a jointed part's own mask is what
+      // stops any two of them ever reaching the narrowphase — while a prop,
+      // which does list it, still gets knocked over by a falling body.
+      collisionFilterMask: jointed
+        ? (GROUP_WORLD | GROUP_PROP)
+        : (GROUP_WORLD | GROUP_PROP | GROUP_JOINTED),
     });
     this.world.addBody(body);
 
@@ -297,6 +314,52 @@ export class Physics {
     };
     this.props.push(handle);
     return handle;
+  }
+
+  /**
+   * Pin two bodies together at a shared point, with a limit on how far the joint
+   * may bend and twist.
+   *
+   * `pivotA` and `pivotB` are the SAME world point expressed in each body's own
+   * local frame, which is what makes an elbow an elbow rather than two boxes
+   * agreeing to be near each other. `angle` is the half-cone the child may swing
+   * through and `twist` how far it may rotate about its own axis, both radians —
+   * without them a shoulder is a ball joint and an arm rotates through its own
+   * chest, which is the difference between a body and a bag of sticks.
+   *
+   * Returns a handle for unjoin(), or null if the world is gone.
+   */
+  join(a, b, pivotA, pivotB, { angle = Math.PI / 3, twist = Math.PI / 6, axis } = {}) {
+    if (!this.world || !a || !b) return null;
+    const opts = {
+      pivotA: new Vec3(pivotA.x, pivotA.y, pivotA.z),
+      pivotB: new Vec3(pivotB.x, pivotB.y, pivotB.z),
+      angle,
+      twistAngle: twist,
+    };
+    if (axis) {
+      opts.axisA = new Vec3(axis.x, axis.y, axis.z);
+      opts.axisB = new Vec3(axis.x, axis.y, axis.z);
+    }
+    const c = new ConeTwistConstraint(a.body, b.body, opts);
+    // Constraints are not contacts: a joint that gives way under its own limb's
+    // weight reads as a dislocation, so it is allowed as much force as it needs.
+    c.collideConnected = false;
+    this.world.addConstraint(c);
+    return c;
+  }
+
+  unjoin(c) {
+    if (!this.world || !c) return;
+    this.world.removeConstraint(c);
+  }
+
+  /** Straight linear velocity, for a body that has just been thrown. */
+  setVelocity(h, v) {
+    if (!h || !isFiniteVec(v)) return;
+    h.body.wakeUp();
+    h.body.velocity.set(v.x, v.y, v.z);
+    clampBody(h.body);
   }
 
   /**

@@ -58,6 +58,26 @@ const BLUNT = {
  *   ownGeo     geometry made just for this one, to be disposed with it
  *   torso/head the two meshes that stop bullets
  *   limbs      whatever this rig has to swing; a rat has none of the human ones
+ *   bones      how it comes apart when it dies — see BONES below
+ */
+
+/**
+ * The skeleton, declared here rather than in ragdolls.js on purpose: this file
+ * is the one that knows an arm is 0.54 long and hangs at x = 0.32, and a second
+ * copy of those numbers somewhere else would be wrong within a week.
+ *
+ * Each bone is
+ *
+ *   parts   the meshes it carries, which get re-parented onto its rigid body
+ *   size    [w, h, d] of the box that stands in for it, in rig-local metres
+ *   at      [x, y, z] centre of that box, likewise
+ *   mass    kilograms, and they are meant to add up to a person
+ *   joint   { to, at, angle, twist } — which bone it hangs off, where the pivot
+ *           is, and how far it may swing and rotate before the joint stops it
+ *
+ * Everything is in UNSCALED rig space; `type.scale` is applied by whoever builds
+ * the bodies, because the same skeleton has to serve a 0.9 intern and a 1.14
+ * manager.
  */
 export function buildRig(type, rng) {
   if (type.rig === 'rat') return buildRat(type, rng);
@@ -93,10 +113,10 @@ function buildHuman(type, rng) {
   const mesh = part(group);
 
   const torso = mesh(GEO.torso, mats.suit, 0, 1.16, 0);
-  mesh(GEO.hips, mats.suit, 0, 0.96, 0);
-  mesh(GEO.shirt, mats.shirt, 0, 1.18, -0.155);   // open collar and shirt front
+  const hips = mesh(GEO.hips, mats.suit, 0, 0.96, 0);
+  const shirt = mesh(GEO.shirt, mats.shirt, 0, 1.18, -0.155);   // open collar and shirt front
   const head = mesh(GEO.head, mats.skin, 0, 1.63, 0);
-  mesh(GEO.visor, mats.visor, 0, 1.65, -0.13);
+  const visor = mesh(GEO.visor, mats.visor, 0, 1.65, -0.13);
   const armL = mesh(GEO.arm, mats.suit, -0.32, 1.15, 0);
   const armR = mesh(GEO.arm, mats.suit, 0.32, 1.15, 0);
   const legL = mesh(GEO.leg, mats.suit, -0.12, 0.43, 0);
@@ -138,6 +158,27 @@ function buildHuman(type, rng) {
     rig: 'human', group, mats, ownGeo, torso, head,
     armL, armR, legL, legR, gun, blunt,
     bluntReach: bluntSpec ? bluntSpec.reach : 0,
+    // Six bones for a person: a trunk, a head and four limbs. The hips are part
+    // of the trunk rather than a bone of their own — a jointed waist is the
+    // single most expensive way to make a corpse look drunk, and at this
+    // silhouette nobody can tell.
+    //
+    // Legs get the tightest cone and almost no twist, because a knee that swings
+    // sideways is the one thing that reads instantly as broken. Arms get a wide
+    // cone: they are supposed to fly.
+    bones: [
+      { parts: [torso, hips, shirt], size: [0.5, 0.62, 0.3], at: [0, 1.16, 0], mass: 34 },
+      { parts: [head, visor], size: [0.26, 0.28, 0.26], at: [0, 1.63, 0], mass: 5,
+        joint: { to: 0, at: [0, 1.48, 0], angle: 0.65, twist: 0.5 } },
+      { parts: [armL], size: [0.14, 0.54, 0.14], at: [-0.32, 1.15, 0], mass: 4,
+        joint: { to: 0, at: [-0.27, 1.41, 0], angle: 1.4, twist: 0.8 } },
+      { parts: [armR, gun, blunt], size: [0.14, 0.54, 0.14], at: [0.32, 1.15, 0], mass: 4,
+        joint: { to: 0, at: [0.27, 1.41, 0], angle: 1.4, twist: 0.8 } },
+      { parts: [legL], size: [0.17, 0.86, 0.19], at: [-0.12, 0.43, 0], mass: 11,
+        joint: { to: 0, at: [-0.12, 0.85, 0], angle: 0.8, twist: 0.25 } },
+      { parts: [legR], size: [0.17, 0.86, 0.19], at: [0.12, 0.43, 0], mass: 11,
+        joint: { to: 0, at: [0.12, 0.85, 0], angle: 0.8, twist: 0.25 } },
+    ],
   };
 }
 
@@ -207,6 +248,12 @@ function buildRat(type, rng) {
     rig: 'rat', group, mats, ownGeo: [], torso, head,
     armL: null, armR: null, legL: null, legR: null, gun: null, blunt: null,
     bluntReach: 0, legs, tail,
+    // One bone, and `whole` says so: the entire rig rides a single body rather
+    // than being taken apart. A rat is 27 cm long with 3 cm legs, and jointing
+    // those would be five constraints and four extra bodies spent on something
+    // that is a blur at the range you ever see it. It tumbles, which is all a
+    // shot rat has ever needed to do.
+    bones: [{ whole: true, size: [0.14, 0.12, 0.40], at: [0, 0.075, -0.04], mass: 0.4 }],
   };
 }
 
@@ -270,6 +317,13 @@ function buildRoomba(type, rng) {
     rig: 'roomba', group, mats, ownGeo, torso, head,
     armL: null, armR: null, legL: null, legR: null, gun: null, blunt: null,
     bluntReach: 0, brush,
+    // A disc, simulated as the box it fits inside. The corners are a lie the
+    // solver tells and the eye does not catch, because what a shot floor cleaner
+    // does is flip onto its back and skid — and a box flips and skids. A real
+    // cylinder shape in cannon is a convex hull with twenty faces, which is
+    // twenty times the narrowphase for a silhouette nobody is studying while it
+    // is sliding under a desk.
+    bones: [{ whole: true, size: [0.34, 0.1, 0.34], at: [0, 0.055, 0], mass: 3.5 }],
   };
 }
 

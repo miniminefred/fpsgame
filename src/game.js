@@ -29,7 +29,7 @@ const BREATH_SPEED = 4;        // moving at least this fast to be out of breath
 const SHOVE_INTERVAL = 0.4;
 
 export class Game {
-  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, doors, casings, keycards, wallet }) {
+  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, doors, casings, keycards, wallet, ragdolls }) {
     this.scene = scene;
     this.camera = camera;
     this.player = player;
@@ -48,6 +48,7 @@ export class Game {
     this.casings = casings;
     this.keycards = keycards;
     this.wallet = wallet;
+    this.ragdolls = ragdolls;
 
     this.level = new Level(scene);
     // Player-facing colliders for this floor's loose props, refreshed from the
@@ -193,6 +194,9 @@ export class Game {
     // eight opens nine has exactly one locked door in it, on floor one.
     this.keycards?.clear();
     this.wallet?.clear();
+    // Before the level is generated, because enemies.spawn disposes the
+    // materials these corpses are still drawn with.
+    this.ragdolls?.clear();
 
     const level = this.level.generate(seed, this.floor);
 
@@ -293,6 +297,7 @@ export class Game {
       this.doors?.update(dt, this.player, this.enemies.items);
       this.casings?.update(dt);
       this.keycards?.update(dt, this.player);
+      this.ragdolls?.update(dt);
     }
 
     if (this.state === 'playing') {

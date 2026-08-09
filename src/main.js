@@ -16,6 +16,7 @@ import { Extinguishers } from './extinguishers.js';
 import { Doors } from './doors.js';
 import { Casings } from './casings.js';
 import { Keycards, Wallet } from './keycards.js';
+import { Ragdolls } from './ragdolls.js';
 import { loadModels } from './gen/models.js';
 import { modelKeysUsed } from './gen/props.js';
 import { Game } from './game.js';
@@ -56,13 +57,15 @@ const extinguishers = new Extinguishers({
 destruction.extinguishers = extinguishers;
 
 const doors = new Doors({ scene, audio });
+const ragdolls = new Ragdolls({ scene, physics });
+enemies.ragdolls = ragdolls;
 const wallet = new Wallet();
 const keycards = new Keycards({ scene, audio, wallet });
 
 const game = new Game({
   scene, camera, player, weapons, shooting, enemies,
   effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, doors, casings,
-  keycards, wallet,
+  keycards, wallet, ragdolls,
 });
 
 onDigitKeys((n) => {
@@ -85,7 +88,7 @@ addEventListener('mousedown', () => {
 if (import.meta.env.DEV) {
   window.dev = {
     game, player, enemies, shooting, keys, physics, destruction, extinguishers, doors,
-    scene, camera, weapons, renderer, audio, casings, keycards, wallet,
+    scene, camera, weapons, renderer, audio, casings, keycards, wallet, ragdolls,
   };
 }
 

@@ -233,6 +233,7 @@ export class Enemies {
     this.time = 0;
     this.shoutTimer = 0;    // floor-wide, so only one of them calls you out
     this.onDeath = null;    // set by game.js — see _damage
+    this.ragdolls = null;   // likewise; what happens to a body after _damage
     this._v = new THREE.Vector3();
     this._muzzle = new THREE.Vector3();
     this._aim = new THREE.Vector3();
@@ -568,6 +569,11 @@ export class Enemies {
       // Where a neutral is currently headed — the toilet, the next corridor to
       // mop — plus their own distance field to get there. See _repick.
       wanderX: 0, wanderZ: 0, wanderTimer: 0, field: null, stuck: 0,
+      // How this body comes apart when it stops working (rigs.js), and whether
+      // something took that offer up. `ragdoll` is what stands the toppling
+      // animation down — see _die.
+      bones: rig.bones ?? null,
+      ragdoll: false,
     };
 
     if (type.neutral) {
@@ -589,15 +595,23 @@ export class Enemies {
     return enemy;
   }
 
-  // A bullet landed. Returns 'kill' | 'hit' | null (already down).
-  hit(mesh, damage) {
+  /**
+   * A bullet landed. Returns 'kill' | 'hit' | null (already down).
+   *
+   * `dir` and `point` are the shot itself, and they are carried this far for one
+   * reason: if this is the killing hit, the ragdoll needs to be thrown the way
+   * the bullet was going, from the part it went into. A body that folds straight
+   * down whatever hit it is a body that died of natural causes.
+   */
+  hit(mesh, damage, dir = null, point = null) {
     const e = mesh.userData?.enemy;
     if (!e || !e.alive) return null;
-    return this._damage(e, damage * (mesh.userData.headshot ?? 1));
+    return this._damage(e, damage * (mesh.userData.headshot ?? 1),
+      dir ? { dir, point, mesh } : null);
   }
 
   // Damage from any source, once it is known who took it and how much.
-  _damage(e, damage) {
+  _damage(e, damage, hit = null) {
     if (!e.alive) return null;
     e.health -= damage;
     e.hitFlash = HIT_FLASH;
@@ -622,6 +636,14 @@ export class Enemies {
     if (e.motor) { this.audio?.stopMotor(e.motor); e.motor = null; }
     e.torso.userData.enemy = null;
     e.head.userData.enemy = null;
+    // Hand the body to the solver. It can refuse — no physics, no skeleton, or
+    // simply too many already falling — and refusing costs nothing, because the
+    // animation below is still sitting there.
+    e.ragdoll = !!this.ragdolls?.spawn(e, hit);
+    // The visor going dark is the one bit of the death animation that survives
+    // being ragdolled, because it is what says "this one is done" from across a
+    // room. Everything else is now the solver's.
+    if (e.ragdoll) e.mats.visor.color.setRGB(0.25, 0.05, 0.04);
     // Whatever they were carrying is now on the carpet. What that means — a
     // keycard, the black card off the last one standing — is game.js's, because
     // it is about the floor and this file is about the person.
@@ -645,7 +667,18 @@ export class Enemies {
       const dist = Math.hypot(e.x - x, e.z - z);
       if (dist > radius) continue;
 
-      const outcome = this._damage(e, damage * (1 - dist / radius));
+      // Thrown outward from the seat of it, and upward — a body that only slides
+      // away from an explosion looks like it was pushed. Straight up for anyone
+      // standing exactly on it, since there is no outward to speak of.
+      const k = 1 / (dist || 1);
+      const blast = {
+        dir: dist > 0.05
+          ? { x: (e.x - x) * k, y: 0.55, z: (e.z - z) * k }
+          : { x: 0, y: 1, z: 0 },
+        point: { x: e.x, y: 0.9, z: e.z },
+      };
+
+      const outcome = this._damage(e, damage * (1 - dist / radius), blast);
       if (outcome === 'kill') { kills++; audio?.enemyDeath(e); }
       else if (outcome === 'hit') audio?.enemyPain(e);
     }
@@ -1190,7 +1223,13 @@ export class Enemies {
   }
 
   // Topple forward, then sink through the floor and disappear.
+  //
+  // This is now the fallback rather than the usual case — a body that got a
+  // ragdoll is ragdolls.js's from the moment it stopped breathing, and touching
+  // its group here would fight the solver for it. It stays because a ragdoll is
+  // allowed to be refused, and a floor with no physics has to keep working.
   _die(e, dt) {
+    if (e.ragdoll) return;
     if (e.deathTime <= 0) return;
     e.deathTime -= dt;
 
