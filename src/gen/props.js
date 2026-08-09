@@ -508,7 +508,10 @@ export const PROPS = {
   },
 
   extinguisher: {
+    // The one prop that does not simply break. Hole a pressure vessel and it
+    // leaves under its own power — see extinguishers.js.
     w: 0.21, d: 0.31, model: 'fire_extinguisher', hp: 12, substance: 'metal',
+    volatile: true,
     build(p) {
       p.box('hazard', -0.09, 0.02, -0.09, 0.09, 0.44, 0.09);
       p.box('metalDark', -0.09, 0, -0.09, 0.09, 0.02, 0.09);
@@ -615,7 +618,7 @@ export function tryPlace(sink, kind, cx, cz, rot, rng) {
     // colours rather than the palette the fallback boxes were authored in.
     const stamps = [{ key: spec.model, x: cx, y: 0, z: cz, yaw }];
 
-    sink.beginStatic(spec.hp, spec.substance);
+    sink.beginStatic(spec.hp, spec.substance, spec.volatile);
     sink.model(spec.model, cx, 0, cz, yaw);
 
     // What the model is carrying, drawn for real in the building's own palette
@@ -653,7 +656,7 @@ export function tryPlace(sink, kind, cx, cz, rot, rng) {
   } else {
     // Static boxes: the geometry it is drawn with is already the geometry it
     // falls apart into, so there is nothing to capture separately.
-    sink.beginStatic(spec.hp, spec.substance);
+    sink.beginStatic(spec.hp, spec.substance, spec.volatile);
     spec.build(placer(sink, cx, cz, rot), rng);
     sink.endStatic();
   }

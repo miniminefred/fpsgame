@@ -12,6 +12,7 @@ import { Minimap } from './minimap.js';
 import { Shooting } from './shooting.js';
 import { Physics } from './physics.js';
 import { Destruction } from './destruction.js';
+import { Extinguishers } from './extinguishers.js';
 import { Casings } from './casings.js';
 import { loadModels } from './gen/models.js';
 import { modelKeysUsed } from './gen/props.js';
@@ -44,10 +45,17 @@ const shooting = new Shooting({
 });
 
 const destruction = new Destruction({ scene, physics, effects, audio, shooting, lighting });
+const extinguishers = new Extinguishers({
+  scene, physics, effects, audio, destruction, enemies, player, hud,
+});
+// Wired after the fact because the two need each other: destruction hands a
+// holed cylinder over, and the blast at the end of its flight comes back
+// through destruction to take the furniture around it with it.
+destruction.extinguishers = extinguishers;
 
 const game = new Game({
   scene, camera, player, weapons, shooting, enemies,
-  effects, audio, hud, minimap, lighting, physics, destruction, casings,
+  effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, casings,
 });
 
 onDigitKeys((n) => {
@@ -69,7 +77,7 @@ addEventListener('mousedown', () => {
 // production builds by the bundler.
 if (import.meta.env.DEV) {
   window.dev = {
-    game, player, enemies, shooting, keys, physics, destruction,
+    game, player, enemies, shooting, keys, physics, destruction, extinguishers,
     scene, camera, weapons, renderer, audio, casings,
   };
 }

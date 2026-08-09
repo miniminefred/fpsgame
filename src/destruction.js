@@ -109,6 +109,44 @@ export class Destruction {
 
   // --- breaking ---------------------------------------------------------------
 
+  /**
+   * Everything within `radius` of an explosion takes `damage`, falling off to
+   * nothing at the rim. Distance is measured to the nearest point of a
+   * destructible's own footprint rather than its centre, so a three-metre
+   * meeting table is inside a blast that touches any part of it.
+   *
+   * This is what lets one extinguisher set off the next one across the room.
+   */
+  blast(point, radius, damage) {
+    if (!this.level) return;
+    for (const entry of this.level.destructibles ?? []) {
+      if (entry.broken || !entry.colliders?.length) continue;
+
+      let near = Infinity;
+      for (const c of entry.colliders) {
+        const dx = Math.max(c.minX - point.x, 0, point.x - c.maxX);
+        const dz = Math.max(c.minZ - point.z, 0, point.z - c.maxZ);
+        near = Math.min(near, Math.hypot(dx, dz));
+      }
+      if (near > radius) continue;
+
+      entry.hp -= damage * (1 - near / radius);
+      // Its own scratch vector: _shatter hands the point straight on to
+      // _scatter, which measures every fragment against it while using _away
+      // itself. Passing that one in would have it subtracted from itself.
+      if (entry.hp <= 0) this._shatter(entry, _up.set(0, 1, 0), _blast.copy(point));
+    }
+  }
+
+  /**
+   * Scatter a set of boxes as debris from `point`, with nothing being destroyed
+   * to produce them. The extinguisher uses this for its own remains: by the time
+   * it goes off it has not been part of the floor for over a second.
+   */
+  scatter(parts, point) {
+    this._scatter(parts, null, _up.set(0, 1, 0), point);
+  }
+
   // Static destructible: erase it from the batch it was merged into, hand back
   // the floor it was standing on, and scatter the boxes it was authored from.
   _shatter(entry, dir, point) {
@@ -128,6 +166,10 @@ export class Destruction {
 
     this.level?.nav?.openTiles(entry.navTiles);
     for (const fixture of entry.fixtures) this.lighting?.removeFixture(fixture);
+
+    // A volatile prop does not break where it stands. It takes its own boxes
+    // with it and comes apart somewhere else, loudly — see extinguishers.js.
+    if (entry.volatile && this.extinguishers?.launch(entry, dir, point)) return;
 
     this._scatter(entry.parts, null, dir, point);
 
@@ -283,3 +325,4 @@ function longestSide(p) {
 const _local = new THREE.Vector3();
 const _away = new THREE.Vector3();
 const _up = new THREE.Vector3();
+const _blast = new THREE.Vector3();

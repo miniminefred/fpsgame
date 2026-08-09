@@ -99,6 +99,7 @@ export class Physics {
     // allocate.
     this._imp = new Vec3();
     this._rel = new Vec3();
+    this._zero = new Vec3();
 
     this.world = null;
     this.props = [];
@@ -342,6 +343,38 @@ export class Physics {
     body.wakeUp();
     body.applyImpulse(this._imp, this._rel);
     clampBody(body);
+  }
+
+  /**
+   * Everything loose within `radius` of `point`, thrown away from it. The falloff
+   * is linear rather than inverse-square on purpose: the honest curve puts almost
+   * all of the impulse into whatever was touching the blast and leaves the rest
+   * of the room politely undisturbed, which is not what a room looks like after
+   * an explosion.
+   */
+  blast(point, radius, strength) {
+    if (!this.world || !isFiniteVec(point) || !(radius > 0)) return;
+    for (const h of this.props) {
+      const p = h.body.position;
+      const dx = p.x - point.x, dy = p.y - point.y, dz = p.z - point.z;
+      const dist = Math.hypot(dx, dy, dz);
+      if (dist > radius) continue;
+
+      const k = 1 - dist / radius;
+      // Straight up for anything sitting exactly on the blast, and biased upward
+      // for everything else — furniture that only slides looks like it was
+      // pushed, not blown.
+      this._imp.set(dx, dy + radius * 0.35, dz);
+      const len = this._imp.length();
+      if (!(len > 1e-6)) this._imp.set(0, 1, 0);
+      else this._imp.scale(1 / len, this._imp);
+
+      const mass = h.body.mass || 1;
+      this._imp.scale(strength * k * Math.sqrt(mass), this._imp);
+      h.body.wakeUp();
+      h.body.applyImpulse(this._imp, this._zero);
+      clampBody(h.body);
+    }
   }
 
   /** True once the body has come to rest, so callers can stop syncing it. */

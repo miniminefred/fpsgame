@@ -131,14 +131,17 @@ export class Effects {
     t.life = TRACER_LIFE;
   }
 
-  // Flash at the point of impact. `color` distinguishes flesh from concrete.
-  impact(point, normal, color = 0xffe0a0) {
+  // Flash at the point of impact. `color` distinguishes flesh from concrete, and
+  // `size` a bullet from something with a lot more to say.
+  impact(point, normal, color = 0xffe0a0, size = 1) {
     const f = next(this.flashes);
     f.mesh.position.copy(point).addScaledVector(normal, 0.02);
     f.mesh.material.color.setHex(color);
-    f.mesh.scale.setScalar(0.12);
+    f.mesh.scale.setScalar(0.12 * size);
     f.mesh.visible = true;
-    f.life = FLASH_LIFE;
+    f.size = size;
+    f.life = size > 2 ? FLASH_LIFE * 3 : FLASH_LIFE;
+    f.span = f.life;
   }
 
   /**
@@ -245,9 +248,10 @@ export class Effects {
       if (f.life <= 0) continue;
       f.life -= dt;
       if (f.life <= 0) { f.mesh.visible = false; continue; }
-      const k = f.life / FLASH_LIFE;
+      const k = f.life / (f.span || FLASH_LIFE);
+      const size = f.size || 1;
       f.mesh.material.opacity = k;
-      f.mesh.scale.setScalar(0.12 + (1 - k) * 0.36);
+      f.mesh.scale.setScalar((0.12 + (1 - k) * 0.36) * size);
     }
 
     for (const m of this.muzzles.items) {

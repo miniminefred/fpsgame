@@ -439,8 +439,13 @@ export class Enemies {
   hit(mesh, damage) {
     const e = mesh.userData?.enemy;
     if (!e || !e.alive) return null;
+    return this._damage(e, damage * (mesh.userData.headshot ?? 1));
+  }
 
-    e.health -= damage * (mesh.userData.headshot ?? 1);
+  // Damage from any source, once it is known who took it and how much.
+  _damage(e, damage) {
+    if (!e.alive) return null;
+    e.health -= damage;
     e.hitFlash = HIT_FLASH;
     // Being shot at is a reliable way to get someone's attention.
     if (e.neutral) {
@@ -461,6 +466,29 @@ export class Enemies {
     e.torso.userData.enemy = null;
     e.head.userData.enemy = null;
     return 'kill';
+  }
+
+  /**
+   * An explosion. Everyone inside `radius` takes damage falling off to nothing
+   * at the rim, and the neutrals who live through it take the hint and run.
+   *
+   * Distance is straight-line and ignores walls, which is wrong and stays wrong:
+   * the blast that reaches through a partition is a smaller lie than the one
+   * that goes off at somebody's feet and leaves them standing because the tile
+   * they are on belongs to the next room.
+   */
+  splash(x, z, radius, damage, audio) {
+    let kills = 0;
+    for (const e of this.items) {
+      if (!e.alive) continue;
+      const dist = Math.hypot(e.x - x, e.z - z);
+      if (dist > radius) continue;
+
+      const outcome = this._damage(e, damage * (1 - dist / radius));
+      if (outcome === 'kill') { kills++; audio?.enemyDeath(e); }
+      else if (outcome === 'hit') audio?.enemyPain(e);
+    }
+    return kills;
   }
 
   update(dt, ctx) {

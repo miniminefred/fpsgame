@@ -513,9 +513,12 @@ function makeSink(layout, batcher, materials, masks) {
 
     // --- static props ------------------------------------------------------
 
-    beginStatic(hp, substance) {
+    beginStatic(hp, substance, volatile = false) {
       record = hp > 0
-        ? { hp, substance, boxes: [], colliders: [], navTiles: [], spans: batcher.beginSpans() }
+        ? {
+          hp, substance, volatile,
+          boxes: [], colliders: [], navTiles: [], spans: batcher.beginSpans(),
+        }
         : null;
     },
 
@@ -538,6 +541,8 @@ function makeSink(layout, batcher, materials, masks) {
         // into a pot plant do not make the same noise.
         substance: r.substance,
         hp: r.hp,
+        // A pressure vessel. Destroying it launches it instead of breaking it.
+        volatile: r.volatile,
         spans: r.spans,
         colliders: r.colliders,
         navTiles: r.navTiles,
