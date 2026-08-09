@@ -261,9 +261,33 @@ is flooded from the player and every enemy walks downhill on it. Anyone going so
 destination (`nav.floodTo`), because walking straight at a target means walking into the
 wall in front of it.
 
-Hearing is measured on that field, not as a straight line. A radius through walls made
-someone one metre away behind drywall — and a thirty metre walk from the nearest door —
-count as next to you, so firing anywhere turned the whole floor around at once.
+**Nobody sees or hears through the building.** The two senses are answered by two
+different structures, and both of them are the floorplan rather than a radius:
+
+- **Hearing** is measured on the distance field, not as a straight line. A radius through
+  walls made someone one metre away behind drywall — and a thirty metre walk from the
+  nearest door — count as next to you, so firing anywhere turned the whole floor around at
+  once. A badged door is out of the nav grid entirely, so it does not merely lengthen the
+  walk, it ends it: the path distance across a locked door comes back `-1`.
+- **Sight** is `nav.losClear`, and it samples `nav.sight` — a third grid alongside `walk`
+  and `fits`. It starts as the shell, because furniture is chest high and a doorway with no
+  door in it is a hole, and then **`doors.js` closes it while a panel is shut**, off the
+  same `CLEAR_AT` threshold that governs the collider. The two are the same fact and it
+  would be odd for them to disagree by a frame.
+
+That second one matters more than it sounds like it should, because **enemy fire is not a
+raycast against the building** — `_shoot` fires when `sees` is true. So before this, a
+doorway stayed transparent while a panel stood in it, and that was a doorway they shot you
+through. It is also what puts a locked room genuinely out of sight rather than only out of
+reach, since a badged door never opens at all.
+
+The gameplay consequence is deliberate and worth knowing: a floor is quiet until the first
+shot. Enemies in rooms cannot see the corridor through their own shut door, and a door only
+opens for whoever walks within `SENSE` of it — so contact happens at doorways rather than
+across thirty metres of open floorplan. Gunfire still wakes the floor through hearing, and
+they open the doors themselves on the way to you. `losClear` is shared with `lighting.js`
+(a fixture you cannot see cannot light you) and `soundPath`, and all three want the same
+answer, which is why a shut door now occludes light and sound as well.
 
 Each floor rolls a **theme** that tilts the type weights (Infestation, Automated,
 Lockdown…), so floors have their own character without any of them becoming one enemy
