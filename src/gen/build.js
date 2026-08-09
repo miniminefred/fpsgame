@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { getAssets } from '../textures.js';
 import { maskToRects } from './rects.js';
 import { Batcher, boxBetween, slab, applyWorldUVs } from './geom.js';
-import { furnish, tryPlace } from './props.js';
+import { tryPlace } from './props.js';
+import { furnish } from './rooms.js';
 import { modelInfo, stampModel } from './models.js';
 import {
   TILE, WALL_H, CEIL_H, DOOR_H,
