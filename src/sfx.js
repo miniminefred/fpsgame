@@ -280,6 +280,38 @@ export class Sfx {
     return handle;
   }
 
+  /**
+   * A loop that comes from somewhere in the room and can move — a machine
+   * rather than the building. Same decode-and-wait path as a bed, but panned
+   * from a point you keep updating, and on the effects bus rather than the
+   * ambience one: it is a thing in the world, and it should duck under gunfire
+   * the way everything else in the world does.
+   */
+  loopAt(name, { gain = 1, x = 0, y = 0, z = 0 } = {}) {
+    const handle = { name, gain, source: null, panner: null, positional: true, x, y, z };
+    this.loops.push(handle);
+    this._flushLoops();
+    return handle;
+  }
+
+  /** Where a positional loop is now. Safe before it has started. */
+  moveLoop(handle, x, y, z) {
+    if (!handle) return;
+    handle.x = x; handle.y = y; handle.z = z;
+    if (handle.panner) setPosition(handle.panner, x, y, z);
+  }
+
+  /** Silences a loop and forgets it. */
+  stopLoop(handle) {
+    if (!handle) return;
+    const i = this.loops.indexOf(handle);
+    if (i !== -1) this.loops.splice(i, 1);
+    if (handle.source) {
+      try { handle.source.stop(); } catch { /* already ended */ }
+      handle.source = null;
+    }
+  }
+
   /** Cross-fades the ambience bus. 0 silences it without stopping the loops. */
   setAmbience(level, seconds = 1.5) {
     if (!this.ambienceBus) return;
@@ -351,7 +383,20 @@ export class Sfx {
       const g = this.ctx.createGain();
       g.gain.value = (entry.gain ?? 1) * handle.gain;
 
-      src.connect(g).connect(this.ambienceBus);
+      if (handle.positional) {
+        const panner = this.ctx.createPanner();
+        panner.panningModel = 'equalpower';
+        panner.distanceModel = 'inverse';
+        panner.refDistance = REF_DISTANCE;
+        panner.maxDistance = MAX_DISTANCE;
+        panner.rolloffFactor = ROLLOFF;
+        setPosition(panner, handle.x, handle.y, handle.z);
+        handle.panner = panner;
+        src.connect(g).connect(panner).connect(this.sfxBus);
+      } else {
+        src.connect(g).connect(this.ambienceBus);
+      }
+
       // Beds start at a random offset so two floors in a row don't open on the
       // same swell of air conditioning.
       src.start(0, Math.random() * buffer.duration);

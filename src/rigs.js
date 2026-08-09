@@ -60,7 +60,9 @@ const BLUNT = {
  *   limbs      whatever this rig has to swing; a rat has none of the human ones
  */
 export function buildRig(type, rng) {
-  return type.rig === 'rat' ? buildRat(type, rng) : buildHuman(type, rng);
+  if (type.rig === 'rat') return buildRat(type, rng);
+  if (type.rig === 'roomba') return buildRoomba(type, rng);
+  return buildHuman(type, rng);
 }
 
 function buildHuman(type, rng) {
@@ -205,6 +207,69 @@ function buildRat(type, rng) {
     rig: 'rat', group, mats, ownGeo: [], torso, head,
     armL: null, armR: null, legL: null, legR: null, gun: null, blunt: null,
     bluntReach: 0, legs, tail,
+  };
+}
+
+/**
+ * The floor cleaner. The one round thing in a building made of boxes, which is
+ * exactly why it is round: it is a bought-in appliance, not part of the fit-out,
+ * and it reads as one from across a room.
+ *
+ * It has no idea there is a firefight on and never will. What it has is a
+ * bumper, a lit ring that says it is working, and a brush that turns.
+ */
+function buildRoomba(type, rng) {
+  const group = new THREE.Group();
+  group.rotation.y = rng.range(0, Math.PI * 2);
+  group.scale.setScalar(type.scale);
+
+  const mats = {
+    suit: new THREE.MeshStandardMaterial({ color: type.suit, roughness: 0.45, metalness: 0.3 }),
+    shirt: new THREE.MeshStandardMaterial({ color: type.shirt, roughness: 0.6 }),
+    skin: new THREE.MeshStandardMaterial({ color: 0x1b1d20, roughness: 0.8 }),
+    visor: new THREE.MeshBasicMaterial({ color: type.visor }),
+    gun: new THREE.MeshBasicMaterial({ color: 0x000000 }),
+  };
+
+  const ownGeo = [];
+  const R = 0.17;
+  const add = (geo, mat, x, y, z) => {
+    ownGeo.push(geo);
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.castShadow = true;
+    group.add(m);
+    return m;
+  };
+
+  // Body, then the rubber bumper standing a couple of millimetres proud of it.
+  const torso = add(new THREE.CylinderGeometry(R, R, 0.075, 20), mats.suit, 0, 0.045, 0);
+  add(new THREE.CylinderGeometry(R + 0.008, R + 0.008, 0.028, 20), mats.skin, 0, 0.026, 0);
+  // The lid, slightly inset, and the status ring on top of it. The ring is the
+  // head as far as the rest of the game is concerned: it is the part that
+  // stops a bullet, and it is the part that changes colour when it stops.
+  add(new THREE.CylinderGeometry(R * 0.88, R * 0.88, 0.012, 20), mats.shirt, 0, 0.088, 0);
+  const head = add(new THREE.CylinderGeometry(0.045, 0.045, 0.014, 12), mats.visor, 0, 0.095, -0.04);
+
+  // Underside: the side brush that sweeps the skirting, and two drive wheels.
+  const brush = new THREE.Group();
+  brush.position.set(R * 0.62, 0.014, -R * 0.5);
+  for (let i = 0; i < 3; i++) {
+    const geo = new THREE.BoxGeometry(0.075, 0.004, 0.008);
+    ownGeo.push(geo);
+    const arm = new THREE.Mesh(geo, mats.shirt);
+    arm.position.x = 0.037;
+    const pivot = new THREE.Group();
+    pivot.rotation.y = (i / 3) * Math.PI * 2;
+    pivot.add(arm);
+    brush.add(pivot);
+  }
+  group.add(brush);
+
+  return {
+    rig: 'roomba', group, mats, ownGeo, torso, head,
+    armL: null, armR: null, legL: null, legR: null, gun: null, blunt: null,
+    bluntReach: 0, brush,
   };
 }
 

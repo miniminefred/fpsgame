@@ -164,6 +164,16 @@ const TYPES = {
     voice: 'rat', screams: 'rat-idle',
     suit: 0x4c443d, shirt: 0xb2848a, visor: 0xd8626e, unlockFloor: 1, weight: 0,
   },
+  roomba: {
+    // The floor cleaner. Has a job, is doing it, and is the only thing on this
+    // floor with no opinion whatsoever about you — it will drive around your
+    // ankles in the middle of a firefight. One per floor, because two is a
+    // running joke and three is a fleet.
+    name: 'Floor Unit', hp: 0.4, speed: 0.42, damage: 0, rate: 99, spread: 1,
+    range: 0, melee: false, scale: 1, neutral: true, rig: 'roomba',
+    offMap: true, motor: 'roomba', screams: 'rat-idle',
+    suit: 0x2b2f36, shirt: 0x9aa3ab, visor: 0x63d6ff, unlockFloor: 1, weight: 0,
+  },
   sentry: {
     // Facilities' idea of a cost saving. Armoured and slow, accurate at range,
     // and it never gets bored — the darkest visor on the floor is the one that
@@ -187,13 +197,16 @@ const BYSTANDERS = [TYPES.cleaner, TYPES.courier];
 // theme's second job: the name tells you what is working this floor, and the
 // dark tells you before you have finished reading it. Infestation is the
 // darkest — whatever came up the stairwell went through the switchboard first.
+// `rats` is how many are in the walls tonight. One is an office with a rat in
+// it, which is a joke you notice once; six is an infestation, which is the name
+// on the door.
 const THEMES = [
-  { name: 'Business as usual', weight: 4, light: 1, boost: {} },
-  { name: 'Infestation', weight: 3, light: 0.34, boost: { reanimated: 7, intern: 2 } },
-  { name: 'Automated', weight: 3, light: 0.9, boost: { sentry: 7, sysadmin: 3 } },
-  { name: 'Lockdown', weight: 2, light: 0.75, boost: { security: 6, manager: 4 } },
-  { name: 'Night shift', weight: 2, light: 0.5, boost: { reanimated: 4, sentry: 4, facilities: 3 } },
-  { name: 'All-hands', weight: 2, light: 1, boost: { analyst: 6, intern: 5, manager: 3 } },
+  { name: 'Business as usual', weight: 4, light: 1, rats: [1, 1], boost: {} },
+  { name: 'Infestation', weight: 3, light: 0.34, rats: [4, 6], boost: { reanimated: 7, intern: 2 } },
+  { name: 'Automated', weight: 3, light: 0.9, rats: [0, 1], boost: { sentry: 7, sysadmin: 3 } },
+  { name: 'Lockdown', weight: 2, light: 0.75, rats: [1, 1], boost: { security: 6, manager: 4 } },
+  { name: 'Night shift', weight: 2, light: 0.5, rats: [2, 3], boost: { reanimated: 4, sentry: 4, facilities: 3 } },
+  { name: 'All-hands', weight: 2, light: 1, rats: [1, 1], boost: { analyst: 6, intern: 5, manager: 3 } },
 ];
 
 export class Enemies {
@@ -255,8 +268,14 @@ export class Enemies {
     // And the rats, which go anywhere rather than starting in a corridor: the
     // point of the staff is that you see them cross a hallway and have to
     // decide, and the point of a rat is that it is already in the room with you.
-    for (const spot of this._loose(layout, nav, rng, rng.int(3, 6))) {
+    const [ratMin, ratMax] = this.theme.rats ?? [1, 1];
+    for (const spot of this._loose(layout, nav, rng, rng.int(ratMin, ratMax))) {
       this._add(spot.x, spot.z, rng, tuning, TYPES.rat);
+    }
+
+    // And exactly one floor cleaner, which is the joke.
+    for (const spot of this._loose(layout, nav, rng, 1)) {
+      this._add(spot.x, spot.z, rng, tuning, TYPES.roomba);
     }
   }
 
@@ -329,6 +348,7 @@ export class Enemies {
       // rig rather than on the type, so a second four-legged thing costs a rig
       // and nothing else.
       rig: rig.rig, legs: rig.legs ?? null, tail: rig.tail ?? null,
+      brush: rig.brush ?? null, motor: null,
       type,
       // Flat, because the minimap reads it every frame alongside `alive` and has
       // no business knowing what a type is.
@@ -411,6 +431,9 @@ export class Enemies {
 
     e.alive = false;
     e.deathTime = DEATH_TIME;
+    // A dead machine stops making machine noise. Nothing else clears this, and
+    // the loop would otherwise run on out of a wreck for the rest of the floor.
+    if (e.motor) { this.audio?.stopMotor(e.motor); e.motor = null; }
     e.torso.userData.enemy = null;
     e.head.userData.enemy = null;
     return 'kill';
@@ -442,6 +465,9 @@ export class Enemies {
   update(dt, ctx) {
     this.time += dt;
     const { player, effects, audio, hud } = ctx;
+    // Held so the paths that are not the update loop can reach it — a machine
+    // shot dead has to stop running, and the bullet arrives from shooting.js.
+    this.audio = audio;
     const px = player.object.position.x;
     const pz = player.object.position.z;
     const py = player.object.position.y;
@@ -807,6 +833,7 @@ export class Enemies {
 
   _animate(e, dt, audio) {
     if (e.rig === 'rat') return this._animateRat(e, dt, audio);
+    if (e.rig === 'roomba') return this._animateRoomba(e, dt, audio);
 
     const moving = e.state === 'chase' || e.state === 'fight' || e.state === 'wander';
     e.walkPhase += dt * (moving ? 9 : 1.4);
@@ -907,6 +934,28 @@ export class Enemies {
     }
   }
 
+  /**
+   * The floor cleaner: a brush that turns, a status light, and a motor you can
+   * hear from the next room. There is no gait to animate — it slides, because
+   * that is what it does.
+   *
+   * The motor is a positional loop rather than a repeated clip: this thing runs
+   * continuously for as long as the floor lasts, and a one-shot retriggered
+   * forever would chop on every seam.
+   */
+  _animateRoomba(e, dt, audio) {
+    if (e.brush) e.brush.rotation.y += dt * 9;
+
+    if (!e.motor) e.motor = audio.startMotor(e);
+    else audio.moveMotor(e.motor, e.x, 0.1, e.z);
+
+    if (e.hitFlash > 0) {
+      e.hitFlash -= dt;
+      const k = Math.max(0, e.hitFlash / HIT_FLASH);
+      e.mats.suit.emissive.setScalar(k * 0.9);
+    }
+  }
+
   // Topple forward, then sink through the floor and disappear.
   _die(e, dt) {
     if (e.deathTime <= 0) return;
@@ -928,6 +977,10 @@ export class Enemies {
   // to be released here or a long run bleeds GPU memory one floor at a time.
   clear() {
     for (const e of this.items) {
+      // A running motor outlives its floor otherwise: the loop is held by the
+      // audio engine, not by the scene graph, so removing the mesh leaves it
+      // droning over the next floor from wherever this one used to be.
+      if (e.motor) { this.audio?.stopMotor(e.motor); e.motor = null; }
       this.scene.remove(e.group);
       for (const m of Object.values(e.mats)) m.dispose();
       for (const g of e.ownGeo) g.dispose();

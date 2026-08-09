@@ -1017,6 +1017,12 @@
       "variants": 3
     },
     {
+      "name": "roomba",
+      "text": "robot vacuum cleaner running on a hard office floor, steady motor whine and suction hum, close mic, dry, no music, no voices",
+      "duration": 8.0,
+      "loop": true
+    },
+    {
       "name": "settle-electronic",
       "text": "electronic parts and circuit boards clattering to rest, small rattles, close mic, dry, no music",
       "duration": 1.8,

@@ -150,6 +150,11 @@ const LIBRARY = {
   'low-health':  { variants: 2, gain: 0.45, pitch: 0.02 },
   heal:          { gain: 0.45, pitch: 0.02 },
 
+  // The floor cleaner's motor. A bed as far as decoding goes — measured but not
+  // level-corrected or onset-trimmed, because both would break the seam it
+  // loops on — but played through a panner that follows it around the floor.
+  roomba: { gain: 0.55, pitch: 0, bed: true },
+
   'amb-office': { gain: 0.30, pitch: 0, bed: true },
   'amb-drone':  { gain: 0.22, pitch: 0, bed: true },
 };
@@ -382,6 +387,25 @@ export class GameAudio {
     const at = this._near(enemy, PANIC_AUDIBLE);
     if (at) this._placed(clip, at, { rate: Math.pow(enemy.type.scale, VOICE_EXPONENT) });
   }
+
+  /**
+   * A machine that runs continuously and moves while it does — the floor
+   * cleaner, and anything else that ever needs a motor. Returns a handle to
+   * hand back to moveMotor and stopMotor.
+   *
+   * Unlike everything else in this file this does not go through _placed: a loop
+   * has no onset to route round a doorway, and re-routing it every frame as the
+   * player walks would swing the source across the room. A straight panner is
+   * the honest treatment of a noise that is simply always on.
+   */
+  startMotor(enemy) {
+    const clip = enemy.type.motor;
+    if (!clip || !this.sfx.ready) return null;
+    return this.sfx.loopAt(clip, { gain: 0.7, x: enemy.x, y: 0.1, z: enemy.z });
+  }
+
+  moveMotor(handle, x, y, z) { this.sfx.moveLoop(handle, x, y, z); }
+  stopMotor(handle) { this.sfx.stopLoop(handle); }
 
   enemyStep(enemy) {
     const at = this._near(enemy, AUDIBLE_STEP);
