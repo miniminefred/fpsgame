@@ -125,7 +125,10 @@ export class Game {
     // Offset a little in case they were also carrying something, so two cards
     // never float inside each other.
     this.keycards.drop('black', at.x + (e.card ? 0.55 : 0), 0, at.z);
-    this.hud.message('THE LAST ONE WAS CARRYING A BLACK KEYCARD', 2400);
+    // Not announced here. This fires on the same frame as the floor going
+    // clear, and _checkFloorState's toast would land on top of it a few lines
+    // later — so the two are said as one thing, which they are.
+    this.droppedBlack = true;
   }
 
   _onDoorUnlocked(door, tier) {
@@ -195,6 +198,7 @@ export class Game {
     this.minimap.setLevel(level.map);
 
     this.cleared = false;
+    this.droppedBlack = false;
     this.descendLock = 1.2;     // grace period so you can't fall straight through
     this.hud.setFloor(this.floor);
     this.hud.message(`FLOOR ${this.floor} — ${this.enemies.theme?.name ?? ''}`.trim(), 2200);
@@ -295,7 +299,9 @@ export class Game {
     if (!this.cleared && remaining === 0) {
       this.cleared = true;
       this.floorsCleared++;
-      this.hud.message('FLOOR CLEAR — FIND THE EXIT', 2200);
+      this.hud.message(this.droppedBlack
+        ? 'FLOOR CLEAR — THE LAST ONE HAD A BLACK KEYCARD'
+        : 'FLOOR CLEAR — FIND THE EXIT', 2600);
       this.audio.floorClear();
     }
     this._syncObjective(remaining);
