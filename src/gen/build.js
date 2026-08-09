@@ -64,7 +64,7 @@ export function buildLevel(scene, layout) {
   const reserved = new Uint8Array(W * H);  // doorways, spawn, exit — keep clear
   const dynamics = [];                     // loose props handed to the physics world
   const destructibles = [];                // everything static that can be shot apart
-  const doors = [];                        // sliding panels, see doors.js
+  const doors = [];                        // panels and leaves, see doors.js
 
   reserveClearances(layout, reserved);
 
@@ -75,6 +75,7 @@ export function buildLevel(scene, layout) {
   // Doors are their own meshes rather than batched geometry, for the obvious
   // reason: a batched thing cannot move.
   buildSlidingDoors(layout, scene, materials, doors, colliders, objects, rng);
+  buildHallDoors(layout, scene, materials, doors, colliders);
 
   const sink = makeSink(layout, batcher, materials,
     { blocked, occupied, reserved, colliders, dynamics, destructibles });
@@ -91,7 +92,7 @@ export function buildLevel(scene, layout) {
     meshes.push(...dyn.group.children);
   }
 
-  for (const door of doors) objects.push(door.mesh);
+  for (const door of doors) objects.push(door.root);
 
   const exitObject = buildExit(scene, layout, fixtures);
   objects.push(exitObject);
@@ -460,6 +461,9 @@ function buildSlidingDoors(layout, scene, materials, doors, colliders, objects, 
   const readers = new BadgeReaders(scene, objects, layout.doors.length);
 
   for (const d of layout.doors) {
+    // The ones across the corridors are hinged, not hung on a runner, and they
+    // are fitted below.
+    if (d.hall) continue;
     // Not every doorway has a door in it. Some were taken off their runners
     // years ago and nobody replaced them — but never the badged ones, and the
     // generator has already checked that every one of those can hold a panel.
@@ -509,7 +513,7 @@ function buildSlidingDoors(layout, scene, materials, doors, colliders, objects, 
     }
 
     doors.push({
-      mesh, collider,
+      mesh, root: mesh, collider,
       x: cx, z: cz,
       at: new THREE.Vector3(cx, 1.2, cz),
       baseX: cx, baseZ: cz,
@@ -527,6 +531,88 @@ function buildSlidingDoors(layout, scene, materials, doors, colliders, objects, 
   }
 
   readers.finish();
+}
+
+/**
+ * The doors across the corridors: two leaves on hinges, no runner.
+ *
+ * Why they swing at all is layout.js's story (see cutHallDoors) — there is no
+ * wall beside a corridor to pocket a panel into. What that buys here is that a
+ * leaf needs nothing built for it: it turns about its own hinge into corridor
+ * air the generator has already proved is clear.
+ *
+ * Both leaves are ONE door as far as doors.js is concerned. They share a sensor
+ * because they are one doorway, they share a sound because two identical door
+ * noises a millisecond apart is a flam rather than a pair of doors, and they
+ * share a collider because two leaves shut is exactly the opening.
+ */
+function buildHallDoors(layout, scene, materials, doors, colliders) {
+  const geo = new THREE.BoxGeometry(1, 1, 1);
+
+  for (const d of layout.doors) {
+    if (!d.hall) continue;
+
+    const x0 = worldX(layout, d.x0), x1 = worldX(layout, d.x1);
+    const z0 = worldZ(layout, d.y0), z1 = worldZ(layout, d.y1);
+    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+    const half = (d.vertical ? z1 - z0 : x1 - x0) / 2;
+
+    const root = new THREE.Group();
+    const leaves = [];
+
+    // One leaf hinged at each end of the opening, each an arm reaching back to
+    // the middle. `end` is which end it hangs from, and it is also the sign of
+    // the arm — so it is the whole of the difference between the two.
+    for (const end of [-1, 1]) {
+      const pivot = new THREE.Group();
+      pivot.position.set(
+        d.vertical ? cx : (end < 0 ? x0 : x1),
+        0,
+        d.vertical ? (end < 0 ? z0 : z1) : cz);
+
+      const mesh = new THREE.Mesh(geo, materials.doorPanel);
+      mesh.scale.set(d.vertical ? DOOR_T : half, DOOR_PANEL_H, d.vertical ? half : DOOR_T);
+      mesh.position.set(
+        d.vertical ? 0 : -end * half / 2,
+        DOOR_PANEL_H / 2,
+        d.vertical ? -end * half / 2 : 0);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      pivot.add(mesh);
+      root.add(pivot);
+
+      // A quarter turn, and which quarter is the one that lays the arm down the
+      // way the generator said the wall is. The two leaves turn opposite ways
+      // for the same reason two doors on one frame do: their arms point at each
+      // other to start with.
+      leaves.push({ pivot, angleTo: (d.vertical ? -1 : 1) * end * d.swing * Math.PI / 2 });
+    }
+    scene.add(root);
+
+    // Shut, the pair fills the opening exactly, so the two of them need one box
+    // between them.
+    const collider = {
+      minX: d.vertical ? cx - DOOR_T / 2 : x0,
+      maxX: d.vertical ? cx + DOOR_T / 2 : x1,
+      minZ: d.vertical ? z0 : cz - DOOR_T / 2,
+      maxZ: d.vertical ? z1 : cz + DOOR_T / 2,
+      top: DOOR_PANEL_H,
+      door: true,
+    };
+    colliders.push(collider);
+
+    doors.push({
+      root, leaves, collider,
+      x: cx, z: cz,
+      at: new THREE.Vector3(cx, 1.2, cz),
+      height: DOOR_PANEL_H,
+      // Never badged, and nav never hears about them: an opening that opens for
+      // anybody who walks up to it is an opening.
+      lock: null,
+      navTiles: [],
+      reader: null,
+    });
+  }
 }
 
 // --- badge readers ----------------------------------------------------------

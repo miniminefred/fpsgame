@@ -29,6 +29,13 @@ const DOOR_W = 3;                  // 1.5 m doorways
 // floating in the middle of it.
 const DOOR_GAP = 2;
 
+// Doors across the corridors themselves — see cutHallDoors. A range per corridor
+// rather than a count per floor, because what they are for is breaking up the
+// long ones; the short spurs can go without.
+const HALL_DOORS = [0, 2];
+const HALL_END = 10;               // tiles clear of where a corridor stops
+const HALL_APART = 26;             // tiles between two doors on the same corridor
+
 export const SOLID = 0;
 export const ROOM = 1;
 export const CORRIDOR = 2;
@@ -135,6 +142,14 @@ export function generateLayout(seed, floorNumber) {
 
   // --- 4. connectivity ------------------------------------------------------
   connectAll(tiles, W, H, rooms, doors, vBands[0], hBands[0], rng);
+
+  // --- 4b. doors across the corridors ---------------------------------------
+  // After connectivity, not before: these are cut against the finished floor, so
+  // they can see every room doorway that was going to be cut and keep clear of
+  // it. They can never affect connectivity themselves — a doorway is open floor
+  // and none of them is ever locked.
+  cutHallDoors(tiles, W, H, doors, vBands, true, rng);
+  cutHallDoors(tiles, W, H, doors, hBands, false, rng);
 
   // --- 5. roles, spawn and exit --------------------------------------------
   const live = rooms.filter((r) => r.doors.length > 0);
@@ -390,6 +405,87 @@ function cutDoor(run, rng, tiles, W, doors, room) {
 
   doors.push(door);
   room.doors.push(door);
+}
+
+/**
+ * The doors across the corridors — the ones you walk through rather than into.
+ *
+ * A floor without them is one continuous open hallway network, which is the one
+ * place in the building that reads as a level rather than as an office: real
+ * corridors are broken up by fire doors every so often, and having to push
+ * through one is what makes a corridor feel like it has a far end.
+ *
+ * They are the odd ones out in two ways, and both fall out of there being no
+ * wall across a corridor to cut a hole in:
+ *
+ *  - They span the corridor's ENTIRE width, so the opening is a 3 m one rather
+ *    than the 1.5 m every room doorway gets. `hall` says so, since the width
+ *    invariant is different for them.
+ *  - They cannot slide. A retracted panel goes inside the wall beside its
+ *    opening (see slidePocketSide) and beside a corridor there is one tile of
+ *    wall with somebody's office behind it. So these are two hinged leaves that
+ *    swing back flat against the corridor walls, which is what the doors they
+ *    are modelled on do anyway.
+ *
+ * That second point is the whole of the placement rule. A leaf needs the wall it
+ * swings back against to actually be there for its own length, which is what
+ * `swing` picks a direction for and what the flank sweep below proves. It also
+ * does three other jobs for free: it puts the door somewhere the frame has a
+ * jamb at both ends, it keeps a leaf from swinging across a room's doorway and
+ * sealing it, and it refuses junctions outright, because at a crossing the
+ * flanking wall is the other corridor.
+ *
+ * None of them is ever locked. They are not on any room, so assignLocks never
+ * sees them; a badged door across the one route everybody takes would be a floor
+ * locked in half.
+ */
+function cutHallDoors(tiles, W, H, doors, bands, alongY, rng) {
+  const at = (x, y) => (x >= 0 && y >= 0 && x < W && y < H ? tiles[y * W + x] : SOLID);
+  // `p` walks along the corridor; `k` walks across it. A vertical corridor runs
+  // along y, so its cross-section is a row and its flanks are columns — and the
+  // other way round for a horizontal one. That is the only difference between
+  // the two axes, so it is the only thing this pair of helpers hides.
+  const cross = (b, p, k) => (alongY ? at(b.lo + k, p) : at(p, b.lo + k));
+  const flank = (b, p, side) =>
+    (alongY ? at(side < 0 ? b.lo - 1 : b.hi, p) : at(p, side < 0 ? b.lo - 1 : b.hi));
+
+  for (const b of bands) {
+    const width = b.hi - b.lo;
+    const leaf = Math.ceil(width / 2);
+    // Too short to hold one anywhere that is not its own mouth.
+    if (b.to - b.from < HALL_END * 2 + 2) continue;
+
+    const placed = [];
+    for (let n = rng.int(HALL_DOORS[0], HALL_DOORS[1]); n > 0; n--) {
+      for (let tries = 0; tries < 40; tries++) {
+        const p = rng.int(b.from + HALL_END, b.to - HALL_END - 1);
+        if (placed.some((q) => Math.abs(q - p) < HALL_APART)) continue;
+
+        // Clear across, and clear on both flanks for a leaf's length the way the
+        // leaves fold. One tile the other way as well, so the frame never lands
+        // flush against a doorway cut in the corridor wall opposite.
+        const swing = rng.chance(0.5) ? 1 : -1;
+        let ok = true;
+        for (let k = 0; k < width && ok; k++) if (cross(b, p, k) !== CORRIDOR) ok = false;
+        const lo = swing > 0 ? p - 1 : p - leaf;
+        const hi = swing > 0 ? p + leaf : p + 1;
+        for (let q = lo; q <= hi && ok; q++) {
+          if (flank(b, q, -1) !== SOLID || flank(b, q, 1) !== SOLID) ok = false;
+        }
+        if (!ok) continue;
+
+        for (let k = 0; k < width; k++) {
+          if (alongY) tiles[p * W + (b.lo + k)] = DOOR;
+          else tiles[(b.lo + k) * W + p] = DOOR;
+        }
+        doors.push(alongY
+          ? { x0: b.lo, x1: b.hi, y0: p, y1: p + 1, vertical: false, hall: true, swing }
+          : { x0: p, x1: p + 1, y0: b.lo, y1: b.hi, vertical: true, hall: true, swing });
+        placed.push(p);
+        break;
+      }
+    }
+  }
 }
 
 // Flood the floor from the corridor network; any room left stranded gets an

@@ -1,11 +1,13 @@
-// Sliding doors.
+// Doors.
 //
 // The floorplan has always had doorways; these are the ones that got a door
-// fitted. Each is a single panel that lives in the opening and retracts into the
-// wall beside it, driven by nothing but proximity — walk up and it opens, walk
-// away and it shuts. That is deliberately the whole interface: there is no use
-// key in this game and adding one for a door would be the only thing in it you
-// have to press a button at.
+// fitted. A doorway in a wall gets a single panel that lives in the opening and
+// retracts into the wall beside it. A doorway across a corridor gets two leaves
+// on hinges, because there is no wall beside a corridor to retract into — see
+// cutHallDoors in gen/layout.js. Either way they are driven by nothing but
+// proximity — walk up and it opens, walk away and it shuts. That is deliberately
+// the whole interface: there is no use key in this game and adding one for a
+// door would be the only thing in it you have to press a button at.
 //
 // NPCs open them by the same rule, because the rule is the door's, not the
 // player's — anybody who gets close enough is somebody the sensor sees. Which
@@ -64,7 +66,8 @@ export class Doors {
 
   /**
    * Adopts this floor's doors. Each entry is what gen/build.js worked out: the
-   * panel mesh, the collider it owns, and the vector along which it retracts.
+   * panel or the pair of leaves, the collider it owns, and how it gets out of
+   * the way.
    */
   setDoors(list) {
     this.items = list ?? [];
@@ -164,16 +167,25 @@ export class Doors {
     }
   }
 
-  // Panel position, and the collider that follows it. The collider is retired
+  // Where the door is, and the collider that follows it. The collider is retired
   // the moment the door is more than half open, which is the point at which you
   // can walk through the gap — a door that only stops blocking at fully open
   // catches you on the way through every time.
+  //
+  // Two kinds of door and one number driving both: `open` is 0 shut, 1 open, and
+  // what that means is the panel's business. A doorway in a wall slides its
+  // panel into the wall; a doorway across a corridor has no wall to slide into
+  // and swings a pair of leaves back instead (see gen/build.js).
   _place(door) {
-    const slide = door.travel * door.open;
-    door.mesh.position.set(
-      door.baseX + door.dirX * slide,
-      door.mesh.position.y,
-      door.baseZ + door.dirZ * slide);
+    if (door.leaves) {
+      for (const leaf of door.leaves) leaf.pivot.rotation.y = leaf.angleTo * door.open;
+    } else {
+      const slide = door.travel * door.open;
+      door.mesh.position.set(
+        door.baseX + door.dirX * slide,
+        door.mesh.position.y,
+        door.baseZ + door.dirZ * slide);
+    }
 
     door.collider.top = door.open < CLEAR_AT ? door.height : -1;
   }

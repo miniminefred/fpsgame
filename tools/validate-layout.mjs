@@ -66,7 +66,9 @@ const IDS = [
   ['5.room-corridor', 'WARN', 'ROOM          every room has a door onto a corridor'],
   ['5.room-depth', 'WARN', `ROOM          no room more than ${MAX_ROOM_DEPTH} rooms deep from a corridor`],
   ['6.door-thickness', 'FAIL', 'DOOR          opening is exactly 1 tile thick'],
-  ['6.door-width', 'FAIL', 'DOOR          opening is exactly 3 tiles wide'],
+  ['6.door-width', 'FAIL', 'DOOR          room doorway is exactly 3 tiles wide'],
+  ['6.hall-width', 'FAIL', 'DOOR          hall door spans its corridor, wall to wall'],
+  ['6.hall-swing', 'FAIL', 'DOOR          hall door has wall to fold both leaves back onto'],
   ['6.door-tiles', 'FAIL', 'DOOR          all door tiles have value DOOR(3)'],
   ['6.door-bothsides', 'FAIL', 'DOOR          open floor on BOTH sides of the opening'],
   ['6.door-dead', 'FAIL', 'DOOR          doors[] holds no doors sealed on both sides'],
@@ -159,7 +161,7 @@ const stats = {
   corridorShare: [], walkableShare: [], doorCounts: [], doorsPerRoom: [],
   exitDist: [], roles: new Map(), roleBranch: { openplan85: 0, mid40: 0, longThin: 0, small: 0 },
   depth: new Map(), vCorr: new Map(), hCorr: new Map(),
-  abutPairs: 0, deadDoors: 0, alcoveDoors: 0, totalDoors: 0,
+  abutPairs: 0, deadDoors: 0, alcoveDoors: 0, totalDoors: 0, hallDoors: 0,
   orphanTiles: [], noCorridorRooms: 0, totalRooms: 0,
   lockTiers: new Map(), lockCounts: [],
 };
@@ -296,11 +298,34 @@ function validate(seed, floorNumber) {
 
   // ---- 6. doors -----------------------------------------------------------
   let thick = 0, wrongW = 0, notDoor = 0, oneSided = 0, cornered = 0, unreach = 0, dead = 0;
+  let hallW = 0, hallSwing = 0;
   for (const d of doors) {
     const w = d.x1 - d.x0, h = d.y1 - d.y0;
     stats.totalDoors++;
     if (d.vertical ? w !== 1 : h !== 1) thick++;
-    if ((d.vertical ? h : w) !== 3) wrongW++;
+
+    if (d.hall) {
+      // A door across a corridor is a different shape of thing and has its own
+      // two invariants: it fills the corridor wall to wall, and the wall each
+      // leaf folds back onto is really there for the length of that leaf.
+      // Getting the second wrong is a leaf swinging through the plaster, or
+      // across a room's doorway and sealing it — see cutHallDoors.
+      stats.hallDoors++;
+      const span = d.vertical ? h : w;
+      const capA = d.vertical ? T(d.x0, d.y0 - 1) : T(d.x0 - 1, d.y0);
+      const capB = d.vertical ? T(d.x0, d.y1) : T(d.x1, d.y0);
+      if (span < 4 || isOpen(capA) || isOpen(capB)) hallW++;
+
+      const leaf = Math.ceil(span / 2);
+      for (let i = -1; i <= leaf; i++) {
+        const q = i <= 0 ? i : i * d.swing;
+        // The flanks run along the corridor, so a door 1 tile thick in X is
+        // flanked in Y and swings in X — and the other way round.
+        const a = d.vertical ? T(d.x0 + q, d.y0 - 1) : T(d.x0 - 1, d.y0 + q);
+        const b = d.vertical ? T(d.x0 + q, d.y1) : T(d.x1, d.y0 + q);
+        if (isOpen(a) || isOpen(b)) { hallSwing++; break; }
+      }
+    } else if ((d.vertical ? h : w) !== 3) wrongW++;
 
     let sideA = 0, sideB = 0, tilesOk = true, anyReach = false;
     for (let y = d.y0; y < d.y1; y++) {
@@ -350,6 +375,8 @@ function validate(seed, floorNumber) {
   if (unreach) check('6.door-reachable').fail(id, `${unreach} doors entirely unreachable from spawn`);
   if (cornered) check('6.door-corner').fail(id, `${cornered} doors with open floor at both ends (no frame)`);
   if (abut) check('6.door-abut').fail(id, `${abut} pairs of doors merged into one opening`);
+  if (hallW) check('6.hall-width').fail(id, `${hallW} hall doors not spanning their corridor`);
+  if (hallSwing) check('6.hall-swing').fail(id, `${hallSwing} hall doors with a leaf swinging into open floor`);
 
   // ---- 8. keycard locks ---------------------------------------------------
   //
@@ -587,7 +614,7 @@ if (stats.exitDist.length) {
 }
 console.log(`corridor spine      vertical count ${hist(stats.vCorr)}   horizontal count ${hist(stats.hCorr)}`);
 console.log(`room depth from corridor  ${hist(stats.depth)}   (${stats.noCorridorRooms}/${stats.totalRooms} = ${fmt(100 * stats.noCorridorRooms / stats.totalRooms)}% have no corridor door)`);
-console.log(`door pathologies    ${stats.abutPairs} merged/abutting pairs, ${stats.deadDoors} sealed both sides, ${stats.alcoveDoors} open on one side only (of ${stats.totalDoors})`);
+console.log(`door pathologies    ${stats.abutPairs} merged/abutting pairs, ${stats.deadDoors} sealed both sides, ${stats.alcoveDoors} open on one side only (of ${stats.totalDoors}, ${stats.hallDoors} across a hall)`);
 if (stats.orphanTiles.length) {
   console.log(`orphan open tiles   ${stats.orphanTiles.length} floors, ${stats.orphanTiles.reduce((a, b) => a + b, 0)} tiles, worst floor ${hi(stats.orphanTiles)}`);
 }
