@@ -24,12 +24,17 @@ const GEO = {
   arm: new THREE.BoxGeometry(0.14, 0.54, 0.14),
   leg: new THREE.BoxGeometry(0.17, 0.86, 0.19),
   gun: new THREE.BoxGeometry(0.1, 0.14, 0.42),
-  // A soft cap: a crown and a peak over the eyes. Only the janitor wears one so
-  // far, and it is doing the same job as a visor colour — it is what you
+  // A soft cap: a crown and a peak over the eyes. The janitor and the guards
+  // wear one, and it is doing the same job as a visor colour — it is what you
   // recognise from the far end of a corridor, before the mop is close enough to
   // matter.
   cap: new THREE.BoxGeometry(0.28, 0.09, 0.28),
   capPeak: new THREE.BoxGeometry(0.24, 0.03, 0.11),
+  // The word across the front of it, on its own slab a couple of millimetres
+  // proud of the crown. A word is the last thing you read of somebody — the
+  // uniform has already told you what they are from down the corridor — so it
+  // only has to hold up at the range where you can see their face.
+  capBadge: new THREE.BoxGeometry(0.235, 0.05, 0.012),
 
   // Vermin. A rat is about as long as a keyboard, which is small enough that
   // every part of it has to earn its polygons: a body, a head, a snout to say
@@ -60,6 +65,11 @@ const BLUNT = {
     shaft: [0.045, 0.045, 0.86], head: [0.2, 0.14, 0.22], headMat: 'mophead',
     reach: 0.88, rest: -1.15,
   },
+  // The one melee weapon on the floor that is actually a weapon rather than
+  // something snatched off a desk, and it looks like it: a black shaft with a
+  // steel tip and no bulk at the end. Half the mop's reach, so a guard who has
+  // drawn one has to come all the way in to use it.
+  baton: { shaft: [0.032, 0.032, 0.46], head: [0.04, 0.04, 0.07], headMat: 'metal', reach: 0.5 },
   keyboard: { shaft: null, head: [0.42, 0.03, 0.15], headMat: 'plastic', reach: 0.30 },
   extinguisher: { shaft: [0.07, 0.07, 0.10], head: [0.15, 0.15, 0.40], headMat: 'accent', reach: 0.34 },
   chairLeg: { shaft: [0.05, 0.05, 0.44], head: [0.13, 0.13, 0.13], headMat: 'metal', reach: 0.46 },
@@ -67,6 +77,44 @@ const BLUNT = {
   monitor: { shaft: [0.05, 0.05, 0.16], head: [0.44, 0.30, 0.05], headMat: 'screen', reach: 0.30 },
   mug: { shaft: null, head: [0.11, 0.12, 0.11], headMat: 'paper', reach: 0.18 },
 };
+
+/**
+ * The lettering on a cap, drawn once per word and shared by everybody wearing
+ * it — there is one guard uniform on the floor, not forty copies of one.
+ *
+ * Shared like GEO above, and like GEO it is never disposed: a per-instance
+ * material is released with the body that wore it, and three does not take a
+ * material's map down with it, so the canvas survives the floor it was made on.
+ */
+const capLabels = new Map();
+
+function capLabel(text, ink, cloth) {
+  const key = `${text}|${ink}|${cloth}`;
+  let tex = capLabels.get(key);
+  if (tex) return tex;
+
+  // 4:1, which is the badge's own aspect — anything else letterspaces the word
+  // differently on a cap than it looks in the canvas.
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 64;
+  const g = canvas.getContext('2d');
+  g.fillStyle = `#${cloth.toString(16).padStart(6, '0')}`;
+  g.fillRect(0, 0, 256, 64);
+  g.fillStyle = `#${ink.toString(16).padStart(6, '0')}`;
+  g.font = 'bold 44px system-ui, sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  // Stretched to fill the slab rather than centred in it: the word is the whole
+  // point of the badge, so it gets the whole badge.
+  g.fillText(text, 128, 34, 236);
+
+  tex = new THREE.CanvasTexture(canvas);
+  tex.anisotropy = 4;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  capLabels.set(key, tex);
+  return tex;
+}
 
 /**
  * Builds the body for a type. Returns everything the AI animates and everything
@@ -128,6 +176,15 @@ function buildHuman(type, rng) {
   if (type.cap) {
     mats.cap = new THREE.MeshStandardMaterial({ color: type.cap, roughness: 0.9 });
   }
+  // A cap that says what the man under it does. Standard rather than emissive,
+  // so the word goes dark with the rest of him when the lights are off and
+  // whitens with the rest of him when he is shot.
+  if (type.capText) {
+    mats.capBadge = new THREE.MeshStandardMaterial({
+      map: capLabel(type.capText, type.capInk ?? 0xf2f4f7, type.cap),
+      roughness: 0.85,
+    });
+  }
 
   // Only melee staff need the junk-weapon palette, and only they pay for it.
   if (type.melee) {
@@ -166,6 +223,9 @@ function buildHuman(type, rng) {
   if (mats.cap) {
     cap.push(mesh(GEO.cap, mats.cap, 0, 1.79, 0));
     cap.push(mesh(GEO.capPeak, mats.cap, 0, 1.76, -0.18));
+    // Above the peak, not level with it: the peak stands 4 cm further forward
+    // than the crown, so a badge any lower is inside it.
+    if (mats.capBadge) cap.push(mesh(GEO.capBadge, mats.capBadge, 0, 1.80, -0.146));
   }
 
   // Melee staff drop the gun and swing whatever was on their desk instead.
