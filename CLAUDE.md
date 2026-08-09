@@ -110,7 +110,7 @@ src/
   casings.js      Spent brass: ejects, bounces, times out
   keycards.js     Card catalogue, the wallet, and the cards on the carpet
   doors.js        Sliding panels, proximity sensors, and the badged ones
-  hud.js          Health, ammo, floor, objective, keycards, toasts, death screen
+  hud.js          Health, ammo, floor, objective, keycards, hit direction, toasts, death
   minimap.js      Per-floor floorplan raster + live player/enemy markers
   textures.js     Procedural canvas textures and the shared material cache
   style.css       All UI styling
@@ -227,6 +227,23 @@ freeing all of them is a floor with no readers on it.
 
 `layout.prologue` is that region, handed to `_cardOutside` so the guaranteed first contact
 is somebody the player can actually walk to.
+
+**`FIRST_CONTACT_GAP` is exported from `layout.js` and imported by `enemies.js`, and that
+is not tidiness.** The guarantee and its consumer must measure the same thing, and the
+first version did not: the generator promised corridor at 14 *tiles walked* while
+`_cardOutside` required corridor at 11 *metres straight-line* (22 tiles), so the promise
+was in the wrong unit **and weaker than the thing it was protecting**. About one floor in
+forty had nobody reachable and could not be started — which is what a player found, not
+the sweep, because the sweep was asserting the generator's own wrong number back at it.
+Both ends now measure metres from `layout.spawn`, tile-centre to spawn point; even the
+half-tile between `round()` and `floor()` on the spawn tile moved the count by nine.
+
+Two defences, because a guarantee that can be wrong should not be the only thing standing
+between the player and a dead run: `_prologueSpots` reads every corridor tile rather than
+the 1-in-10 sample in `this.corridors` (ten qualifying tiles can sample down to one, and
+then a filing cabinet takes it), and the gap is a *preference* — if nothing is beyond it,
+`_cardOutside` places the first contact nearer rather than placing nobody. A body on the
+doormat is a worse floor; a body nowhere is not a floor.
 
 This caught a **pre-existing** bug the day it was written, and not a subtle one: on about
 one floor in seven the lobby's only doorway was shared with a neighbouring room, that room's
@@ -540,6 +557,19 @@ Readers are two `InstancedMesh`es per floor (plate + lamp) rather than a mesh ea
 which is what makes two hundred of them affordable and makes turning one green a
 colour write. Minimap tints staff-only rooms only — tinting white would tint the
 whole map.
+
+### Hit direction (`hud.js` + `#hitdirs`)
+Taking damage puts a red chevron on a ring around the crosshair pointing at whoever landed
+it. The wedge stores the attacker's **world** bearing, fixed at the moment of the hit, and
+is re-aimed every frame against the player's facing — so turning toward the shot swings its
+wedge up to the top of the screen, which is the entire job. A screen-space angle frozen at
+hit time would rotate with you and point at nothing.
+
+`hud.damage(intensity, sx, sz)` — leave the source off and only the red rim fires, which is
+what damage with no direction (standing inside a blast) does. The pool is six wedges in the
+markup and the HUD never creates DOM; two hits within `HITDIR_MERGE` of each other refresh
+one wedge instead of stacking, because an SMG burst is one attacker and should look like
+one. `game.js` feeds position and yaw in every frame via `setFacing`.
 
 ### Sound (`sfx.js` + `audio.js` + `public/sounds/`)
 Everything audible is a generated MP3 (see the `sound-generation` skill; `sounds.json`
