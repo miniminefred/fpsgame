@@ -211,8 +211,16 @@ not in the state machine at all: no alert, no chase, no weapon, and seeing or he
 changes nothing. They do **not** count toward clearing the floor (`hostileCount`, not
 `aliveCount`), so you can walk past every one and take the exit. Shoot one and it flees for
 a few seconds — the same wander loop, quicker, with destinations filtered to somewhere
-further from you — then goes back to its day. They wear a pink visor and show yellow on the
-minimap, because "do I have to shoot this" needs answering from the far end of a corridor.
+further from you — then goes back to its day. They show yellow on the minimap, because "do
+I have to shoot this" needs answering from the far end of a corridor.
+
+Visors answer that same question first and identity second. Every hostile human wears a
+**grey** — one ramp from near-white (Intern) to near-black (Sentry Unit), brightest for
+what dies to a look and darkest for what does not — and the Reanimated wear green. The
+harmless staff are the only ones in an actual colour: white for the Panicking Staffer,
+brown for the Night Cleaner, yellow for the Courier. So hue says threat, shade says which
+one, and no two types share a visor.
+
 Melee types swing office junk (fire extinguishers, keyboards, monitors) and land the hit
 part-way through the swing, so you can back out of reach.
 

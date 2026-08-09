@@ -59,6 +59,13 @@ const SKIN = 0xbe9a78;
 // suit, which keeps them readable at a glance in a grey corridor: the colour of
 // the visor tells you what is about to happen to you.
 //
+// The visor palette answers two questions in that order. First "do I shoot
+// this": anything hostile wears grey — or green, if it is no longer breathing —
+// and anything that leaves you alone wears an actual colour. Then "what is it":
+// the greys run a single ramp from near-white to near-black, brightest for the
+// ones that die to a look and darkest for the ones that do not, so the shade
+// reads as the threat even when the hue does not.
+//
 // `voice` names the set of vocals a type uses (see audio.js). Left off, a type
 // gobbles like the rest of the office; the green ones brought their own.
 //
@@ -69,36 +76,36 @@ const TYPES = {
     // Cheap, quick, and always in a group. Dies to a look but closes fast.
     name: 'Intern', hp: 0.4, speed: 1.55, damage: 0.5, rate: 0.55, spread: 1,
     range: 1.9, melee: true, scale: 0.9, blunt: ['keyboard', 'stapler', 'mug'],
-    suit: 0x5d6675, shirt: 0xeceee9, visor: 0xffd24a, unlockFloor: 1, weight: 3,
+    suit: 0x5d6675, shirt: 0xeceee9, visor: 0xc8ced4, unlockFloor: 1, weight: 3,
   },
   facilities: {
     // Swings a fire extinguisher. Slower than an intern, hits far harder.
     name: 'Facilities', hp: 1.5, speed: 1.15, damage: 1.6, rate: 1.2, spread: 1,
     range: 2.2, melee: true, scale: 1.05, blunt: ['extinguisher', 'chairLeg'],
-    suit: 0x2d3a2e, shirt: 0xf0a63c, visor: 0xff8a3a, unlockFloor: 2, weight: 2,
+    suit: 0x2d3a2e, shirt: 0xf0a63c, visor: 0x63686e, unlockFloor: 2, weight: 2,
   },
   analyst: {
     name: 'Analyst', hp: 1, speed: 1, damage: 1, rate: 1, spread: 1,
     range: 15, melee: false, scale: 1,
-    suit: 0x41464e, shirt: 0xd9dde1, visor: 0xff4d3d, unlockFloor: 1, weight: 4,
+    suit: 0x41464e, shirt: 0xd9dde1, visor: 0x8b9198, unlockFloor: 1, weight: 4,
   },
   sysadmin: {
     // Fast, inaccurate chip damage — the one that punishes standing still.
     name: 'Sysadmin', hp: 0.8, speed: 1.12, damage: 0.45, rate: 0.4, spread: 1.7,
     range: 13, melee: false, scale: 0.97,
-    suit: 0x2f4448, shirt: 0xbfe3d8, visor: 0x63e8ff, unlockFloor: 3, weight: 3,
+    suit: 0x2f4448, shirt: 0xbfe3d8, visor: 0xa2b4bf, unlockFloor: 3, weight: 3,
   },
   security: {
     // Close-range bruiser: hits hard, misses at distance, keeps coming.
     name: 'Security', hp: 1.7, speed: 0.98, damage: 1.5, rate: 1.15, spread: 2.1,
     range: 9, melee: false, scale: 1.07,
-    suit: 0x272c33, shirt: 0xffc93a, visor: 0xffa23a, unlockFloor: 4, weight: 3,
+    suit: 0x272c33, shirt: 0xffc93a, visor: 0x7d7973, unlockFloor: 4, weight: 3,
   },
   manager: {
     // Slow, tanky, accurate at range. Deal with it or leave the floor.
     name: 'Manager', hp: 2.7, speed: 0.82, damage: 1.9, rate: 1.6, spread: 0.55,
     range: 21, melee: false, scale: 1.14,
-    suit: 0x1c2126, shirt: 0xd8c08a, visor: 0xc060ff, unlockFloor: 6, weight: 2,
+    suit: 0x1c2126, shirt: 0xd8c08a, visor: 0x4f5460, unlockFloor: 6, weight: 2,
   },
   reanimated: {
     // Green, and no longer on the payroll. Slow and soaks damage, but it only
@@ -113,39 +120,44 @@ const TYPES = {
   //
   // Nobody on this side of the roster is fighting you, and none of them counts
   // toward clearing the floor — you can walk past every one of them and take the
-  // exit. They all wear the same pink visor and show up yellow on the minimap,
-  // because "do I have to shoot this" is a question you need answered from the
-  // far end of a corridor, not once it is already swinging at you. All are
-  // placed by hand rather than rolled (see spawn), which is why the weights are
-  // zero.
+  // exit. None of them wears a grey visor, and they all show up yellow on the
+  // minimap, because "do I have to shoot this" is a question you need answered
+  // from the far end of a corridor, not once it is already swinging at you.
+  // Unlike the hostiles they do not share one colour: three harmless people in
+  // identical visors read as one repeated joke, and the toilet guy in
+  // particular has to be recognisable before he is close enough to hear. All
+  // are placed by hand rather than rolled (see spawn), which is why the weights
+  // are zero.
   panicker: {
     // Has one problem, and it is not you: he is looking for a toilet and
     // announcing it. Fast, and dies to a look.
     name: 'Panicking Staffer', hp: 0.3, speed: 1.9, damage: 0, rate: 99, spread: 1,
     range: 0, melee: false, scale: 0.95, panic: true, neutral: true,
-    suit: 0xa8b2c0, shirt: 0xf6f8fa, visor: 0xff3ec8, unlockFloor: 1, weight: 0,
+    suit: 0xa8b2c0, shirt: 0xf6f8fa, visor: 0xffffff, unlockFloor: 1, weight: 0,
   },
   cleaner: {
     // Working a different job to everyone else on the floor and in no hurry
     // about it. Wanders the rooms, mutters, ignores the firefight entirely.
     name: 'Night Cleaner', hp: 0.8, speed: 1.05, damage: 0, rate: 99, spread: 1,
     range: 0, melee: false, scale: 1.02, neutral: true,
-    suit: 0x37474f, shirt: 0x7fd8c4, visor: 0xff3ec8, unlockFloor: 1, weight: 0,
+    // The brown runs dark on purpose: a mid brown lands within a shade of the
+    // skin tone and the visor stops reading as a visor at all.
+    suit: 0x4a3a2c, shirt: 0xb98a55, visor: 0x8a4b18, unlockFloor: 1, weight: 0,
   },
   courier: {
     // Has a delivery for someone on this floor and is going to make it. Brisk,
     // corridor-bound, and entirely uninterested in what you are doing.
     name: 'Courier', hp: 0.6, speed: 1.45, damage: 0, rate: 99, spread: 1,
     range: 0, melee: false, scale: 0.99, neutral: true,
-    suit: 0x5a3a24, shirt: 0xf2c14e, visor: 0xff3ec8, unlockFloor: 1, weight: 0,
+    suit: 0x6b5a1e, shirt: 0xf2c14e, visor: 0xffc93a, unlockFloor: 1, weight: 0,
   },
   sentry: {
     // Facilities' idea of a cost saving. Armoured and slow, accurate at range,
-    // and it never gets bored — the white visor is the one that means the thing
-    // looking at you is not going to wander off.
+    // and it never gets bored — the darkest visor on the floor is the one that
+    // means the thing looking at you is not going to wander off.
     name: 'Sentry Unit', hp: 3.2, speed: 0.78, damage: 1.45, rate: 1.35, spread: 0.7,
     range: 17, melee: false, scale: 1.18,
-    suit: 0x474d55, shirt: 0x9aa3ab, visor: 0xffffff, voice: 'robot',
+    suit: 0x474d55, shirt: 0x9aa3ab, visor: 0x3a4048, voice: 'robot',
     unlockFloor: 2, weight: 3,
   },
 };
