@@ -233,10 +233,88 @@
       "influence": 0.75
     },
     {
+      "name": "enemy-alert-27",
+      "text": "furious man shouting \"I WILL FORWARD THIS TO EVERYONE!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-28",
+      "text": "furious man shouting \"YOU ARE NOT IN MY CALENDAR!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-29",
+      "text": "furious man shouting \"I WILL REPLY ALL!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
       "name": "enemy-alert-3",
       "text": "angry man shouting \"OVER HERE!\", close mic, dry, no music",
       "duration": 1.2,
       "influence": 0.7
+    },
+    {
+      "name": "enemy-alert-30",
+      "text": "furious man shouting \"YOU TOUCHED THE THERMOSTAT!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-31",
+      "text": "furious man shouting \"I AM THE FIRE WARDEN!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-32",
+      "text": "furious man shouting \"MY LUNCH WAS LABELLED!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-33",
+      "text": "furious man shouting \"I WILL BOOK YOU A WORKSHOP!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-34",
+      "text": "furious man shouting \"YOU DID NOT REFILL THE PAPER!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-35",
+      "text": "furious man shouting \"I HAVE BEEN HERE ELEVEN YEARS!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-36",
+      "text": "furious man shouting \"THAT IS A LOAD BEARING SPREADSHEET!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-37",
+      "text": "furious man shouting \"I WILL MOVE YOUR DESK!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-38",
+      "text": "furious man shouting \"YOUR BADGE EXPIRED IN MARCH!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-39",
+      "text": "furious man shouting \"NOBODY CLEANS THE MICROWAVE!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
     },
     {
       "name": "enemy-alert-4",
@@ -245,10 +323,76 @@
       "influence": 0.65
     },
     {
+      "name": "enemy-alert-40",
+      "text": "furious man shouting \"I WILL CC YOUR MOTHER!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-41",
+      "text": "furious man shouting \"THAT IS OUT OF SCOPE!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-42",
+      "text": "furious man shouting \"I AM VERY GOOD AT PIVOT TABLES!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-43",
+      "text": "furious man shouting \"GET OFF MY CARPET TILES!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-44",
+      "text": "furious man shouting \"I WILL DECLINE YOUR HOLIDAY!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-45",
+      "text": "furious man shouting \"THAT MUG HAS MY NAME ON IT!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-46",
+      "text": "furious man shouting \"I AM ESCALATING THIS!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-47",
+      "text": "furious man shouting \"YOU ARE RUINING MY FLOW STATE!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-48",
+      "text": "furious man shouting \"I HAVE THREE MONITORS!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "enemy-alert-49",
+      "text": "furious man shouting \"YOU ATE THE LAST DOUGHNUT!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
       "name": "enemy-alert-5",
       "text": "angry man shouting \"INTRUDER!\", close mic, dry, no music",
       "duration": 1.2,
       "influence": 0.7
+    },
+    {
+      "name": "enemy-alert-50",
+      "text": "furious man shouting \"I WILL PUT YOU IN A BREAKOUT ROOM!\", close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
     },
     {
       "name": "enemy-alert-6",
@@ -308,6 +452,80 @@
       "duration": 0.5,
       "influence": 0.6,
       "variants": 3
+    },
+    {
+      "name": "extinguisher-burst",
+      "text": "steel pressure cylinder rupturing and exploding, sharp bang with metal shrapnel and a gas blast, close mic, dry, no music, no voices",
+      "duration": 2.5,
+      "influence": 0.75,
+      "variants": 3
+    },
+    {
+      "name": "extinguisher-jet",
+      "text": "fire extinguisher discharging under pressure, loud continuous CO2 gas jet hiss, close mic, dry, no music, no voices",
+      "duration": 2.5,
+      "influence": 0.8,
+      "variants": 2
+    },
+    {
+      "name": "flee-1",
+      "text": "terrified man shouting \"I AM JUST THE CLEANER!\" while running away, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "flee-10",
+      "text": "terrified man shouting \"I AM AGENCY STAFF!\" while running away, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "flee-2",
+      "text": "terrified man shouting \"I ONLY WORK HERE!\" while running away, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "flee-3",
+      "text": "terrified man shouting \"THIS IS NOT MY FLOOR!\" while running away, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "flee-4",
+      "text": "terrified man shouting \"I HAVE A PARCEL FOR RECEPTION!\" while running away, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "flee-5",
+      "text": "terrified man shouting \"NOBODY TOLD ME ABOUT THIS!\" while running away, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "flee-6",
+      "text": "terrified man shouting \"I AM NOT PAID ENOUGH FOR THIS!\" while running away, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "flee-7",
+      "text": "terrified man shouting \"TAKE THE PARCEL, JUST TAKE IT!\" while running away, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "flee-8",
+      "text": "terrified man shouting \"I JUST MOPPED THAT!\" while running away, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "flee-9",
+      "text": "terrified man shouting \"SIGN FOR IT AND LET ME GO!\" while running away, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
     },
     {
       "name": "floor-clear",
@@ -498,8 +716,98 @@
       "influence": 0.75
     },
     {
+      "name": "panic-15",
+      "text": "panicking man screaming \"WHY IS EVERY DOOR LOCKED?\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-16",
+      "text": "panicking man screaming \"THIS IS A CODE BROWN!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-17",
+      "text": "panicking man screaming \"I AM CLENCHING AS HARD AS I CAN!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-18",
+      "text": "panicking man screaming \"NOT IN THESE TROUSERS!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-19",
+      "text": "panicking man screaming \"I CAN SEE THE LIGHT!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
       "name": "panic-2",
       "text": "panicking man screaming \"I AM POOPING MY PANTS!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-20",
+      "text": "panicking man screaming \"THE MEETING RAN TOO LONG!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-21",
+      "text": "panicking man screaming \"SOMEBODY UNLOCK THE DISABLED ONE!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-22",
+      "text": "panicking man screaming \"THIS BUILDING HAS NO TOILETS!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-23",
+      "text": "panicking man screaming \"I HAVE MADE A TERRIBLE MISTAKE!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-24",
+      "text": "panicking man screaming \"WHY DID I HAVE THE SECOND BURRITO?\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-25",
+      "text": "panicking man screaming \"GANGWAY!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-26",
+      "text": "panicking man screaming \"I AM NEGOTIATING WITH MY OWN BODY!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-27",
+      "text": "panicking man screaming \"PLEASE, I HAVE A FAMILY!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-28",
+      "text": "panicking man screaming \"THE CAFETERIA DID THIS TO ME!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-29",
+      "text": "panicking man screaming \"I AM LOSING THE BATTLE!\", desperate, close mic, dry, no music",
       "duration": 1.8,
       "influence": 0.75
     },
@@ -510,8 +818,74 @@
       "influence": 0.75
     },
     {
+      "name": "panic-30",
+      "text": "panicking man screaming \"HOLD ON, HOLD ON, HOLD ON!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-31",
+      "text": "panicking man screaming \"I WILL PAY ANY AMOUNT OF MONEY!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-32",
+      "text": "panicking man screaming \"DO NOT LOOK AT ME!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-33",
+      "text": "panicking man screaming \"I AM A GROWN MAN!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-34",
+      "text": "panicking man screaming \"TEN MINUTES AGO I WAS FINE!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-35",
+      "text": "panicking man screaming \"THE HANDLE CAME OFF IN MY HAND!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-36",
+      "text": "panicking man screaming \"EVERY SECOND COUNTS!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-37",
+      "text": "panicking man screaming \"I SHOULD HAVE GONE AT LUNCH!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-38",
+      "text": "panicking man screaming \"MOVE, MOVE, MOVE!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-39",
+      "text": "panicking man screaming \"IT IS COMING WHETHER I LIKE IT OR NOT!\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
       "name": "panic-4",
       "text": "panicking man screaming \"WHERE IS THE BATHROOM?\", desperate, close mic, dry, no music",
+      "duration": 1.8,
+      "influence": 0.75
+    },
+    {
+      "name": "panic-40",
+      "text": "panicking man screaming \"I DO NOT HAVE TIME FOR THIS FLOOR!\", desperate, close mic, dry, no music",
       "duration": 1.8,
       "influence": 0.75
     },
@@ -578,6 +952,27 @@
       "duration": 0.9,
       "influence": 0.7,
       "variants": 3
+    },
+    {
+      "name": "rat-die",
+      "text": "small rat death squeal, short and sharp, close mic, dry, no music, no voices",
+      "duration": 0.7,
+      "influence": 0.7,
+      "variants": 3
+    },
+    {
+      "name": "rat-scurry",
+      "text": "small rodent claws scurrying quickly across an office floor, close mic, dry, no music, no voices",
+      "duration": 0.8,
+      "influence": 0.7,
+      "variants": 3
+    },
+    {
+      "name": "rat-squeak",
+      "text": "single small rat squeak, close mic, dry, no music, no voices",
+      "duration": 0.7,
+      "influence": 0.7,
+      "variants": 4
     },
     {
       "name": "rifle-fire",
