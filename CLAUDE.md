@@ -241,12 +241,20 @@ part-way through the swing, so you can back out of reach. A weapon declares how 
 carried when idle (`rest` in `BLUNT`), because a mop is not held out in front like a
 stapler — it is dragged, head on the floor.
 
-The **Janitor** is the one person in a uniform: yellow shirt, blue trousers, blue cap,
-and nearly a metre of mop. He is placed by hand rather than rolled and he is the only
-source of the yellow keycard — see Keycards below. Types may declare `pants` and `cap`,
-which switches the rig from "one suit with a shirt front" to a uniform; the hit flash
-follows whatever they are actually wearing (`flash` from `rigs.js`) rather than the one
-material that used to be everything.
+Two trades are in **uniform** rather than in a suit, and both are the only source of
+one keycard — see Keycards below. The **Janitor** is yellow shirt, blue trousers, blue
+cap and nearly a metre of mop. **Security** is black trousers, a blue shirt and a black
+cap with the job written across the front of it, which is the same fact at three ranges:
+the dark silhouette down a corridor, the blue in the middle distance, the word once he is
+close enough for it to be too late. Half the shift is `security` with a sidearm and the
+rest `guardBaton` with a baton — one uniform, one roster name, `guard: true` for the code
+that has to find them, and the mix is hand-placed (the rolled ones came off their desks
+with a gun on).
+
+Types may declare `pants` and `cap`, which switches the rig from "one suit with a shirt
+front" to a uniform, plus `capText`, which letters the cap from a canvas texture shared
+by everyone wearing that word. The hit flash follows whatever they are actually wearing
+(`flash` from `rigs.js`) rather than the one material that used to be everything.
 
 Gunfire spread is sampled as a real angle and converted into a miss distance at your range,
 so backing off genuinely makes you harder to hit.
@@ -338,10 +346,21 @@ rooms and also opens white doors; blue opens the one security office, yellow the
 one broom closet, and neither substitutes for anything else; black opens the
 manager's office and, being the last card you get, everything else too.
 
-Card holders: every hostile carries white; guaranteed single holders carry grey,
-blue and yellow instead, plus `CARD_SPARE_CHANCE` extra grey. A card only becomes
-a pickup if the player doesn't already hold that tier and none is already lying
-about, or a floor would bury itself in two hundred white cards.
+Card holders: every hostile carries white; a guaranteed single holder carries grey
+instead, plus `CARD_SPARE_CHANCE` extra grey. Yellow and blue are not dealt that
+way — they belong to a trade (below). A card only becomes a pickup if the player
+doesn't already hold that tier and none is already lying about, or a floor would
+bury itself in two hundred white cards.
+
+**Blue belongs to security and to nobody else** (`_security` in `enemies.js`).
+Every guard on the floor is carrying one, and the ones the theme's `patrols` puts
+in the corridors are outside every lock, which is what guarantees the card is
+reachable with nothing in your pocket. Two to five more are posted in the security
+office itself, marked `behindLock` and dealt no card — and, exactly like the broom
+closet, only posted **if at least one guard made it into the halls**. A theme is
+allowed to say nobody is doing rounds tonight; a floor with a security office and
+nobody outside it is a door with no key, so the office sets a floor of one under
+whatever the theme asked for.
 
 **Yellow belongs to the janitors and to nobody else.** One to three do rounds in
 the corridors — outside every lock, which is what guarantees the card is reachable
