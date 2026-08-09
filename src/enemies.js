@@ -72,9 +72,28 @@ const MIN_SPAWN_GAP = 11;      // ...but never close enough to be there on arriv
 // break in the broom closet. See _janitors.
 const JANITORS = [1, 3];
 const CLOSET_JANITORS = 2;
+
+// The security staff, on the same shape: the ones walking the halls carry the
+// blue card, and the ones in the security office are behind the door it opens.
+// See _security. The office is the one room on the floor with a crowd in it —
+// the wall of screens is what they are all looking at — which is why the number
+// is what it is and why they are not all carrying the same thing.
+const OFFICE_GUARDS = [2, 5];
+const GUARD_BATON = 0.4;       // how much of the shift drew a baton instead
+const GUARD_GAP = 0.8;         // metres between two men in one room
 // How far a seated body drops, and how far its legs come up to meet the floor.
 const SIT_DROP = 0.42;
 const SIT_LEGS = -1.5;         // radians — straight out in front
+
+// The security uniform, shared by the two halves of the shift — the one with a
+// sidearm and the one with a baton. It is one set of clothes on one kind of
+// person, so it is written down once and both types wear it; `guard` is what
+// the rest of the file tests instead of naming either of them, and it is what
+// the blue card is dealt on.
+const GUARD = {
+  suit: 0x14161a, shirt: 0x2e63b4, pants: 0x14161a, cap: 0x14161a,
+  capText: 'SECURITY', visor: 0x7d7973, guard: true,
+};
 
 // Staff. Every type is the same rig with different numbers and a different
 // suit, which keeps them readable at a glance in a grey corridor: the colour of
@@ -118,9 +137,29 @@ const TYPES = {
   },
   security: {
     // Close-range bruiser: hits hard, misses at distance, keeps coming.
+    //
+    // The second uniform in the building, and the only source of the blue card
+    // — see _security. Black trousers, a blue shirt and a black cap with the
+    // job written across the front of it, which is three readings of the same
+    // fact at three ranges: the dark silhouette from the end of a corridor, the
+    // blue in the middle distance, the word once he is close enough for it to
+    // be too late. Nothing else on the floor is dressed in blue.
+    ...GUARD,
     name: 'Security', hp: 1.7, speed: 0.98, damage: 1.5, rate: 1.15, spread: 2.1,
-    range: 9, melee: false, scale: 1.07,
-    suit: 0x272c33, shirt: 0xffc93a, visor: 0x7d7973, unlockFloor: 4, weight: 3,
+    range: 9, melee: false, scale: 1.07, unlockFloor: 4, weight: 3,
+  },
+  guardBaton: {
+    // The same guard with the sidearm still holstered. Shares the name, because
+    // it is not a second kind of person — it is the half of the shift that drew
+    // the baton instead, and the roster has no business listing them apart.
+    //
+    // Hand-placed only (`weight: 0`): the mix belongs in the halls and in the
+    // security office, where _security puts it, and a room rolled full of
+    // Security is a room of people who were at their desks with a gun on.
+    ...GUARD,
+    name: 'Security', hp: 1.7, speed: 1.12, damage: 1.55, rate: 1.1, spread: 1,
+    range: 2.3, melee: true, blunt: ['baton'], scale: 1.07,
+    unlockFloor: 1, weight: 0,
   },
   manager: {
     // Slow, tanky, accurate at range. Deal with it or leave the floor.
@@ -239,8 +278,9 @@ const BYSTANDERS = [TYPES.cleaner, TYPES.courier];
 // `rats` is how many are in the walls tonight — one is an office with a rat in
 // it, which is a joke you notice once; six is an infestation, which is the name
 // on the door. `patrols` is how many security are walking the corridors rather
-// than waiting in a room, and it is zero on the floors where nobody is still
-// doing their rounds.
+// than sat in their office, and it is zero on the floors where nobody is still
+// doing their rounds — though a floor with a security office on it always keeps
+// one, because that man is carrying the only key to it (see _security).
 const THEMES = [
   { name: 'Business as usual', weight: 4, light: 1, rats: [1, 1], patrols: [1, 3], boost: {} },
   { name: 'Infestation', weight: 3, light: 0.34, rats: [4, 6], patrols: [0, 0], boost: { reanimated: 7, intern: 2 } },
@@ -319,18 +359,7 @@ export class Enemies {
       this._add(spot.x, spot.z, rng, tuning, team.type);
     }
 
-    // Security on the corridors. Everyone else is found where they work, which
-    // makes a floor a series of rooms you clear; a patrol is the one thing that
-    // comes to YOU, down a hallway you have already been down. On an Infestation
-    // there is nobody left doing rounds.
-    const [patMin, patMax] = this.theme.patrols ?? [1, 3];
-    if (patMax > 0 && this.corridors.length) {
-      for (let i = rng.int(patMin, patMax); i > 0; i--) {
-        const spot = rng.pick(this.corridors);
-        if (Math.hypot(spot.x - layout.spawn.x, spot.z - layout.spawn.z) < 12) continue;
-        this._add(spot.x, spot.z, rng, tuning, TYPES.security);
-      }
-    }
+    this._security(layout, nav, rng, tuning);
 
     // A handful of neutrals on every floor, placed rather than rolled: they are
     // a fixture of the building, not a difficulty ingredient, and leaving them
@@ -364,6 +393,77 @@ export class Enemies {
     this._janitors(layout, nav, rng, tuning);
     this._manager(layout, nav, rng, tuning);
     this._dealCards(layout, rng);
+  }
+
+  /**
+   * Security: the shift walking the halls, and the ones sat in their own office.
+   *
+   * Same shape as the janitors and the broom closet one tier along, and for the
+   * same reason. The blue card comes off security and off nobody else, so where
+   * they stand is a correctness question: the ones on rounds are in the
+   * corridors, outside every lock, which is what guarantees the card is
+   * reachable with nothing in your pocket. The two-to-five in the security
+   * office are marked `behindLock` and dealt nothing, because men sitting in the
+   * room their own key opens, holding that key, is the failure the whole system
+   * exists to prevent.
+   *
+   * The one place it differs is that a patrol is not just a card holder. Every
+   * other hostile is found where they work, which makes a floor a series of
+   * rooms you clear; a patrol is the one thing that comes to YOU, down a hallway
+   * you have already been down. That is what `patrols` on a theme tunes — except
+   * that a theme is allowed to say nobody is doing rounds tonight, and a floor
+   * with a security office and nobody outside it is a door with no key. So the
+   * theme sets the number and the office sets the floor under it.
+   */
+  _security(layout, nav, rng, tuning) {
+    const office = layout.locks?.find((l) => l.tier === 'blue');
+
+    // Corridors outside every lock, preferring the ones that are not on top of
+    // the lifts — being close to where the player arrives is fine, standing on
+    // it is not.
+    const free = this.corridors.filter((s) => !this._behindALock(layout, s.x, s.z));
+    const away = free.filter((s) =>
+      Math.hypot(s.x - layout.spawn.x, s.z - layout.spawn.z) > MIN_SPAWN_GAP);
+    const halls = away.length ? away : free;
+
+    const [patMin, patMax] = this.theme.patrols ?? [1, 3];
+    const wanted = Math.max(rng.int(patMin, patMax), office ? 1 : 0);
+
+    let onRounds = 0;
+    for (let i = wanted; i > 0 && halls.length; i--) {
+      const spot = rng.pick(halls);
+      this._add(spot.x, spot.z, rng, tuning, this._guardType(rng));
+      onRounds++;
+    }
+
+    // And the office. Only if somebody outside is carrying the key to it: these
+    // count toward clearing the floor, so posting them behind a door with no
+    // reachable blue card anywhere is a floor that cannot be finished.
+    if (!office || !onRounds) return;
+
+    const room = office.room;
+    let posted = 0;
+    const want = rng.int(OFFICE_GUARDS[0], OFFICE_GUARDS[1]);
+    for (let tries = 0; tries < 120 && posted < want; tries++) {
+      const tx = rng.int(room.x0, room.x1 - 1);
+      const ty = rng.int(room.y0, room.y1 - 1);
+      if (!nav.walkable(tx, ty)) continue;
+      const x = nav.wx(tx), z = nav.wz(ty);
+      if (!nav.clear(x, z, RADIUS)) continue;
+      // Five men in one small room will otherwise be dealt the same two tiles.
+      if (this.items.some((e) => Math.hypot(e.x - x, e.z - z) < GUARD_GAP)) continue;
+
+      const e = this._add(x, z, rng, tuning, this._guardType(rng));
+      e.behindLock = true;
+      posted++;
+    }
+  }
+
+  // Which half of the shift this one is. A room of guards is meant to come at
+  // you as a room rather than as a firing line: whoever drew a baton is the one
+  // closing the distance while the rest of them shoot over him.
+  _guardType(rng) {
+    return rng.chance(GUARD_BATON) ? TYPES.guardBaton : TYPES.security;
   }
 
   /**
@@ -481,8 +581,9 @@ export class Enemies {
    * handful, with at least one close enough to walk into, makes it thirty
    * seconds: find somebody, take the badge, and the building comes on.
    *
-   * Security patrols usually cover this already, but a theme is allowed to say
-   * there are none — nobody does rounds on an Infestation — so the top-up is
+   * Security patrols usually cover this already — they are in the corridors by
+   * construction — but there may be as few as one of them, and on a floor with
+   * no security office to guard there may be none at all. So the top-up is
    * whatever is working this floor rather than more security. On an Infestation
    * that is something shambling down a hallway, which is what an Infestation
    * looks like anyway.
@@ -532,9 +633,10 @@ export class Enemies {
    *
    * Everybody is carrying the white one, because everybody who works here has a
    * staff badge — that is what makes white on every door fair rather than
-   * cruel. The real cards go to specific people, one guaranteed holder each,
-   * replacing the white they would otherwise have had (there are a hundred and
-   * forty others carrying that).
+   * cruel. The real cards replace the white they would otherwise have had
+   * (there are a hundred and forty others carrying that), and they go to
+   * specific people: grey to whoever the shuffle turns up, but yellow and blue
+   * to the two trades that own a room on this floor.
    *
    * Dealt after everyone is placed rather than during placement, because the
    * question it has to answer is about the floor as a whole: every lock on it
@@ -560,29 +662,37 @@ export class Enemies {
     const tiers = [...new Set((layout.locks ?? []).map((l) => l.tier))]
       .filter((t) => t !== 'black' && t !== 'white');
 
-    // Yellow is not dealt with the rest: it belongs to the cleaning staff and to
-    // nobody else, so it goes to every janitor on rounds rather than to whoever
-    // came up first in the shuffle. Which makes the broom closet a room you open
-    // because of who you shot, not because of what fell out of a body.
-    if (tiers.includes('yellow')) {
-      for (const e of hostiles) if (e.type === TYPES.janitor) e.card = 'yellow';
+    // Two of them are not dealt with the rest, because they belong to a trade
+    // rather than to whoever came up first in the shuffle: yellow is the
+    // cleaning staff's and blue is security's, and every one of them on rounds
+    // is carrying it. Which makes the broom closet and the security office rooms
+    // you open because of who you shot, not because of what happened to fall out
+    // of a body.
+    const OWNED = { yellow: (e) => e.type === TYPES.janitor, blue: (e) => e.type.guard };
+    for (const [tier, owns] of Object.entries(OWNED)) {
+      if (!tiers.includes(tier)) continue;
+      for (const e of hostiles) if (owns(e)) e.card = tier;
     }
 
     let i = 0;
     for (const tier of tiers) {
-      if (tier === 'yellow') continue;
-      // Never take a card off a janitor to hand out somebody else's.
-      while (i < hostiles.length && hostiles[i].card === 'yellow') i++;
+      if (OWNED[tier]) continue;
+      // Never take a card off a janitor or a guard to hand out somebody else's.
+      while (i < hostiles.length && hostiles[i].card !== 'white') i++;
       if (i >= hostiles.length) break;
       hostiles[i++].card = tier;
     }
     // Spares for the tiers that have more than one door, so a grey card is
     // something the floor hands you on the way past rather than one specific
-    // body among a hundred and forty.
+    // body among a hundred and forty. Only ever over a white card: the shuffle
+    // interleaves the owners with everybody else, so a spare pass that wrote
+    // over whatever it landed on would quietly take the yellow off a janitor.
     const spares = tiers.filter((t) => t === 'grey');
     if (!spares.length) return;
     for (; i < hostiles.length; i++) {
-      if (rng.chance(CARD_SPARE_CHANCE)) hostiles[i].card = rng.pick(spares);
+      if (hostiles[i].card === 'white' && rng.chance(CARD_SPARE_CHANCE)) {
+        hostiles[i].card = rng.pick(spares);
+      }
     }
   }
 
