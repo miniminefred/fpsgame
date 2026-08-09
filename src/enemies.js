@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BODY_RADIUS as RADIUS } from './nav.js';
 import { CORRIDOR, worldX, worldZ } from './gen/layout.js';
+import { buildRig } from './rigs.js';
 
 // The people still working here.
 //
@@ -52,8 +53,6 @@ const GIVE_UP = 7;         // seconds of no contact before they settle down
 const DEATH_TIME = 2.2;
 const HIT_FLASH = 0.1;
 const SWING_TIME = 0.5;    // wind-up plus follow-through on a melee swing
-
-const SKIN = 0xbe9a78;
 
 // Staff. Every type is the same rig with different numbers and a different
 // suit, which keeps them readable at a glance in a grey corridor: the colour of
@@ -152,6 +151,19 @@ const TYPES = {
     range: 0, melee: false, scale: 0.99, neutral: true,
     suit: 0x6b5a1e, shirt: 0xf2c14e, visor: 0xffc93a, unlockFloor: 1, weight: 0,
   },
+  rat: {
+    // Not staff. Lives under the desks, crosses corridors at the worst moment,
+    // and dies to anything that touches it — the joke is entirely on you for
+    // spending a round of ammunition and a shout of your own on one.
+    //
+    // Darts rather than walks: bursts of speed with pauses in between, which is
+    // what makes the movement read as vermin instead of as a small courier.
+    name: 'Office Rat', hp: 0.05, speed: 2.4, damage: 0, rate: 99, spread: 1,
+    range: 0, melee: false, scale: 1, neutral: true, rig: 'rat', darts: true,
+    offMap: true,
+    voice: 'rat', screams: 'rat-idle',
+    suit: 0x4c443d, shirt: 0xb2848a, visor: 0xd8626e, unlockFloor: 1, weight: 0,
+  },
   sentry: {
     // Facilities' idea of a cost saving. Armoured and slow, accurate at range,
     // and it never gets bored — the darkest visor on the floor is the one that
@@ -179,30 +191,6 @@ const THEMES = [
   { name: 'Night shift', weight: 2, boost: { reanimated: 4, sentry: 4, facilities: 3 } },
   { name: 'All-hands', weight: 2, boost: { analyst: 6, intern: 5, manager: 3 } },
 ];
-
-// Shared across every enemy — only the materials are per-instance, so a hit
-// flash on one doesn't light up the whole floor.
-const GEO = {
-  torso: new THREE.BoxGeometry(0.5, 0.62, 0.3),
-  hips: new THREE.BoxGeometry(0.42, 0.22, 0.28),
-  head: new THREE.BoxGeometry(0.26, 0.28, 0.26),
-  shirt: new THREE.BoxGeometry(0.17, 0.5, 0.02),
-  visor: new THREE.BoxGeometry(0.22, 0.07, 0.02),
-  arm: new THREE.BoxGeometry(0.14, 0.54, 0.14),
-  leg: new THREE.BoxGeometry(0.17, 0.86, 0.19),
-  gun: new THREE.BoxGeometry(0.1, 0.14, 0.42),
-};
-
-// What the melee staff have picked up off their desks. Each is a shaft plus a
-// business end, built along -Z so it points the way the arm swings.
-const BLUNT = {
-  keyboard: { shaft: null, head: [0.42, 0.03, 0.15], headMat: 'plastic', reach: 0.30 },
-  extinguisher: { shaft: [0.07, 0.07, 0.10], head: [0.15, 0.15, 0.40], headMat: 'accent', reach: 0.34 },
-  chairLeg: { shaft: [0.05, 0.05, 0.44], head: [0.13, 0.13, 0.13], headMat: 'metal', reach: 0.46 },
-  stapler: { shaft: null, head: [0.09, 0.09, 0.26], headMat: 'metal', reach: 0.22 },
-  monitor: { shaft: [0.05, 0.05, 0.16], head: [0.44, 0.30, 0.05], headMat: 'screen', reach: 0.30 },
-  mug: { shaft: null, head: [0.11, 0.12, 0.11], headMat: 'paper', reach: 0.18 },
-};
 
 export class Enemies {
   constructor(scene) {
@@ -259,6 +247,28 @@ export class Enemies {
       const spot = this.corridors.length ? rng.pick(this.corridors) : spots[i];
       if (spot) this._add(spot.x, spot.z, rng, tuning, neutrals[i]);
     }
+
+    // And the rats, which go anywhere rather than starting in a corridor: the
+    // point of the staff is that you see them cross a hallway and have to
+    // decide, and the point of a rat is that it is already in the room with you.
+    for (const spot of this._loose(layout, nav, rng, rng.int(3, 6))) {
+      this._add(spot.x, spot.z, rng, tuning, TYPES.rat);
+    }
+  }
+
+  // Walkable spots anywhere on the floor, spawn included — used for things that
+  // are scenery rather than opposition.
+  _loose(layout, nav, rng, count) {
+    const spots = [];
+    for (let tries = 0; spots.length < count && tries < count * 40; tries++) {
+      const tx = rng.int(0, layout.W - 1);
+      const ty = rng.int(0, layout.H - 1);
+      if (!nav.walkable(tx, ty)) continue;
+      const x = nav.wx(tx), z = nav.wz(ty);
+      if (!nav.clear(x, z, RADIUS)) continue;
+      spots.push({ x, z });
+    }
+    return spots;
   }
 
   // Head count per type on this floor — the HUD and the debug harness use it.
@@ -303,93 +313,25 @@ export class Enemies {
   }
 
   _add(x, z, rng, tuning, type) {
-    const group = new THREE.Group();
+    // The body is rigs.js's business; everything below is behaviour.
+    const rig = buildRig(type, rng);
+    const { group, mats, ownGeo, torso, head, armL, armR, legL, legR, gun, blunt } = rig;
     group.position.set(x, 0, z);
-    group.rotation.y = rng.range(0, Math.PI * 2);
-    group.scale.setScalar(type.scale);
-
-    const mats = {
-      suit: new THREE.MeshStandardMaterial({ color: type.suit, roughness: 0.85 }),
-      shirt: new THREE.MeshStandardMaterial({ color: type.shirt, roughness: 0.9 }),
-      skin: new THREE.MeshStandardMaterial({ color: SKIN, roughness: 0.8 }),
-      visor: new THREE.MeshBasicMaterial({ color: type.visor }),
-      gun: new THREE.MeshStandardMaterial({ color: 0x24272b, roughness: 0.5, metalness: 0.4 }),
-    };
-
-    // Only melee staff need the junk-weapon palette, and only they pay for it.
-    if (type.melee) {
-      Object.assign(mats, {
-        plastic: new THREE.MeshStandardMaterial({ color: 0x33373c, roughness: 0.8 }),
-        metal: new THREE.MeshStandardMaterial({ color: 0x9aa0a6, roughness: 0.4, metalness: 0.5 }),
-        accent: new THREE.MeshStandardMaterial({ color: 0xb63b2c, roughness: 0.55 }),
-        screen: new THREE.MeshStandardMaterial({ color: 0x1d2833, roughness: 0.35 }),
-        paper: new THREE.MeshStandardMaterial({ color: 0xe8e4d8, roughness: 0.85 }),
-      });
-    }
-
-    // Geometry created just for this enemy (weapon parts). The body rig reuses
-    // the shared GEO set, which must never be disposed.
-    const ownGeo = [];
-
-    const mesh = (geo, mat, px, py, pz) => {
-      const m = new THREE.Mesh(geo, mat);
-      m.position.set(px, py, pz);
-      m.castShadow = true;
-      group.add(m);
-      return m;
-    };
-
-    // Built facing -Z, the same way the camera looks, so yaw maths is shared.
-    const torso = mesh(GEO.torso, mats.suit, 0, 1.16, 0);
-    mesh(GEO.hips, mats.suit, 0, 0.96, 0);
-    mesh(GEO.shirt, mats.shirt, 0, 1.18, -0.155);   // open collar and shirt front
-    const head = mesh(GEO.head, mats.skin, 0, 1.63, 0);
-    mesh(GEO.visor, mats.visor, 0, 1.65, -0.13);
-    const armL = mesh(GEO.arm, mats.suit, -0.32, 1.15, 0);
-    const armR = mesh(GEO.arm, mats.suit, 0.32, 1.15, 0);
-    const legL = mesh(GEO.leg, mats.suit, -0.12, 0.43, 0);
-    const legR = mesh(GEO.leg, mats.suit, 0.12, 0.43, 0);
-    const gun = mesh(GEO.gun, mats.gun, 0.3, 1.1, -0.3);
-
-    // Melee staff drop the gun and swing whatever was on their desk instead.
-    gun.visible = !type.melee;
-    let blunt = null;
-    let bluntSpec = null;
-    if (type.melee) {
-      const kind = rng.pick(type.blunt);
-      bluntSpec = BLUNT[kind];
-      blunt = new THREE.Group();
-
-      if (bluntSpec.shaft) {
-        const [sw, sh, sl] = bluntSpec.shaft;
-        const geo = new THREE.BoxGeometry(sw, sh, sl);
-        ownGeo.push(geo);
-        const shaft = new THREE.Mesh(geo, mats.plastic);
-        shaft.position.z = -sl / 2;
-        shaft.castShadow = true;
-        blunt.add(shaft);
-      }
-
-      const [hw, hh, hl] = bluntSpec.head;
-      const headGeo = new THREE.BoxGeometry(hw, hh, hl);
-      ownGeo.push(headGeo);
-      const head2 = new THREE.Mesh(headGeo, mats[bluntSpec.headMat]);
-      head2.position.z = -(bluntSpec.shaft ? bluntSpec.shaft[2] : 0) - hl / 2;
-      head2.castShadow = true;
-      blunt.add(head2);
-
-      // Held in the right hand, which is what the swing animation drives.
-      blunt.position.set(0.32, 1.12, -0.16);
-      group.add(blunt);
-    }
 
     const enemy = {
       group, mats, ownGeo, torso, head, armL, armR, legL, legR, gun,
-      blunt, bluntReach: bluntSpec ? bluntSpec.reach : 0,
+      blunt, bluntReach: rig.bluntReach,
+      // Rat parts. Null on everything else, and the animation branches on the
+      // rig rather than on the type, so a second four-legged thing costs a rig
+      // and nothing else.
+      rig: rig.rig, legs: rig.legs ?? null, tail: rig.tail ?? null,
       type,
       // Flat, because the minimap reads it every frame alongside `alive` and has
       // no business knowing what a type is.
       neutral: !!type.neutral,
+      // The minimap answers "is there somebody in that room". A rat is not
+      // somebody, so it is not on it.
+      offMap: !!type.offMap,
       flee: 0,
       x, z,
       yaw: group.rotation.y,
@@ -411,6 +353,8 @@ export class Enemies {
       strafe: rng.chance(0.5) ? 1 : -1,
       voiceTimer: rng.range(1, 14),   // staggered, or a floor mutters in chorus
       lastStep: 0,
+      // Vermin only: bolt, stop, bolt again.
+      darting: true, dartTimer: rng.range(0.2, 1), moving: true,
       // Where a neutral is currently headed — the toilet, the next corridor to
       // mop — plus their own distance field to get there. See _repick.
       wanderX: 0, wanderZ: 0, wanderTimer: 0, field: null, stuck: 0,
@@ -585,6 +529,23 @@ export class Enemies {
       return;
     }
 
+    // Vermin do not walk anywhere. They bolt, stop dead, think about it, and
+    // bolt again — and the stopping is what makes the bolting read as fast.
+    if (e.type.darts) {
+      e.dartTimer -= dt;
+      if (e.dartTimer <= 0) {
+        e.darting = !e.darting;
+        e.dartTimer = e.darting ? 0.35 + Math.random() * 0.8 : 0.25 + Math.random() * 0.9;
+      }
+      // Frozen mid-scurry, not stuck: the stall counter has to be told, or the
+      // pause gets mistaken for wedged furniture and it repicks every time.
+      if (!e.darting) {
+        e.stuck = 0;
+        e.moving = false;
+        return;
+      }
+    }
+
     // Downhill on his own field, not straight at the destination: the whole
     // point of giving him one is that he goes round the wall instead of into it.
     const dir = this.nav.descendOn(e.field, e.x, e.z, this._v);
@@ -601,6 +562,7 @@ export class Enemies {
       e.stuck = 0;
     }
 
+    e.moving = true;
     e.group.position.x = e.x;
     e.group.position.z = e.z;
     e.yaw = angleLerp(e.yaw, Math.atan2(-dir.x, -dir.z), 1 - Math.exp(-9 * dt));
@@ -840,6 +802,8 @@ export class Enemies {
   }
 
   _animate(e, dt, audio) {
+    if (e.rig === 'rat') return this._animateRat(e, dt, audio);
+
     const moving = e.state === 'chase' || e.state === 'fight' || e.state === 'wander';
     e.walkPhase += dt * (moving ? 9 : 1.4);
 
@@ -879,6 +843,56 @@ export class Enemies {
       e.armR.rotation.x = lerp(e.armR.rotation.x, armX, 1 - Math.exp(-10 * dt));
       e.gun.position.set(0.3, aiming ? 1.32 : 1.1, aiming ? -0.55 : -0.3);
       e.gun.rotation.x = aiming ? 0 : 0.5;
+    }
+
+    if (e.hitFlash > 0) {
+      e.hitFlash -= dt;
+      const k = Math.max(0, e.hitFlash / HIT_FLASH);
+      e.mats.suit.emissive.setScalar(k * 0.9);
+      e.mats.skin.emissive.setScalar(k * 0.9);
+    }
+  }
+
+  /**
+   * Four legs, a nose and a tail. The legs run at four times a person's cadence
+   * because the stride is a tenth as long, and the tail is driven one segment
+   * behind the next so a single sine wave at the root travels down it.
+   *
+   * When it stops it does not stand still: the nose keeps working. That twitch
+   * is the difference between a rat that has paused and a prop that has frozen.
+   */
+  _animateRat(e, dt, audio) {
+    const moving = e.moving !== false && e.darting !== false;
+    e.walkPhase += dt * (moving ? 34 : 3);
+
+    const stride = Math.floor(e.walkPhase / Math.PI);
+    if (stride !== e.lastStep) {
+      e.lastStep = stride;
+      // Every fourth footfall: at this cadence one clip per step is a machine
+      // gun of tiny claws.
+      if (moving && (stride & 3) === 0) audio.enemyStep(e);
+    }
+
+    const gait = Math.sin(e.walkPhase);
+    if (e.legs) {
+      const swing = moving ? gait * 0.9 : 0;
+      e.legs[0].rotation.x = swing;
+      e.legs[1].rotation.x = -swing;
+      e.legs[2].rotation.x = -swing;
+      e.legs[3].rotation.x = swing;
+    }
+
+    // Body bobs with the gait; nose dips and lifts when it has stopped to think.
+    e.group.position.y = moving ? Math.abs(gait) * 0.018 : 0;
+    e.head.rotation.x = moving ? gait * 0.08 : Math.sin(e.walkPhase * 2.2) * 0.16;
+
+    if (e.tail) {
+      let link = e.tail;
+      for (let i = 0; i < 3 && link; i++) {
+        link.rotation.y = Math.sin(e.walkPhase * 0.7 - i * 0.9) * (moving ? 0.34 : 0.12);
+        if (i === 0) link.rotation.x = -0.5;   // carried clear of the floor
+        link = link.children.find((c) => c.isGroup);
+      }
     }
 
     if (e.hitFlash > 0) {

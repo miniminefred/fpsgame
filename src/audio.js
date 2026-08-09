@@ -162,7 +162,7 @@ const IMPACT_SCATTER = 0.03;
 
 // Only the sentries walk differently enough to need their own footfall; a
 // reanimated colleague still lands like a person in office shoes.
-const STEP_CLIP = { robot: 'robot-step' };
+const STEP_CLIP = { robot: 'robot-step', rat: 'rat-step' };
 
 // What the office is made of. Every destructible carries a `substance` (see
 // gen/props.js) and each one answers in its own voice three times over: when a

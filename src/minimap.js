@@ -157,6 +157,10 @@ export class Minimap {
       for (let i = 0; i < enemies.length; i++) {
         const e = enemies[i];
         if (!e || e.alive === false) continue;
+        // Vermin are off the map on purpose. The marker answers "is there
+        // somebody in that room", and six yellow dots that turn out to be rats
+        // make it answer wrong six times a floor.
+        if (e.offMap) continue;
         ctx.fillStyle = e.neutral ? COLORS.neutral : COLORS.enemy;
         ctx.beginPath();
         ctx.arc(this._mx(e.x) + sx, this._my(e.z) + sy, r, 0, Math.PI * 2);
