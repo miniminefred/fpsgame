@@ -310,7 +310,11 @@ export class Extinguishers {
     // And a mark on the carpet underneath, which is the only part of this that
     // is still there in a minute's time. Clipped to the floor like any other, so
     // one going off in a doorway does not paint the wall it is up against.
-    this._at.set(at.x, 0.02, at.z);
+    //
+    // Exactly on the floor plane, not a hair above it: the clip probes for the
+    // surface the mark claims to be lying on, and a mark floating two
+    // centimetres over the carpet is correctly told it is lying on nothing.
+    this._at.set(at.x, 0, at.z);
     this.effects.decal(this._at, this._up, 0.75);
     for (let i = 0; i < 26; i++) {
       this._jet.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
