@@ -43,6 +43,7 @@ export class Level {
         ox: layout.ox, oz: layout.oz,
         tiles: layout.tiles, rooms: layout.rooms,
         exit: layout.exit,
+        locks: layout.locks,
       },
     };
 

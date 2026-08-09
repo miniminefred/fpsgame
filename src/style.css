@@ -178,6 +178,25 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
   font-size: 12px; font-weight: 400; letter-spacing: 2.6px;
   text-transform: uppercase; color: var(--ink-dim);
 }
+
+/* Keycards, above the gun. A row of card-shaped chips in the colour of the card
+   itself and nothing else: naming them would need five words of legend, and the
+   only question this has to answer is "have I got the grey one" — which is a
+   question about a colour you have already seen on a door. Empty until you pick
+   one up, so a floor with no locks on it never shows an empty rack. */
+#keycards {
+  display: flex; gap: 5px; margin-bottom: 5px; min-height: 13px;
+}
+#keycards .card {
+  width: 19px; height: 13px; border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  box-shadow: 0 0 7px rgba(255, 255, 255, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+/* The magnetic stripe, so a chip reads as a card rather than as a colour swatch. */
+#keycards .card::after {
+  content: ''; display: block; height: 3px; margin: 3px 0 0;
+  background: rgba(0, 0, 0, 0.42);
+}
 #ammo {
   font-size: 38px; font-weight: 200; letter-spacing: 2px;
   font-variant-numeric: tabular-nums; color: var(--ink);

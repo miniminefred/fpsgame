@@ -12,6 +12,8 @@
 // scale means a metre is always the same distance on the map, and the part of it
 // you can see is the part you are about to walk into.
 
+import { CARDS } from './keycards.js';
+
 const SOLID = 0, ROOM = 1, CORRIDOR = 2, DOOR = 3;
 
 // CSS pixels per tile. A tile is 0.5 m, so 2.6 puts about 33 m across the widget
@@ -111,6 +113,27 @@ export class Minimap {
       g.fillStyle = COLORS.exitRoom;
       g.fillRect(px(exitRoom.x0), py(exitRoom.y0),
         (exitRoom.x1 - exitRoom.x0) * s, (exitRoom.y1 - exitRoom.y0) * s);
+    }
+
+    // Badged rooms, hatched in the colour of the card that opens them. Which
+    // room needs which card is the one thing about a lock you want to know from
+    // somewhere other than standing in front of it — the reader on the jamb
+    // answers it too late to plan a route around.
+    //
+    // Drawn into the static plan, not stamped per frame, because a lock is a
+    // property of the floor: the door opening does not move the room, and a
+    // reader that has gone green is a detail for the corridor, not the map.
+    for (const { room, tier } of level.locks || []) {
+      const spec = CARDS[tier];
+      if (!spec) continue;
+      const css = `#${spec.color.toString(16).padStart(6, '0')}`;
+      g.fillStyle = css;
+      g.globalAlpha = 0.2;
+      g.fillRect(px(room.x0), py(room.y0), (room.x1 - room.x0) * s, (room.y1 - room.y0) * s);
+      g.globalAlpha = 1;
+      g.strokeStyle = css;
+      g.lineWidth = Math.max(1, s * 0.5);
+      g.strokeRect(px(room.x0), py(room.y0), (room.x1 - room.x0) * s, (room.y1 - room.y0) * s);
     }
   }
 

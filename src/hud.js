@@ -26,6 +26,7 @@ export class Hud {
 
     this.weaponEl = $('weapon');
     this.ammoEl = $('ammo');
+    this.keycardsEl = $('keycards');
 
     this.markerEl = $('hitmarker');
     this.vignetteEl = $('vignette');
@@ -63,6 +64,20 @@ export class Hud {
 
   setFloor(n) {
     this.floorEl.textContent = `FLOOR ${n}`;
+  }
+
+  // The cards in hand, already in rank order (see keycards.js). Rebuilt whole
+  // rather than diffed: it changes a handful of times a floor and never holds
+  // more than five chips.
+  setKeycards(tiers) {
+    if (!this.keycardsEl) return;
+    this.keycardsEl.replaceChildren(...tiers.map(({ name, css }) => {
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.style.background = css;
+      el.title = `${name} keycard`;
+      return el;
+    }));
   }
 
   setObjective(text) {
