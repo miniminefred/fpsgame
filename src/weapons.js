@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { getFx } from './fx-textures.js';
 
 // Classic FPS loadout, light -> heavy. Number keys 1..5 select these in order.
 //
@@ -132,24 +133,50 @@ export class Weapons {
     this.rigs[i] = rig;
   }
 
-  // A pair of crossed additive quads parented to the camera, parked at the
-  // active weapon's muzzle and shown for a few frames per shot.
+  /**
+   * The muzzle flash, parented to the camera so it stays welded to a barrel that
+   * is swinging around in front of the face. Three parts, because a flash is not
+   * one thing:
+   *
+   *   star   the burn itself, spun to a new angle every shot
+   *   halo   a soft ball of light around it, which is what makes the star read
+   *          as bright rather than as a picture of a star
+   *   plume  a stubby cone thrown forward down the barrel line, so the flash has
+   *          somewhere to go instead of hanging flat in the air
+   *
+   * Plus a point light, which is the only part of it that touches the room.
+   */
   _buildMuzzleFlash() {
-    const mat = new THREE.MeshBasicMaterial({
-      color: 0xffd27a, transparent: true, opacity: 0.9,
-      blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false,
-      side: THREE.DoubleSide,
-    });
-    const geo = new THREE.PlaneGeometry(0.22, 0.22);
+    const fx = getFx();
+    const sprite = (map, color, scale) => {
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({
+        map, color, transparent: true, blending: THREE.AdditiveBlending,
+        depthWrite: false, depthTest: false,
+      }));
+      s.scale.setScalar(scale);
+      s.renderOrder = 1000;
+      s.frustumCulled = false;
+      return s;
+    };
 
     this.flashGroup = new THREE.Group();
-    for (let i = 0; i < 2; i++) {
-      const quad = new THREE.Mesh(geo, mat);
-      quad.rotation.z = i * Math.PI / 4;
-      quad.renderOrder = 1000;
-      quad.frustumCulled = false;
-      this.flashGroup.add(quad);
-    }
+    this.flashHalo = sprite(fx.glow, 0xffb356, 0.44);
+    this.flashStar = sprite(fx.flash, 0xffffff, 0.30);
+
+    // The plume points down -z, the way the barrel does. A cone rather than a
+    // quad so it survives being looked at from the side, which is exactly what
+    // happens every time the gun kicks.
+    const coneGeo = new THREE.ConeGeometry(0.055, 0.2, 8, 1, true);
+    coneGeo.rotateX(-Math.PI / 2);
+    coneGeo.translate(0, 0, -0.1);
+    this.flashPlume = new THREE.Mesh(coneGeo, new THREE.MeshBasicMaterial({
+      color: 0xffd08a, transparent: true, blending: THREE.AdditiveBlending,
+      depthWrite: false, depthTest: false, side: THREE.DoubleSide,
+    }));
+    this.flashPlume.renderOrder = 1000;
+    this.flashPlume.frustumCulled = false;
+
+    this.flashGroup.add(this.flashHalo, this.flashPlume, this.flashStar);
     this.flashGroup.visible = false;
     this.camera.add(this.flashGroup);
 
@@ -199,9 +226,13 @@ export class Weapons {
 
     const p = this.muzzleLocal();
     this.flashGroup.position.copy(p);
-    this.flashGroup.rotation.z = Math.random() * Math.PI;
+    // Sprites do not turn with their parent, so the star spins itself. Its
+    // material angle is the only thing that changes shot to shot, and it is
+    // enough: nine spikes never land in the same place twice.
+    this.flashStar.material.rotation = Math.random() * Math.PI * 2;
     const scale = 0.7 + this.stats.punch * 0.6;
-    this.flashGroup.scale.setScalar(scale);
+    this.flashGroup.scale.setScalar(scale * (0.9 + Math.random() * 0.2));
+    this.flashPlume.rotation.z = Math.random() * Math.PI * 2;
     this.flashGroup.visible = true;
 
     this.flashLight.position.copy(p);
@@ -226,7 +257,15 @@ export class Weapons {
         this.flashGroup.visible = false;
         this.flashLight.intensity = 0;
       } else {
-        const k = this.flash / FLASH_TIME;
+        // Squared: full brightness for an instant and then gone. A flash that
+        // fades off linearly reads as a lamp being switched off.
+        const k = (this.flash / FLASH_TIME) ** 2;
+        this.flashStar.material.opacity = k;
+        this.flashHalo.material.opacity = k * 0.85;
+        // The plume is the fastest thing here — the gas is past the muzzle
+        // before the burn has finished — so it stretches out as it dies.
+        this.flashPlume.material.opacity = k * 0.55;
+        this.flashPlume.scale.z = 1 + (1 - k) * 0.8;
         this.flashLight.intensity = 6 * this.stats.punch * k;
       }
     }

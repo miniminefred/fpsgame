@@ -798,7 +798,9 @@ export class Enemies {
     if (hit) this._aim.set(px, py - 0.15, pz);
 
     effects.tracer(this._muzzle, this._aim);
-    effects.impact(this._muzzle, this._v.set(0, 1, 0), 0xffca7a);
+    // Bigger types carry bigger guns, and a flash you can size up across a room
+    // is half of knowing what is shooting at you.
+    effects.muzzle(this._muzzle, type.scale);
     // Heavier types fire lower, so you can hear what's shooting you.
     audio.enemyShot(e);
 

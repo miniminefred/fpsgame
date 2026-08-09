@@ -123,6 +123,9 @@ export class Game {
 
     // Bullets stop on this floor's geometry and this floor's occupants.
     this.shooting.setHittables([...level.meshes, ...this.enemies.meshes]);
+    // Scorch marks are clipped to the building only — an enemy standing against
+    // a wall is not part of that wall, however flush he is with it.
+    this.effects.setSurfaces(level.meshes);
 
     // Sound has to know where this floor's walls and doorways are, or it comes
     // straight through the plaster.
