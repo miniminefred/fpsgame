@@ -1,5 +1,3 @@
-import { READER_OPEN } from './keycards.js';
-
 // Sliding doors.
 //
 // The floorplan has always had doorways; these are the ones that got a door
@@ -21,17 +19,23 @@ import { READER_OPEN } from './keycards.js';
 // while the panel is more than half shut.
 //
 // Badged doors are the one exception to all of the above, and they break the
-// rule in the narrowest way they can. The sensor still decides everything — it
-// just refuses to see you until you are carrying the card, and never sees the
-// staff at all. That last part matters more than it looks: a locked door the
-// staff can open is a locked door somebody eventually holds open for you, and
-// the enemies walk into these constantly. Their side of it is handled at the nav
-// grid, which has the opening closed until you badge in (see gen/build.js).
+// rule in the narrowest way they can: while a door is locked its sensor sees
+// nobody at all — not you, and not the staff. Their side of it is handled at the
+// nav grid, which has the opening closed (see gen/build.js), so a chase never
+// piles up against a door the chasers cannot open.
 //
-// And badging in is permanent. A door you have opened once stays open for the
-// rest of the floor — partly because re-reading a card you already own is
-// theatre, and mostly because that is the moment the opening goes back into the
-// nav grid, and taking it away again would strand whoever walked through it.
+// What clears a lock is picking up the card, not walking up to the door. That is
+// a deliberate choice and it is about the white card: white is on every door on
+// the floor, and unlocking those one doorway at a time means the whole building
+// stays sealed to the enemies until the player has personally stood in front of
+// each of two hundred openings. Taking a badge off somebody turns the building
+// on — every door that badge fits goes live at once, its reader goes green, and
+// its opening goes back into the nav grid. Which is also exactly what a badge
+// does in a real building.
+//
+// It is permanent for the same reason it is instant: that moment is when the
+// opening rejoins the nav grid, and taking it away again would strand whoever
+// walked through it.
 
 const SENSE = 2.8;             // metres from the opening that trips the sensor
 const SPEED = 3.4;             // fraction of the panel's width travelled per second
@@ -52,12 +56,9 @@ export class Doors {
     this.audio = audio;
     this.items = [];
 
-    // Set by game.js. `wallet` is what the player is carrying; the two callbacks
-    // are the door reporting what its sensor decided, since what a floor does
-    // about an opened door — hand the tiles back to nav, say so on the HUD — is
+    // Set by game.js: the door reporting what its reader decided, since what a
+    // floor does about it — hand the tiles back to nav, say so on the HUD — is
     // not the door's business.
-    this.wallet = null;
-    this.onUnlock = null;
     this.onRefused = null;
   }
 
@@ -83,6 +84,26 @@ export class Doors {
     return n;
   }
 
+  /**
+   * A card just went into the player's pocket: every door it fits is now open.
+   *
+   * Returns the doors that changed, because each one owes the nav grid its
+   * opening back and only the caller knows where the nav grid is. Cheap enough
+   * to run on every pickup — it is five times a floor at most, over a couple of
+   * hundred doors.
+   */
+  applyWallet(wallet) {
+    const opened = [];
+    for (const door of this.items) {
+      if (!door.lock || !wallet?.opens(door.lock)) continue;
+      door.lock = null;
+      if (door.reader) door.reader.setOpen();
+      opened.push(door);
+    }
+    if (opened.length) this.audio?.doorUnlock(opened[0].at);
+    return opened;
+  }
+
   clear() {
     this.items = [];
   }
@@ -100,24 +121,17 @@ export class Doors {
     for (const door of this.items) {
       if (door.refuseTimer > 0) door.refuseTimer -= dt;
 
-      const playerNear = Math.hypot(px - door.x, pz - door.z) < SENSE;
-      let near = playerNear;
+      let near = Math.hypot(px - door.x, pz - door.z) < SENSE;
 
       if (door.lock) {
-        // Badged. Nobody but the player trips this sensor, and the player only
-        // trips it holding the card — at which point the lock is gone for good.
-        if (!playerNear) {
-          near = false;
-        } else if (this.wallet?.opens(door.lock)) {
-          this._unlock(door);
-        } else {
-          near = false;
-          if (door.refuseTimer <= 0) {
-            door.refuseTimer = REFUSE_GAP;
-            this.audio?.doorRefused(door.at);
-            this.onRefused?.(door);
-          }
+        // Still badged, so its sensor is off — for everybody. All it does is say
+        // so, once every couple of seconds, to whoever walks into it.
+        if (near && door.refuseTimer <= 0) {
+          door.refuseTimer = REFUSE_GAP;
+          this.audio?.doorRefused(door.at);
+          this.onRefused?.(door);
         }
+        near = false;
       } else if (!near) {
         for (const e of enemies) {
           if (!e.alive) continue;
@@ -148,17 +162,6 @@ export class Doors {
 
       this._place(door);
     }
-  }
-
-  // Badged in. The lock is dropped, the reader goes green, and the opening is
-  // handed back to the nav grid — which is what lets the floor follow you in,
-  // and is why this can only ever happen once.
-  _unlock(door) {
-    const tier = door.lock;
-    door.lock = null;
-    if (door.reader) door.reader.lamp.material.color.setHex(READER_OPEN);
-    this.audio?.doorUnlock(door.at);
-    this.onUnlock?.(door, tier);
   }
 
   // Panel position, and the collider that follows it. The collider is retired

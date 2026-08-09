@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BODY_RADIUS as RADIUS } from './nav.js';
-import { CORRIDOR, worldX, worldZ } from './gen/layout.js';
+import { CORRIDOR, STAFF_ONLY, worldX, worldZ } from './gen/layout.js';
 import { buildRig } from './rigs.js';
 
 // The people still working here.
@@ -312,17 +312,63 @@ export class Enemies {
       this._add(spot.x, spot.z, rng, tuning, TYPES.roomba);
     }
 
+    this._cardOutside(layout, nav, rng, tuning);
     this._dealCards(layout, rng);
+  }
+
+  /**
+   * Somebody with a badge, standing where no badge is needed to reach them.
+   *
+   * This is the load-bearing guarantee of the whole keycard system, and it is
+   * one line of consequence from a single decision: white is on every door.
+   * Every employee is carrying a white card, but nearly every employee is behind
+   * a white door, and a floor where the first card is behind the first lock is a
+   * floor with nothing on it but corridors.
+   *
+   * Corridors are never locked, so one hostile in a corridor settles it forever.
+   * Usually there are several already — security does rounds — but a theme is
+   * allowed to say there are none (nobody patrols an Infestation), and "usually"
+   * is not a guarantee. So if the floor ended up with nobody outside a lock, it
+   * gets one or two of whatever is working this floor: on an Infestation that is
+   * something shambling down a hallway, which is what an Infestation looks like
+   * anyway.
+   */
+  _cardOutside(layout, nav, rng, tuning) {
+    const outside = this.items.some((e) => !e.neutral && !this._behindALock(layout, e.x, e.z));
+    if (outside) return;
+
+    const spots = this.corridors.filter((s) =>
+      Math.hypot(s.x - layout.spawn.x, s.z - layout.spawn.z) > 10 && !this._behindALock(layout, s.x, s.z));
+    if (!spots.length) return;
+
+    for (let i = rng.int(1, 2); i > 0; i--) {
+      const spot = rng.pick(spots);
+      this._add(spot.x, spot.z, rng, tuning, pickType(layout.floorNumber, rng, this.theme));
+    }
+  }
+
+  _behindALock(layout, x, z) {
+    if (!layout.locked) return false;
+    const tx = Math.floor((x - layout.ox) / layout.TILE);
+    const ty = Math.floor((z - layout.oz) / layout.TILE);
+    if (tx < 0 || ty < 0 || tx >= layout.W || ty >= layout.H) return true;
+    return layout.locked[ty * layout.W + tx] !== 0;
   }
 
   /**
    * Who is carrying a keycard.
    *
+   * Everybody is carrying the white one, because everybody who works here has a
+   * staff badge — that is what makes white on every door fair rather than
+   * cruel. The real cards go to specific people, one guaranteed holder each,
+   * replacing the white they would otherwise have had (there are a hundred and
+   * forty others carrying that).
+   *
    * Dealt after everyone is placed rather than during placement, because the
    * question it has to answer is about the floor as a whole: every lock on it
-   * needs a holder, and none of those holders may be standing behind a door
-   * their own card opens. The second half is free — _spawnPoints and _loose both
-   * refuse tiles inside a locked room — so this only has to deal.
+   * needs a holder who is not behind it. For grey, blue and yellow that is free
+   * — nobody is placed inside a staff-only room at all — and for white it is
+   * _cardOutside above.
    *
    * Only hostiles carry. The neutrals are the people you are explicitly allowed
    * to walk past, and putting the security card in a cleaner's pocket turns
@@ -333,24 +379,21 @@ export class Enemies {
    * be a skeleton key without unlocking the floor early.
    */
   _dealCards(layout, rng) {
-    const tiers = [...new Set((layout.locks ?? []).map((l) => l.tier))]
-      .filter((t) => t !== 'black');
-    if (!tiers.length) return;
-
     const hostiles = rng.shuffle(this.items.filter((e) => !e.neutral));
+    for (const e of hostiles) e.card = 'white';
+
+    const tiers = [...new Set((layout.locks ?? []).map((l) => l.tier))]
+      .filter((t) => t !== 'black' && t !== 'white');
+
     let i = 0;
     for (const tier of tiers) {
       if (i >= hostiles.length) break;
       hostiles[i++].card = tier;
     }
-
-    // Then spares, drawn only from the ladder cards this floor actually has a
-    // door for — a white card on a floor with no white doors is a pickup that
-    // teaches you pickups do not matter. Spares exist so that a card is
-    // something the floor hands you on the way past rather than something you
-    // hunt one specific body for, which is what a single holder among a hundred
-    // and forty staff would be.
-    const spares = tiers.filter((t) => t === 'white' || t === 'grey');
+    // Spares for the tiers that have more than one door, so a grey card is
+    // something the floor hands you on the way past rather than one specific
+    // body among a hundred and forty.
+    const spares = tiers.filter((t) => t === 'grey');
     if (!spares.length) return;
     for (; i < hostiles.length; i++) {
       if (rng.chance(CARD_SPARE_CHANCE)) hostiles[i].card = rng.pick(spares);
@@ -365,7 +408,7 @@ export class Enemies {
       const tx = rng.int(0, layout.W - 1);
       const ty = rng.int(0, layout.H - 1);
       if (!nav.walkable(tx, ty)) continue;
-      if (layout.locked?.[ty * layout.W + tx]) continue;
+      if (layout.locked?.[ty * layout.W + tx] === STAFF_ONLY) continue;
       const x = nav.wx(tx), z = nav.wz(ty);
       if (!nav.clear(x, z, RADIUS)) continue;
       spots.push({ x, z });
@@ -393,12 +436,17 @@ export class Enemies {
    */
   _spawnPoints(layout, nav, rng, count) {
     const spots = [];
-    // Nobody works in a badged room. It is the rule that makes keycards
-    // survivable: a floor cannot be cleared through a door you have not got the
-    // card for, and the person carrying that card cannot be behind it. It costs
-    // three or four rooms of headcount out of a hundred and forty, which is
-    // nothing next to a floor that cannot be finished.
-    const rooms = rng.shuffle(layout.rooms.filter((r) => r.role !== 'lobby' && !r.lock));
+    // Nobody works behind a REAL lock — grey, blue, yellow, black. That is the
+    // rule that makes those four survivable: the card is never on the wrong side
+    // of the door it opens. It costs half a dozen rooms of headcount out of a
+    // hundred and forty, which is nothing next to a floor that cannot be
+    // finished.
+    //
+    // White rooms are the opposite case and are staffed normally. White is on
+    // every door in the building and on every employee in it, so a white room is
+    // a room with the key to itself standing in it — and the guarantee that
+    // makes the FIRST one openable is _cardOutside below, not this.
+    const rooms = rng.shuffle(layout.rooms.filter((r) => r.role !== 'lobby' && !r.staffOnly));
     if (!rooms.length) return spots;
 
     const minDist = 14;

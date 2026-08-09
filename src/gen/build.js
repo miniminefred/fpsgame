@@ -9,7 +9,7 @@ import {
   TILE, WALL_H, CEIL_H, DOOR_H,
   SOLID, ROOM, CORRIDOR, DOOR, isOpen, worldX, worldZ, slidePocketSide,
 } from './layout.js';
-import { CARDS, READER_LIT } from '../keycards.js';
+import { CARDS, READER_LIT, READER_OPEN } from '../keycards.js';
 
 // Turns an abstract floorplan into everything the game needs: batched meshes,
 // collision AABBs, a nav grid for the enemies, and the list of ceiling lights
@@ -457,6 +457,7 @@ const DOOR_PANEL_H = DOOR_H - 0.04;
 function buildSlidingDoors(layout, scene, materials, doors, colliders, objects, rng) {
   const geo = new THREE.BoxGeometry(1, 1, 1);
   const { W } = layout;
+  const readers = new BadgeReaders(scene, objects, layout.doors.length);
 
   for (const d of layout.doors) {
     // Not every doorway has a door in it. Some were taken off their runners
@@ -521,60 +522,99 @@ function buildSlidingDoors(layout, scene, materials, doors, colliders, objects, 
       // null on an ordinary door; a card tier on a badged one. See doors.js.
       lock: d.lock ?? null,
       navTiles,
-      reader: d.lock ? buildBadgeReader(scene, objects, d, cx, cz, x0, x1, z0, z1) : null,
+      reader: d.lock ? readers.add(d, cx, cz, x1, z1) : null,
     });
   }
+
+  readers.finish();
 }
 
 // --- badge readers ----------------------------------------------------------
 
 const READER_H = 1.15;         // metres up the jamb — where your hand goes
 
-// The panel on a locked door looks exactly like the panel on an unlocked one,
-// and a door that silently refuses to open reads as a bug rather than as a lock.
-// So the lock is stated on the wall before you are close enough for the sensor
-// to have decided anything, and it states two separate things: the lamp says
-// locked or open, in red and green, and the plate around it is the colour of the
-// card that opens it. Which card you need is a question you want answered from
-// the far end of a corridor; whether you have already been through is one you
-// only ask standing in front of it.
-//
-// One box, sunk into the jamb at the end of the opening and poking a couple of
-// centimetres out of BOTH faces of the wall, because a doorway has two sides and
-// you may well arrive at either.
-function buildBadgeReader(scene, objects, d, cx, cz, x0, x1, z0, z1) {
-  const group = new THREE.Group();
-  const spec = CARDS[d.lock] ?? CARDS.white;
+/**
+ * A badge reader beside every badged doorway.
+ *
+ * The panel on a locked door looks exactly like the panel on an unlocked one,
+ * and a door that silently refuses to open reads as a bug rather than as a lock.
+ * So the lock is stated on the wall before you are close enough for the sensor
+ * to have decided anything, and it states two separate things: the lamp says
+ * locked or open, in red and green, and the plate around it is the colour of the
+ * card that opens it. Which card you need is a question you want answered from
+ * the far end of a corridor; whether you have already been through is one you
+ * only ask standing in front of it.
+ *
+ * Each is sunk into the jamb at the end of the opening and pokes a couple of
+ * centimetres out of BOTH faces of the wall, because a doorway has two sides and
+ * you may well arrive at either.
+ *
+ * Two InstancedMeshes for the whole floor, plate and lamp, rather than a mesh
+ * each. White is on every door in the building, so this went from a handful of
+ * readers to two hundred of them, and two hundred little boxes is two hundred
+ * more draw calls than a floor should spend on door furniture. Instancing also
+ * makes turning one green a colour write rather than a material, which is what
+ * lets a single card pickup relight the entire floor in one frame.
+ */
+class BadgeReaders {
+  constructor(scene, objects, count) {
+    // Sized for a vertical door and re-oriented per instance; the lamp is a
+    // shade proud of the plate on each face so it is never edge-on.
+    this.plates = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(0.56, 0.2, 0.15),
+      new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.25 }),
+      count);
+    this.lamps = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(0.6, 0.075, 0.07),
+      new THREE.MeshBasicMaterial(),
+      count);
 
-  const plate = new THREE.Mesh(
-    new THREE.BoxGeometry(d.vertical ? 0.56 : 0.15, 0.2, d.vertical ? 0.15 : 0.56),
-    new THREE.MeshStandardMaterial({
-      color: spec.color,
-      emissive: spec.color,
-      emissiveIntensity: 0.22,
-      roughness: 0.6,
-      metalness: 0.25,
-    }));
-  plate.userData.ownMaterial = true;
-  group.add(plate);
+    for (const m of [this.plates, this.lamps]) {
+      m.count = 0;                                  // grown as readers are added
+      m.frustumCulled = false;                      // one object spanning a floor
+      m.userData.ownMaterial = true;
+      scene.add(m);
+      objects.push(m);
+    }
 
-  // The lamp, a shade proud of the plate on each face so it is never edge-on.
-  const lamp = new THREE.Mesh(
-    new THREE.BoxGeometry(d.vertical ? 0.6 : 0.07, 0.075, d.vertical ? 0.07 : 0.6),
-    new THREE.MeshBasicMaterial({ color: READER_LIT }));
-  lamp.userData.ownMaterial = true;
-  group.add(lamp);
+    this._m = new THREE.Matrix4();
+    this._q = new THREE.Quaternion();
+    this._p = new THREE.Vector3();
+    this._s = new THREE.Vector3(1, 1, 1);
+    this._c = new THREE.Color();
+  }
 
-  // Just past the end of the opening, inside the jamb.
-  group.position.set(
-    d.vertical ? cx : x1 + 0.16,
-    READER_H,
-    d.vertical ? z1 + 0.16 : cz);
+  add(d, cx, cz, x1, z1) {
+    const i = this.plates.count++;
+    this.lamps.count++;
 
-  scene.add(group);
-  objects.push(group);
-  return { group, lamp };
+    this._p.set(d.vertical ? cx : x1 + 0.16, READER_H, d.vertical ? z1 + 0.16 : cz);
+    this._q.setFromAxisAngle(UP, d.vertical ? 0 : Math.PI / 2);
+    this._m.compose(this._p, this._q, this._s);
+    this.plates.setMatrixAt(i, this._m);
+    this.lamps.setMatrixAt(i, this._m);
+
+    this.plates.setColorAt(i, this._c.setHex((CARDS[d.lock] ?? CARDS.white).color));
+    this.lamps.setColorAt(i, this._c.setHex(READER_LIT));
+
+    // The handle a door keeps: it knows its own index and nothing else.
+    return {
+      setOpen: () => {
+        this.lamps.setColorAt(i, this._c.setHex(READER_OPEN));
+        this.lamps.instanceColor.needsUpdate = true;
+      },
+    };
+  }
+
+  finish() {
+    for (const m of [this.plates, this.lamps]) {
+      m.instanceMatrix.needsUpdate = true;
+      if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    }
+  }
 }
+
+const UP = new THREE.Vector3(0, 1, 0);
 
 // --- furnishing -------------------------------------------------------------
 

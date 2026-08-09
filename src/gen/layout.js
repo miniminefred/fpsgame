@@ -559,34 +559,46 @@ function assignRoles(rooms, spawnRoom, exitRoom, rng) {
 
 // --- keycard locks ----------------------------------------------------------
 //
-// Some rooms are badged. Which card opens which lock is keycards.js's business;
-// this decides WHICH rooms get one, and the entire job here is making sure a
-// lock can never cost you the floor. Two rules, both proved by construction
-// rather than hoped for:
+// Every door in the building has a reader beside it, because every door in an
+// office building does. Which card opens which lock is keycards.js's business;
+// this decides which rooms get which lock, and the entire job here is making
+// sure a lock can never cost you the floor.
 //
-//   Nothing you need is behind a card. The spawn and exit rooms are never
-//   locked, and a room is only locked if FILLING IT IN SOLID still leaves every
-//   other room and the exit reachable from the spawn. So a floor can be cleared
-//   and descended without ever finding a single card — a locked room is loot,
-//   never the route.
+// The five cards fall into two groups, and they are governed by two completely
+// different rules:
 //
-//   No card is behind the door it opens, or behind another door. A candidate is
-//   only locked if it is reachable with every lock placed so far already treated
-//   as solid, so locks never chain into each other; and `locked` below marks the
-//   tiles so enemies.js can refuse to spawn anybody inside one, which is what
-//   stops the person carrying a card ending up on the wrong side of it.
+//   WHITE is the staff badge, and it goes on EVERYTHING with a door. Every
+//   employee in the building is carrying one, so it is not really a lock at all
+//   — it is the thirty seconds at the start of a floor before you have taken one
+//   off somebody. That is the only reason it can be this indiscriminate. What
+//   makes it safe is `staffOnly` below: white rooms are the rooms people work
+//   in, so the card is behind the door AND in front of it, several hundred
+//   times over, and enemies.js guarantees at least one hostile stands outside
+//   every locked room on the floor. The spawn room is the one exception — a
+//   badge reader on the lobby you start inside is a floor you cannot leave.
+//
+//   GREY, BLUE, YELLOW and BLACK are real locks, and they are the ones the
+//   proofs below are about. They empty their room of staff, and a room only
+//   takes one if FILLING IT IN SOLID still leaves every other room and the exit
+//   reachable — so all four are loot, never the route. A candidate must also be
+//   reachable with the other three already shut, so no card is ever behind
+//   another card's door, and none is behind its own.
 //
 // The cost is a flood fill per candidate, on a grid the generator has already
 // flooded several times. It is worth it: this is the one part of the floor that,
 // when it goes wrong, cannot be walked around.
 
 // The back-of-house roles that read as "staff only" from the doorway — they are
-// what the grey card is for. White goes on anything.
+// what the grey card is for.
 const GREY_ROLES = new Set(['server', 'archive', 'itbay', 'mailroom', 'utility', 'storage']);
 
 // In order, because the ones with a room role of their own have to get first
-// pick: a manager's office can only be a room of roughly office size, whereas a
-// white lock will happily go on whatever is left.
+// pick. White is not in here: it is not chosen, it is what is left.
+//
+// `staffOnly` is the flag that does the real work — it says this room is emptied
+// of staff, which is what keeps its card from being locked inside it. Every
+// entry here sets it, and white does not, and that difference IS the difference
+// between the two groups.
 const LOCK_PLAN = [
   // The manager sits as far from the lifts as the floor allows, which is both
   // how offices work and where you want the last room on the floor to be.
@@ -596,8 +608,7 @@ const LOCK_PLAN = [
     fits: (r) => r.areaM2 >= 14 && r.areaM2 <= 70 },
   { tier: 'yellow', role: 'closet', count: [1, 1],
     fits: (r) => r.areaM2 <= 34 },
-  { tier: 'grey', count: [1, 2], fits: (r) => GREY_ROLES.has(r.role) },
-  { tier: 'white', count: [1, 3], fits: () => true },
+  { tier: 'grey', count: [2, 4], fits: (r) => GREY_ROLES.has(r.role) },
 ];
 
 // How many candidates a tier will flood-fill before giving up on itself. A floor
@@ -638,17 +649,49 @@ function assignLocks(tiles, W, H, rooms, doors, spawnRoom, exitRoom, dist, rng) 
       // Every way in has to be shuttable. One opening on the room with no wall
       // to retract a panel into is a lock you walk straight around.
       if (onRoom.some((d) => slidePocketSide(tiles, W, H, d) === 0)) continue;
+      // And no way in may be shared with a room that is already locked to a
+      // DIFFERENT tier. A doorway between the security office and the archive
+      // has to demand one card or the other, and whichever it demands, the other
+      // room is now openable with a card that was never meant to open it. There
+      // are four of these locks on a floor of two hundred rooms, so refusing the
+      // candidate outright costs nothing and settles the question permanently.
+      if (onRoom.some((d) => d.lock)) continue;
       if (!survivesWithout(sealed, W, H, sx, sy, rooms, room, locks, exitRoom, onRoom)) continue;
 
       room.lock = step.tier;
+      room.staffOnly = true;
       if (step.role) { room.role = step.role; room.forcedRole = true; }
       for (const d of onRoom) d.lock = step.tier;
-      locks.push({ room, tier: step.tier, doors: onRoom });
+      locks.push({ room, tier: step.tier, doors: onRoom, staffOnly: true });
 
       fillRoom(sealed, W, room, SOLID);
       reach = bfs(sealed, W, H, sx, sy);
       placed++;
     }
+  }
+
+  // And white on everything else, with no proof and no flood fill, because
+  // there is nothing to prove: white is not a card you go and find, it is a card
+  // the next person you shoot is already carrying. The only rooms it skips are
+  // the lobby you spawn in — locking that is locking yourself in — and doorways
+  // with no wall to retract a panel into, which cannot hold a door at all.
+  //
+  // The exit room is NOT skipped. Reaching the exit means clearing the floor,
+  // clearing the floor means killing somebody, and killing somebody means having
+  // a white card, so a badge reader on the exit is a reader you have already
+  // walked through forty of.
+  for (const room of rooms) {
+    if (room.lock || room === spawnRoom) continue;
+    const onRoom = doorsOnRoom(doors, room);
+    if (!onRoom.length) continue;
+    if (onRoom.some((d) => slidePocketSide(tiles, W, H, d) === 0)) continue;
+
+    room.lock = 'white';
+    // Never DOWNGRADE a door. A white room next to the archive shares that
+    // doorway, and stamping white over the grey lock on it would open the
+    // archive to a staff badge from the room next door.
+    for (const d of onRoom) d.lock ??= 'white';
+    locks.push({ room, tier: 'white', doors: onRoom, staffOnly: false });
   }
 
   return locks;
@@ -713,18 +756,30 @@ function doorsOnRoom(doors, room) {
   });
 }
 
-// One byte per tile: 1 for anything inside a locked room or in one of its
-// doorways. Cheap to build once and the only thing the runtime needs to answer
-// "is this spot behind a card".
+/**
+ * One byte per tile, for anything inside a locked room or in one of its
+ * doorways:
+ *
+ *   0  not behind a card
+ *   1  behind a white door — a room people work in, so things may stand here
+ *   2  behind a real lock — nobody works here, so nothing may be placed here
+ *
+ * The distinction is the whole safety argument for white being everywhere: a
+ * white room full of staff is a white room full of white cards, whereas anything
+ * dropped inside a 2 would be a key locked in with its own lock.
+ */
+export const STAFF_ONLY = 2;
+
 function lockedMask(W, H, locks) {
   const mask = new Uint8Array(W * H);
-  for (const { room, doors } of locks) {
+  for (const { room, doors, staffOnly } of locks) {
+    const v = staffOnly ? STAFF_ONLY : 1;
     for (let y = room.y0; y < room.y1; y++) {
-      for (let x = room.x0; x < room.x1; x++) mask[y * W + x] = 1;
+      for (let x = room.x0; x < room.x1; x++) mask[y * W + x] = v;
     }
     for (const d of doors) {
       for (let y = d.y0; y < d.y1; y++) {
-        for (let x = d.x0; x < d.x1; x++) mask[y * W + x] = 1;
+        for (let x = d.x0; x < d.x1; x++) mask[y * W + x] = v;
       }
     }
   }

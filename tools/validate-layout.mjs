@@ -77,11 +77,12 @@ const IDS = [
   // frame when they break, and none of them is visible from inside the game
   // until you are standing in front of a door you cannot open with the exit
   // behind it. See assignLocks in src/gen/layout.js.
-  ['8.lock-progress', 'FAIL', 'KEYCARD       floor clearable and exit reachable with every lock shut'],
-  ['8.lock-chain', 'FAIL', 'KEYCARD       no locked room is behind another locked room'],
-  ['8.lock-spawn', 'FAIL', 'KEYCARD       spawn and exit rooms are never locked'],
+  ['8.lock-progress', 'FAIL', 'KEYCARD       floor clearable and exit reachable on the white card alone'],
+  ['8.lock-chain', 'FAIL', 'KEYCARD       no staff-only room is behind another staff-only room'],
+  ['8.lock-spawn', 'FAIL', 'KEYCARD       spawn room unlocked, exit room never staff-only'],
   ['8.lock-doors', 'FAIL', 'KEYCARD       every opening into a locked room is locked'],
   ['8.lock-tiers', 'WARN', 'KEYCARD       floor has a black, a blue and a yellow lock'],
+  ['8.lock-white', 'WARN', 'KEYCARD       every room but the lobby is behind a badge reader'],
   ['7.zero-rooms', 'FAIL', 'DEGENERATE    floor has 0 rooms'],
   ['7.one-room', 'FAIL', 'DEGENERATE    floor has 1 room'],
   ['7.walkable', 'FAIL', 'DEGENERATE    walkable area >= 15% of footprint'],
@@ -357,35 +358,39 @@ function validate(seed, floorNumber) {
   // convincing itself is not evidence.
   const locks = L.locks ?? [];
   if (locks.length) {
-    const locked = rooms.filter((r) => r.lock);
+    // The two groups behave completely differently and only one of them is a
+    // real obstacle. White is on every door and on every employee, so the model
+    // these checks work in is "the player has the white card and nothing else":
+    // white rooms open, the other four shut. See assignLocks in gen/layout.js.
+    const staffOnly = rooms.filter((r) => r.staffOnly);
 
-    if (locked.includes(L.spawnRoom) || locked.includes(L.exitRoom)) {
-      check('8.lock-spawn').fail(id, 'spawn or exit room is behind a keycard');
-    }
+    if (L.spawnRoom.lock) check('8.lock-spawn').fail(id, 'the lobby you spawn in is behind a badge reader');
+    if (L.exitRoom.staffOnly) check('8.lock-spawn').fail(id, `exit room is ${L.exitRoom.lock}-locked`);
 
-    // With every badged room filled in solid, can you still clear the floor and
-    // leave? This is the whole promise of the feature — a card is loot, never
-    // the route — and it is a promise about the WORST case, so all of them are
-    // shut at once.
+    // With every staff-only room filled in solid, can you still clear the floor
+    // and leave on the white card alone? This is the whole promise — grey, blue,
+    // yellow and black are loot, never the route — and it is a promise about the
+    // worst case, so all of them are shut at once.
     const shut = Uint8Array.from(tiles);
-    for (const r of locked) {
+    for (const r of staffOnly) {
       for (let y = r.y0; y < r.y1; y++) for (let x = r.x0; x < r.x1; x++) shut[idx(x, y)] = SOLID;
     }
     const shutDist = spawnOpen ? flood(shut, W, H, sx, sy, isOpen) : new Int32Array(W * H).fill(-1);
     const stranded = rooms.filter((r) =>
-      !r.lock && shutDist[idx(Math.round((r.x0 + r.x1) / 2), Math.round((r.y0 + r.y1) / 2))] < 0);
+      !r.staffOnly && shutDist[idx(Math.round((r.x0 + r.x1) / 2), Math.round((r.y0 + r.y1) / 2))] < 0);
     if (stranded.length || (inb(ex, ey) && shutDist[idx(ex, ey)] < 0)) {
       check('8.lock-progress').fail(id,
-        `${stranded.length} unlocked rooms + exit=${inb(ex, ey) && shutDist[idx(ex, ey)] >= 0} cut off with locks shut`);
+        `${stranded.length} white rooms + exit=${inb(ex, ey) && shutDist[idx(ex, ey)] >= 0} cut off with the real locks shut`);
     }
 
-    // Every locked room has to be walkable-up-to while all the OTHERS are shut,
-    // or its card is behind somebody else's door. The card itself comes off an
-    // enemy, and enemies.js never spawns one inside a locked room, so "can I
+    // Each staff-only room has to be walkable-up-to while the OTHER three are
+    // shut, or its card is behind somebody else's door. The card comes off an
+    // enemy and enemies.js never spawns one inside a staff-only room, so "can I
     // reach the door" is the whole question.
-    for (const { room, doors: lockDoors } of locks) {
+    for (const { room, doors: lockDoors, staffOnly: only } of locks) {
+      if (!only) continue;
       const others = Uint8Array.from(tiles);
-      for (const r of locked) {
+      for (const r of staffOnly) {
         if (r === room) continue;
         for (let y = r.y0; y < r.y1; y++) for (let x = r.x0; x < r.x1; x++) others[idx(x, y)] = SOLID;
       }
@@ -397,25 +402,44 @@ function validate(seed, floorNumber) {
         }
       }
       if (!reachable) {
-        check('8.lock-chain').fail(id, `${room.role} (${room.lock}) is behind another locked door`);
+        check('8.lock-chain').fail(id, `${room.role} (${room.lock}) is behind another staff-only door`);
       }
     }
 
+    // The user-facing rule: every room but the lobby has a reader on it. A room
+    // is allowed to miss out only when one of its openings has no wall to
+    // retract a panel into, which is a door that cannot exist rather than a lock
+    // that was forgotten.
+    const bare = rooms.filter((r) => !r.lock && r !== L.spawnRoom && r.doors.length);
+    if (bare.length) check('8.lock-white').fail(id, `${bare.length} rooms with a door and no lock`);
+
     // A second way into a badged room that nobody locked is the whole lock
-    // undone, and the room next door cuts its own doors without asking.
-    let unlocked = 0;
+    // undone, and the room next door cuts its own doors without asking. Read off
+    // `owner` — the tile-to-room map check 5 already built — rather than testing
+    // every door against every room, which at two hundred of each is not free.
+    // A door is safe for the room behind it when it demands the room's own card,
+    // or a card the room's lock could never be satisfied by anyway — a white
+    // room reached through the archive's grey door is not a breach, it is a
+    // longer walk. What is a breach is the reverse: a grey room with a white
+    // door on it.
+    let leaks = 0;
     for (const d of doors) {
-      if (d.lock) continue;
       for (let y = d.y0; y < d.y1; y++) {
         for (let x = d.x0; x < d.x1; x++) {
           const ns = d.vertical ? [[x - 1, y], [x + 1, y]] : [[x, y - 1], [x, y + 1]];
           for (const [nx, ny] of ns) {
-            if (locked.some((r) => nx >= r.x0 && nx < r.x1 && ny >= r.y0 && ny < r.y1)) unlocked++;
+            const o = inb(nx, ny) ? owner[idx(nx, ny)] : -1;
+            if (o < 0) continue;
+            const want = rooms[o].lock;
+            if (!want) continue;
+            if (d.lock === want) continue;
+            if (want === 'white' && d.lock) continue;   // stronger door, fine
+            leaks++;
           }
         }
       }
     }
-    if (unlocked) check('8.lock-doors').fail(id, `${unlocked} unlocked openings lead into a locked room`);
+    if (leaks) check('8.lock-doors').fail(id, `${leaks} openings let you into a room past its own lock`);
   }
 
   const tiers = new Set(locks.map((l) => l.tier));

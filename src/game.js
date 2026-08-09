@@ -96,29 +96,33 @@ export class Game {
       this.destruction.damageSurface(hit, dir, damage);
 
     this.enemies.onDeath = (e) => this._onEnemyDeath(e);
-    if (this.doors) {
-      this.doors.wallet = this.wallet;
-      this.doors.onUnlock = (door, tier) => this._onDoorUnlocked(door, tier);
-      this.doors.onRefused = (door) => this._onDoorRefused(door);
-    }
-    this.wallet.onChange = () => this.hud.setKeycards(this.wallet.list());
+    if (this.doors) this.doors.onRefused = (door) => this._onDoorRefused(door);
+    this.wallet.onChange = (wallet, tier) => this._onCardTaken(wallet, tier);
   }
 
   // --- keycards ---------------------------------------------------------------
 
   /**
-   * Somebody went down. If they were carrying a card it lands where they did.
+   * Somebody went down. Whatever badge they were carrying lands where they did —
+   * unless you already have one like it, which almost always you do.
    *
-   * The black card is the exception, and it is the reason the manager's office
-   * is worth walking back for: it is not carried by anybody in particular, it is
-   * what the LAST hostile on the floor turns out to have been holding. That
-   * makes it impossible to get early, impossible to miss, and impossible to lose
+   * Every employee in the building carries a white card, and a floor holds up to
+   * two hundred of them. Dropping all of those would bury the floor in pickups
+   * that do nothing: after the first one, the two-hundredth white card is not a
+   * reward, it is litter with a glow on it. So a card only becomes an object if
+   * it would actually change what you can open — which also means the drop you
+   * DO see is always worth walking over to.
+   *
+   * The black card is the exception to all of it, and it is the reason the
+   * manager's office is worth walking back for: it is not carried by anybody in
+   * particular, it is what the LAST hostile on the floor turns out to have been
+   * holding. Impossible to get early, impossible to miss, and impossible to lose
    * — you cannot clear a floor without producing it.
    */
   _onEnemyDeath(e) {
     if (!this.keycards) return;
     const at = e.group.position;
-    if (e.card) this.keycards.drop(e.card, at.x, 0, at.z);
+    if (e.card && !this.wallet.has(e.card)) this.keycards.drop(e.card, at.x, 0, at.z);
 
     if (e.neutral || this.enemies.hostileCount > 0) return;
     if (!this.level.current?.layout.locks?.some((l) => l.tier === 'black')) return;
@@ -131,11 +135,27 @@ export class Game {
     this.droppedBlack = true;
   }
 
-  _onDoorUnlocked(door, tier) {
-    // The opening goes back into the nav grid, so the floor can follow you in.
-    // Until this moment the enemies have had it closed — see gen/build.js.
-    this.level.current?.nav.openTiles(door.navTiles);
-    this.hud.message(`${(CARDS[tier]?.name ?? '').toUpperCase()} DOOR UNLOCKED`, 1500);
+  /**
+   * A card went into the pocket, so the building rearranges itself around it.
+   *
+   * Every door that badge fits opens at once — reader green, opening handed back
+   * to the nav grid — rather than one at a time as you walk up to each. With
+   * white on two hundred doorways the alternative is a floor that stays sealed
+   * to its own occupants until the player has personally visited every door on
+   * it, which is not a lock, it is a fog of war made of drywall.
+   */
+  _onCardTaken(wallet, tier) {
+    this.hud.setKeycards(wallet.list());
+    if (!this.doors || !tier) return;
+
+    const opened = this.doors.applyWallet(wallet);
+    const nav = this.level.current?.nav;
+    for (const door of opened) nav?.openTiles(door.navTiles);
+
+    const name = (CARDS[tier]?.name ?? '').toUpperCase();
+    this.hud.message(opened.length
+      ? `${name} KEYCARD — ${opened.length} DOOR${opened.length === 1 ? '' : 'S'} OPEN`
+      : `${name} KEYCARD`, 1800);
   }
 
   _onDoorRefused(door) {

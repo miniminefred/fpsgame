@@ -81,10 +81,13 @@ export class Wallet {
     this.onChange = null;
   }
 
+  // `onChange(wallet, tier)` — tier is the card just taken, or null when the
+  // wallet was emptied for a new floor. The distinction matters: taking a card
+  // opens doors, and arriving on a floor must not.
   clear() {
     if (this.held.size) {
       this.held.clear();
-      this.onChange?.(this);
+      this.onChange?.(this, null);
     }
   }
 
@@ -93,7 +96,7 @@ export class Wallet {
   add(tier) {
     if (!CARDS[tier] || this.held.has(tier)) return false;
     this.held.add(tier);
-    this.onChange?.(this);
+    this.onChange?.(this, tier);
     return true;
   }
 
@@ -226,15 +229,13 @@ export class Keycards {
     }
   }
 
+  // What a new card MEANS — which doors just opened — is said by game.js off the
+  // wallet's own change, because it is a fact about the floor and not about the
+  // pickup. All this owes is the noise and getting the thing off the carpet.
   _collect(item) {
-    const spec = CARDS[item.tier];
-    const isNew = this.wallet.add(item.tier);
     this.scene.remove(item.group);
-
     this.audio?.keycardPickup(item.group.position);
-    this.hud?.message(isNew
-      ? `${spec.name.toUpperCase()} KEYCARD — ${spec.blurb.toUpperCase()}`
-      : `${spec.name.toUpperCase()} KEYCARD (SPARE)`, 1500);
+    this.wallet.add(item.tier);
   }
 
   /** Everything on the floor goes with the floor. */
