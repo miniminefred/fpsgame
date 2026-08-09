@@ -205,15 +205,25 @@ function trainingRoom(sink, bounds, rng) {
   const alongX = (x1 - x0) >= (z1 - z0);
   // Seats look at the front wall: rows run across the room, ranked back from it.
   const [f0, f1, a0, a1] = alongX ? [z0, z1, x0, x1] : [x0, x1, z0, z1];
-  const flip = rng.chance(0.5);
-  const front = flip ? f1 : f0;
-  const dir = flip ? -1 : 1;                       // deeper into the room
-  const rot = alongX ? (flip ? 0 : 2) : (flip ? 3 : 1);   // facing the front wall
+  const at = (across, along) => (alongX ? [along, across] : [across, along]);
 
-  const at = (front_, along) => (alongX ? [along, front_] : [front_, along]);
-
-  const [bx, bz] = at(front + dir * 0.3, (a0 + a1) / 2);
-  tryPlace(sink, 'whiteboard', bx, bz, (rot + 2) & 3, rng);
+  // The board decides which wall is the front, not the die: a doorway keeps
+  // four tiles of floor clear on both sides, so a board centred on the wall the
+  // door is in never lands — and rows of chairs facing a blank wall is not a
+  // training room, it is a waiting room. Try both walls and a few positions
+  // along each, and rank the seats at whichever one took it.
+  let front = null, dir = 1, rot = 0;
+  for (const flip of rng.chance(0.5) ? [false, true] : [true, false]) {
+    front = flip ? f1 : f0;
+    dir = flip ? -1 : 1;                                   // deeper into the room
+    rot = alongX ? (flip ? 0 : 2) : (flip ? 3 : 1);        // facing the front wall
+    let placed = false;
+    for (const t of [0.5, 0.3, 0.7, 0.18, 0.82]) {
+      const [bx, bz] = at(front + dir * 0.3, a0 + (a1 - a0) * t);
+      if (tryPlace(sink, 'whiteboard', bx, bz, (rot + 2) & 3, rng)) { placed = true; break; }
+    }
+    if (placed) break;
+  }
 
   const seats = Math.floor((a1 - a0) / 0.8);
   const ranks = Math.floor((f1 - f0 - 1.6) / 1.1);

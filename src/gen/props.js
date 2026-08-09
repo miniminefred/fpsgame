@@ -52,6 +52,19 @@ function monitorAt(p, x, z, rng) {
     x - 0.26, H + 0.2, z - 0.036, x + 0.26, H + 0.51, z - 0.029);
 }
 
+// What sits on the decks of a rack. The shelving MODEL is empty, and a bare
+// rack reads as a building site rather than an office that keeps things — the
+// procedural fallback always had its stock, and losing it was the price of the
+// model until the decks could be named. Deck heights are measured off the GLB
+// (see /dev-models.html); the gaps between them are ~0.52 m, so nothing taller
+// than a carton goes on one.
+const DECKS = [0.30, 0.82, 1.42];
+const STOCK = ['cardboard_box', 'ring_binder', 'book_stack', 'paper_stack'];
+const shelfStock = () => DECKS.flatMap((y, d) =>
+  [-0.62, -0.21, 0.21, 0.62].map((x, i) => ({
+    key: STOCK[(d * 3 + i) % STOCK.length], x, y, z: 0, chance: 0.62,
+  })));
+
 // --- prop catalogue ---------------------------------------------------------
 //
 // `w`/`d` are the footprint reserved before anything is emitted, so they must
@@ -135,6 +148,7 @@ export const PROPS = {
 
   shelving: {
     w: 1.96, d: 0.62, model: 'shelving_unit', hp: 95, substance: 'metal',
+    desktop: shelfStock(),
     build(p, rng) {
       const H = 2.1;
       for (const sx of [-0.93, 0.93]) {
@@ -605,12 +619,14 @@ export function tryPlace(sink, kind, cx, cz, rot, rng) {
     // you can walk through is worse than no pallet at all.
     sink.obstacle(cx - w, cz - d, cx + w, cz + d, spec.obstacleTop ?? model.height);
 
-    // Anything that belongs on top of it — a monitor on a desk, say.
+    // Anything that belongs on top of it — a monitor on a desk, a carton on the
+    // third deck of a rack. `y` names the deck it stands on; without one the
+    // item sits on top of the whole prop, which is what a desk wants.
     if (spec.desktop) {
       for (const item of spec.desktop) {
         if (rng.chance(item.chance ?? 1)) {
           const [ox, oz] = QUARTER[rot & 3](item.x ?? 0, item.z ?? 0);
-          sink.model(item.key, cx + ox, model.height, cz + oz, yaw + (item.yaw ?? 0));
+          sink.model(item.key, cx + ox, item.y ?? model.height, cz + oz, yaw + (item.yaw ?? 0));
         }
       }
     }
