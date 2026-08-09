@@ -50,7 +50,7 @@ const LIBRARY = {
   // pitch jitter hides a repeated gunshot completely and does nothing whatsoever
   // for a repeated punchline. Hence twenty-five of them, where three would do
   // for anything else.
-  'enemy-alert': { variants: 26, gain: 0.75, pitch: 0.04 },
+  'enemy-alert': { variants: 50, gain: 0.75, pitch: 0.04 },
   'enemy-pain':  { variants: 3, gain: 0.65, pitch: 0.09 },
   'enemy-death': { variants: 3, gain: 0.80, pitch: 0.07 },
   // Idle muttering is the one vocal that is atmosphere rather than an event, so
@@ -58,7 +58,11 @@ const LIBRARY = {
   // a throttle here.
   'enemy-idle':  { variants: 2, gain: 0.45, pitch: 0.10 },
   // The staffer with somewhere to be. Loud, because he is not confiding in you.
-  panic:         { variants: 14, gain: 0.85, pitch: 0.05 },
+  panic:         { variants: 40, gain: 0.85, pitch: 0.05 },
+  // The contractors, once somebody starts shooting. Their emergency is not his:
+  // they are agency staff, this is not their floor, and they would like that on
+  // the record while they leave.
+  flee:          { variants: 10, gain: 0.85, pitch: 0.06 },
 
   // The green ones, up from further down. Same events, a different throat.
   'zombie-alert': { variants: 3, gain: 0.75, pitch: 0.08 },
@@ -75,6 +79,18 @@ const LIBRARY = {
   'robot-step':  { variants: 3, gain: 0.60, pitch: 0.06 },
 
   'enemy-step': { variants: 3, gain: 0.55, pitch: 0.14 },
+
+  // The rats. Same four events as anybody else, in a much smaller throat — they
+  // have no alert and no pain because nothing they meet survives long enough to
+  // need either.
+  'rat-idle':  { variants: 4, gain: 0.40, pitch: 0.18 },
+  'rat-death': { variants: 3, gain: 0.50, pitch: 0.16 },
+  'rat-step':  { variants: 3, gain: 0.30, pitch: 0.20 },
+
+  // The extinguisher, from the moment it is holed to the moment it stops being
+  // an extinguisher.
+  'extinguisher-jet':   { variants: 2, gain: 0.70, pitch: 0.08 },
+  'extinguisher-burst': { variants: 3, gain: 1.10, pitch: 0.06 },
 
   // What the bullet landed on. Every surface in the building answers back in its
   // own material — see SUBSTANCE below for which prop is made of what.
@@ -356,10 +372,15 @@ export class GameAudio {
   enemyDeath(enemy) { this._voice(enemy, 'death', AUDIBLE); }
   enemyIdle(enemy)  { this._voice(enemy, 'idle', AUDIBLE_STEP); }
 
-  /** Someone who has stopped caring that there is a firefight on. */
-  enemyPanic(enemy) {
+  /**
+   * Someone who has stopped caring that there is a firefight on. Which clip is
+   * the type's own business (`screams`, in enemies.js): the toilet guy has an
+   * emergency of his own, the contractors would like it on the record that this
+   * is not their floor, and the rat just squeaks.
+   */
+  enemyScream(enemy, clip = 'panic') {
     const at = this._near(enemy, PANIC_AUDIBLE);
-    if (at) this._placed('panic', at, { rate: Math.pow(enemy.type.scale, VOICE_EXPONENT) });
+    if (at) this._placed(clip, at, { rate: Math.pow(enemy.type.scale, VOICE_EXPONENT) });
   }
 
   enemyStep(enemy) {
@@ -403,6 +424,10 @@ export class GameAudio {
       this._placed(spec.settle, point, { delay: DEBRIS_DELAY + Math.random() * 0.4 });
     }
   }
+
+  /** An extinguisher holed and venting, and the bang at the end of that. */
+  extinguisherJet(point) { this._placed('extinguisher-jet', point); }
+  extinguisherBurst(point) { this._placed('extinguisher-burst', point); }
 
   /** Furniture shoved aside by the player walking into it. */
   propShove(point) {

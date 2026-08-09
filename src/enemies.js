@@ -133,6 +133,7 @@ const TYPES = {
     // announcing it. Fast, and dies to a look.
     name: 'Panicking Staffer', hp: 0.3, speed: 1.9, damage: 0, rate: 99, spread: 1,
     range: 0, melee: false, scale: 0.95, panic: true, neutral: true,
+    screams: 'panic',
     suit: 0xa8b2c0, shirt: 0xf6f8fa, visor: 0xffffff, unlockFloor: 1, weight: 0,
   },
   cleaner: {
@@ -539,7 +540,9 @@ export class Enemies {
     if (e.voiceTimer <= 0) {
       if (shouting) {
         e.voiceTimer = PANIC_SHOUT[0] + Math.random() * (PANIC_SHOUT[1] - PANIC_SHOUT[0]);
-        audio.enemyPanic(e);
+        // The type names what it screams. A cleaner running from a firefight has
+        // nothing to say about the toilet, and the rat has nothing to say at all.
+        audio.enemyScream(e, e.type.screams ?? 'flee');
       } else {
         e.voiceTimer = 7 + Math.random() * 11;
         audio.enemyIdle(e);

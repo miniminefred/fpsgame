@@ -954,25 +954,25 @@
       "variants": 3
     },
     {
-      "name": "rat-die",
+      "name": "rat-death",
       "text": "small rat death squeal, short and sharp, close mic, dry, no music, no voices",
       "duration": 0.7,
       "influence": 0.7,
       "variants": 3
     },
     {
-      "name": "rat-scurry",
-      "text": "small rodent claws scurrying quickly across an office floor, close mic, dry, no music, no voices",
-      "duration": 0.8,
-      "influence": 0.7,
-      "variants": 3
-    },
-    {
-      "name": "rat-squeak",
+      "name": "rat-idle",
       "text": "single small rat squeak, close mic, dry, no music, no voices",
       "duration": 0.7,
       "influence": 0.7,
       "variants": 4
+    },
+    {
+      "name": "rat-step",
+      "text": "small rodent claws scurrying quickly across an office floor, close mic, dry, no music, no voices",
+      "duration": 0.8,
+      "influence": 0.7,
+      "variants": 3
     },
     {
       "name": "rifle-fire",
