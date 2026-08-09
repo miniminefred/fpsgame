@@ -239,6 +239,9 @@ function buildCatalogue() {
         obstacle(x0, z0, x1, z1, top) { obs = { x0, z0, x1, z1, top }; },
       };
       spec.build(p, rng);
+      // Anything a model-backed prop draws on top of its model is real geometry
+      // in the world and owes the footprint the same nesting as `build` does.
+      spec.dress?.(p, rng);
 
       e.geo.x0 = Math.min(e.geo.x0, g.x0); e.geo.x1 = Math.max(e.geo.x1, g.x1);
       e.geo.y0 = Math.min(e.geo.y0, g.y0); e.geo.y1 = Math.max(e.geo.y1, g.y1);

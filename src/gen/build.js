@@ -517,8 +517,10 @@ function makeSink(layout, batcher, materials, masks) {
 
     // Files the prop away as one destructible unit: the vertex runs to erase,
     // the colliders to retire, the nav tiles to give back, and the boxes to
-    // scatter. `debris` overrides the boxes it was drawn with, which is what a
-    // model-backed prop passes in.
+    // scatter. `debris` stands in for the geometry a model-backed prop drew as
+    // a model and therefore cannot break into — and it ADDS to whatever that
+    // prop did draw as boxes, because a rack's stock is real geometry that has
+    // to come off the shelf with the shelf.
     endStatic(debris) {
       const r = record;
       record = null;
@@ -536,7 +538,8 @@ function makeSink(layout, batcher, materials, masks) {
         colliders: r.colliders,
         navTiles: r.navTiles,
         fixtures: [],
-        parts: (debris ?? r.boxes).map((b) => ({ ...b, material: materials[b.key] })),
+        parts: (debris ? [...debris, ...r.boxes] : r.boxes)
+          .map((b) => ({ ...b, material: materials[b.key] })),
         broken: false,
       });
     },

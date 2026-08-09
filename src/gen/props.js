@@ -52,18 +52,23 @@ function monitorAt(p, x, z, rng) {
     x - 0.26, H + 0.2, z - 0.036, x + 0.26, H + 0.51, z - 0.029);
 }
 
-// What sits on the decks of a rack. The shelving MODEL is empty, and a bare
-// rack reads as a building site rather than an office that keeps things — the
-// procedural fallback always had its stock, and losing it was the price of the
-// model until the decks could be named. Deck heights are measured off the GLB
-// (see /dev-models.html); the gaps between them are ~0.52 m, so nothing taller
-// than a carton goes on one.
-const DECKS = [0.30, 0.82, 1.42];
-const STOCK = ['cardboard_box', 'ring_binder', 'book_stack', 'paper_stack'];
-const shelfStock = () => DECKS.flatMap((y, d) =>
-  [-0.62, -0.21, 0.21, 0.62].map((x, i) => ({
-    key: STOCK[(d * 3 + i) % STOCK.length], x, y, z: 0, chance: 0.62,
-  })));
+// A run of cartons and ring binders along one deck, patchily filled and never
+// hanging off the end. Drawn with the building's own palette rather than as
+// downloaded models: the stock is what you see most of on a rack, and a shelf
+// of full-colour GLB cartons is the one thing in a grey room shouting for
+// attention it hasn't earned.
+function stockRun(p, y, x0, x1, rng) {
+  let x = x0;
+  while (x < x1) {
+    const w = Math.min(rng.range(0.22, 0.42), x1 - x);
+    if (w < 0.12) break;
+    if (rng.chance(0.72)) {
+      const h = rng.range(0.18, 0.36);
+      p.box(rng.chance(0.7) ? 'cardboard' : 'paper', x, y, -0.26, x + w, y + h, 0.26);
+    }
+    x += w + 0.04;
+  }
+}
 
 // --- prop catalogue ---------------------------------------------------------
 //
@@ -148,7 +153,12 @@ export const PROPS = {
 
   shelving: {
     w: 1.96, d: 0.62, model: 'shelving_unit', hp: 95, substance: 'metal',
-    desktop: shelfStock(),
+    // The rack is the model; what is ON the rack is not. Deck heights are
+    // measured off the GLB (see /dev-models.html) — the gaps between them are
+    // about 0.52 m, so nothing taller than a carton goes on one.
+    dress(p, rng) {
+      for (const y of [0.30, 0.82, 1.42]) stockRun(p, y, -0.85, 0.85, rng);
+    },
     build(p, rng) {
       const H = 2.1;
       for (const sx of [-0.93, 0.93]) {
@@ -159,18 +169,7 @@ export const PROPS = {
       for (let i = 0; i < 4; i++) {
         const y = 0.35 + i * 0.55;
         p.box('metal', -0.95, y, -0.3, 0.95, y + 0.04, 0.3);
-        // Stock: cardboard boxes and ring binders, patchily filled.
-        let x = -0.88;
-        while (x < 0.78) {
-          // Clamped so a box never hangs off the end of the shelf.
-          const w = Math.min(rng.range(0.22, 0.42), 0.88 - x);
-          if (w < 0.12) break;
-          if (rng.chance(0.72)) {
-            const h = rng.range(0.18, 0.4);
-            p.box(rng.chance(0.7) ? 'cardboard' : 'paper', x, y + 0.04, -0.26, x + w, y + 0.04 + h, 0.26);
-          }
-          x += w + 0.04;
-        }
+        stockRun(p, y + 0.04, -0.88, 0.88, rng);
       }
       p.obstacle(-0.95, -0.3, 0.95, 0.3, H);
     },
@@ -614,6 +613,14 @@ export function tryPlace(sink, kind, cx, cz, rot, rng) {
     const yaw = -rot * Math.PI / 2;
     sink.beginStatic(spec.hp, spec.substance);
     sink.model(spec.model, cx, 0, cz, yaw);
+
+    // What the model is carrying, drawn for real in the building's own palette
+    // — the stock on a rack's decks. Unlike `build`, this is NOT captured: it
+    // is the only picture of those boxes there is, and because it goes through
+    // the same static record it joins the debris and the destroyed span for
+    // free.
+    spec.dress?.(placer(sink, cx, cz, rot), rng);
+
     // The model's own height, unless the prop stands something on top of itself
     // — a pallet is 19 cm and the stack on it is over a metre, and a collider
     // you can walk through is worse than no pallet at all.
