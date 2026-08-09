@@ -73,6 +73,15 @@ const IDS = [
   ['6.door-reachable', 'FAIL', 'DOOR          door tiles reachable from spawn'],
   ['6.door-corner', 'FAIL', 'DOOR          opening is not in a corner (wall at both ends)'],
   ['6.door-abut', 'FAIL', 'DOOR          no two doors merge into one wider opening'],
+  // The keycard invariants. These are the ones that cost you a RUN rather than a
+  // frame when they break, and none of them is visible from inside the game
+  // until you are standing in front of a door you cannot open with the exit
+  // behind it. See assignLocks in src/gen/layout.js.
+  ['8.lock-progress', 'FAIL', 'KEYCARD       floor clearable and exit reachable with every lock shut'],
+  ['8.lock-chain', 'FAIL', 'KEYCARD       no locked room is behind another locked room'],
+  ['8.lock-spawn', 'FAIL', 'KEYCARD       spawn and exit rooms are never locked'],
+  ['8.lock-doors', 'FAIL', 'KEYCARD       every opening into a locked room is locked'],
+  ['8.lock-tiers', 'WARN', 'KEYCARD       floor has a black, a blue and a yellow lock'],
   ['7.zero-rooms', 'FAIL', 'DEGENERATE    floor has 0 rooms'],
   ['7.one-room', 'FAIL', 'DEGENERATE    floor has 1 room'],
   ['7.walkable', 'FAIL', 'DEGENERATE    walkable area >= 15% of footprint'],
@@ -151,6 +160,7 @@ const stats = {
   depth: new Map(), vCorr: new Map(), hCorr: new Map(),
   abutPairs: 0, deadDoors: 0, alcoveDoors: 0, totalDoors: 0,
   orphanTiles: [], noCorridorRooms: 0, totalRooms: 0,
+  lockTiers: new Map(), lockCounts: [],
 };
 
 // ---------------------------------------------------------------------------
@@ -340,6 +350,80 @@ function validate(seed, floorNumber) {
   if (cornered) check('6.door-corner').fail(id, `${cornered} doors with open floor at both ends (no frame)`);
   if (abut) check('6.door-abut').fail(id, `${abut} pairs of doors merged into one opening`);
 
+  // ---- 8. keycard locks ---------------------------------------------------
+  //
+  // Deliberately re-derived from the tile grid rather than from L.locks's own
+  // bookkeeping, on the same principle as the flood fill above: the generator
+  // convincing itself is not evidence.
+  const locks = L.locks ?? [];
+  if (locks.length) {
+    const locked = rooms.filter((r) => r.lock);
+
+    if (locked.includes(L.spawnRoom) || locked.includes(L.exitRoom)) {
+      check('8.lock-spawn').fail(id, 'spawn or exit room is behind a keycard');
+    }
+
+    // With every badged room filled in solid, can you still clear the floor and
+    // leave? This is the whole promise of the feature — a card is loot, never
+    // the route — and it is a promise about the WORST case, so all of them are
+    // shut at once.
+    const shut = Uint8Array.from(tiles);
+    for (const r of locked) {
+      for (let y = r.y0; y < r.y1; y++) for (let x = r.x0; x < r.x1; x++) shut[idx(x, y)] = SOLID;
+    }
+    const shutDist = spawnOpen ? flood(shut, W, H, sx, sy, isOpen) : new Int32Array(W * H).fill(-1);
+    const stranded = rooms.filter((r) =>
+      !r.lock && shutDist[idx(Math.round((r.x0 + r.x1) / 2), Math.round((r.y0 + r.y1) / 2))] < 0);
+    if (stranded.length || (inb(ex, ey) && shutDist[idx(ex, ey)] < 0)) {
+      check('8.lock-progress').fail(id,
+        `${stranded.length} unlocked rooms + exit=${inb(ex, ey) && shutDist[idx(ex, ey)] >= 0} cut off with locks shut`);
+    }
+
+    // Every locked room has to be walkable-up-to while all the OTHERS are shut,
+    // or its card is behind somebody else's door. The card itself comes off an
+    // enemy, and enemies.js never spawns one inside a locked room, so "can I
+    // reach the door" is the whole question.
+    for (const { room, doors: lockDoors } of locks) {
+      const others = Uint8Array.from(tiles);
+      for (const r of locked) {
+        if (r === room) continue;
+        for (let y = r.y0; y < r.y1; y++) for (let x = r.x0; x < r.x1; x++) others[idx(x, y)] = SOLID;
+      }
+      const d2 = spawnOpen ? flood(others, W, H, sx, sy, isOpen) : new Int32Array(W * H).fill(-1);
+      let reachable = false;
+      for (const dr of lockDoors) {
+        for (let y = dr.y0; y < dr.y1 && !reachable; y++) {
+          for (let x = dr.x0; x < dr.x1; x++) if (d2[idx(x, y)] >= 0) { reachable = true; break; }
+        }
+      }
+      if (!reachable) {
+        check('8.lock-chain').fail(id, `${room.role} (${room.lock}) is behind another locked door`);
+      }
+    }
+
+    // A second way into a badged room that nobody locked is the whole lock
+    // undone, and the room next door cuts its own doors without asking.
+    let unlocked = 0;
+    for (const d of doors) {
+      if (d.lock) continue;
+      for (let y = d.y0; y < d.y1; y++) {
+        for (let x = d.x0; x < d.x1; x++) {
+          const ns = d.vertical ? [[x - 1, y], [x + 1, y]] : [[x, y - 1], [x, y + 1]];
+          for (const [nx, ny] of ns) {
+            if (locked.some((r) => nx >= r.x0 && nx < r.x1 && ny >= r.y0 && ny < r.y1)) unlocked++;
+          }
+        }
+      }
+    }
+    if (unlocked) check('8.lock-doors').fail(id, `${unlocked} unlocked openings lead into a locked room`);
+  }
+
+  const tiers = new Set(locks.map((l) => l.tier));
+  const missingTiers = ['black', 'blue', 'yellow'].filter((t) => !tiers.has(t));
+  if (missingTiers.length) check('8.lock-tiers').fail(id, `no ${missingTiers.join(',')} lock placed`);
+  for (const l of locks) stats.lockTiers.set(l.tier, (stats.lockTiers.get(l.tier) || 0) + 1);
+  stats.lockCounts.push(locks.length);
+
   // ---- 7. degenerate ------------------------------------------------------
   if (rooms.length === 0) check('7.zero-rooms').fail(id, 'no rooms at all');
   if (rooms.length === 1) check('7.one-room').fail(id, 'single room floor');
@@ -482,6 +566,11 @@ console.log(`room depth from corridor  ${hist(stats.depth)}   (${stats.noCorrido
 console.log(`door pathologies    ${stats.abutPairs} merged/abutting pairs, ${stats.deadDoors} sealed both sides, ${stats.alcoveDoors} open on one side only (of ${stats.totalDoors})`);
 if (stats.orphanTiles.length) {
   console.log(`orphan open tiles   ${stats.orphanTiles.length} floors, ${stats.orphanTiles.reduce((a, b) => a + b, 0)} tiles, worst floor ${hi(stats.orphanTiles)}`);
+}
+if (stats.lockCounts.length) {
+  const lc = stats.lockCounts;
+  console.log(`keycard locks       min ${lo(lc)}  median ${median(lc)}  mean ${fmt(mean(lc))}  max ${hi(lc)}   `
+    + [...stats.lockTiers.entries()].map(([t, n]) => `${t} ${n}`).join('  '));
 }
 const rb = stats.roleBranch;
 console.log(`assignRoles branches  areaM2>85 ${rb.openplan85}   >40 ${rb.mid40}   aspect>2.1 ${rb.longThin}   small ${rb.small}`);
