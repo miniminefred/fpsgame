@@ -301,8 +301,7 @@ function privateOffice(sink, bounds, rng) {
     const cz = (z0 + z1) / 2;
     const rot = rng.int(0, 3);
     if (tryPlace(sink, 'desk', cx, cz, rot, rng)) {
-      const back = QUARTER[rot & 3](0, -0.95);
-      tryPlace(sink, 'chair', cx + back[0], cz + back[1], (rot + 2) & 3, rng);
+      seatFacing(sink, cx, cz, rot, rng);
       seated = true;
     }
   }
@@ -315,7 +314,8 @@ function privateOffice(sink, bounds, rng) {
 }
 
 // Desk backed onto a wall with its chair tucked in front of it.
-function deskAgainstWall(sink, { x0, z0, x1, z1 }, rng) {
+function deskAgainstWall(sink, bounds, rng) {
+  const { x0, z0, x1, z1 } = bounds;
   const spec = PROPS.desk;
   const standoff = spec.d / 2;
   const margin = spec.w / 2;
@@ -326,20 +326,33 @@ function deskAgainstWall(sink, { x0, z0, x1, z1 }, rng) {
     if (alongX && x1 - x0 < margin * 2) continue;
     if (!alongX && z1 - z0 < margin * 2) continue;
 
-    let cx, cz, rot;
-    switch (side) {
-      case 0: cx = rng.range(x0 + margin, x1 - margin); cz = z1 - standoff; rot = 2; break;
-      case 1: cx = x0 + standoff; cz = rng.range(z0 + margin, z1 - margin); rot = 1; break;
-      case 2: cx = rng.range(x0 + margin, x1 - margin); cz = z0 + standoff; rot = 0; break;
-      default: cx = x1 - standoff; cz = rng.range(z0 + margin, z1 - margin); rot = 3; break;
-    }
-    if (!tryPlace(sink, 'desk', cx, cz, rot, rng)) continue;
+    const [cx, cz] = seatAt(side, x0, z0, x1, z1, standoff, margin, rng);
+    if (!tryPlace(sink, 'desk', cx, cz, side, rng)) continue;
 
-    const out = QUARTER[rot & 3](0, -0.95);
-    tryPlace(sink, 'chair', cx + out[0], cz + out[1], (rot + 2) & 3, rng);
+    seatFacing(sink, cx, cz, side, rng);
     return true;
   }
   return false;
+}
+
+// Where a prop stands when its back is against `side`. Half its DEPTH off the
+// wall and half its WIDTH in from each end of it — that is the whole point of
+// backing something against a wall, and swapping the two pushed wide props a
+// metre into the room and buried narrow ones in the plaster.
+function seatAt(side, x0, z0, x1, z1, standoff, margin, rng) {
+  switch (side) {
+    case 0: return [rng.range(x0 + margin, x1 - margin), z1 - standoff];
+    case 1: return [x0 + standoff, rng.range(z0 + margin, z1 - margin)];
+    case 2: return [rng.range(x0 + margin, x1 - margin), z0 + standoff];
+    default: return [x1 - standoff, rng.range(z0 + margin, z1 - margin)];
+  }
+}
+
+// The chair that goes with whatever was just backed against a wall: a body's
+// width out in front of it, turned round to face it.
+function seatFacing(sink, cx, cz, rot, rng, gap = 0.95) {
+  const out = QUARTER[rot & 3](0, -gap);
+  return tryPlace(sink, 'chair', cx + out[0], cz + out[1], (rot + 2) & 3, rng);
 }
 
 // --- the three rooms you need a card for ------------------------------------
@@ -368,14 +381,21 @@ function managerOffice(sink, bounds, rng) {
   }
 }
 
-// The room the cameras come back to: a desk of screens against one wall, racks
+// The room the cameras come back to: a bank of screens against one wall, racks
 // and lockers against the others, and nothing in the middle to walk into.
 function securityOffice(sink, bounds, rng) {
-  edgeProp(sink, bounds, 'workbench', rng);
+  // The camera desk goes in first and unconditionally, before the room has been
+  // filled with anything that could take its wall. It is what the room IS — you
+  // needed a blue card to stand here, and the payoff for that has to be visible
+  // from the doorway rather than rolled for.
+  const desk = edgeProp(sink, bounds, 'cameraDesk', rng);
+  // And the chair somebody watched them from, facing the screens.
+  if (desk) seatFacing(sink, desk.cx, desk.cz, desk.rot, rng, 1.0);
+
   edgeProp(sink, bounds, 'serverRack', rng);
+  if (rng.chance(0.7)) edgeProp(sink, bounds, 'workbench', rng);
   if (rng.chance(0.8)) edgeProp(sink, bounds, 'lockers', rng);
   if (rng.chance(0.7)) edgeProp(sink, bounds, 'cabinet', rng);
-  if (rng.chance(0.6)) deskAgainstWall(sink, bounds, rng);
   edgeProp(sink, bounds, 'extinguisher', rng);
   wallClutter(sink, bounds, ['shelving', 'trashCan'], 30, rng);
 }
@@ -490,12 +510,26 @@ function scatter(sink, bounds, kinds, perM2, rng) {
 // Swapping the two here pushed wide props (counters, meeting tables) up to a
 // metre out into the room and shoved narrow ones into the wall.
 //
-// Sides, throughout: 0 = the +z wall, 1 = -x, 2 = -z, 3 = +x.
+// Sides, throughout: 0 = the +z wall, 1 = -x, 2 = -z, 3 = +x — and the side IS
+// the quarter turn, which is not a coincidence and took a wall of dark monitors
+// to notice. A prop is authored facing -z (see gen/props.js), so the turn that
+// puts its face into the room is exactly the one that maps -z onto the direction
+// away from the wall: rot 0 for the +z wall, rot 1 for -x, and so on. The two
+// even sides used to be the other way round, which stood every vending machine,
+// whiteboard and reception desk on the +z and -z walls with its front to the
+// plaster — invisible on a grey box, and instantly obvious on eight lit screens.
+// It also aimed `deskAgainstWall`'s chair at the wall, so those desks silently
+// came out with nobody sitting at them.
 //
 // `sides` narrows which walls are on offer. A room that knows something about
 // its own layout — a cubicle farm knows exactly how much lane it left between
 // the desks and each wall — uses it to keep a prop off the wall where it would
 // close that lane, instead of leaving it to a die roll.
+//
+// Returns WHERE it landed, or null. Almost every caller only wants to know
+// whether it did, and an object is as truthy as `true` — but a room that has to
+// put a chair in front of the thing it just placed has no other way to find out
+// which wall the die picked.
 function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES) {
   const { x0, z0, x1, z1 } = bounds;
   const spec = PROPS[kind];
@@ -504,7 +538,7 @@ function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES) {
 
   const alongX = x1 - x0 >= margin * 2;
   const alongZ = z1 - z0 >= margin * 2;
-  if (!sides.length) return false;
+  if (!sides.length) return null;
 
   for (let tries = 0; tries < 12; tries++) {
     const side = rng.pick(sides);
@@ -512,14 +546,8 @@ function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES) {
     if ((side === 0 || side === 2) && !alongX) continue;
     if ((side === 1 || side === 3) && !alongZ) continue;
 
-    let cx, cz, rot;
-    switch (side) {
-      case 0: cx = rng.range(x0 + margin, x1 - margin); cz = z1 - standoff; rot = 2; break;
-      case 1: cx = x0 + standoff; cz = rng.range(z0 + margin, z1 - margin); rot = 1; break;
-      case 2: cx = rng.range(x0 + margin, x1 - margin); cz = z0 + standoff; rot = 0; break;
-      default: cx = x1 - standoff; cz = rng.range(z0 + margin, z1 - margin); rot = 3; break;
-    }
-    if (tryPlace(sink, kind, cx, cz, rot, rng)) return true;
+    const [cx, cz] = seatAt(side, x0, z0, x1, z1, standoff, margin, rng);
+    if (tryPlace(sink, kind, cx, cz, side, rng)) return { cx, cz, rot: side, side };
   }
-  return false;
+  return null;
 }

@@ -548,6 +548,56 @@ export const PROPS = {
     },
   },
 
+  cameraDesk: {
+    // The wall of screens the security office exists for. It is the one prop in
+    // the catalogue whose job is to identify a room rather than to furnish it:
+    // a badged door with a desk and some lockers behind it could be anything,
+    // and a badged door with eight live camera feeds behind it could not.
+    //
+    // Which is why the screens are mostly ON. A dark monitor bank is a prop; a
+    // lit one is the only thing in a grey building that is looking back.
+    w: 1.9, d: 0.72, hp: 80, substance: 'electronic',
+    build(p, rng) {
+      const H = 0.74;
+
+      // The console. Darker than an office desk on purpose — this is fitted
+      // equipment, not something somebody was issued.
+      p.box('laminateDark', -0.95, H - 0.05, -0.36, 0.95, H, 0.36);
+      p.box('metalDark', -0.93, 0, -0.34, -0.79, H - 0.05, 0.34);
+      p.box('metalDark', 0.79, 0, -0.34, 0.93, H - 0.05, 0.34);
+      p.box('metalDark', -0.8, 0.22, 0.28, 0.8, H - 0.07, 0.34);   // modesty panel
+      p.box('metal', -0.86, 0.2, -0.3, 0.86, 0.26, 0.3);           // kit shelf under
+
+      // The gantry the bank is bolted to, and the bank itself: four across, two
+      // high, on a 0.44 m pitch that lands the outermost bezel inside the
+      // console rather than overhanging it.
+      p.box('metalDark', -0.9, H, 0.26, 0.9, H + 0.07, 0.34);
+      for (let row = 0; row < 2; row++) {
+        const y = H + 0.08 + row * 0.32;
+        for (let col = 0; col < 4; col++) {
+          const x = -0.66 + col * 0.44;
+          p.box('plastic', x - 0.21, y, 0.24, x + 0.21, y + 0.3, 0.3);
+          // A feed, or a dead channel. Roughly one screen in six is out, which
+          // is what a building whose staff have stopped filing tickets looks
+          // like from the inside.
+          p.box(rng.chance(0.84) ? 'screenOn' : 'screen',
+            x - 0.185, y + 0.025, 0.232, x + 0.185, y + 0.275, 0.238);
+        }
+      }
+
+      // The desk itself: a keyboard, the recorder stack, and the lamp on the
+      // rack that says it is still recording.
+      p.box('plastic', -0.3, H, -0.3, 0.16, H + 0.02, -0.12);
+      p.box('metalDark', 0.34, H, -0.08, 0.86, H + 0.12, 0.2);
+      for (let i = 0; i < 3; i++) {
+        p.box('led', 0.4 + i * 0.07, H + 0.05, -0.09, 0.43 + i * 0.07, H + 0.08, -0.08);
+      }
+      if (rng.chance(0.6)) p.box('paper', -0.86, H, -0.28, -0.56, H + 0.02, -0.04);
+
+      p.obstacle(-0.95, -0.36, 0.95, 0.36, H);
+    },
+  },
+
   workbench: {
     // The IT bay's bench: a steel frame, a pegboard, and whatever was being
     // fixed on it when the floor went bad.
