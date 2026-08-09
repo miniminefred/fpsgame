@@ -237,7 +237,16 @@ brown for the Night Cleaner, yellow for the Courier. So hue says threat, shade s
 one, and no two types share a visor.
 
 Melee types swing office junk (fire extinguishers, keyboards, monitors) and land the hit
-part-way through the swing, so you can back out of reach.
+part-way through the swing, so you can back out of reach. A weapon declares how it is
+carried when idle (`rest` in `BLUNT`), because a mop is not held out in front like a
+stapler — it is dragged, head on the floor.
+
+The **Janitor** is the one person in a uniform: yellow shirt, blue trousers, blue cap,
+and nearly a metre of mop. He is placed by hand rather than rolled and he is the only
+source of the yellow keycard — see Keycards below. Types may declare `pants` and `cap`,
+which switches the rig from "one suit with a shirt front" to a uniform; the hit flash
+follows whatever they are actually wearing (`flash` from `rigs.js`) rather than the one
+material that used to be everything.
 
 Gunfire spread is sampled as a real angle and converted into a miss distance at your range,
 so backing off genuinely makes you harder to hit.
@@ -333,6 +342,16 @@ Card holders: every hostile carries white; guaranteed single holders carry grey,
 blue and yellow instead, plus `CARD_SPARE_CHANCE` extra grey. A card only becomes
 a pickup if the player doesn't already hold that tier and none is already lying
 about, or a floor would bury itself in two hundred white cards.
+
+**Yellow belongs to the janitors and to nobody else.** One to three do rounds in
+the corridors — outside every lock, which is what guarantees the card is reachable
+with nothing in your pocket — and every one of them carries it. Two more sit in
+the broom closet, marked `behindLock` and dealt no card at all, because two men
+sitting in the room their own key opens holding that key is the exact failure this
+system exists to prevent. They are only seated **if at least one janitor made it
+onto rounds**; without a reachable holder the closet pair would be a floor that
+cannot be cleared. Same shape as the manager one tier down: take the card off
+somebody in a hallway, and it buys you a door with two more behind it.
 
 **Black is different, and it is the last beat of a floor.** The Manager sits in
 the manager's office, behind the black door (`_manager` in `enemies.js`) — he is
