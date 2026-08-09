@@ -467,19 +467,38 @@ function assignRoles(rooms, spawnRoom, exitRoom, rng) {
     // room whatever its floor area, and testing area first made this branch
     // unreachable.
     const long = Math.max(r.wTiles, r.hTiles) / Math.min(r.wTiles, r.hTiles);
-    if (long > 1.9) r.role = rng.pick(['storage', 'copyroom', 'server', 'storage']);
-    else if (r.areaM2 > 85) r.role = 'openplan';
-    else if (r.areaM2 > 40) r.role = rng.pick(['openplan', 'meeting', 'breakroom', 'storage']);
-    else r.role = rng.pick(['office', 'office', 'copyroom', 'storage', 'breakroom']);
+    if (long > 1.9) {
+      // A long thin room is back-of-house whatever its floor area — the ones
+      // that furnish as ranks with an aisle between them.
+      r.role = rng.pick(['storage', 'copyroom', 'server', 'storage', 'archive', 'utility', 'mailroom']);
+    } else if (r.areaM2 > 85) {
+      r.role = rng.pick(['openplan', 'openplan', 'openplan', 'canteen']);
+    } else if (r.areaM2 > 40) {
+      r.role = rng.pick(['openplan', 'meeting', 'breakroom', 'storage', 'training', 'itbay', 'canteen', 'reception']);
+    } else {
+      r.role = rng.pick(['office', 'office', 'copyroom', 'storage', 'breakroom', 'utility', 'archive', 'server']);
+    }
   }
 
   // Guarantee the flavour rooms the floor is meant to have — but only in rooms
-  // the right size for them, so no floor gets a 150 m² "storage cupboard".
+  // the right size for them, so no floor gets a 150 m² "storage cupboard". The
+  // first four are on every floor because the building needs them; the rest is
+  // a shuffled draw, so which back-of-house rooms a floor has is part of what
+  // tells one floor from another.
   const wants = [
     ['storage', (r) => r.areaM2 < 90],
     ['copyroom', (r) => r.areaM2 < 55],
     ['server', (r) => r.areaM2 < 70],
     ['breakroom', (r) => r.areaM2 > 30],
+    ...rng.shuffle([
+      ['archive', (r) => r.areaM2 < 90],
+      ['utility', (r) => r.areaM2 < 60],
+      ['mailroom', (r) => r.areaM2 > 25 && r.areaM2 < 90],
+      ['itbay', (r) => r.areaM2 > 25 && r.areaM2 < 90],
+      ['training', (r) => r.areaM2 > 35],
+      ['canteen', (r) => r.areaM2 > 45],
+      ['reception', (r) => r.areaM2 > 25],
+    ]).slice(0, 4),
   ];
   const pool = rng.shuffle(rooms.filter((r) => r !== spawnRoom && r !== exitRoom));
   for (const [role, fits] of wants) {

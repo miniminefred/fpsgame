@@ -52,11 +52,26 @@ function openPlan(sink, { x0, z0, x1, z1 }, rng) {
     }
   }
 
-  // A shared printer and a sad plant, as is traditional.
-  if (rng.chance(0.75)) edgeProp(sink, { x0, z0, x1, z1 }, 'cabinet', rng);
-  edgeProp(sink, { x0, z0, x1, z1 }, 'printer', rng);
-  if (rng.chance(0.7)) edgeProp(sink, { x0, z0, x1, z1 }, 'plant', rng);
-  if (rng.chance(0.5)) edgeProp(sink, { x0, z0, x1, z1 }, 'waterCooler', rng);
+  // A shared printer and a sad plant, as is traditional — but only against a
+  // wall with a lane left in front of it. The pods are a fixed pitch and the
+  // room is not, so the leftover between the last desk and the wall is known
+  // exactly: a prop deeper than that lane minus a body's width doesn't sit
+  // against the wall, it closes the room off from its own doorway.
+  //
+  // The desk is 1.6 x 0.8 and the partitions stand 0.62 m behind it; the chairs
+  // are loose and collide with nothing, so they don't enter into it.
+  const bounds = { x0, z0, x1, z1 };
+  const laneX = padX + (PITCH_X - 1.6) / 2;
+  const laneZ = padZ + (PITCH_Z / 2 - 0.68);
+  const walls = (kind) => {
+    const need = PROPS[kind].d + 0.8;
+    return [...(laneZ >= need ? [0, 2] : []), ...(laneX >= need ? [1, 3] : [])];
+  };
+
+  if (rng.chance(0.75)) edgeProp(sink, bounds, 'cabinet', rng, walls('cabinet'));
+  edgeProp(sink, bounds, 'printer', rng, walls('printer'));
+  if (rng.chance(0.7)) edgeProp(sink, bounds, 'plant', rng, walls('plant'));
+  if (rng.chance(0.5)) edgeProp(sink, bounds, 'waterCooler', rng, walls('waterCooler'));
 }
 
 function meetingRoom(sink, bounds, rng) {
@@ -84,6 +99,7 @@ function meetingRoom(sink, bounds, rng) {
     tryPlace(sink, 'coffeeTable', cx, cz, rot, rng);
   }
 
+  if (rng.chance(0.8)) edgeProp(sink, bounds, 'whiteboard', rng);
   edgeProp(sink, bounds, 'plant', rng);
   if (rng.chance(0.5)) edgeProp(sink, bounds, 'cabinet', rng);
 }
@@ -93,6 +109,10 @@ function breakRoom(sink, bounds, rng) {
   edgeProp(sink, bounds, 'counter', rng);
   edgeProp(sink, bounds, 'vending', rng);
   edgeProp(sink, bounds, 'waterCooler', rng);
+  // The sofa goes against a wall. Dropped free-standing beside a coffee table
+  // it is a 1.8 m wall of its own, and in a 4.5 m room a sofa broadside between
+  // the vending machine and the counter shuts the far end of the room away.
+  if (rng.chance(0.6)) edgeProp(sink, bounds, 'sofa', rng);
 
   // Coffee tables with seating scattered through the middle.
   const tables = Math.max(1, Math.floor(((x1 - x0) * (z1 - z0)) / 9));
@@ -102,36 +122,30 @@ function breakRoom(sink, bounds, rng) {
     if (!tryPlace(sink, 'coffeeTable', cx, cz, rng.int(0, 3), rng)) continue;
     if (rng.chance(0.8)) tryPlace(sink, 'chair', cx, cz - 1.0, 0, rng);
     if (rng.chance(0.6)) tryPlace(sink, 'chair', cx, cz + 1.0, 2, rng);
-    if (rng.chance(0.4)) tryPlace(sink, 'sofa', cx + 1.9, cz, 1, rng);
+    if (rng.chance(0.5)) tryPlace(sink, 'stool', cx - 1.0, cz, 1, rng);
   }
   if (rng.chance(0.6)) edgeProp(sink, bounds, 'plant', rng);
+  wallClutter(sink, bounds, ['trashCan', 'recyclingBin'], 45, rng);
 }
 
+// Shelving in aisles, and the boxes that never made it onto a shelf.
 function storage(sink, bounds, rng) {
-  const { x0, z0, x1, z1 } = bounds;
-  const alongX = (x1 - x0) >= (z1 - z0);
-  const AISLE = 1.9;
+  aisles(sink, bounds, 1.9, 2.0, 'shelving', rng);
+  // Pallets and crates are static and a metre across; loose cartons are neither.
+  // Only a room with floor to spare gets the heavy goods left out on it.
+  scatter(sink, bounds, area(bounds) > 55
+    ? ['crateStack', 'crateStack', 'crate', 'pallet']
+    : ['crateStack'], 12, rng);
+  if (rng.chance(0.5)) edgeProp(sink, bounds, 'extinguisher', rng);
+}
 
-  // Rows of shelving with walking aisles between them.
-  if (alongX) {
-    for (let z = z0 + 0.5; z < z1 - 0.4; z += AISLE) {
-      for (let x = x0 + 1.0; x < x1 - 0.9; x += 2.0) {
-        tryPlace(sink, 'shelving', x, z, 0, rng);
-      }
-    }
-  } else {
-    for (let x = x0 + 0.5; x < x1 - 0.4; x += AISLE) {
-      for (let z = z0 + 1.0; z < z1 - 0.9; z += 2.0) {
-        tryPlace(sink, 'shelving', x, z, 1, rng);
-      }
-    }
-  }
-
-  // Boxes that never made it onto a shelf.
-  const stacks = 2 + Math.floor(((x1 - x0) * (z1 - z0)) / 12);
-  for (let i = 0; i < stacks; i++) {
-    tryPlace(sink, 'crateStack', rng.range(x0 + 0.5, x1 - 0.5), rng.range(z0 + 0.5, z1 - 0.5), rng.int(0, 3), rng);
-  }
+// Paper, in every form the building keeps it: binders on shelves, box files on
+// the floor, and the cabinets nobody has opened this decade.
+function archive(sink, bounds, rng) {
+  aisles(sink, bounds, 1.7, 1.15, 'bookshelf', rng);
+  for (let i = 0; i < 2; i++) edgeProp(sink, bounds, 'cabinet', rng);
+  scatter(sink, bounds, ['crateStack'], 16, rng);
+  if (rng.chance(0.5)) edgeProp(sink, bounds, 'trashCan', rng);
 }
 
 function copyRoom(sink, bounds, rng) {
@@ -139,25 +153,127 @@ function copyRoom(sink, bounds, rng) {
   const count = Math.max(1, Math.floor(Math.max(x1 - x0, z1 - z0) / 1.6));
   for (let i = 0; i < count; i++) edgeProp(sink, bounds, 'printer', rng);
   for (let i = 0; i < 2; i++) edgeProp(sink, bounds, 'cabinet', rng);
-  const stacks = 1 + Math.floor(((x1 - x0) * (z1 - z0)) / 14);
-  for (let i = 0; i < stacks; i++) {
-    tryPlace(sink, 'crateStack', rng.range(x0 + 0.5, x1 - 0.5), rng.range(z0 + 0.5, z1 - 0.5), rng.int(0, 3), rng);
-  }
+  scatter(sink, bounds, ['crateStack'], 14, rng);
   if (rng.chance(0.4)) edgeProp(sink, bounds, 'shelving', rng);
+  wallClutter(sink, bounds, ['trashCan', 'recyclingBin'], 40, rng);
 }
 
+// Racks in ranks, tight enough that the aisles between them are the only floor.
 function serverRoom(sink, bounds, rng) {
+  aisles(sink, bounds, 2.2, 0.85, 'serverRack', rng);
+  if (rng.chance(0.6)) edgeProp(sink, bounds, 'workbench', rng);
+  edgeProp(sink, bounds, 'extinguisher', rng);
+}
+
+// Where the hardware comes to be fixed: benches down the long walls, spares in
+// crates, and one rack of the machines that are still someone's problem.
+function itBay(sink, bounds, rng) {
+  edgeProp(sink, bounds, 'workbench', rng);
+  edgeProp(sink, bounds, 'workbench', rng);
+  wallClutter(sink, bounds, ['workbench', 'serverRack', 'shelving'], 24, rng);
+  scatter(sink, bounds, area(bounds) > 55
+    ? ['crateStack', 'crate', 'trashCan']
+    : ['crateStack', 'trashCan'], 13, rng);
+  if (rng.chance(0.5)) edgeProp(sink, bounds, 'extinguisher', rng);
+}
+
+// Goods in, goods out: pallets in the middle of the floor because they were
+// dropped where the trolley stopped.
+function mailRoom(sink, bounds, rng) {
+  edgeProp(sink, bounds, 'counter', rng);
+  edgeProp(sink, bounds, 'shelving', rng);
+  wallClutter(sink, bounds, ['recyclingBin', 'printer', 'shelving'], 28, rng);
+  scatter(sink, bounds, area(bounds) > 55
+    ? ['pallet', 'crate', 'crateStack', 'crateStack']
+    : ['crateStack', 'crateStack', 'crate'], 10, rng);
+}
+
+// The room the building would rather you didn't see: lockers, cleaning kit and
+// the spares that have no other home.
+function utilityRoom(sink, bounds, rng) {
+  edgeProp(sink, bounds, 'lockers', rng);
+  edgeProp(sink, bounds, 'extinguisher', rng);
+  if (rng.chance(0.8)) edgeProp(sink, bounds, 'mopBucket', rng);
+  wallClutter(sink, bounds, ['shelving', 'lockers', 'recyclingBin'], 26, rng);
+  scatter(sink, bounds, ['crateStack', 'trashCan'], 14, rng);
+}
+
+// Rows of seats facing a board at the front, with an aisle up the middle so the
+// room reads as a classroom from the doorway rather than a furniture warehouse.
+function trainingRoom(sink, bounds, rng) {
   const { x0, z0, x1, z1 } = bounds;
   const alongX = (x1 - x0) >= (z1 - z0);
-  if (alongX) {
-    for (let z = z0 + 0.6; z < z1 - 0.5; z += 2.2) {
-      for (let x = x0 + 0.5; x < x1 - 0.4; x += 0.85) tryPlace(sink, 'serverRack', x, z, 0, rng);
-    }
-  } else {
-    for (let x = x0 + 0.6; x < x1 - 0.5; x += 2.2) {
-      for (let z = z0 + 0.5; z < z1 - 0.4; z += 0.85) tryPlace(sink, 'serverRack', x, z, 1, rng);
+  // Seats look at the front wall: rows run across the room, ranked back from it.
+  const [f0, f1, a0, a1] = alongX ? [z0, z1, x0, x1] : [x0, x1, z0, z1];
+  const flip = rng.chance(0.5);
+  const front = flip ? f1 : f0;
+  const dir = flip ? -1 : 1;                       // deeper into the room
+  const rot = alongX ? (flip ? 0 : 2) : (flip ? 3 : 1);   // facing the front wall
+
+  const at = (front_, along) => (alongX ? [along, front_] : [front_, along]);
+
+  const [bx, bz] = at(front + dir * 0.3, (a0 + a1) / 2);
+  tryPlace(sink, 'whiteboard', bx, bz, (rot + 2) & 3, rng);
+
+  const seats = Math.floor((a1 - a0) / 0.8);
+  const ranks = Math.floor((f1 - f0 - 1.6) / 1.1);
+  for (let r = 0; r < ranks; r++) {
+    for (let s = 0; s < seats; s++) {
+      // The gangway: nothing in the middle column of a wide enough room.
+      if (seats >= 5 && s === (seats >> 1)) continue;
+      const along = a0 + (a1 - a0) * ((s + 0.5) / seats);
+      const [cx, cz] = at(front + dir * (1.6 + r * 1.1), along);
+      tryPlace(sink, 'chair', cx, cz, rot, rng);
     }
   }
+  if (rng.chance(0.6)) edgeProp(sink, bounds, 'plant', rng);
+  if (rng.chance(0.5)) edgeProp(sink, bounds, 'cabinet', rng);
+}
+
+// Canteen seating: round tables with stools round them, on a pitch wide enough
+// to walk between two occupied chairs.
+function canteen(sink, bounds, rng) {
+  const { x0, z0, x1, z1 } = bounds;
+  const PITCH = 3.4;
+  const cols = Math.max(1, Math.floor((x1 - x0) / PITCH));
+  const rows = Math.max(1, Math.floor((z1 - z0) / PITCH));
+  const padX = (x1 - x0 - cols * PITCH) / 2;
+  const padZ = (z1 - z0 - rows * PITCH) / 2;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cx = x0 + padX + (c + 0.5) * PITCH;
+      const cz = z0 + padZ + (r + 0.5) * PITCH;
+      if (!tryPlace(sink, 'roundTable', cx, cz, 0, rng)) {
+        tryPlace(sink, 'coffeeTable', cx, cz, rng.int(0, 3), rng);
+        continue;
+      }
+      // Stools on the four sides, most of them pushed back in.
+      for (const [dx, dz, rot] of [[0, -1.4, 0], [0, 1.4, 2], [-1.4, 0, 1], [1.4, 0, 3]]) {
+        if (rng.chance(0.75)) tryPlace(sink, 'stool', cx + dx, cz + dz, rot, rng);
+      }
+    }
+  }
+
+  edgeProp(sink, bounds, 'counter', rng);
+  if (rng.chance(0.8)) edgeProp(sink, bounds, 'vending', rng);
+  if (rng.chance(0.7)) edgeProp(sink, bounds, 'recyclingBin', rng);
+  if (rng.chance(0.6)) edgeProp(sink, bounds, 'plant', rng);
+}
+
+// The front of house on a floor that has one: a counter to be greeted at, and
+// seating for the meeting you are not here for.
+function reception(sink, bounds, rng) {
+  edgeProp(sink, bounds, 'receptionDesk', rng);
+  edgeProp(sink, bounds, 'plant', rng);
+  if (rng.chance(0.8)) edgeProp(sink, bounds, 'sofa', rng);
+  if (rng.chance(0.7)) edgeProp(sink, bounds, 'armchair', rng);
+  if (rng.chance(0.6)) edgeProp(sink, bounds, 'armchair', rng);
+  if (rng.chance(0.7)) {
+    const { x0, z0, x1, z1 } = bounds;
+    tryPlace(sink, 'coffeeTable', (x0 + x1) / 2, (z0 + z1) / 2, rng.int(0, 3), rng);
+  }
+  if (rng.chance(0.5)) edgeProp(sink, bounds, 'plant', rng);
 }
 
 // A desk in the dead centre of a 4.5 m room leaves only ~0.65 m of standable
@@ -184,7 +300,8 @@ function privateOffice(sink, bounds, rng) {
 
   if (rng.chance(0.8)) edgeProp(sink, bounds, 'cabinet', rng);
   if (rng.chance(0.45)) edgeProp(sink, bounds, 'plant', rng);
-  if (rng.chance(0.3)) edgeProp(sink, bounds, 'shelving', rng);
+  if (rng.chance(0.3)) edgeProp(sink, bounds, 'bookshelf', rng);
+  if (rng.chance(0.5)) edgeProp(sink, bounds, 'trashCan', rng);
 }
 
 // Desk backed onto a wall with its chair tucked in front of it.
@@ -219,7 +336,9 @@ function lobby(sink, bounds, rng) {
   edgeProp(sink, bounds, 'plant', rng);
   if (rng.chance(0.7)) edgeProp(sink, bounds, 'sofa', rng);
   if (rng.chance(0.5)) edgeProp(sink, bounds, 'coffeeTable', rng);
+  if (rng.chance(0.5)) edgeProp(sink, bounds, 'armchair', rng);
   if (rng.chance(0.4)) edgeProp(sink, bounds, 'plant', rng);
+  if (rng.chance(0.4)) edgeProp(sink, bounds, 'extinguisher', rng);
 }
 
 const ROLES = {
@@ -227,12 +346,78 @@ const ROLES = {
   meeting: meetingRoom,
   breakroom: breakRoom,
   storage,
+  archive,
   copyroom: copyRoom,
   server: serverRoom,
+  itbay: itBay,
+  mailroom: mailRoom,
+  utility: utilityRoom,
+  training: trainingRoom,
+  canteen,
+  reception,
   office: privateOffice,
   lobby,
   exit: lobby,
 };
+
+// Every role the generator is allowed to hand out. layout.js picks from this by
+// size; anything it picks that isn't here would silently come out as an office.
+export const ROOM_ROLES = Object.keys(ROLES);
+
+// --- placement helpers ------------------------------------------------------
+
+// Ranks of a repeated unit with a walking aisle between the ranks. The ranks
+// run along the room's LONG axis, so the aisles are short hops across it rather
+// than a trek from one end to the other — and there is always an aisle mouth on
+// the long wall, which is where the doors mostly are.
+// A rank stops short of both end walls by GANGWAY, which is not decoration: an
+// aisle is a dead end if the only way out is the way you came, so one dropped
+// pallet in the middle of one seals off everything past it. With a gangway
+// round the ends every aisle has two mouths and no single blockage can shut a
+// room's floor away from its own doorway.
+const GANGWAY = 0.9;   // metres — the player is 0.8 m across
+
+function aisles(sink, bounds, aislePitch, unitPitch, kind, rng) {
+  const { x0, z0, x1, z1 } = bounds;
+  const alongX = (x1 - x0) >= (z1 - z0);
+  const [a0, a1, b0, b1] = alongX ? [x0, x1, z0, z1] : [z0, z1, x0, x1];
+  const rot = alongX ? 0 : 1;
+
+  // Too short to hold a rank and its gangways: leave it to the clutter.
+  if (a1 - a0 < 2 * GANGWAY + unitPitch) return;
+
+  for (let b = b0 + aislePitch * 0.3; b < b1 - 0.4; b += aislePitch) {
+    for (let a = a0 + GANGWAY + unitPitch / 2; a < a1 - GANGWAY - unitPitch / 2 + 0.05; a += unitPitch) {
+      if (alongX) tryPlace(sink, kind, a, b, rot, rng);
+      else tryPlace(sink, kind, b, a, rot, rng);
+    }
+  }
+}
+
+const ALL_SIDES = [0, 1, 2, 3];
+
+const area = ({ x0, z0, x1, z1 }) => (x1 - x0) * (z1 - z0);
+
+// Optional props along the walls, as many as the room has floor to carry. A
+// 34 m2 break room and a 120 m2 one must not both get one of everything: a prop
+// against a wall is cheap on its own and expensive in company, because three of
+// them in a line across a narrow room close the room in half. `kinds` is in
+// priority order — the first is the one the room most wants.
+function wallClutter(sink, bounds, kinds, perM2, rng) {
+  const n = Math.min(kinds.length, Math.floor(area(bounds) / perM2));
+  for (let i = 0; i < n; i++) edgeProp(sink, bounds, kinds[i], rng);
+}
+
+// Clutter dropped where it was put down. `perM2` is one item per that many
+// square metres — the room's own size decides how littered it is.
+function scatter(sink, bounds, kinds, perM2, rng) {
+  const { x0, z0, x1, z1 } = bounds;
+  const n = 1 + Math.floor(((x1 - x0) * (z1 - z0)) / perM2);
+  for (let i = 0; i < n; i++) {
+    tryPlace(sink, rng.pick(kinds),
+      rng.range(x0 + 0.5, x1 - 0.5), rng.range(z0 + 0.5, z1 - 0.5), rng.int(0, 3), rng);
+  }
+}
 
 // Tries to seat a prop against a random wall, back to the wall, a few times.
 //
@@ -242,7 +427,14 @@ const ROLES = {
 // each side applies is exactly what maps `d` onto the axis perpendicular to it.
 // Swapping the two here pushed wide props (counters, meeting tables) up to a
 // metre out into the room and shoved narrow ones into the wall.
-function edgeProp(sink, bounds, kind, rng) {
+//
+// Sides, throughout: 0 = the +z wall, 1 = -x, 2 = -z, 3 = +x.
+//
+// `sides` narrows which walls are on offer. A room that knows something about
+// its own layout — a cubicle farm knows exactly how much lane it left between
+// the desks and each wall — uses it to keep a prop off the wall where it would
+// close that lane, instead of leaving it to a die roll.
+function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES) {
   const { x0, z0, x1, z1 } = bounds;
   const spec = PROPS[kind];
   const standoff = spec.d / 2;
@@ -250,9 +442,10 @@ function edgeProp(sink, bounds, kind, rng) {
 
   const alongX = x1 - x0 >= margin * 2;
   const alongZ = z1 - z0 >= margin * 2;
+  if (!sides.length) return false;
 
   for (let tries = 0; tries < 12; tries++) {
-    const side = rng.int(0, 3);
+    const side = rng.pick(sides);
     // A prop wider than the wall it was offered simply doesn't fit there.
     if ((side === 0 || side === 2) && !alongX) continue;
     if ((side === 1 || side === 3) && !alongZ) continue;
