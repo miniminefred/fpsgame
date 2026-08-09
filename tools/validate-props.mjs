@@ -141,7 +141,8 @@ const IDS = [
   ['4.geom-soft', 'WARN', `ROOM REACH    (geometric) >= ${GEOM_SOFT * 100}% of the passable floor of a room reachable`],
   ['4.nav-inflation', 'WARN', 'ROOM REACH    nav grid does not seal a gap a body can physically pass'],
 
-  ['5.connected', 'FAIL', 'CONNECTIVITY  every room reachable from spawn AFTER furnishing'],
+  ['5.connected', 'FAIL', 'CONNECTIVITY  every unbadged room reachable from spawn AFTER furnishing'],
+  ['5.lock-sealed', 'FAIL', 'KEYCARDS      every badged room sealed from the nav grid'],
   ['5.walk-orphan', 'WARN', 'CONNECTIVITY  no walkable tile stranded from spawn by furniture'],
   ['5.spawn-walk', 'FAIL', 'CONNECTIVITY  spawn tile itself is walkable'],
   ['5.geom-connected', 'FAIL', 'CONNECTIVITY  (geometric) every room physically reachable from spawn'],
@@ -614,8 +615,19 @@ function validate(seed, floorNumber) {
   if (!spawnWalk) check('5.spawn-walk').fail(id, 'spawn tile is not walkable after furnishing');
 
   const reach = floodWalk(walk, W, H, spawnWalk ? [idx(sx, sy)] : nearestWalk(walk, W, H, sx, sy));
+
+  // Badged rooms are SUPPOSED to be sealed off here: gen/build.js closes their
+  // doorways in the nav grid, and doors.js hands the tiles back the moment the
+  // player badges in (see the keycard notes in gen/layout.js). So they are
+  // excluded from "stranded" and from "unreachable", and then checked the other
+  // way round below — a lock that failed to seal is as much a bug as one that
+  // sealed something it shouldn't have.
+  const locked = layout.locked ?? new Uint8Array(W * H);
+
   let walkTotal = 0, walkReached = 0;
-  for (let i = 0; i < W * H; i++) { if (walk[i]) { walkTotal++; if (reach[i]) walkReached++; } }
+  for (let i = 0; i < W * H; i++) {
+    if (walk[i] && !locked[i]) { walkTotal++; if (reach[i]) walkReached++; }
+  }
   if (walkTotal - walkReached > 0) {
     const n = walkTotal - walkReached;
     check('5.walk-orphan').fail(id, `${n} walkable tiles stranded from spawn`);
@@ -624,7 +636,7 @@ function validate(seed, floorNumber) {
     // a storage room".
     const seenStrand = new Uint8Array(W * H);
     for (let i = 0; i < W * H; i++) {
-      if (!walk[i] || reach[i] || seenStrand[i]) continue;
+      if (!walk[i] || reach[i] || seenStrand[i] || locked[i]) continue;
       const region = floodWalk(walk, W, H, [i], (j) => !reach[j]);
       let size = 0;
       for (let j = 0; j < W * H; j++) if (region[j]) { size++; seenStrand[j] = 1; }
@@ -633,13 +645,21 @@ function validate(seed, floorNumber) {
   }
 
   const cutOff = [];
+  const leaked = [];
   rooms.forEach((r, ri) => {
     let any = false;
     for (let y = r.y0; y < r.y1 && !any; y++) for (let x = r.x0; x < r.x1; x++) if (reach[idx(x, y)]) { any = true; break; }
-    if (!any) cutOff.push(`${r.role}#${ri}`);
+    if (r.lock) { if (any) leaked.push(`${r.role}#${ri}(${r.lock})`); }
+    else if (!any) cutOff.push(`${r.role}#${ri}`);
   });
   if (cutOff.length) {
     check('5.connected').fail(id, `${cutOff.length} rooms unreachable from spawn: ${cutOff.slice(0, 3).join(',')}`);
+  }
+  // A badged room the enemies can walk into is a lock with a hole in it, and it
+  // is invisible from inside the game until a floor's worth of staff comes out
+  // of the manager's office.
+  if (leaked.length) {
+    check('5.lock-sealed').fail(id, `${leaked.length} badged rooms open to the nav grid: ${leaked.slice(0, 3).join(',')}`);
   }
 
   // ---- 4b/5b. geometric reachability -------------------------------------
