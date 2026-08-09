@@ -106,7 +106,9 @@ src/
   audio.js        Sound library + every game event that makes a noise
   sfx.js          WebAudio sample engine: decode, pitch-vary, place, overlap
   casings.js      Spent brass: ejects, bounces, times out
-  hud.js          Health, ammo, floor, objective, toasts, death screen
+  keycards.js     Card catalogue, the wallet, and the cards on the carpet
+  doors.js        Sliding panels, proximity sensors, and the badged ones
+  hud.js          Health, ammo, floor, objective, keycards, toasts, death screen
   minimap.js      Per-floor floorplan raster + live player/enemy markers
   textures.js     Procedural canvas textures and the shared material cache
   style.css       All UI styling
@@ -260,6 +262,43 @@ wrong way), so `model-table.js` records the yaw and scale that put each at real-
 facing -Z. Check a new entry in `/dev-models.html` before trusting it, and beware that a
 model's name is not its size: the `printer` model is a 24 cm desktop unit, which is why the
 floor-standing prop uses `copier`.
+
+### Keycards (`keycards.js` + `assignLocks` in `gen/layout.js`)
+Some rooms are behind a badge reader. Five cards: **white** and **grey** go on
+ordinary and back-of-house rooms and are a ladder (grey opens white doors);
+**blue** opens the security office and **yellow** the broom closet, and neither
+substitutes for anything else; **black** opens the manager's office and, being the
+last card you get, everything else too. Cards do not travel between floors.
+
+Every hostile can be carrying one, and killing them drops it. The floor guarantees
+one holder per lock it placed — except black, which is not dealt at all: it comes
+off **the last hostile on the floor**, so it is impossible to get early and
+impossible to miss. Everyone else is a `CARD_SPARE_CHANCE` roll.
+
+Two rules make the whole thing survivable, and both are proved rather than hoped
+for (`tools/validate-layout.mjs`, checks `8.*`):
+
+- **Nothing you need is behind a card.** The spawn and exit rooms are never
+  locked, and a room is only locked if filling it in solid still leaves every
+  other room and the exit reachable from the spawn. A floor can be cleared and
+  descended without finding a single card.
+- **No card is behind the door it opens, or behind another door.** A candidate is
+  only locked if it is reachable with every lock already placed treated as solid,
+  so locks never chain — and `enemies.js` refuses to spawn anyone inside a locked
+  room, which is what stops a holder ending up on the wrong side of their own
+  card. That also means a badged room is worth nothing to `hostileCount`, so a
+  locked door can never be what stops a floor being cleared.
+
+Locking a room means locking **every** opening into it, not just the ones that
+room cut — the room next door cuts its own doors and a back way in is not a lock.
+It also means the doorway must be able to hold a panel at all, which is why
+`slidePocketSide` lives in `layout.js` rather than in the builder that fits doors.
+
+A badged door is shut to the enemies too, at the nav grid rather than in
+`doors.js`: the flow field must not route a chase through a door the chaser cannot
+open, or the whole floor piles up against it. Badging in is permanent, and the
+moment it happens the opening goes back into nav (`nav.openTiles`) so the floor
+can follow you in.
 
 ### Sound (`sfx.js` + `audio.js` + `public/sounds/`)
 Everything audible is a generated MP3 (see the `sound-generation` skill; `sounds.json`
