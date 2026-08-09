@@ -122,7 +122,12 @@ export class Game {
   _onEnemyDeath(e) {
     if (!this.keycards) return;
     const at = e.group.position;
-    if (e.card && !this.wallet.has(e.card)) this.keycards.drop(e.card, at.x, 0, at.z);
+    // Not if you already hold one, and not if one is already lying somewhere
+    // waiting for you — six grey cards on the carpet is not six times the
+    // information, it is five red herrings.
+    if (e.card && !this.wallet.has(e.card) && !this.keycards.pending(e.card)) {
+      this.keycards.drop(e.card, at.x, 0, at.z);
+    }
 
     if (e.neutral || this.enemies.hostileCount > 0) return;
     if (!this.level.current?.layout.locks?.some((l) => l.tier === 'black')) return;

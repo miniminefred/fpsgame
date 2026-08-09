@@ -185,6 +185,12 @@ export class Keycards {
     return m;
   }
 
+  /** Is one of these already lying about, waiting to be walked over? */
+  pending(tier) {
+    for (const item of this.items) if (item.tier === tier) return true;
+    return false;
+  }
+
   /** Somebody dropped one. `y` is the floor under them, not their chest. */
   drop(tier, x, y, z) {
     if (!CARDS[tier]) return null;
