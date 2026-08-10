@@ -29,7 +29,7 @@ const BREATH_SPEED = 4;        // moving at least this fast to be out of breath
 const SHOVE_INTERVAL = 0.4;
 
 export class Game {
-  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, doors, casings, keycards, wallet, ragdolls }) {
+  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, doors, casings, keycards, wallet, ragdolls, cameras }) {
     this.scene = scene;
     this.camera = camera;
     this.player = player;
@@ -49,6 +49,7 @@ export class Game {
     this.keycards = keycards;
     this.wallet = wallet;
     this.ragdolls = ragdolls;
+    this.cameras = cameras;
 
     this.level = new Level(scene);
     // Player-facing colliders for this floor's loose props, refreshed from the
@@ -99,6 +100,37 @@ export class Game {
     this.enemies.onDeath = (e) => this._onEnemyDeath(e);
     if (this.doors) this.doors.onRefused = (door) => this._onDoorRefused(door);
     this.wallet.onChange = (wallet, tier) => this._onCardTaken(wallet, tier);
+
+    if (this.cameras) {
+      this.cameras.onSpotted = (cam) => this.audio.cameraSpotted(cam.at);
+      this.cameras.onAlarm = () => this._onAlarm();
+      this.shooting.onCameraHit = (cam, damage, point, normal) =>
+        this.cameras.damage(cam, damage, point, normal);
+    }
+  }
+
+  // --- building security --------------------------------------------------------
+
+  /**
+   * A camera watched you long enough, or you walked through a laser.
+   *
+   * Everything about WHO turns up is enemies.js's (see `alarm` there); this is
+   * only what a floor does about it. Two of those three things exist because the
+   * response is people who were not on the floor when it was generated: bullets
+   * have to be told about them, and the objective counter is now wrong by
+   * however many arrived.
+   */
+  _onAlarm() {
+    const response = this.enemies.alarm(
+      this.player.object.position.x, this.player.object.position.z);
+
+    this.shooting.addHittables(response.meshes);
+    this.audio.alarm();
+    this.hud.alarm();
+    this.hud.message(response.roused
+      ? `ALARM — ${response.spawned.length} INBOUND, AND THE OFFICE IS AWAKE`
+      : `ALARM — ${response.spawned.length} SECURITY INBOUND`, 2600);
+    this._syncObjective();
   }
 
   // --- keycards ---------------------------------------------------------------
@@ -226,9 +258,17 @@ export class Game {
     this.shooting.refill();
 
     this.enemies.spawn(level.layout, level.nav, rng, tuningFor(this.floor));
+    // After the staff, because the cameras are watching the floor rather than
+    // watching them — nothing about where one goes depends on who is standing
+    // where, and taking the roster's dice first keeps enemy placement reading
+    // off the same stream it always did.
+    this.cameras?.spawn(level.layout, level.nav, rng);
 
-    // Bullets stop on this floor's geometry and this floor's occupants.
-    this.shooting.setHittables([...level.meshes, ...this.enemies.meshes]);
+    // Bullets stop on this floor's geometry, this floor's occupants, and the
+    // things on its walls looking at them.
+    this.shooting.setHittables([
+      ...level.meshes, ...this.enemies.meshes, ...(this.cameras?.meshes ?? []),
+    ]);
     // Scorch marks are clipped to the building only — an enemy standing against
     // a wall is not part of that wall, however flush he is with it.
     this.effects.setSurfaces(level.meshes);
@@ -245,6 +285,7 @@ export class Game {
 
     this.cleared = false;
     this.droppedBlack = false;
+    this.hud.setWatch(0);
     this.descendLock = 1.2;     // grace period so you can't fall straight through
     this.hud.setFloor(this.floor);
     this.hud.message(`FLOOR ${this.floor} — ${this.enemies.theme?.name ?? ''}`.trim(), 2200);
@@ -325,6 +366,14 @@ export class Game {
         hud: this.hud,
         noise: this.shooting.noise,
       });
+
+      // After the enemies, because that is what floods the distance field this
+      // frame — and an alarm raised here places its response by walked distance
+      // from the player, off exactly that field.
+      if (this.cameras) {
+        this.cameras.update(dt, this.player);
+        this.hud.setWatch(this.cameras.watch);
+      }
 
       this._checkFloorState(dt, level);
       this._vitals(dt);

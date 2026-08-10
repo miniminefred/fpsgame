@@ -101,6 +101,19 @@ const CLOSET_JANITORS = 2;
 const OFFICE_GUARDS = [2, 5];
 const GUARD_BATON = 0.4;       // how much of the shift drew a baton instead
 const GUARD_GAP = 0.8;         // metres between two men in one room
+
+// The response to an alarm (see `alarm` below). Four men come up from the floor
+// below — unless the security office on THIS floor is still manned, in which
+// case the men in it are the response and only two more are sent. Which makes
+// clearing the security office early a real decision rather than loot: it costs
+// you the two easy kills you would rather not have made, and it doubles what
+// turns up the first time a camera gets six seconds of you.
+const RESPONSE = 4;
+const RESPONSE_HELD = 2;
+// How far away they come in, measured on the distance field — a walked distance,
+// not a straight line, so "far" never means "one metre away through the wall".
+const RESPONSE_MIN = 16;
+const RESPONSE_MAX = 60;
 // How far a seated body drops, and how far its legs come up to meet the floor.
 const SIT_DROP = 0.42;
 const SIT_LEGS = -1.5;         // radians — straight out in front
@@ -358,6 +371,11 @@ export class Enemies {
     this.clear();
     this.nav = nav;
     this.tuning = tuning;
+    // Held for the things that happen to a floor after it has been populated —
+    // the alarm response, which needs the roster's own dice and the floor's own
+    // locks to decide who turns up carrying what.
+    this.layout = layout;
+    this.rng = rng;
     this.shoutTimer = 0;
     this.theme = pickTheme(layout.floorNumber, rng);
     this.corridors = collectCorridors(layout, nav);
@@ -477,6 +495,103 @@ export class Enemies {
       e.behindLock = true;
       posted++;
     }
+  }
+
+  /**
+   * A camera got six seconds of you, or you walked through a laser. Security
+   * responds.
+   *
+   * Two things happen, and which one dominates is decided by something the
+   * player did ten minutes ago:
+   *
+   *  - **The office wakes up.** Anybody still sitting in the security office is
+   *    now looking for you, from behind their own door. They cannot come out
+   *    until you badge it — the nav grid does not route through a lock — so what
+   *    this really buys the floor is that the blue room is no longer a room of
+   *    men with their backs to the screens. Walk in later and they are already
+   *    facing the door.
+   *  - **The rest are sent up.** Four of them, in the corridors, out of sight,
+   *    at a walked distance rather than a straight-line one — nobody appears in
+   *    a doorway you were looking at. If the office is still manned it is only
+   *    two, because the men in it are already part of the answer.
+   *
+   * They arrive angry, which here means `chase` with your last position already
+   * in hand: an alarm response that has to find you by walking into your line of
+   * sight is not a response, it is more staff.
+   *
+   * Returns what happened, because the toast that says so belongs to game.js —
+   * and the meshes, because bullets have to be told about anybody who was not on
+   * the floor when it was generated.
+   */
+  alarm(px, pz) {
+    if (!this.nav || !this.rng) return { spawned: [], meshes: [], roused: 0 };
+
+    // The office. Guards specifically: the janitors on their break are behind a
+    // door too and an alarm is not their problem.
+    const held = this.items.filter((e) => e.alive && e.behindLock && e.type.guard);
+    for (const e of held) this._rouse(e, px, pz);
+
+    const wanted = held.length ? RESPONSE_HELD : RESPONSE;
+    const spawned = [];
+    const meshes = [];
+    for (const spot of this._responseSpots(px, pz, wanted)) {
+      const e = this._add(spot.x, spot.z, this.rng, this.tuning, this._guardType(this.rng));
+      // Security carries blue and nobody else does, and that stays true for the
+      // ones who arrive late — otherwise an alarm on a floor whose only blue
+      // holder you already shot would be four men carrying the wrong card.
+      e.card = this.layout?.locks?.some((l) => l.tier === 'blue') ? 'blue' : 'white';
+      this._rouse(e, px, pz);
+      spawned.push(e);
+      meshes.push(...e.hitboxes);
+    }
+
+    return { spawned, meshes, roused: held.length };
+  }
+
+  // Somebody who now knows exactly where you are. Not `alert` — that is the
+  // reaction delay of a man looking up from a desk, and this one was told.
+  _rouse(e, px, pz) {
+    if (!e.alive || e.neutral) return;
+    e.state = 'chase';
+    e.timer = 0;
+    e.contact = 0;
+    e.lastSeen = { x: px, z: pz };
+  }
+
+  /**
+   * Where the response comes in. Corridors, because that is what a floor's
+   * circulation is and because it is the one part of it no card shuts them out
+   * of; far enough away to be a response rather than an ambush; and never
+   * anywhere you can see, because a man fading in at the end of a hallway you
+   * are looking down is the one thing that would make the whole system read as
+   * cheating.
+   *
+   * Each of those is dropped in turn if the floor cannot satisfy it. A response
+   * that arrives closer than it should is a worse alarm; a response that never
+   * arrives is a broken one.
+   */
+  _responseSpots(px, pz, want) {
+    const out = [];
+    // Three passes over the same pool: the full test, then without the sight
+    // test, then with only "is there a route to the player at all".
+    for (let pass = 0; pass < 3 && out.length < want; pass++) {
+      for (const s of this.rng.shuffle([...this.corridors])) {
+        if (out.length >= want) break;
+        if (this._behindALock(this.layout, s.x, s.z)) continue;
+        if (!this.nav.clear(s.x, s.z, RADIUS)) continue;
+        if (out.some((o) => Math.hypot(o.x - s.x, o.z - s.z) < 1.6)) continue;
+
+        // Negative means no route from here to the player at all, which is the
+        // one condition no pass may drop.
+        const along = this.nav.pathDistance(s.x, s.z);
+        if (along < 0) continue;
+        if (pass < 2 && (along < RESPONSE_MIN || along > RESPONSE_MAX)) continue;
+        if (pass < 1 && this.nav.losClear(s.x, s.z, px, pz)) continue;
+
+        out.push(s);
+      }
+    }
+    return out;
   }
 
   // Which half of the shift this one is. A room of guards is meant to come at

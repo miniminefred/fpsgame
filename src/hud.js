@@ -51,6 +51,11 @@ export class Hud {
     this.vignetteEl = $('vignette');
     this.toastEl = $('toast');
 
+    this.watchEl = $('watch');
+    this.watchFillEl = $('watch-fill');
+    this.alarmEl = $('alarm-flash');
+    this._watch = -1;    // last value written, so a still frame writes nothing
+
     this.gameOverEl = $('gameover');
     this.goFloorEl = $('go-floor');
     this.goKillsEl = $('go-kills');
@@ -117,6 +122,35 @@ export class Hud {
       el.title = `${name} keycard`;
       return el;
     }));
+  }
+
+  /**
+   * How much of a camera's patience is spent, 0..1. Zero hides the whole thing.
+   *
+   * Written every frame, so it is diffed here rather than at the call site: the
+   * value is unchanged on the overwhelming majority of frames — nothing is
+   * looking at you — and three style writes a frame for that is three too many.
+   */
+  setWatch(fraction) {
+    // Snapped to nothing at the bottom of the range. The count decays rather
+    // than resetting when a camera loses you (see cameras.js), so without this
+    // the last hundredth of it takes half a minute to expire and leaves a
+    // hairline of bar on screen saying something is still watching.
+    const v = fraction > 0.01 ? clamp01(fraction) : 0;
+    if (v === this._watch) return;
+    this._watch = v;
+    this.watchEl?.classList.toggle('show', v > 0);
+    this.watchEl?.classList.toggle('close', v > 0.66);
+    if (this.watchFillEl) this.watchFillEl.style.width = `${v * 100}%`;
+  }
+
+  /** Somebody called it in. One wash of red, restarted if it happens again. */
+  alarm() {
+    const el = this.alarmEl;
+    if (!el) return;
+    el.classList.remove('fire');
+    void el.offsetWidth;                 // restart the CSS animation
+    el.classList.add('fire');
   }
 
   setObjective(text) {
@@ -202,6 +236,8 @@ export class Hud {
       this.toastEl.classList.remove('show');
       this._vignette = 0;
       this.vignetteEl.style.opacity = '0';
+      this.setWatch(0);
+      this.alarmEl?.classList.remove('fire');
     }
   }
 

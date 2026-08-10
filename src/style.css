@@ -90,6 +90,56 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
   filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.75));
 }
 
+/* --------------------------------------------------- building security */
+/* The alarm: one hard red wash over the whole frame, twice, and then it is
+   gone. It is not a state — the state is the four men walking toward you —
+   it is the moment you find out. */
+#alarm-flash {
+  position: absolute; inset: 0; opacity: 0;
+  background:
+    radial-gradient(ellipse at center,
+      rgba(255, 30, 30, 0.06) 0%,
+      rgba(255, 20, 20, 0.34) 68%,
+      rgba(150, 0, 0, 0.86) 100%);
+}
+#alarm-flash.fire { animation: alarm-wash 1.5s ease-out 2; }
+@keyframes alarm-wash {
+  0%   { opacity: 0; }
+  12%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Being watched. Under the crosshair rather than out at the edge of the HUD:
+   it is the one readout you have to act on inside six seconds, and looking away
+   from the middle of the screen to find it is the reaction it would cost. */
+#watch {
+  position: absolute; left: 50%; top: calc(50% + 54px);
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+#watch.show { opacity: 1; }
+#watch-label {
+  font-size: 12px; font-weight: 700; letter-spacing: 5px;
+  text-transform: uppercase; color: var(--warn);
+  text-shadow: 0 1px 3px #000, 0 0 10px rgba(0, 0, 0, 0.95), 0 0 18px rgba(0, 0, 0, 0.8);
+}
+#watch-bar {
+  width: 150px; height: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
+}
+#watch-fill {
+  height: 100%; width: 0%;
+  background: var(--warn);
+  transition: width 0.1s linear;
+}
+/* Past two thirds it stops being information and starts being a countdown. */
+#watch.close #watch-label { color: var(--danger); animation: pulse 0.5s ease-in-out infinite; }
+#watch.close #watch-fill { background: var(--danger); }
+
 /* ---------------------------------------------------------------- crosshair */
 #crosshair {
   position: absolute; left: 50%; top: 50%;

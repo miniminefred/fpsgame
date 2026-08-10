@@ -39,6 +39,8 @@ export class Shooting {
     // return says whether the thing hit was destructible.
     this.onPropHit = null;
     this.onSurfaceHit = null;
+    // (cam, damage, point, normal) => boolean — true if that shot destroyed it.
+    this.onCameraHit = null;
     // Gunfire is loud: enemies out of sight use this to come looking.
     this.noise = 0;
 
@@ -92,6 +94,13 @@ export class Shooting {
   // Called once per floor with that floor's geometry plus its enemies.
   setHittables(list) {
     this.hittables = list;
+  }
+
+  // Anybody who was not on the floor when it was generated — the security
+  // response to an alarm. Without this a body that arrived late is one bullets
+  // go straight through, which looks exactly like a broken gun.
+  addHittables(meshes) {
+    if (meshes?.length) this.hittables.push(...meshes);
   }
 
   // A destroyed prop's meshes leave the scene graph but their matrices don't
@@ -252,6 +261,13 @@ export class Shooting {
         else if (outcome === 'hit') this.audio.enemyPain(enemy);
         return outcome;
       }
+
+      // A security camera or a laser emitter. One round each — see cameras.js —
+      // so this either kills it, which earns the marker, or it is already dead
+      // and falls through to be treated as the piece of wall furniture it now
+      // is.
+      const cctv = hit.object.userData.cctv;
+      if (cctv && this.onCameraHit?.(cctv, damage, hit.point, this._normal)) return 'hit';
 
       // Loose furniture takes the hit as a shove. Heavier-hitting guns move it
       // further, which is what makes a shotgun feel like a shotgun.

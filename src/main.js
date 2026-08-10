@@ -17,6 +17,7 @@ import { Doors } from './doors.js';
 import { Casings } from './casings.js';
 import { Keycards, Wallet } from './keycards.js';
 import { Ragdolls } from './ragdolls.js';
+import { Cameras } from './cameras.js';
 import { loadModels } from './gen/models.js';
 import { modelKeysUsed } from './gen/props.js';
 import { Game } from './game.js';
@@ -61,11 +62,12 @@ const ragdolls = new Ragdolls({ scene, physics });
 enemies.ragdolls = ragdolls;
 const wallet = new Wallet();
 const keycards = new Keycards({ scene, audio, wallet });
+const cameras = new Cameras({ scene, audio, effects });
 
 const game = new Game({
   scene, camera, player, weapons, shooting, enemies,
   effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, doors, casings,
-  keycards, wallet, ragdolls,
+  keycards, wallet, ragdolls, cameras,
 });
 
 onDigitKeys((n) => {
@@ -88,7 +90,7 @@ addEventListener('mousedown', () => {
 if (import.meta.env.DEV) {
   window.dev = {
     game, player, enemies, shooting, keys, physics, destruction, extinguishers, doors,
-    scene, camera, weapons, renderer, audio, casings, keycards, wallet, ragdolls,
+    scene, camera, weapons, renderer, audio, casings, keycards, wallet, ragdolls, cameras,
   };
 }
 

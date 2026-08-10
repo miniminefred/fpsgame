@@ -110,6 +110,7 @@ src/
   casings.js      Spent brass: ejects, bounces, times out
   keycards.js     Card catalogue, the wallet, and the cards on the carpet
   doors.js        Sliding panels, proximity sensors, and the badged ones
+  cameras.js      Wall cameras and laser tripwires, and the alarm they raise
   hud.js          Health, ammo, floor, objective, keycards, hit direction, toasts, death
   minimap.js      Per-floor floorplan raster + live player/enemy markers
   textures.js     Procedural canvas textures and the shared material cache
@@ -557,6 +558,56 @@ Readers are two `InstancedMesh`es per floor (plate + lamp) rather than a mesh ea
 which is what makes two hundred of them affordable and makes turning one green a
 colour write. Minimap tints staff-only rooms only — tinting white would tint the
 whole map.
+
+### Building security (`cameras.js` + `alarm` in `enemies.js`)
+Five to ten units on every floor, in two trades that ask different questions:
+
+- **Watchers** hang off a wall at 2.5 m and sweep a slow arc. Walk into the cone and
+  the lamp goes amber and the thing tracks you; six seconds of that and it calls it in.
+  Breaking the look **drains** the count rather than resetting it, so ducking behind a
+  doorframe for one frame is not a pardon — the second time it sees you it has less
+  patience.
+- **Tripwires** are a laser across a corridor at hip height with no timer at all: the
+  beam is either unbroken or the alarm is already going. Mounted low and drawn bright
+  on purpose, because a tripwire you cannot see before you cross it is a tax rather
+  than a hazard. `BEAM_Y` is under a jump's apex (1.36 m), so vaulting one is a real
+  option and not a happy accident — the number is chosen against `JUMP_SPEED`.
+
+Both are one round from any gun, like the glazing and the ceiling tubes. That is the
+reward for noticing one first, and it is why the lamp is on the FRONT of the unit
+beside the lens: the tell has to be legible from exactly where the camera is looking.
+
+Three things are load-bearing:
+
+- **A camera does not have to look off the wall it hangs on.** All three facings that
+  are not into the wall are measured and the longest clear run wins, which is what
+  turns a camera in a 3 m corridor down the hallway instead of at the plaster
+  opposite. The bracket is a separate frame from the pivot for the same reason — a
+  camera whose mount swings round with its lens has come off its mount.
+- **Placement walks a shuffled list of wall-adjacent tiles, it does not throw darts.**
+  Dart-throwing was the first version and it quietly shipped four cameras on one floor
+  and ten on the next: a tile that survives every test is a few percent of a floor, so
+  400 darts is not a sample, it is a lottery.
+- **One alarm at a time** (`REARM`). Three cameras that all reach six seconds in the
+  same corridor would each call in their own response, and the floor would answer one
+  sighting with twelve men.
+
+What an alarm *costs* is `enemies.alarm`, and it is one decision made ten minutes
+earlier: **four** security come up from below, at a walked distance, out of your line
+of sight, already in `chase` with your position in hand — **unless the security office
+on this floor is still manned**, in which case the men in it wake up where they sit and
+only **two** more are sent. So clearing the security office early is a genuine trade
+rather than loot: it costs you two kills you would rather have banked, and it doubles
+what turns up the first time a camera gets six seconds of you. The office pair cannot
+come out until you badge the blue door — a lock is out of the nav grid — so what waking
+them really buys the floor is that the blue room is no longer a room of men with their
+backs to the screens.
+
+Anyone who arrives this way was not on the floor when it was generated, which has two
+consequences that are easy to miss: `shooting.addHittables` has to be told about them
+or bullets pass straight through, and they carry blue if the floor has a blue lock,
+because "security carries blue and nobody else does" has to stay true for the late
+arrivals too.
 
 ### Hit direction (`hud.js` + `#hitdirs`)
 Taking damage puts a red chevron on a ring around the crosshair pointing at whoever landed

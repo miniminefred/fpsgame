@@ -232,6 +232,14 @@ const MOUTH_HEIGHT = 1.35;
 // paid for at the same rate.
 const DETOUR_REFERENCE = 5;
 
+// The alarm klaxon (see `alarm`). A minor sixth apart, which is the interval
+// every emergency two-tone in the world is built on and the reason one is
+// recognisable as an alarm before you have registered what it is attached to.
+const ALARM_TONES = [740, 466];
+const ALARM_PERIOD = 0.9;      // seconds for both tones
+const ALARM_CYCLES = 4;
+const ALARM_GAIN = 0.16;
+
 // Enemy voices are pitched by body size. The scale spread across the six types
 // is only 0.9–1.14, far too narrow to hear, so it is exaggerated hard: an intern
 // ends up a fourth above a manager.
@@ -498,6 +506,63 @@ export class GameAudio {
   /** Furniture shoved aside by the player walking into it. */
   propShove(point) {
     this._placed('prop-shove', point);
+  }
+
+  // --- building security --------------------------------------------------------
+
+  /**
+   * A camera has just got you, or a laser has just been crossed. Borrowed, like
+   * the reader sounds above: a magazine seating, pitched up most of an octave
+   * into a servo click. Placed, because the whole value of it is that it comes
+   * from a direction — it is the half second in which you get to work out which
+   * wall to look at.
+   */
+  cameraSpotted(point) {
+    this._placed('mag-in', point, { gain: 0.6, rate: 1.95 });
+  }
+
+  /**
+   * The alarm itself: a two-tone klaxon over the building's PA.
+   *
+   * Synthesised rather than sampled, and for the same reason the hitmarker is —
+   * it is not a sound anywhere in the world. It comes out of every ceiling on
+   * the floor at once, so it has no position to be placed at and nothing to be
+   * occluded by, and a klaxon is two square-ish tones alternating, which is a
+   * thing an oscillator is genuinely better at than a recording of one.
+   *
+   * The whole burst is scheduled in one go: it has to keep sounding while the
+   * response walks in, and hanging that off the frame loop would make an alarm
+   * something that can be interrupted by a lag spike.
+   */
+  alarm() {
+    const ctx = this.sfx.ctx;
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+
+    for (let cycle = 0; cycle < ALARM_CYCLES; cycle++) {
+      ALARM_TONES.forEach((freq, i) => {
+        const t = t0 + cycle * ALARM_PERIOD + i * (ALARM_PERIOD / 2);
+        const osc = ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.value = freq;
+
+        // Off the top of it, or a sawtooth klaxon is all fizz and no weight.
+        const tone = ctx.createBiquadFilter();
+        tone.type = 'lowpass';
+        tone.frequency.value = 1700;
+
+        const g = ctx.createGain();
+        const hold = ALARM_PERIOD / 2 - 0.1;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(ALARM_GAIN, t + 0.035);
+        g.gain.setValueAtTime(ALARM_GAIN, t + hold);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + hold + 0.09);
+
+        osc.connect(tone).connect(g).connect(this.sfx.sfxBus);
+        osc.start(t);
+        osc.stop(t + hold + 0.11);
+      });
+    }
   }
 
   jump() { this.sfx.play('jump'); }
