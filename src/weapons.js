@@ -122,28 +122,7 @@ export class Weapons {
       }
     });
 
-    // Center the model, then wrap it so the group's transform is clean.
-    const box = new THREE.Box3().setFromObject(model);
-    const size = new THREE.Vector3(); box.getSize(size);
-    const center = new THREE.Vector3(); box.getCenter(center);
-    model.position.sub(center);
-
-    // The model's own orientation/scale live on an inner group, so the outer
-    // rig's transform stays clean camera-space (recoil/reload animate it).
-    const inner = new THREE.Group();
-    inner.add(model);
-
-    // Auto-orient: the longest horizontal axis is the barrel — align it to -z.
-    if (size.x >= size.z) inner.rotation.y = Math.PI / 2; // barrel along X -> Z
-    if (cfg.flip) inner.rotation.y += Math.PI;
-    inner.rotation.y += cfg.yaw;
-
-    // Scale so the barrel reads at the configured on-screen length.
-    const barrelLen = Math.max(size.x, size.z) || 1;
-    inner.scale.setScalar(cfg.length / barrelLen);
-
-    const rig = new THREE.Group();
-    rig.add(inner);
+    const rig = buildWeaponRig(cfg, model);
     rig.position.set(this.handX, HAND_Y, HAND_Z);
     rig.visible = i === this.active;
 
@@ -320,6 +299,42 @@ export class Weapons {
     rig.rotation.x = 0;
     rig.rotation.z = 0;
   }
+}
+
+/**
+ * A loaded GLB, centred and turned into a viewmodel rig.
+ *
+ * Exported because `/dev-guns.html` has to build the guns exactly the way the
+ * game does or it is measuring a weapon nobody ever holds — and it used to do
+ * that by keeping a line-for-line copy of this code, under a comment warning
+ * that any drift between the two made the harness a liar. A copy that documents
+ * its own fragility is still a copy.
+ *
+ * The model's orientation and scale live on an INNER group so the outer rig's
+ * transform stays clean camera-space, which is what recoil and reload animate.
+ */
+export function buildWeaponRig(cfg, model) {
+  // Centre the model, then wrap it so the group's transform is clean.
+  const box = new THREE.Box3().setFromObject(model);
+  const size = new THREE.Vector3(); box.getSize(size);
+  const center = new THREE.Vector3(); box.getCenter(center);
+  model.position.sub(center);
+
+  const inner = new THREE.Group();
+  inner.add(model);
+
+  // Auto-orient: the longest horizontal axis is the barrel — align it to -z.
+  if (size.x >= size.z) inner.rotation.y = Math.PI / 2; // barrel along X -> Z
+  if (cfg.flip) inner.rotation.y += Math.PI;
+  inner.rotation.y += cfg.yaw;
+
+  // Scale so the barrel reads at the configured on-screen length.
+  const barrelLen = Math.max(size.x, size.z) || 1;
+  inner.scale.setScalar(cfg.length / barrelLen);
+
+  const rig = new THREE.Group();
+  rig.add(inner);
+  return rig;
 }
 
 /**

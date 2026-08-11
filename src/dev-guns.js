@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { WEAPONS, measureMuzzle, makeMuzzleFlash } from './weapons.js';
+// buildWeaponRig is the game's own, not a copy of it: this harness exists to
+// measure the gun the player actually holds, so building it any other way would
+// make every number on the contact sheet a number about something else.
+import { WEAPONS, buildWeaponRig, measureMuzzle, makeMuzzleFlash } from './weapons.js';
 
 // Contact sheet for placing the muzzle flash.
 //
@@ -83,34 +86,13 @@ function makeCross() {
 const loader = new GLTFLoader();
 const report = [];
 
-// Mirrors weapons.js `_onLoaded` exactly: centre, auto-orient the long axis to
-// -Z, scale to the configured on-screen length. Any drift between the two and
-// this harness is measuring a gun the game never sees.
-function buildRig(cfg, model) {
-  const box = new THREE.Box3().setFromObject(model);
-  const size = new THREE.Vector3(); box.getSize(size);
-  const center = new THREE.Vector3(); box.getCenter(center);
-  model.position.sub(center);
-
-  const inner = new THREE.Group();
-  inner.add(model);
-  if (size.x >= size.z) inner.rotation.y = Math.PI / 2;
-  if (cfg.flip) inner.rotation.y += Math.PI;
-  inner.rotation.y += cfg.yaw;
-  inner.scale.setScalar(cfg.length / (Math.max(size.x, size.z) || 1));
-
-  const rig = new THREE.Group();
-  rig.add(inner);
-  return rig;
-}
-
 async function build() {
   const wanted = WEAPONS.filter((w) => !ONLY.length
     || ONLY.some((k) => w.name.toLowerCase().includes(k.toLowerCase())));
 
   for (const cfg of wanted) {
     const gltf = await loader.loadAsync(cfg.file);
-    const rig = buildRig(cfg, gltf.scene);
+    const rig = buildWeaponRig(cfg, gltf.scene);
     scene.add(rig);
 
     const muzzle = measureMuzzle(rig, cfg);
