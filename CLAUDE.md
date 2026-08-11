@@ -91,8 +91,8 @@ from the gun the player holds.
 
 **Office Descent** — an endless procedurally-generated office shooter. You arrive on a
 floor of a grey corporate building, clear the staff still working there, find the service
-hatch, and descend. The next floor is generated on the fly, a little bigger and a little
-nastier. There is no ground floor.
+hatch, and descend. The next floor is generated on the fly, usually a little bigger and
+always a little nastier. There is no ground floor.
 
 ## Project layout
 
@@ -266,6 +266,28 @@ moment something with eight lit screens went in. `edgeProp` returns *where* it
 landed (`{cx, cz, rot, side}`) so a room can put a chair in front of what it just
 placed — `seatFacing` does that.
 
+### What furniture is never allowed to close (`reserveClearances` in `gen/build.js`)
+A tile mask the furnisher may not place into, stamped before a single prop is put down —
+because a floor should not be furnished into a state it then has to be rescued from. Doorways
+get a 4-tile apron on both sides, and the spawn and exit a clear square.
+
+The third one is `reserveThroughRoutes`, and it is subtler than it looks. Almost every room
+opens onto a corridor, and a corridor cannot be furnished shut (its props are 7 tiles apart
+in a 6-tile hallway), so furniture cutting a room in half normally costs nothing — both
+halves are still reachable from the hall. The exception is a room whose doorway leads into
+another **room**: then crossing this one is the far room's only way in, and two props standing
+corner to corner across the middle of it do not merely make it awkward, they **end the run**.
+A hostile still spawns in the sealed room, because the nav grid is coarser than a body and
+believes the gap is walkable, so `hostileCount` can never reach zero. Such a room therefore
+keeps a 2-tile (1 m) lane between its doorways — 2 rather than 1 because `canPlace` rounds a
+prop's footprint outward to whole tiles, and a metre is comfortably over the 0.8 m of square
+body that has to fit.
+
+`5.geom-connected` in `tools/validate-props.mjs` is what caught it, and only once the sweep
+was widened: a copyroom shut off by a crate and a shelving unit **0.85 m apart on the
+diagonal**, which a 0.8 m square body cannot pass. It had been reachable at roughly one floor
+in five hundred for the generator's whole existence.
+
 ### Floor generation (`gen/layout.js`, on the vocabulary in `gen/tiles.js`)
 Real office floors are not mazes, so the generator does not build one. It carves a corridor
 spine first (2-4 vertical, 1-3 horizontal bands, guaranteed to intersect, so the corridor
@@ -276,6 +298,32 @@ slab: too few and BSP buries rooms three or four deep behind other rooms.
 Everything is a tile grid of `TILE` = 0.5 m cells. Walls are exactly one tile thick, which
 is why rooms are carved inset by one tile on their **min sides only** — two neighbouring
 rooms then share a single wall tile instead of stacking two.
+
+**The slab is rolled, not derived** (`floorSpans`). The growth curve over the floor number
+is the *typical* floor for a depth; each floor then rolls its own size around it — one die
+for how much building there is (0.78–1.18 on each axis, so roughly two thirds to half again
+the area) and one for what shape it is, applied to one axis and its reciprocal to the other
+so changing a floor's shape does not also change how much of it there is. Floors used to be
+a pure function of depth, which made a run one long ramp where eight was seven with more
+walking; a small floor is a tight quick clear and a big one is a hike, and not knowing which
+you stepped out of the lift into is worth more than either. Two bounds keep it honest: no
+axis under 120 tiles, because a slab much under 60 m has room for the corridor spine and
+little else and the prologue pass then starts stripping readers off doorways to find
+somewhere to stand the first body; and the **area** never exceeds the largest slab the curve
+ever asked for, because past floor ~12 the difficulty is meant to come from the enemies
+rather than from more walking.
+
+It rolls on its own stream, mixed with the floor number, for the two reasons `assignLocks`
+does: drawing from the floor's own `rng` would shift every later number and re-roll the whole
+building off a die that has nothing to do with its contents, and a stream of the seed alone
+would hand every floor of one seed the same shape — which is exactly the variety the
+validators sweep for.
+
+`layout.areaRatio` is how the roll came out against that depth's usual, and **anything that
+spreads a fixed number of things over a floor has to ask it**: `tuningFor` in `game.js` and
+`PER_FLOOR` in `cameras.js` are both authored per typical floor, and 200 staff is a crowd on
+that floor and a crush on one two thirds the size. Measured from the spans that survived the
+clamps rather than from the die, so a floor that hit a bound reports the area it really has.
 
 Two invariants are load-bearing and covered by `tools/validate-layout.mjs`: the floor is
 always fully connected from the spawn, and two doorways never merge into one wide hole
