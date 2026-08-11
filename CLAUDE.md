@@ -114,7 +114,8 @@ src/
   level.js        One floor's lifecycle — generate, animate the exit, dispose
   scene.js        Renderer, camera, fog
   lighting.js     Fill light + a pooled set of ceiling lights that follow the player
-  nav.js          Tile navigation: flow field, line of sight, walkability
+  nav.js          Tile navigation: flow field, line of sight, walkability, and a
+                  second field for whoever can open a locked door
   enemies.js      Spawning, placement guarantees, the AI state machine, gunfire and melee
   enemy-types.js  The roster: types, bystanders, floor themes, and the pickers
   enemy-anim.js   Per-frame rig animation, and the toppling death fallback
@@ -672,6 +673,30 @@ door that badge fits goes live at once and hands its opening back to nav
 (`nav.openTiles`). Unlocking per-approach would leave the building sealed to its
 own occupants until the player had personally visited all two hundred doorways.
 
+**The alarm is the one exception, and it is one flag wide** (`keyed` in
+`enemies.js`). The security response — the men in the office, and the ones sent up
+— are carrying a badge, so for them a locked door is a door: the sensor sees them
+and the panel opens (`doors.js`), and they have a **second distance field** to
+walk, flooded over `walk` plus those openings (`nav.setBadgeTiles`). Three things
+keep that from being a hole in everything above:
+
+- **The keyring is the shift's real one, white and blue** (`badgeOpens` in
+  `keycards.js`). Grey, yellow and black are somebody else's, so the broom
+  closet, the back-of-house rooms and the manager's office are exactly as shut to
+  a responder as they were before the klaxon — and the black card stays the last
+  beat of a floor.
+- **The sensor and the route are the same decision.** `doors.badgeTiles()` is
+  what nav is given, and it is built from the same predicate the sensor asks. A
+  body routed into a door that then refuses to open is the failure mode here, and
+  it cannot be reached from one place saying yes and the other no.
+- **Nobody else is keyed.** Everybody who merely *hears* the alarm walks the
+  ordinary grid, so a locked door still ends the walk — which is `pathDistance`
+  coming back -1, the same rule that already governs hearing a gun.
+
+A door held open by somebody coming out of it is open, and you can follow them
+back through it while it is. The reader stays red, because nothing about your
+pocket changed.
+
 Readers are two `InstancedMesh`es per floor (plate + lamp) rather than a mesh each,
 which is what makes two hundred of them affordable and makes turning one green a
 colour write. Minimap tints staff-only rooms only — tinting white would tint the
@@ -713,13 +738,26 @@ Three things are load-bearing:
 What an alarm *costs* is `enemies.alarm`, and it is one decision made ten minutes
 earlier: **four** security come up from below, at a walked distance, out of your line
 of sight, already in `chase` with your position in hand — **unless the security office
-on this floor is still manned**, in which case the men in it wake up where they sit and
-only **two** more are sent. So clearing the security office early is a genuine trade
-rather than loot: it costs you two kills you would rather have banked, and it doubles
-what turns up the first time a camera gets six seconds of you. The office pair cannot
-come out until you badge the blue door — a lock is out of the nav grid — so what waking
-them really buys the floor is that the blue room is no longer a room of men with their
-backs to the screens.
+on this floor is still manned**, in which case the men in it come out of it and only
+**two** more are sent. So clearing the security office early is a genuine trade rather
+than loot: it costs you two kills you would rather have banked, and it doubles what
+turns up the first time a camera gets six seconds of you.
+
+**They open their own door**, which is the one place in the game where the lock rule is
+bypassed and the reason `keyed` exists — see the alarm exception under Keycards above.
+Two things follow that are easy to miss. They stop being `behindLock` the moment they
+are ordered through it, because that flag is what times the black card, and a floor that
+hands you the last card while four guards are still walking at you has counted wrong.
+And they keep looking for far longer than anybody else does (`RESPONSE_PATIENCE` against
+`GIVE_UP`): they were sent up here for one reason and have no desk on this floor to give
+up and go back to.
+
+**And the floor hears it.** Every idle hostile with a route to you inside
+`ALARM_HEARING` starts walking it. They are *not* keyed — a klaxon is not a badge — so
+they come the way the building lets them and a locked door ends the walk, which
+`pathDistance` says by coming back -1. On a floor where you are still holding nothing
+that is a handful of people in the corridors; once white is in your pocket it is
+however much of the building is within thirty walked metres.
 
 Anyone who arrives this way was not on the floor when it was generated, which has two
 consequences that are easy to miss: `shooting.addHittables` has to be told about them
