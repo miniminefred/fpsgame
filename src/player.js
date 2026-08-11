@@ -2,15 +2,13 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { setupPointerLock } from './input.js';
 import { smoothTo } from './util.js';
+// The body's own dimensions live in metrics.js, because cameras.js and both
+// headless validators need the same numbers and used to keep their own copies.
+import { EYE, GRAVITY, JUMP_SPEED, PLAYER_RADIUS as RADIUS, STEP_EPS } from './metrics.js';
 
-const EYE = 1.7;           // eye height above the player's feet (units)
 const MOVE_SPEED = 5.6;    // units / second — office corridors, not a racetrack
 const SPRINT_SPEED = 8.4;
 const ACCEL = 14;          // how fast the walk velocity chases the input
-const GRAVITY = 26;
-const JUMP_SPEED = 8.4;
-const RADIUS = 0.4;        // player horizontal collision radius
-const STEP_EPS = 0.25;     // surfaces within this of the feet are stood on, not walls
 
 const MAX_HEALTH = 100;
 const REGEN_DELAY = 6;     // seconds after being hit before healing starts

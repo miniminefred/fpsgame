@@ -1,4 +1,5 @@
 import { isOpen } from './gen/layout.js';
+import { BODY_RADIUS } from './metrics.js';
 
 // Navigation over the floor's tile grid.
 //
@@ -16,9 +17,10 @@ const LOS_STEP = 0.25;         // metres between line-of-sight samples
 // walk runs per placed sound, so it is not allowed to be unbounded.
 const MAX_SOUND_STEPS = 64;
 
-// Enemy body radius. Lives here rather than in enemies.js because the nav grid
-// has to be eroded by it — see `fits` below.
-export const BODY_RADIUS = 0.36;
+// Enemy body radius. Re-exported here because the nav grid has to be eroded by
+// it (see `fits` below) and enemies.js has always taken it from this module;
+// the number itself now lives in metrics.js with the rest of the body.
+export { BODY_RADIUS };
 
 export class NavGrid {
   constructor(nav) {

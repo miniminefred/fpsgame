@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CEIL_H, CORRIDOR, ROOM, SOLID, worldX, worldZ } from './gen/layout.js';
 import { angleLerp, clamp, clamp01, smoothTo } from './util.js';
+import { EYE, JUMP_APEX } from './metrics.js';
 
 // Building security: the things on the walls that are watching the floor.
 //
@@ -54,7 +55,12 @@ const SWEEP_K = 1.8;           // ...and how lazily it goes back to sweeping
 
 const BEAM_MAX = 14;           // metres before the emitter gives up
 const BEAM_MIN = 2;            // ...and the shortest span worth fitting one to
-const BEAM_Y = 0.95;           // hip height: crossable only by jumping it
+// Hip height, and crossable only by jumping it. The number is chosen against
+// JUMP_APEX (~1.36 m) rather than picked to look right: a tripwire you cannot
+// clear is a tax, and one you clear by accident is not a hazard. Deriving the
+// apex from the jump means retuning the jump moves this rather than silently
+// invalidating it — which is why BEAM_Y is stated as a fraction of it.
+const BEAM_Y = JUMP_APEX * 0.7;   // 0.95 m at the current jump
 const BEAM_R = 0.34;           // how close the beam gets to you before it trips
 
 // --- both -------------------------------------------------------------------
@@ -374,7 +380,7 @@ export class Cameras {
 
     const px = player.object.position.x;
     const pz = player.object.position.z;
-    const feet = player.object.position.y - 1.7;
+    const feet = player.object.position.y - EYE;
 
     for (const cam of this.items) {
       if (cam.dead) continue;
@@ -384,7 +390,7 @@ export class Cameras {
         // No cone, no aiming, no patience. Either the beam is unbroken or the
         // alarm is already going.
         const across = segmentDistance(px, pz, cam.x, cam.z, cam.endX, cam.endZ);
-        cam.seen = across < BEAM_R && feet < BEAM_Y && feet + 1.7 > BEAM_Y;
+        cam.seen = across < BEAM_R && feet < BEAM_Y && feet + EYE > BEAM_Y;
         // The beam brightens with the player's own footsteps, so a corridor
         // with one in it announces itself before you are on top of it.
         cam.beamMat.opacity = 0.4 + Math.sin(this._t * 3 + cam.phase) * 0.12;

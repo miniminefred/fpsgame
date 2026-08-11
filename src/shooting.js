@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { clamp, clamp01 } from './util.js';
+// Recoil moves the same camera the mouse does, so it obeys the same ceiling.
+import { PITCH_LIMIT } from './input.js';
 
 // Hitscan shooting: fire rate, ammo/reload, spread, camera recoil, damage.
 //
@@ -11,7 +13,6 @@ import { clamp, clamp01 } from './util.js';
 const RECOIL_RECOVER = 7;     // radians/s the view drifts back down after kick
 const HIT_COLOR = 0xff6b5a;   // impact flash on a drone
 const WORLD_COLOR = 0xffe0a0; // impact flash on world geometry
-const PITCH_LIMIT = 1.5;      // ~86°: recoil must not tip the view past vertical
 const IMPULSE = 7;            // N·s per unit of weapon punch, into loose props
 
 // Inside this many metres a killing shot is worth its weapon's full `throwMul`;

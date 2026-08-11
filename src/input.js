@@ -67,7 +67,13 @@ function setKey(keys, code, down) {
 // once the cooldown has passed rather than leaving them stuck at a dead overlay.
 const RELOCK_COOLDOWN = 1400;
 const LOOK_SENSITIVITY = 0.002;   // radians per pixel, matching PointerLockControls
-const PITCH_LIMIT = Math.PI / 2 - 0.02;
+// How far up or down the view can ever be pointed, matching what
+// PointerLockControls enforces on the locked path. Exported because recoil in
+// shooting.js clamps the same camera and used to do it with its own, tighter
+// number: fire while looking near-vertical and the "clamp" pulled the view back
+// DOWN by the difference, so the gun's kick moved the barrel toward the floor.
+// One camera, one ceiling.
+export const PITCH_LIMIT = Math.PI / 2 - 0.02;
 
 export function setupPointerLock(controls, domElement) {
   const overlay = document.getElementById('overlay');

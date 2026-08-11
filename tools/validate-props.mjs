@@ -95,8 +95,10 @@ const MIN_PROP_TOP = 0.05;
 // player's collision RADIUS, and a position is legal when it is outside all of
 // them. That makes this the same question the game asks every frame.
 const SUB = 4;                 // cells per tile => 0.125 m cells
-const BODY_R = 0.4;            // must match RADIUS in src/player.js
-const ENEMY_R = 0.36;          // RADIUS in src/enemies.js, for reference
+// Imported, not restated. These were two literals under a "must match
+// src/player.js" comment — a validator whose whole job is catching drift,
+// holding its own copy of the number it validates against.
+const { PLAYER_RADIUS: BODY_R, BODY_RADIUS: ENEMY_R } = await import('../src/metrics.js');
 
 // ---------------------------------------------------------------------------
 // check bookkeeping (same shape as validate-layout.mjs)
