@@ -223,8 +223,8 @@ export class Sfx {
 
     const now = this.ctx.currentTime;
     const index = pick(entry);
+    if (index < 0) return false;
     const take = entry.takes[index];
-    if (!take) return false;
 
     entry.last = index;
 
@@ -461,12 +461,23 @@ function warnIfDud(entry) {
 
 // Never the same take twice in a row: with three variants a plain random pick
 // repeats a third of the time, and a repeat is exactly what the ear notices.
+//
+// Then walk forward past any take that isn't there. preload() swallows a failed
+// fetch and _decode() swallows a failed decode, both deliberately, so one bad
+// file among fifty leaves a hole in an otherwise healthy set. Landing on that
+// hole used to return no index at all and play() dropped the sound — a silent
+// gunshot, which is the one fault this engine is built so you never get, and
+// the one you cannot hear from inside the game. Walking on may repeat a take;
+// a repeat is a far smaller lie than silence.
 function pick(entry) {
   const n = entry.urls.length;
-  if (n === 1) return 0;
   let i = (Math.random() * n) | 0;
-  if (i === entry.last) i = (i + 1 + ((Math.random() * (n - 1)) | 0)) % n;
-  return i;
+  if (n > 1 && i === entry.last) i = (i + 1 + ((Math.random() * (n - 1)) | 0)) % n;
+  for (let k = 0; k < n; k++) {
+    const j = (i + k) % n;
+    if (entry.takes[j]) return j;
+  }
+  return -1;   // nothing in this set decoded at all
 }
 
 function setPosition(panner, x, y, z) {

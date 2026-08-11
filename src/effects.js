@@ -119,11 +119,27 @@ export class Effects {
     this.surfaces = list;
   }
 
+  // The mirror of shooting.removeHittables, and it has to happen at the same
+  // moment for the same reason: a broken loose prop's meshes leave the scene
+  // graph but keep their last matrix, so decals went on being clipped by a
+  // chair that was no longer there. Filtered into a new array rather than
+  // spliced, so the level's own mesh list is left alone.
+  //
+  // Static destructibles need no such call — their spans collapse to degenerate
+  // triangles, which no ray can intersect.
+  removeSurfaces(meshes) {
+    if (!meshes?.length) return;
+    const drop = new Set(meshes);
+    this.surfaces = this.surfaces.filter((m) => !drop.has(m));
+  }
+
   // A bullet streak from the muzzle to wherever the shot landed.
   tracer(from, to) {
-    const t = next(this.tracers);
+    // Length first: taking a slot and then bailing spends a ring-buffer entry
+    // on a streak that was never drawn, and these pools are exact by design.
     const len = from.distanceTo(to);
     if (len < 0.01) return;
+    const t = next(this.tracers);
     t.mesh.position.copy(from).lerp(to, 0.5);
     t.mesh.lookAt(to);
     t.mesh.scale.set(1, 1, len);

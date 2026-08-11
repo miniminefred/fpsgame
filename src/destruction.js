@@ -187,6 +187,7 @@ export class Destruction {
     dyn.handle = null;
     this.scene.remove(dyn.group);
     this.shooting.removeHittables(dyn.group.children);
+    this.effects.removeSurfaces(dyn.group.children);
 
     // Retire its collider without disturbing the array the player is holding.
     if (dyn.collider) {
