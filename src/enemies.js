@@ -129,6 +129,16 @@ const RESPONSE_HELD = 2;
 // not a straight line, so "far" never means "one metre away through the wall".
 const RESPONSE_MIN = 16;
 const RESPONSE_MAX = 60;
+// The response was sent, and it has no desk to go back to. GIVE_UP is a clerk
+// who heard a bang two rooms away and is entitled to decide he imagined it;
+// these men were told over the radio, and a response that turns round after
+// seven seconds and stands in a corridor is not one.
+const RESPONSE_PATIENCE = 30;
+// How far the klaxon carries to everybody else, walked rather than straight-line
+// — the same measure as gunfire (see HEARING) and for the same reason, so a man
+// sealed in a badged room hears nothing at all. Further than a gunshot, because
+// this is the building shouting rather than one weapon going off in a room.
+const ALARM_HEARING = 30;
 
 export class Enemies {
   constructor(scene) {
@@ -136,6 +146,7 @@ export class Enemies {
     this.items = [];
     this.meshes = [];       // what bullets test against
     this.shoutTimer = 0;    // floor-wide, so only one of them calls you out
+    this.keyedAlive = 0;    // badge holders still on their feet — see _keyed
     this.onDeath = null;    // set by game.js — see _damage
     this.ragdolls = null;   // likewise; what happens to a body after _damage
     this._v = new THREE.Vector3();
@@ -303,35 +314,54 @@ export class Enemies {
    * A camera got six seconds of you, or you walked through a laser. Security
    * responds.
    *
-   * Two things happen, and which one dominates is decided by something the
-   * player did ten minutes ago:
+   * Three things happen, and which of the first two dominates is decided by
+   * something the player did ten minutes ago:
    *
-   *  - **The office wakes up.** Anybody still sitting in the security office is
-   *    now looking for you, from behind their own door. They cannot come out
-   *    until you badge it — the nav grid does not route through a lock — so what
-   *    this really buys the floor is that the blue room is no longer a room of
-   *    men with their backs to the screens. Walk in later and they are already
-   *    facing the door.
+   *  - **The office comes out.** Anybody still sitting in the security office
+   *    unlocks their own door and leaves through it. This is the one place in
+   *    the game where the lock rule is bypassed, and it is bypassed for exactly
+   *    these men: they are `keyed` from here on, which means a badge at the
+   *    door's sensor (doors.js) and a second distance field at the nav grid
+   *    (nav.setBadgeTiles). The keyring is the shift's real one — white and blue
+   *    — so the broom closet, the back-of-house rooms and the manager's office
+   *    are as shut to them as they were before, and nothing about when the black
+   *    card drops moves. Clearing the office early stops all of this happening,
+   *    which is what makes clearing it early a trade.
    *  - **The rest are sent up.** Four of them, in the corridors, out of sight,
    *    at a walked distance rather than a straight-line one — nobody appears in
    *    a doorway you were looking at. If the office is still manned it is only
-   *    two, because the men in it are already part of the answer.
+   *    two, because the men in it are already part of the answer. Same badge:
+   *    they are the same shift, and a response that stops at the first white
+   *    door between it and you is not one.
+   *  - **And the floor hears it.** Everybody idle with a route to you starts
+   *    walking it. They are NOT keyed — they are staff who heard a klaxon, not
+   *    men who were sent — so they come the way the building lets them and a
+   *    locked door ends the walk. `pathDistance` is what says so, coming back -1
+   *    across a lock, which is the same rule that already governs hearing a gun.
    *
-   * They arrive angry, which here means `chase` with your last position already
-   * in hand: an alarm response that has to find you by walking into your line of
-   * sight is not a response, it is more staff.
+   * The first two arrive angry, which here means `chase` with your last position
+   * already in hand: an alarm response that has to find you by walking into your
+   * line of sight is not a response, it is more staff.
    *
    * Returns what happened, because the toast that says so belongs to game.js —
    * and the meshes, because bullets have to be told about anybody who was not on
    * the floor when it was generated.
    */
   alarm(px, pz) {
-    if (!this.nav || !this.rng) return { spawned: [], meshes: [], roused: 0 };
+    if (!this.nav || !this.rng) return { spawned: [], meshes: [], roused: 0, heard: 0 };
 
     // The office. Guards specifically: the janitors on their break are behind a
     // door too and an alarm is not their problem.
     const held = this.items.filter((e) => e.alive && e.behindLock && e.type.guard);
-    for (const e of held) this._rouse(e, px, pz);
+    for (const e of held) {
+      this._keyed(e);
+      // They are not men behind a lock any more, and that is not bookkeeping:
+      // `behindLock` is what keeps somebody out of openHostileCount, and the
+      // black card drops when that reaches zero. Leave it set and a floor could
+      // hand you the last card while four guards are still walking at you.
+      e.behindLock = false;
+      this._rouse(e, px, pz);
+    }
 
     const wanted = held.length ? RESPONSE_HELD : RESPONSE;
     const spawned = [];
@@ -342,12 +372,33 @@ export class Enemies {
       // ones who arrive late — otherwise an alarm on a floor whose only blue
       // holder you already shot would be four men carrying the wrong card.
       e.card = this.layout?.locks?.some((l) => l.tier === 'blue') ? 'blue' : 'white';
+      this._keyed(e);
       this._rouse(e, px, pz);
       spawned.push(e);
       meshes.push(...e.hitboxes);
     }
 
-    return { spawned, meshes, roused: held.length };
+    // And everybody else on the floor with ears. Only the idle ones: anybody
+    // already coming for you does not need telling twice, and a klaxon is not a
+    // reason for a man in a firefight to go and look somewhere else.
+    let heard = 0;
+    for (const e of this.items) {
+      if (!e.alive || e.neutral || e.state !== 'idle') continue;
+      const along = this.nav.pathDistance(e.x, e.z);
+      if (along < 0 || along > ALARM_HEARING) continue;
+      // Same shape as noticing a gunshot, deliberately: told roughly where, and
+      // taking the same moment to decide anything about it. Clearing `contact`
+      // is what makes it stick — it is seconds since the last contact, and
+      // somebody who has been sitting in an office all floor is well past
+      // GIVE_UP, so without this they would drop back to idle on arrival.
+      e.state = 'alert';
+      e.timer = this.tuning.reaction;
+      e.contact = 0;
+      e.lastSeen = { x: px, z: pz };
+      heard++;
+    }
+
+    return { spawned, meshes, roused: held.length, heard };
   }
 
   // Somebody who now knows exactly where you are. Not `alert` — that is the
@@ -359,6 +410,12 @@ export class Enemies {
     e.contact = 0;
     e.lastSeen = { x: px, z: pz };
   }
+
+  // Somebody a locked door does not stop. One flag, read in the two places that
+  // have to agree about it — the door's sensor, and the route into that door —
+  // and counted once a frame in _rebuildNeighbours, because the second distance
+  // field is only worth flooding while one of them is alive to walk it.
+  _keyed(e) { e.keyed = true; }
 
   /**
    * Where the response comes in. Corridors, because that is what a floor's
@@ -821,6 +878,9 @@ export class Enemies {
       // janitors on their break. It keeps them out of openHostileCount and out
       // of the card deal.
       behindLock: false,
+      // Carrying a badge that opens doors: the security response to an alarm,
+      // and nobody else on the floor. See `alarm`.
+      keyed: false,
       // Sitting it out until something happens. See _animateSeated.
       seated: false,
       // The materials a hit whitens: whatever this one is actually wearing.
@@ -969,12 +1029,13 @@ export class Enemies {
     const pz = player.object.position.z;
     const py = player.object.position.y;
 
-    if (this.nav) this.nav.updateField(dt, px, pz);
-    if (this.shoutTimer > 0) this.shoutTimer -= dt;
     // Bodies move during the loop below, so this is a snapshot taken at the top
     // of the frame rather than an index kept live — which is what the old
-    // whole-roster scan effectively was too.
+    // whole-roster scan effectively was too. It also counts the badge holders,
+    // which is why it comes before the flood that depends on there being any.
     this._rebuildNeighbours();
+    if (this.nav) this.nav.updateField(dt, px, pz, this.keyedAlive > 0);
+    if (this.shoutTimer > 0) this.shoutTimer -= dt;
 
     // Where a fleeing neutral is running away from — _repick needs it and is
     // called from places that have no player to hand.
@@ -1192,7 +1253,13 @@ export class Enemies {
 
       case 'chase':
         if (sees && dist < e.type.range) e.state = 'fight';
-        else if (e.contact > GIVE_UP) { e.state = 'idle'; e.lastSeen = null; }
+        // The alarm response keeps looking for a good deal longer than a clerk
+        // who heard a noise: they came up here for one reason and there is no
+        // desk on this floor for them to give up and go back to.
+        else if (e.contact > (e.keyed ? RESPONSE_PATIENCE : GIVE_UP)) {
+          e.state = 'idle';
+          e.lastSeen = null;
+        }
         break;
 
       case 'fight':
@@ -1220,7 +1287,11 @@ export class Enemies {
     let vx = 0, vz = 0;
 
     if (e.state === 'chase' && e.lastSeen) {
-      const dir = this.nav.descend(e.x, e.z, this._v);
+      // A badge holder walks the field that has the locked doorways in it. On a
+      // floor with nothing locked left the two fields are the same field.
+      const dir = e.keyed
+        ? this.nav.descendBadge(e.x, e.z, this._v)
+        : this.nav.descend(e.x, e.z, this._v);
       if (dir) { vx = dir.x * speed; vz = dir.z * speed; }
       else if (dist > 1.2) { vx = (dx / dist) * speed * 0.5; vz = (dz / dist) * speed * 0.5; }
     } else if (e.state === 'fight') {
@@ -1286,7 +1357,13 @@ export class Enemies {
   _tryMove(e, dx, dz) {
     const nx = e.x + dx;
     const nz = e.z + dz;
-    if (!this.nav.clear(nx, nz, RADIUS)) return false;
+    // Whoever routes through a locked doorway has to be allowed to stand in it
+    // as well. Route on one grid and collide against another and a body grinds
+    // against a panel that has already opened for it.
+    const ok = e.keyed
+      ? this.nav.clearBadge(nx, nz, RADIUS)
+      : this.nav.clear(nx, nz, RADIUS);
+    if (!ok) return false;
     e.x = nx;
     e.z = nz;
     return true;
@@ -1310,8 +1387,10 @@ export class Enemies {
    */
   _rebuildNeighbours() {
     this._cells.clear();
+    this.keyedAlive = 0;
     for (const e of this.items) {
       if (!e.alive) continue;
+      if (e.keyed) this.keyedAlive++;
       const key = cellKey(e.x, e.z);
       const bucket = this._cells.get(key);
       if (bucket) bucket.push(e);
