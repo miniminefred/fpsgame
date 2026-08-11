@@ -1,0 +1,64 @@
+# Builds the game and publishes it to GitHub Pages on every push to master.
+#
+# The Pages URL is https://miniminefred.github.io/fpsgame/, so the bundle is
+# served from a subpath rather than a domain root. Vite writes asset URLs at
+# build time, so it has to be told that prefix or every script, model and sound
+# resolves to /assets/... and 404s. It is passed as `--base` here rather than
+# set in vite.config.js on purpose: the local dev server and `npm run preview`
+# keep serving from / exactly as they do today, and the one thing that knows
+# about Pages is the workflow that deploys to it.
+#
+# vite.config.js lists the three dev harnesses as build inputs, so this deploys
+# dev-guns.html, dev-models.html and dev-sounds.html alongside the game. That is
+# deliberate and free: they are separate entries the shipped index.html never
+# references, and having them live is how you inspect a model or a viewmodel
+# without a checkout. Note the `import.meta.env.DEV` blocks are compiled out of
+# a production build, so window.dev is not exposed on the published game.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+# deploy-pages authenticates to Pages with an OIDC token, which is what
+# id-token: write is for. contents: read is all the build needs.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time. Two pushes in quick succession would otherwise race to
+# publish, and the loser could land after the winner and serve the older build.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build -- --base=/fpsgame/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
