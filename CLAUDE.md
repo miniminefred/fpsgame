@@ -67,8 +67,13 @@ generation bugs are invisible one floor at a time and obvious over hundreds — 
 they check for was a real bug that shipped and got caught by widening the sweep. Run them
 after touching anything in `src/gen/`. They fail the build only on hard invariants
 (connectivity, sealing, prop interpenetration); everything else is a warning with repro
-seeds. Note they run in Node, so GLB models cannot load and the props fall back to boxes —
-model-path placement has to be checked in the browser.
+seeds. They run in Node, so no GLB can load and nothing is drawn — but a prop is still
+*measured* at its real size, because `modelInfo` falls back to the footprint recorded in
+`gen/model-table.js`. That matters more than it sounds: for a long time it did not, and the
+sweep was proving its invariants against declared sizes up to a quarter of a metre out from
+what the game ships, which hid three hard failures. What still cannot be checked headlessly
+is anything about how a model *looks* — orientation, scale, where its origin sits — so that
+goes in the browser and in `/dev-models.html`.
 
 In the dev build `window.dev` exposes `{ game, player, enemies, shooting, keys, physics,
 destruction, extinguishers, doors, scene, camera, weapons, renderer, audio, casings,
@@ -469,6 +474,28 @@ machines, racks, plants and meeting tables are models.
 A prop with a model uses THAT model's measured footprint rather than the hand-authored one,
 so collision always matches what you can see. Every model is missing-safe — if a GLB fails
 to load, the prop silently falls back to its boxes.
+
+**Everything that reasons about how big a prop is must ask `footprintOf` (`gen/props.js`),
+not `PROPS[kind].w/.d`**, and this is the sharpest edge in the generator. `tryPlace` always
+reserved the model's footprint, but `gen/rooms.js` was doing its arithmetic on the
+hand-authored one — and the two differ by up to a quarter of a metre on 9 of the 18
+model-backed props, because a model's real size is not what somebody typed in the catalogue.
+The `printer` prop ships as a 1.13 m deep `copier` while declaring 0.88, so `edgeProp` seated
+it 0.44 m off the wall and it ate 0.125 m of the 0.15 m inset that is the only thing keeping
+furniture off the plaster. `openPlan`'s lane test certified a 0.55 m gangway while its own
+comment promised 0.8 m of body width. Every one of those sites now goes through one lookup,
+and every wall-backed kind measures at exactly 0.15 m across the sweep.
+
+**And `npm test` could not see any of it.** The validators run in Node, so `loadModels()`
+never runs and `modelInfo()` returned null — every model-backed prop was fit-tested at its
+declared size, which means the placement invariants were being proved against a floorplan
+the game does not ship. `modelInfo` now falls back to `MODEL_TABLE`'s recorded `foot` and
+`height` when no GLB is in hand (`parts: []`, so nothing draws in Node), which costs nothing
+because that data was already there. Turning it on immediately exposed **three pre-existing
+hard failures** — a room sealed off from its own floor among them — that the tool had been
+reporting as passes for its whole existence. Fixing the footprint source cleared all three.
+The lesson generalises: a headless validator that silently stubs out an asset is not
+checking a cheaper version of the game, it is checking a different game.
 
 Every model-backed prop still authors a `build()` of boxes, and it now earns its keep twice:
 as that fallback, and as the pieces the prop breaks into. `tryPlace` runs it through
