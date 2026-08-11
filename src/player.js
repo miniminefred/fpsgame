@@ -6,6 +6,13 @@ import { smoothTo } from './util.js';
 // headless validators need the same numbers and used to keep their own copies.
 import { EYE, GRAVITY, JUMP_SPEED, PLAYER_RADIUS as RADIUS, STEP_EPS } from './metrics.js';
 
+// Broadphase cell for the static collision boxes. 2 m is four tiles — big enough
+// that a wall lands in few cells, small enough that a query rejects most of a
+// floor. See setColliders.
+const CELL = 2;
+const CELL_BIAS = 4096;    // keeps both axes positive; the slab never gets close
+const cellKey = (cx, cz) => (cx + CELL_BIAS) * 8192 + (cz + CELL_BIAS);
+
 const MOVE_SPEED = 5.6;    // units / second — office corridors, not a racetrack
 const SPRINT_SPEED = 8.4;
 const ACCEL = 14;          // how fast the walk velocity chases the input
@@ -28,7 +35,8 @@ const HARD_LANDING = 12;         // downward speed that counts as a full-weight 
 export class Player {
   constructor(camera, domElement, keys, colliders = []) {
     this.keys = keys;
-    this.colliders = colliders;
+    this._near = [];          // reused by _candidates; never escapes a frame
+    this.setColliders(colliders, []);
     this.velocityY = 0;
     this.canJump = true;
 
@@ -76,8 +84,70 @@ export class Player {
     return this._euler.y;
   }
 
-  setColliders(colliders) {
-    this.colliders = colliders;
+  /**
+   * This floor's collision boxes, split by whether they hold still.
+   *
+   * `statics` is the building — walls, fitted furniture, door panels — and there
+   * are 1000 of them on floor 1 and 2700 by floor 12, growing with every floor
+   * in a game that never ends. Every one was tested three times a frame (once
+   * per axis, once for the ground), which measured 1.25% of the frame budget at
+   * floor 12 and climbing linearly, so they are bucketed by position instead.
+   *
+   * The bucket stays valid for the whole floor because a static box never MOVES:
+   * a destroyed prop and a retracted door panel both retire by setting `top`,
+   * which the scans already test and which the index does not care about. That
+   * is the only reason indexing them is safe.
+   *
+   * `movers` is the loose furniture, whose boxes are re-derived from the physics
+   * bodies every frame — those genuinely cannot be indexed, and there are only a
+   * couple of hundred, so they stay a linear scan.
+   */
+  setColliders(statics, movers = []) {
+    this.statics = statics;
+    this.movers = movers;
+    this.colliders = statics.length && movers.length ? [...statics, ...movers] : (statics.length ? statics : movers);
+
+    this._grid = new Map();
+    for (const b of statics) {
+      // Inflated by RADIUS on the way in, because every test below compares
+      // against `minX - RADIUS`, so that is the box's real reach.
+      const x0 = Math.floor((b.minX - RADIUS) / CELL), x1 = Math.floor((b.maxX + RADIUS) / CELL);
+      const z0 = Math.floor((b.minZ - RADIUS) / CELL), z1 = Math.floor((b.maxZ + RADIUS) / CELL);
+      for (let cz = z0; cz <= z1; cz++) {
+        for (let cx = x0; cx <= x1; cx++) {
+          const key = cellKey(cx, cz);
+          const bucket = this._grid.get(key);
+          if (bucket) bucket.push(b);
+          else this._grid.set(key, [b]);
+        }
+      }
+    }
+  }
+
+  /**
+   * Boxes that could possibly matter at this point: the 3x3 block of cells
+   * around it, plus every mover.
+   *
+   * Three cells rather than one, and a 2 m cell, because resolving a collision
+   * moves the player mid-loop — `pos.x` is written inside the very loop that is
+   * still testing against it. One frame of walking is under 0.15 m and a resolve
+   * pushes to a box edge, so 2 m of slack on every side is far more than the
+   * point can drift while the list is being used.
+   *
+   * Returns a reused array. Do not hold on to it.
+   */
+  _candidates(x, z) {
+    const out = this._near;
+    out.length = 0;
+    const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL);
+    for (let gz = cz - 1; gz <= cz + 1; gz++) {
+      for (let gx = cx - 1; gx <= cx + 1; gx++) {
+        const bucket = this._grid.get(cellKey(gx, gz));
+        if (bucket) for (const b of bucket) out.push(b);
+      }
+    }
+    for (const b of this.movers) out.push(b);
+    return out;
   }
 
   // Drops the player onto a new floor, nudging out of anything they'd overlap.
@@ -217,7 +287,7 @@ export class Player {
 
     pos.x += dx;
     if (dx !== 0) {
-      for (const b of this.colliders) {
+      for (const b of this._candidates(pos.x, pos.z)) {
         if (b.top <= feetY + STEP_EPS) continue;
         if (!this._overlapsXZ(pos, b)) continue;
         // Loose furniture gets shoved aside rather than stopping you dead —
@@ -230,7 +300,7 @@ export class Player {
 
     pos.z += dz;
     if (dz !== 0) {
-      for (const b of this.colliders) {
+      for (const b of this._candidates(pos.x, pos.z)) {
         if (b.top <= feetY + STEP_EPS) continue;
         if (!this._overlapsXZ(pos, b)) continue;
         if (b.push) { this.onPush?.(b, 0, Math.sign(dz)); continue; }
@@ -246,7 +316,7 @@ export class Player {
   }
 
   _blocked(x, z, feetY) {
-    for (const b of this.colliders) {
+    for (const b of this._candidates(x, z)) {
       if (b.top <= feetY + STEP_EPS) continue;
       if (x > b.minX - RADIUS && x < b.maxX + RADIUS &&
           z > b.minZ - RADIUS && z < b.maxZ + RADIUS) return true;
@@ -258,7 +328,7 @@ export class Player {
   _supportHeight(pos) {
     const feetY = pos.y - EYE;
     let groundY = 0;
-    for (const b of this.colliders) {
+    for (const b of this._candidates(pos.x, pos.z)) {
       if (b.top > feetY + STEP_EPS) continue;
       if (pos.x > b.minX - RADIUS && pos.x < b.maxX + RADIUS &&
           pos.z > b.minZ - RADIUS && pos.z < b.maxZ + RADIUS) {

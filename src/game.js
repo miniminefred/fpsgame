@@ -253,7 +253,9 @@ export class Game {
 
     this._initPhysics(level);
     this.destruction.setLevel(level);
-    this.player.setColliders([...level.colliders, ...this.pushColliders]);
+    // Split rather than concatenated: the building holds still and gets indexed,
+    // the loose furniture moves every frame and cannot be. See setColliders.
+    this.player.setColliders(level.colliders, this.pushColliders);
     // The doors own colliders that are already in that list; all they do at
     // runtime is drop them below the floor when the panel is out of the way.
     this.doors.setDoors(level.doors, level.nav);
