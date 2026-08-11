@@ -147,11 +147,14 @@ export class Minimap {
   _mx(x) { return ((x - this.level.ox) / this.level.TILE) * this.scale; }
   _my(z) { return ((z - this.level.oz) / this.level.TILE) * this.scale; }
 
-  update(player, enemies) {
+  update(dt, player, enemies) {
     const ctx = this.ctx;
     if (!ctx || !this.level) return;
 
-    this._t += 1 / 60;
+    // Real seconds, not an assumed 1/60. This was the only timed effect in the
+    // UI layer that counted frames instead — so the exit marker's pulse ran at
+    // whatever rate the machine happened to render at.
+    this._t += dt;
     ctx.clearRect(0, 0, this.size, this.size);
     ctx.fillStyle = COLORS.backdrop;
     ctx.fillRect(0, 0, this.size, this.size);

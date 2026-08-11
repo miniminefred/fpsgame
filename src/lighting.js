@@ -128,9 +128,7 @@ export function createLighting(scene) {
   // sight fixes that far more cheaply than shadow maps: a fixture you cannot
   // see cannot light you. Pass a (ax,az,bx,bz) => boolean clear-line test.
   function setOcclusion(losClear) {
-    visible = losClear
-      ? (px, pz, fx, fz) => losClear(px, pz, fx, fz)
-      : null;
+    visible = losClear ?? null;
   }
 
   function update(dt, position) {

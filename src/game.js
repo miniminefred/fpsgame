@@ -29,9 +29,18 @@ const BREATH_SPEED = 4;        // moving at least this fast to be out of breath
 const SHOVE_INTERVAL = 0.4;
 
 export class Game {
+  /**
+   * Every collaborator is required. main.js is the only thing that constructs a
+   * Game and it supplies all of them, so there is no `?.` on any of them below —
+   * this file used to guard the same field three different ways in three
+   * different places (`this.wallet.onChange` unguarded, `this.wallet?.clear()`
+   * guarded), which reads as "this might be absent" while being provably false
+   * and hides the one dependency that genuinely is conditional.
+   *
+   * `physics` is the exception and stays guarded, because the solver really can
+   * be absent and the game is meant to keep running without it.
+   */
   constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, doors, casings, keycards, wallet, ragdolls, cameras }) {
-    this.scene = scene;
-    this.camera = camera;
     this.player = player;
     this.weapons = weapons;
     this.shooting = shooting;
@@ -63,6 +72,10 @@ export class Game {
     this.state = 'playing';     // 'playing' | 'dead'
     this.cleared = false;
     this.descendLock = 0;
+    // Set on the floor where the manager's card lands. Declared here with the
+    // rest of the run state; it used to be created on first write, so its first
+    // read every floor was `undefined` and only worked by being falsy.
+    this.droppedBlack = false;
 
     this.player.onDeath = () => this._onDeath();
     this.shooting.onKill = () => { this.kills++; };
@@ -98,15 +111,13 @@ export class Game {
       this.destruction.damageSurface(hit, dir, damage);
 
     this.enemies.onDeath = (e) => this._onEnemyDeath(e);
-    if (this.doors) this.doors.onRefused = (door) => this._onDoorRefused(door);
+    this.doors.onRefused = (door) => this._onDoorRefused(door);
     this.wallet.onChange = (wallet, tier) => this._onCardTaken(wallet, tier);
 
-    if (this.cameras) {
-      this.cameras.onSpotted = (cam) => this.audio.cameraSpotted(cam.at);
-      this.cameras.onAlarm = () => this._onAlarm();
-      this.shooting.onCameraHit = (cam, damage, point, normal) =>
-        this.cameras.damage(cam, damage, point, normal);
-    }
+    this.cameras.onSpotted = (cam) => this.audio.cameraSpotted(cam.at);
+    this.cameras.onAlarm = () => this._onAlarm();
+    this.shooting.onCameraHit = (cam, damage, point, normal) =>
+      this.cameras.damage(cam, damage, point, normal);
   }
 
   // --- building security --------------------------------------------------------
@@ -157,7 +168,6 @@ export class Game {
    * on the floor you have been walking past all this time.
    */
   _onEnemyDeath(e) {
-    if (!this.keycards) return;
     const at = e.group.position;
     // Not if you already hold one, and not if one is already lying somewhere
     // waiting for you — six grey cards on the carpet is not six times the
@@ -229,15 +239,15 @@ export class Game {
     // Debris and brass from the last floor have to go before its physics world
     // does — the handles they hold only mean anything inside that world.
     this.destruction.clear();
-    this.extinguishers?.clear();
-    this.casings?.clear();
+    this.extinguishers.clear();
+    this.casings.clear();
     // Cards do not travel between floors. A building where the card you found on
     // eight opens nine has exactly one locked door in it, on floor one.
-    this.keycards?.clear();
-    this.wallet?.clear();
+    this.keycards.clear();
+    this.wallet.clear();
     // Before the level is generated, because enemies.spawn disposes the
     // materials these corpses are still drawn with.
-    this.ragdolls?.clear();
+    this.ragdolls.clear();
 
     const level = this.level.generate(seed, this.floor);
 
@@ -246,7 +256,7 @@ export class Game {
     this.player.setColliders([...level.colliders, ...this.pushColliders]);
     // The doors own colliders that are already in that list; all they do at
     // runtime is drop them below the floor when the panel is out of the way.
-    this.doors?.setDoors(level.doors, level.nav);
+    this.doors.setDoors(level.doors, level.nav);
     this.player.placeAt(level.spawn.x, level.spawn.z);
     // You step out of the lift with your sidearm out and everything loaded. The
     // arrival is the one moment in a floor where the game gets to put you
@@ -262,12 +272,12 @@ export class Game {
     // watching them — nothing about where one goes depends on who is standing
     // where, and taking the roster's dice first keeps enemy placement reading
     // off the same stream it always did.
-    this.cameras?.spawn(level.layout, level.nav, rng);
+    this.cameras.spawn(level.layout, level.nav, rng);
 
     // Bullets stop on this floor's geometry, this floor's occupants, and the
     // things on its walls looking at them.
     this.shooting.setHittables([
-      ...level.meshes, ...this.enemies.meshes, ...(this.cameras?.meshes ?? []),
+      ...level.meshes, ...this.enemies.meshes, ...this.cameras.meshes,
     ]);
     // Scorch marks are clipped to the building only — an enemy standing against
     // a wall is not part of that wall, however flush he is with it.
@@ -280,7 +290,7 @@ export class Game {
     // How much of this floor's lighting is still on. Read off the theme, which
     // enemies.spawn has already rolled by this point.
     this.lighting.setMood(this.enemies.theme?.light ?? 1);
-    this.lighting.setOcclusion((ax, az, bx, bz) => level.nav.losClear(ax, az, bx, bz));
+    this.lighting.setOcclusion(level.nav.losClear.bind(level.nav));
     this.minimap.setLevel(level.map);
 
     this.cleared = false;
@@ -350,13 +360,18 @@ export class Game {
         this.physics.syncMesh(dyn.group, dyn.handle);
         this._syncCollider(dyn);
       }
-      this.destruction.update(dt);
-      this.extinguishers?.update(dt);
-      this.doors?.update(dt, this.player, this.enemies.items);
-      this.casings?.update(dt);
-      this.keycards?.update(dt, this.player);
-      this.ragdolls?.update(dt);
     }
+
+    // ...but these are not the solver's business, and they used to sit inside
+    // that branch. The guard exists precisely to allow a build with no physics,
+    // and in that build the doors stopped opening and the keycards stopped being
+    // pickable — a floor you could not leave, from a guard meant to be harmless.
+    this.destruction.update(dt);
+    this.extinguishers.update(dt);
+    this.doors.update(dt, this.player, this.enemies.items);
+    this.casings.update(dt);
+    this.keycards.update(dt, this.player);
+    this.ragdolls.update(dt);
 
     if (this.state === 'playing') {
       this.enemies.update(dt, {
@@ -370,10 +385,8 @@ export class Game {
       // After the enemies, because that is what floods the distance field this
       // frame — and an alarm raised here places its response by walked distance
       // from the player, off exactly that field.
-      if (this.cameras) {
-        this.cameras.update(dt, this.player);
-        this.hud.setWatch(this.cameras.watch);
-      }
+      this.cameras.update(dt, this.player);
+      this.hud.setWatch(this.cameras.watch);
 
       this._checkFloorState(dt, level);
       this._vitals(dt);
@@ -386,6 +399,7 @@ export class Game {
     this.hud.setHealth(this.player.health, this.player.maxHealth);
     this.hud.setScore(this.kills, this.floorsCleared);
     this.minimap.update(
+      dt,
       { x: this.player.object.position.x, z: this.player.object.position.z, yaw: this.player.yaw },
       this.enemies.items
     );
