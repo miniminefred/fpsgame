@@ -30,8 +30,15 @@ import { EYE, JUMP_APEX } from './metrics.js';
 // knows that one went off.
 
 // How many are fitted per floor. Deliberately not scaled with depth: the floors
-// grow, so the same count is already thinner cover further down.
+// grow, so the same count is already thinner cover further down — and that
+// thinning is the intent.
+//
+// It IS scaled by how a floor's size came out relative to the usual one at its
+// depth (`areaRatio`), which is the opposite question and does not undo any of
+// that: without it, a floor that rolled two-thirds the size would be half again
+// as watched as the one before it for no reason the player could read.
 const PER_FLOOR = [5, 10];
+const MIN_FITTED = 3;          // ...however small the slab came out
 // Roughly how many of them are tripwires rather than watchers. Both are always
 // represented when the count allows — a floor of one kind is a floor with one
 // idea on it.
@@ -142,7 +149,8 @@ export class Cameras {
     this.nav = nav;
     this.cooldown = 0;
 
-    const want = rng.int(PER_FLOOR[0], PER_FLOOR[1]);
+    const want = Math.max(MIN_FITTED,
+      Math.round(rng.int(PER_FLOOR[0], PER_FLOOR[1]) * layout.areaRatio));
     // How many of them are tripwires, decided up front and then shuffled in
     // among the rest, so a floor always gets some of each rather than however
     // the coin happened to land ten times running.

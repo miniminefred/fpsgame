@@ -284,7 +284,11 @@ export class Game {
     this.weapons.select(0);
     this.shooting.refill();
 
-    this.enemies.spawn(level.layout, level.nav, rng, tuningFor(this.floor));
+    // The headcount is a density, not a number — floors of the same depth now
+    // come out anywhere from two-thirds to half again the usual size, so the
+    // curve is per typical floor and the slab that turned up scales it.
+    this.enemies.spawn(level.layout, level.nav, rng,
+      tuningFor(this.floor, level.layout.areaRatio));
     // After the staff, because the cameras are watching the floor rather than
     // watching them — nothing about where one goes depends on who is standing
     // where, and taking the roster's dice first keeps enemy placement reading
@@ -502,14 +506,19 @@ export class Game {
 
 // Difficulty curves. Every one of these is deliberately gentle — the floors get
 // bigger on their own, so the enemies only need to keep pace, not outrun you.
-function tuningFor(floor) {
+function tuningFor(floor, areaRatio) {
   const t = floor - 1;
   return {
     // Scaled with the slab: floors are four times the area they used to be, and
     // the old count left them feeling abandoned rather than dangerous. Doubled
     // again on top of that — a floor this size swallows thirty people without
     // ever feeling occupied, and the walk between contacts was the dead part.
-    count: Math.min(200, 70 + Math.round(t * 18)),
+    //
+    // `areaRatio` is this floor's size against the usual one at this depth
+    // (gen/layout.js), so the roll that makes a floor small makes it a shorter
+    // fight rather than a denser one. The 200 cap is absolute and applies after
+    // it — it is what the engine and the roster are built for, not a curve.
+    count: Math.min(200, Math.round((70 + t * 18) * areaRatio)),
     health: Math.min(260, 100 + t * 10),
     damage: Math.min(18, 7 + t * 0.7),
     speed: Math.min(4.2, 2.5 + t * 0.09),

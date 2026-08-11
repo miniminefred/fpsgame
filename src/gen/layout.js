@@ -63,13 +63,83 @@ const HALL_DOORS = [0, 2];
 const HALL_END = 10;               // tiles clear of where a corridor stops
 const HALL_APART = 26;             // tiles between two doors on the same corridor
 
-export function generateLayout(seed, floorNumber) {
-  const rng = makeRng(seed);
+// --- how big this one is ----------------------------------------------------
+// The curve in floorSpans is the TYPICAL floor for a depth; every floor then
+// rolls its own size around it, so eight is not simply seven with more walking.
+// Two dice, because they answer different questions: `scale` is how much
+// building there is, `skew` is what shape it is — above 1 wide and shallow,
+// below 1 deep and narrow. Skew multiplies one axis and divides the other, so
+// changing a floor's shape does not also change how much of it there is.
+//
+// The point is pacing. A small floor is a tight, quick clear and a big one is a
+// hike, and not knowing which you are stepping out of the lift into is worth
+// more than either. The range is wide on purpose: within a few percent of the
+// depth's size every floor reads as the same floor.
+const SIZE_SCALE = [0.78, 1.18];
+const SIZE_SKEW = [0.82, 1.2];
+// Where the growth curve stops, and with it the biggest floor in the game.
+const BASE_W_MAX = 300;
+const BASE_H_MAX = 252;
+// Absolute bounds in tiles, on either axis — 300 on both, so the shape die is
+// free to stand a floor on end. The lower one is not taste: a slab much under
+// 60 m has room for the corridor spine and little else, and the prologue pass
+// then starts stripping readers off doorways to find somewhere to stand the
+// first body (see freeThePrologue in gen/locks.js).
+const SPAN_MIN = 120;
+const SPAN_MAX = 300;
+// And the area of the largest floor the curve ever asks for. The roll varies a
+// floor UNDER that ceiling rather than through it: past floor ~12 the difficulty
+// is meant to come from the enemies rather than from more walking, so a big roll
+// on floor 15 must not quietly hand out a fifth more building than the game has
+// ever had to draw, light and populate.
+const AREA_MAX = BASE_W_MAX * BASE_H_MAX;
+
+/**
+ * The slab, in tiles, plus how that came out relative to this depth's usual.
+ *
+ * `areaRatio` is the part callers want and the reason it is returned rather than
+ * recomputed: how many people and how many cameras a floor gets is a question
+ * about DENSITY, and both are authored against the typical floor for a depth.
+ * 200 staff is a crowd on that floor and a crush on one two-thirds the size.
+ * It is measured from the spans that survived the clamps rather than from
+ * `scale`, so a floor that hit a bound still reports the area it actually has.
+ *
+ * On its own stream, and mixed with the floor number, for the same two reasons
+ * the locks are (see assignLocks below). Drawing from the floor's own `rng` would
+ * shift every later number and re-roll the whole building off a die that has
+ * nothing to do with its contents; and a stream of the seed alone would hand
+ * every floor of one seed the same shape, which is exactly the variety the
+ * validators sweep for.
+ */
+function floorSpans(seed, floorNumber) {
+  const rng = makeRng((seed ^ 0x1b56c4e9) + Math.imul(floorNumber, 0x9e3779b1));
 
   // Floors grow as you descend, but not without bound — past floor ~12 the
   // difficulty comes from the enemies, not from more walking.
-  const W = Math.min(300, 176 + floorNumber * 10);
-  const H = Math.min(252, 144 + floorNumber * 10);
+  const baseW = Math.min(BASE_W_MAX, 176 + floorNumber * 10);
+  const baseH = Math.min(BASE_H_MAX, 144 + floorNumber * 10);
+
+  const scale = rng.range(SIZE_SCALE[0], SIZE_SCALE[1]);
+  const skew = rng.range(SIZE_SKEW[0], SIZE_SKEW[1]);
+  let W = clamp(Math.round(baseW * scale * skew), SPAN_MIN, SPAN_MAX);
+  let H = clamp(Math.round(baseH * scale / skew), SPAN_MIN, SPAN_MAX);
+
+  // Back under the ceiling on both axes at once, so a floor that overshot comes
+  // back the shape it rolled rather than squared off against whichever bound it
+  // happened to hit first.
+  if (W * H > AREA_MAX) {
+    const back = Math.sqrt(AREA_MAX / (W * H));
+    W = clamp(Math.floor(W * back), SPAN_MIN, SPAN_MAX);
+    H = clamp(Math.floor(H * back), SPAN_MIN, SPAN_MAX);
+  }
+
+  return { W, H, areaRatio: (W * H) / (baseW * baseH) };
+}
+
+export function generateLayout(seed, floorNumber) {
+  const rng = makeRng(seed);
+
+  const { W, H, areaRatio } = floorSpans(seed, floorNumber);
 
   const tiles = new Uint8Array(W * H); // SOLID everywhere to start
   const at = (x, y) => tiles[y * W + x];
@@ -208,6 +278,9 @@ export function generateLayout(seed, floorNumber) {
 
   const layout = {
     seed, floorNumber, W, H, TILE,
+    // How much floor this is compared with the usual one at this depth. Read by
+    // whoever has to spread a fixed number of things over it — see floorSpans.
+    areaRatio,
     ox: -W * TILE / 2, oz: -H * TILE / 2,
     tiles, rooms: live, doors,
     spawnRoom, exitRoom,
