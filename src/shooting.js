@@ -48,8 +48,6 @@ export class Shooting {
     this.cooldown = 0;          // seconds until the next shot is allowed
     this.reloadLeft = 0;
     this.viewKick = 0;          // pitch we've added and still owe back
-    this.kills = 0;
-    this.hits = 0;
 
     // Ammo per weapon slot; the reserve is effectively infinite. Filled by
     // refill() below, which is also what every new floor calls.
@@ -209,8 +207,7 @@ export class Shooting {
     this.viewKick += this._pitch(stats.kick * (0.8 + Math.random() * 0.4));
 
     if (hitAny) {
-      this.hits++;
-      if (killedAny) { this.kills++; this.onKill?.(); }
+      if (killedAny) this.onKill?.();
       this.hud.hitmarker(killedAny);
       this.audio.ping(killedAny);
     }
@@ -310,9 +307,12 @@ export class Shooting {
     return applied;
   }
 
+  // Ammo only. The score line belongs to game.js, which owns the kill count and
+  // the floor count — this used to write its own hit tally into the slot the HUD
+  // renders as "N floors", and got away with it purely because game.update runs
+  // after us and overwrote it before the frame was painted.
   _syncHud() {
     this.hud.setAmmo(this.mag, this.weapons.stats.mag, this.reloading);
-    this.hud.setScore(this.kills, this.hits);
   }
 }
 
