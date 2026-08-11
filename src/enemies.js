@@ -6,7 +6,6 @@ import { TYPES, BYSTANDERS, pickType, pickTheme } from './enemy-types.js';
 import { DEATH_TIME, HIT_FLASH, SWING_TIME, animate, die } from './enemy-anim.js';
 import { angleLerp, smoothTo } from './util.js';
 import { EYE } from './metrics.js';
-import { approachSpot, planAt } from './gen/stairs.js';
 
 // How far off the ground the player's feet have to be to be on another level of the
 // building rather than standing on a desk. A level's floor is LEVEL_Y up or down (see
@@ -392,7 +391,7 @@ export class Enemies {
     let heard = 0;
     for (const e of this.items) {
       if (!e.alive || e.neutral || e.state !== 'idle') continue;
-      const along = this.nav.pathDistance(e.x, e.z);
+      const along = this.nav.pathDistance(e.x, e.z, e.layer);
       if (along < 0 || along > ALARM_HEARING) continue;
       // Same shape as noticing a gunshot, deliberately: told roughly where, and
       // taking the same moment to decide anything about it. Clearing `contact`
@@ -867,6 +866,11 @@ export class Enemies {
       swingLanded: true,
       dist: Infinity,
       strafe: rng.chance(0.5) ? 1 : -1,
+      // Which nav layer this body is on, and how high that puts it. Everybody
+      // spawns on the ground floor; a layer is something you walk onto, up a
+      // staircase. See the note at the top of nav.js.
+      layer: 0,
+      y: 0,
       voiceTimer: rng.range(1, 14),   // staggered, or a floor mutters in chorus
       lastStep: 0,
       // The keycard on their belt, if any. Dealt after the whole floor is
@@ -1043,34 +1047,17 @@ export class Enemies {
     // which is why it comes before the flood that depends on there being any.
     this._rebuildNeighbours();
 
-    /**
-     * Which level the player is on, and where the floor should think they are.
-     *
-     * Nav is one tile grid for the ground floor and cannot hold a second level: an
-     * attic and a basement sit on the same tiles as the room they belong to. So while
-     * the player is off the ground floor, everything the floor does about them is
-     * done about the FOOT OF THEIR STAIRS, which is the honest answer to "how do I
-     * get to you" and the only one this grid can give.
-     *
-     * Left to itself, `_flood` seeds from the nearest tile a body fits in — which is
-     * some arbitrary spot in the room overhead, and measurably fragile: standing in a
-     * basement under a well-furnished office, it seeded inside a 48-tile pocket of
-     * that room's furniture and the whole floor came back with no route at all.
-     * Nobody heard a shot fired down there. Seeding at the approach instead is both
-     * correct and robust, because `approachTiles` is reserved floor by construction.
-     */
-    const level = this.layout ? planAt(this.layout, px, pz, py - EYE) : null;
-    const heard = level ? approachSpot(this.layout, level) : { x: px, z: pz };
-    if (this.nav) this.nav.updateField(dt, heard.x, heard.z, this.keyedAlive > 0);
+    // Which layer of the nav grid the player is standing on. The grid has two — the
+    // ground floor, and every attic and basement — joined at the stairwells, so the
+    // field is flooded from wherever the player actually is and the route to them
+    // goes up or down the stairs like any other route. See the note at the top of
+    // nav.js. Off the ground floor it is the level's own layer; a metre up a flight
+    // it is still whichever layer the field last had them on, and the height comes
+    // from the ramp either way.
+    const pLayer = Math.abs(py - EYE) > STOREY_GAP ? 1 : 0;
+    this.playerLayer = pLayer;
+    if (this.nav) this.nav.updateField(dt, px, pz, pLayer, this.keyedAlive > 0);
     if (this.shoutTimer > 0) this.shoutTimer -= dt;
-
-    // And nobody SEES you off the ground floor. Sight is that same 2D grid, so a
-    // player one level up or down is directly over or under their heads with a floor
-    // slab in between and `losClear` cheerfully says yes — and enemy fire is not a
-    // raycast, `_shoot` fires because `sees` is true, so they would shoot you through
-    // the deck. This used to test only for being UP, which meant a basement was a
-    // room you could be shot in through the floor.
-    const offGround = Math.abs(py - EYE) > STOREY_GAP;
 
     // Where a fleeing neutral is running away from — _repick needs it and is
     // called from places that have no player to hand.
@@ -1083,13 +1070,18 @@ export class Enemies {
       const dx = px - e.x;
       const dz = pz - e.z;
       const dist = Math.hypot(dx, dz) || 0.001;
-      const sees = !offGround && dist < SIGHT && this.nav.losClear(e.x, e.z, px, pz);
+      // Sight is per layer, and across layers there is a floor slab in the way — the
+      // one exception being two bodies in the same stairwell, who are looking
+      // straight at each other up a flight of stairs. losClear knows; this used to be
+      // a flat "nobody sees you off the ground floor", which was right about the slab
+      // and wrong about the staircase.
+      const sees = dist < SIGHT && this.nav.losClear(e.x, e.z, px, pz, e.layer, pLayer);
       // Hearing only matters when they cannot see you — if they can, sight has
       // already told them everything, and at a longer range. The distance is the
       // walked one: the field is flooded from the player (or from the foot of their
       // stairs, if they are off the ground floor), so it is already paid for, and a
       // negative value means there is no route at all.
-      const along = this.nav.pathDistance(e.x, e.z);
+      const along = this.nav.pathDistance(e.x, e.z, e.layer);
       const hears = !sees && ctx.noise > 0 && along >= 0 && along < HEARING;
 
       if (sees) {
@@ -1198,6 +1190,10 @@ export class Enemies {
     e.moving = true;
     e.group.position.x = e.x;
     e.group.position.z = e.z;
+    // On a staircase this is the ramp, on a level it is that level's floor, and on
+    // the ground floor it is zero — one lookup rather than a special case per state.
+    e.y = this.nav.heightAt(e.x, e.z, e.layer);
+    e.group.position.y = e.y;
     e.yaw = angleLerp(e.yaw, Math.atan2(-dir.x, -dir.z), smoothTo(9, dt));
     e.group.rotation.y = e.yaw;
   }
@@ -1319,16 +1315,19 @@ export class Enemies {
     const speed = this.tuning.speed * e.type.speed;
     // "Tight" is anywhere a body and a half does not fit: a doorway, the gap
     // between two desks, the corner of a stairwell.
-    const tight = !this.nav.clear(e.x, e.z, RADIUS * 1.7);
+    const tight = !this.nav.clear(e.x, e.z, RADIUS * 1.7, e.layer);
     let vx = 0, vz = 0;
 
     if (e.state === 'chase' && e.lastSeen) {
       // A badge holder walks the field that has the locked doorways in it. On a
       // floor with nothing locked left the two fields are the same field.
       const dir = e.keyed
-        ? this.nav.descendBadge(e.x, e.z, this._v)
-        : this.nav.descend(e.x, e.z, this._v);
-      if (dir) { vx = dir.x * speed; vz = dir.z * speed; }
+        ? this.nav.descendBadge(e.x, e.z, this._v, e.layer)
+        : this.nav.descend(e.x, e.z, this._v, e.layer);
+      // The field's own downhill step is what takes a body onto a staircase: the
+      // other layer is just another neighbour of a stairwell tile. So the layer an
+      // enemy is on is not a decision made here, it is read back off the step.
+      if (dir) { e.layer = dir.layer ?? e.layer; vx = dir.x * speed; vz = dir.z * speed; }
       else if (dist > 1.2) { vx = (dx / dist) * speed * 0.5; vz = (dz / dist) * speed * 0.5; }
     } else if (e.state === 'fight') {
       // Hold a firing distance and sidestep, so a firefight isn't two statues.
@@ -1381,6 +1380,10 @@ export class Enemies {
 
     e.group.position.x = e.x;
     e.group.position.z = e.z;
+    // On a staircase this is the ramp, on a level it is that level's floor, and on
+    // the ground floor it is zero — one lookup rather than a special case per state.
+    e.y = this.nav.heightAt(e.x, e.z, e.layer);
+    e.group.position.y = e.y;
 
     // Face the player when engaged, otherwise face where you're walking.
     const wantYaw = (e.state === 'fight' || e.state === 'alert' || sees)
@@ -1398,7 +1401,7 @@ export class Enemies {
     // against a panel that has already opened for it.
     const ok = e.keyed
       ? this.nav.clearBadge(nx, nz, RADIUS)
-      : this.nav.clear(nx, nz, RADIUS);
+      : this.nav.clear(nx, nz, RADIUS, e.layer);
     if (!ok) return false;
     e.x = nx;
     e.z = nz;
@@ -1444,6 +1447,9 @@ export class Enemies {
         if (!bucket) continue;
         for (const other of bucket) {
           if (other === e || !other.alive) continue;
+          // Two bodies on different levels are not in each other's way, however
+          // exactly the tiles line up — one of them is a storey above the other.
+          if (other.layer !== e.layer) continue;
           const dx = e.x - other.x;
           const dz = e.z - other.z;
           const d2 = dx * dx + dz * dz;

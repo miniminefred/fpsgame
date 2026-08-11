@@ -363,6 +363,13 @@ export class Game {
     c.minZ = p.z - dyn.reach;
     c.maxZ = p.z + dyn.reach;
     c.top = p.y + dyn.size.y / 2;
+    // ...and its underside, which for a crate sitting on the floor is zero and makes
+    // no difference — but a crate in an attic is three metres up, and without this it
+    // is a pillar from the carpet to its own lid: it blocked the room below it and,
+    // where the two overlap, the staircase. Every static prop has carried a `base`
+    // since the levels arrived (see makeSink in gen/build.js); a loose one is derived
+    // from its physics body every frame, so it has to be told here.
+    c.base = p.y - dyn.size.y / 2;
   }
 
   update(dt) {

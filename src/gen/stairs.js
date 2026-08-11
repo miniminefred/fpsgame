@@ -79,6 +79,18 @@ const ROOM_LEFT = 5;                      // tiles of floor the room downstairs 
 // because the approach was ordinary room floor. So the planner proves the floor is
 // there and `approachTiles` has the builder reserve it.
 const APPROACH = 2;
+// ...and tiles of the LEVEL's floor beyond the head of it, for exactly the same reason
+// one turn further up. A flight whose head is flush with the room's edge has no
+// landing: the tile you arrive on has the wall on one side, so a body does not fit on
+// it, nav erodes it away, and the level is unreachable even though the flight plainly
+// reaches it. The nav sweep found it as "no route from a level back down" on four
+// floors in five.
+//
+// TWO tiles, not one, and the second is not slack either: the erosion test reaches a
+// tile past the one it is centred on, so a single landing row is disqualified by the
+// wall behind it exactly as the head row was. That took the last 3% of levels from
+// unreachable to reachable.
+const LANDING = 2;
 
 // How many a floor gets. A few, always — a staircase is part of what a floor of
 // this building IS, not an event that sometimes happens on one, so zero is not an
@@ -274,6 +286,50 @@ export function stairBoxes(layout, plan) {
   return out;
 }
 
+// The flight's slope, and how far it runs. Exported because the nav grid needs both:
+// it samples the ramp for a body's height, and it has to know the most a step can
+// rise so that walking ACROSS a flight is refused while walking UP one is not.
+export const RAMP_SLOPE = RISER / GOING;
+export const RAMP_RUN = TREADS * GOING;
+// The most the walking surface may rise between two neighbouring tiles. On a flight
+// that is the slope over a tile; anywhere else it is a cliff, and the cliff that
+// matters is the edge of a landing where somebody could otherwise step sideways off
+// it into the middle of the shaft. Derived, so retuning the stairs cannot leave nav
+// believing in a staircase the building does not have.
+export const MAX_TILE_RISE = TILE * RAMP_SLOPE;
+
+/** What a flight is, for anybody who needs to sample its height themselves. */
+export function rampSpec(layout, plan) {
+  const alongX = plan.axis === 'x';
+  const a0 = alongX ? worldX(layout, plan.x0) : worldZ(layout, plan.y0);
+  const a1 = alongX ? worldX(layout, plan.x1) : worldZ(layout, plan.y1);
+  return {
+    alongX,
+    foot: plan.up > 0 ? a0 : a1,
+    up: plan.up,
+    dir: plan.dir,
+  };
+}
+
+/** The height of a flight at a point, from its spec. Continuous, not per tile. */
+export function rampHeight(spec, x, z) {
+  const along = ((spec.alongX ? x : z) - spec.foot) * spec.up;
+  return spec.dir * Math.max(0, Math.min(RAMP_RUN, along)) * RAMP_SLOPE;
+}
+
+/**
+ * How high the flight is at a point inside its stairwell.
+ *
+ * A flight is one ramp: the height depends on how far along it you are and on
+ * nothing else — not on whether you are on your way up or down, and not on which
+ * nav layer you happen to be on. That is what makes crossing between levels
+ * invisible, and it is why this is the same function for a body and for the tread
+ * boxes it walks on.
+ */
+export function stairHeightAt(layout, plan, x, z) {
+  return rampHeight(rampSpec(layout, plan), x, z);
+}
+
 /** A level's floor, which is the footprint of the room its stairs are in. */
 export function levelFloor(layout, plan) {
   const room = plan.room;
@@ -344,28 +400,34 @@ function fitStairwell(room, tiles, W, H, rng) {
     if (side.cross < DEPTH + ROOM_LEFT) continue;
 
     const along = side.axis === 'x' ? side.x1 - side.x0 : side.y1 - side.y0;
-    if (along < FLIGHT_TILES) continue;
+    // A flight needs its run, floor at the bottom to walk at it from, and a landing at
+    // the top to step off onto.
+    if (along < FLIGHT_TILES + APPROACH + LANDING) continue;
 
     const from = side.axis === 'x' ? side.x0 : side.y0;
-    const starts = [];
-    for (let i = 0; i <= along - FLIGHT_TILES; i++) starts.push(from + i);
-    rng.shuffle(starts);
+    // Which way it climbs is chosen FIRST, because it decides which end of the
+    // stairwell owes the room two tiles and which owes it one.
+    for (const up of rng.shuffle([1, -1])) {
+      const lead = up > 0 ? APPROACH : LANDING;   // clearance before the low index
+      const tail = up > 0 ? LANDING : APPROACH;   // ...and after the high one
+      const starts = [];
+      for (let i = lead; i <= along - FLIGHT_TILES - tail; i++) starts.push(from + i);
+      rng.shuffle(starts);
 
-    for (const start of starts) {
-      const rect = side.axis === 'x'
-        ? { x0: start, x1: start + FLIGHT_TILES, y0: side.y0, y1: side.y1 }
-        : { x0: side.x0, x1: side.x1, y0: start, y1: start + FLIGHT_TILES };
-      if (hits(zone, W, rect)) continue;
+      for (const start of starts) {
+        const rect = side.axis === 'x'
+          ? { x0: start, x1: start + FLIGHT_TILES, y0: side.y0, y1: side.y1 }
+          : { x0: side.x0, x1: side.x1, y0: start, y1: start + FLIGHT_TILES };
+        if (hits(zone, W, rect)) continue;
 
-      // Which end the flight climbs from is not a free choice: the bottom step
-      // needs room floor in front of it, and at one end of the stairwell that
-      // floor may be the room's own wall.
-      for (const up of rng.shuffle([1, -1])) {
         // `dir` is up to the attic or down to the basement, and it is an even coin:
         // the two are the same construction reflected in the floor plate, and a
         // building where every staircase went the same way would read as a rule.
         const plan = { room, side: s, axis: side.axis, up, dir: rng.chance(0.5) ? 1 : -1, ...rect };
-        if (approachInside(room, plan)) return plan;
+        // Belt and braces: the start range above is derived from the same two
+        // constants, so this can only fail if one of them is edited and the other
+        // is not.
+        if (approachInside(room, plan) && landingInside(room, plan)) return plan;
       }
     }
   }
@@ -380,7 +442,25 @@ function approachInside(room, plan) {
   return r.x0 >= room.x0 && r.x1 <= room.x1 && r.y0 >= room.y0 && r.y1 <= room.y1;
 }
 
-function approachRect(plan) {
+// The same question at the head of the flight, where the level's own floor has to
+// carry the landing.
+function landingInside(room, plan) {
+  const r = landingRect(plan);
+  return r.x0 >= room.x0 && r.x1 <= room.x1 && r.y0 >= room.y0 && r.y1 <= room.y1;
+}
+
+function landingRect(plan) {
+  if (plan.axis === 'x') {
+    return plan.up > 0
+      ? { x0: plan.x1, x1: plan.x1 + LANDING, y0: plan.y0, y1: plan.y1 }
+      : { x0: plan.x0 - LANDING, x1: plan.x0, y0: plan.y0, y1: plan.y1 };
+  }
+  return plan.up > 0
+    ? { x0: plan.x0, x1: plan.x1, y0: plan.y1, y1: plan.y1 + LANDING }
+    : { x0: plan.x0, x1: plan.x1, y0: plan.y0 - LANDING, y1: plan.y0 };
+}
+
+export function approachRect(plan) {
   if (plan.axis === 'x') {
     return plan.up > 0
       ? { x0: plan.x0 - APPROACH, x1: plan.x0, y0: plan.y0, y1: plan.y1 }

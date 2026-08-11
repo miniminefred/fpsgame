@@ -165,6 +165,7 @@ vite.config.js    Dev/preview server pinned to port 8090
 tools/
   validate-layout.mjs  Headless floorplan invariants (connectivity, doors, sealing)
   validate-props.mjs   Headless furniture-placement invariants
+  validate-nav.mjs     Headless multi-level routing invariants
 src/
   main.js         Bootstrap: wires modules, runs the render loop
   game.js         The run: floor progression and difficulty curves
@@ -177,8 +178,8 @@ src/
   level.js        One floor's lifecycle — generate, animate the exit, dispose
   scene.js        Renderer, camera, fog
   lighting.js     Fill light + a pooled set of ceiling lights that follow the player
-  nav.js          Tile navigation: flow field, line of sight, walkability, and a
-                  second field for whoever can open a locked door
+  nav.js          Tile navigation on TWO LEVELS: flow field, line of sight,
+                  walkability, and a second field for whoever can open a locked door
   enemies.js      Spawning, placement guarantees, the AI state machine, gunfire and melee
   enemy-types.js  The roster: types, bystanders, floor themes, and the pickers
   enemy-anim.js   Per-frame rig animation, and the toppling death fallback
@@ -356,9 +357,16 @@ panel behaves exactly as it did.
 
 What is still 2.5D, and shapes the rest:
 
-- Nav, sight and hearing are one tile grid per floor, and no grid can say "walkable, but a
-  storey up". The stairwell leaves the nav grid, so nobody follows you and nothing spawns
-  upstairs.
+- **Nav is two levels deep and bodies follow you up.** The grid has layer 0 (the ground
+  floor) and layer 1 (every attic and basement at once — they never overlap, because a room
+  gets at most one staircase), joined at the stairwells and nowhere else. The flood steps
+  between layers there, `descendOn` takes that step when it is downhill, and an enemy's layer
+  is read back off the step rather than decided anywhere. Its height comes from the flight it
+  is standing on, sampled continuously, so switching layer half way up is invisible.
+- **A step is a step, not a cliff.** Nav now refuses a neighbour more than a flight's own
+  rise-per-tile away in height (`MAX_TILE_RISE`), which is what stops a body stepping
+  sideways off a landing into mid-shaft. The nav sweep caught that as a walker changing
+  height by three metres in one step.
 - **Sight needed telling too**, and this is the sharp edge: `losClear` is that same 2D grid,
   the whole roster is on the ground, and enemy fire is *not* a raycast — `_shoot` fires
   because `sees` is true. So a player upstairs was being shot through the deck from the room

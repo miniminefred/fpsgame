@@ -12,7 +12,7 @@ import {
 import { CARDS, READER_LIT, READER_OPEN } from '../keycards.js';
 import {
   UPPER_Y, UPPER_CEIL, LOWER_Y, PLATE_T, approachTiles, levelFloor, levelY, punchRects,
-  stairBoxes, stairwellCut, stripTiles,
+  stairBoxes, stairwellCut, stripTiles, rampSpec, approachRect,
 } from './stairs.js';
 
 // Turns an abstract floorplan into everything the game needs: batched meshes,
@@ -100,8 +100,10 @@ export function buildLevel(scene, layout) {
   furnishRooms(layout, sink, rng);
   furnishCorridors(layout, sink, rng);
   // Last, and through sinks of their own: a level off the ground floor has its own
-  // occupancy and is not on the nav grid at all. See furnishLevels.
-  furnishLevels(layout, batcher, materials, { colliders, dynamics, destructibles }, rng);
+  // occupancy and its own nav layer. See furnishLevels.
+  const levelBlocked = new Uint8Array(W * H);
+  furnishLevels(layout, batcher, materials,
+    { colliders, dynamics, destructibles, levelBlocked }, rng);
 
   const meshes = batcher.build(scene);
   objects.push(...meshes);
@@ -146,8 +148,65 @@ export function buildLevel(scene, layout) {
     doors,
     fixtures,
     exitObject,
-    nav: { W, H, TILE, ox: layout.ox, oz: layout.oz, walk, tiles },
+    nav: {
+      W, H, TILE, ox: layout.ox, oz: layout.oz, walk, tiles,
+      levels: levelNav(layout, levelBlocked),
+    },
   };
+}
+
+/**
+ * The second nav layer: every attic and basement at once, plus the stairwells that
+ * join them to the ground floor.
+ *
+ * One layer holds all of them because no two ever overlap — a room gets at most one
+ * staircase, so at most one level above or below it. See the note at the top of
+ * nav.js for what the layers mean and where they are joined.
+ *
+ * `cross` is the joint and it is the stairwell and nothing else. `rampY` is how high
+ * the flight is at each of those tiles, so a body on the stairs is at the height of
+ * the stairs whichever layer it is currently on — which is what makes the crossing
+ * invisible. `sight` is the level's own floor, because a level is one open room with
+ * a lid and there is nothing inside it to see through.
+ */
+function levelNav(layout, levelBlocked) {
+  const { W, H } = layout;
+  const walk = new Uint8Array(W * H);
+  const sight = new Uint8Array(W * H);
+  const cross = new Uint8Array(W * H);
+  const levelYs = new Float32Array(W * H);
+  // Which flight a stairwell tile belongs to, so nav can sample that flight's height
+  // continuously rather than storing one number per tile and making a body climb in
+  // 33 cm jerks.
+  const rampAt = new Int8Array(W * H).fill(-1);
+  const ramps = [];
+
+  for (const plan of layout.stairs) {
+    const room = plan.room;
+    for (let ty = room.y0; ty < room.y1; ty++) {
+      for (let tx = room.x0; tx < room.x1; tx++) {
+        const i = ty * W + tx;
+        levelYs[i] = levelY(plan);
+        sight[i] = 1;
+        // The level's floor, minus whatever is standing on it.
+        if (!levelBlocked[i]) walk[i] = 1;
+      }
+    }
+    // ...and the stairwell, which belongs to both layers and is where they join. All
+    // of it: a body has to be able to stand anywhere on a flight and walk the length
+    // of it. What stops anybody stepping onto the MIDDLE of one — off the edge of the
+    // landing above, or up off the room floor below — is the no-cliff rule in nav.js,
+    // which is also what caught the three-metre teleport that used to happen here.
+    const ramp = ramps.push(rampSpec(layout, plan)) - 1;
+    for (const i of stripTiles(plan, W)) {
+      rampAt[i] = ramp;
+      cross[i] = 1;
+      walk[i] = 1;
+      sight[i] = 1;
+    }
+  }
+
+  return { walk, sight, cross, rampAt, ramps, levelY: levelYs };
 }
 
 // --- shell: walls, floors, ceiling ------------------------------------------
@@ -1105,14 +1164,11 @@ function buildStairs(layout, batcher, materials, masks, rng) {
       });
     }
 
-    // The stairwell leaves the nav grid, because a 2D grid cannot say "walkable,
-    // but a storey up" and nobody can climb anyway — and leaves the furnisher's
-    // reach, so no desk ends up buried in the flight. See gen/stairs.js for why
-    // this does not make upstairs a place to hide.
-    for (const i of stripTiles(plan, W)) {
-      masks.blocked[i] = 1;
-      masks.occupied[i] = 1;
-    }
+    // The stairwell is out of the FURNISHER's reach, so no desk ends up buried in
+    // the flight — but it stays in the nav grid, which is what lets somebody follow
+    // you up it. The grid has a layer for the levels and joins the two at exactly
+    // these tiles; see the note at the top of nav.js.
+    for (const i of stripTiles(plan, W)) masks.occupied[i] = 1;
     // The floor at the bottom of the flight is reserved from the furnisher but
     // stays in the nav grid — you have to be able to stand there to start
     // climbing, and so does anybody following you. Without it, better than one
@@ -1216,7 +1272,10 @@ function furnishLevels(layout, batcher, materials, shared, rng) {
 
     const sink = makeSink(layout, batcher, materials, {
       level: dir > 0 ? UPPER_Y : LOWER_Y,
-      blocked: new Uint8Array(W * H),
+      // A level's own furniture DOES block its own nav layer — it is the floor those
+      // props are standing on. `shared.levelBlocked` is one mask for every level on
+      // the floor, which works because no two of them share a tile.
+      blocked: shared.levelBlocked,
       occupied: new Uint8Array(W * H),
       reserved,
       colliders: shared.colliders,
@@ -1309,14 +1368,26 @@ function reserveClearances(layout, reserved) {
     stampTiles(cx - 5, cy - 5, cx + 5, cy + 5);
   }
 
-  reserveThroughRoutes(layout, stampTiles);
+  // Both of these are about a route rather than a spot, and both hang off the same
+  // list of doorways.
+  const mouths = doorMouths(layout);
+  reserveThroughRoutes(layout, mouths, stampTiles);
+  reserveStairRoutes(layout, mouths, stampTiles);
 }
 
-// A lane is 2 tiles so it is 1 m wide. The body is 0.8 m (RADIUS in metrics.js)
-// and canPlace rounds a prop's footprint OUTWARD to whole tiles, so a two-tile
-// lane is a metre of floor no prop can reach into — where one tile would leave
-// 0.5 m and be no lane at all.
-const LANE = 2;
+/**
+ * How wide a reserved lane is, in tiles.
+ *
+ * Three, and the third one is not slack. Two tiles is a metre of floor no prop can
+ * reach into, which is plenty for the PLAYER — their collision is continuous and a
+ * 0.8 m body walks a 1 m gap. It is not enough for anybody else: the nav grid is
+ * eroded by the body radius per tile (`fits` in nav.js), and that test reaches 0.11 m
+ * past the tile it is centred on, so both columns of a two-wide lane are disqualified
+ * by whatever is standing beside the lane. The result was a lane the player could walk
+ * and the enemies could not — which the nav sweep found as a quarter of all levels
+ * being unreachable from their own doorway.
+ */
+const LANE = 3;
 
 /**
  * A room you have to walk THROUGH keeps a lane between its doorways.
@@ -1340,15 +1411,17 @@ const LANE = 2;
  * is what the rest of this function already does for the doorways themselves: a
  * floor cannot be furnished into a state it then has to be rescued from.
  */
-function reserveThroughRoutes(layout, stampTiles) {
+/**
+ * Every doorway of every room, from the inside.
+ *
+ * `room.doors` holds only the doors that room CUT (see cutDoor in gen/layout.js), and
+ * the one its neighbour cut into it is in the wall all the same — so the sides are
+ * recovered from the tiles either side of each opening. A hall door probes two
+ * corridor tiles and drops out, which is right: it is not in anybody's room.
+ */
+function doorMouths(layout) {
   const { rooms, doors } = layout;
   const inside = (r, tx, ty) => tx >= r.x0 && tx < r.x1 && ty >= r.y0 && ty < r.y1;
-
-  // Both rooms a doorway joins. `room.doors` holds only the doors that room CUT
-  // (see cutDoor in gen/layout.js), and the room you walk through is usually the
-  // other one — so the sides are recovered from the tiles either side of the
-  // opening instead. A hall door probes two corridor tiles and drops out here,
-  // which is right: it is not in anybody's room.
   const mouths = new Map();
   for (const d of doors) {
     const cx = Math.floor((d.x0 + d.x1) / 2), cy = Math.floor((d.y0 + d.y1) / 2);
@@ -1365,7 +1438,45 @@ function reserveThroughRoutes(layout, stampTiles) {
       mouths.get(s.room).push({ at: s.at, through });
     }
   }
+  return mouths;
+}
 
+/**
+ * A clear walk from a room's doorway to the foot of its stairs.
+ *
+ * The floor at the bottom of a flight is already reserved, but being clear is not the
+ * same as being CONNECTED: the furnisher is free to line the flight's open side with
+ * desks, and then the approach is a 3x2 pocket with a staircase in it. The nav sweep
+ * found exactly that — a flood coming down from an attic reached 23 tiles of the
+ * ground floor and stopped, because a body cannot get out of the stairwell.
+ *
+ * So the route itself is reserved, from the approach to a doorway, which is the same
+ * thing `reserveThroughRoutes` does for a room you have to walk through and for the
+ * same reason. It is also better level design than the alternative: the way to the
+ * stairs is a route rather than a gap between two filing cabinets.
+ */
+function reserveStairRoutes(layout, mouths, stampTiles) {
+  for (const plan of layout.stairs) {
+    const list = mouths.get(plan.room);
+    if (!list?.length) continue;
+    const r = approachRect(plan);
+    const alongX = plan.axis === 'x';
+    // The lane starts on the ROOM side of the approach, not in the middle of it.
+    // `reserveLane` widens from the point it is given in the + direction, so a point
+    // inside a two-tile approach puts a third of the lane inside the stairwell — where
+    // the floor is a flight of stairs, not floor. The lane then had one tile of flat
+    // ground in it, which is a lane the player can walk and a body cannot.
+    const band = (lo, hi) => (plan.up > 0 ? hi - LANE : lo);
+    const foot = alongX
+      ? [band(r.x0, r.x1), Math.floor((r.y0 + r.y1) / 2)]
+      : [Math.floor((r.x0 + r.x1) / 2), band(r.y0, r.y1)];
+    // Every doorway, not just the nearest: a room with two ways in should not have
+    // one of them lead to a staircase you cannot reach.
+    for (const m of list) reserveLane(plan.room, foot, m.at, stampTiles);
+  }
+}
+
+function reserveThroughRoutes(layout, mouths, stampTiles) {
   for (const [room, list] of mouths) {
     if (list.length < 2 || !list.some((m) => m.through)) continue;
     // Every other doorway back to the first one, so the lanes of a room with

@@ -61,7 +61,7 @@ export function animate(e, dt, audio) {
   const swing = moving ? Math.sin(e.walkPhase) * 0.6 : Math.sin(e.walkPhase) * 0.05;
   e.legL.rotation.x = swing;
   e.legR.rotation.x = -swing;
-  e.group.position.y = moving ? Math.abs(Math.sin(e.walkPhase)) * 0.045 : 0;
+  e.group.position.y = e.y + (moving ? Math.abs(Math.sin(e.walkPhase)) * 0.045 : 0);
 
   // Weapon comes up as soon as they mean it. Melee types instead throw both
   // arms forward on the swing and drop them again.
@@ -110,7 +110,7 @@ export function animateSeated(e, dt) {
   e.walkPhase += dt * 0.9;
   const breath = Math.sin(e.walkPhase) * 0.03;
 
-  e.group.position.y = -SIT_DROP;
+  e.group.position.y = e.y - SIT_DROP;
   e.legL.rotation.x = SIT_LEGS;
   e.legR.rotation.x = SIT_LEGS - 0.12;
   e.armL.rotation.x = -0.35 + breath;
@@ -156,7 +156,7 @@ export function animateRat(e, dt, audio) {
   }
 
   // Body bobs with the gait; nose dips and lifts when it has stopped to think.
-  e.group.position.y = moving ? Math.abs(gait) * 0.018 : 0;
+  e.group.position.y = e.y + (moving ? Math.abs(gait) * 0.018 : 0);
   e.head.rotation.x = moving ? gait * 0.08 : Math.sin(e.walkPhase * 2.2) * 0.16;
 
   if (e.tail) {
@@ -206,7 +206,7 @@ export function die(e, dt) {
 
   if (k > 0.75) {
     const sink = (k - 0.75) / 0.25;
-    e.group.position.y = -sink * 1.2;
+    e.group.position.y = e.y - sink * 1.2;
   }
   if (e.deathTime <= 0) e.group.visible = false;
 }
