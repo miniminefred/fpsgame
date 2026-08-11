@@ -145,6 +145,7 @@ src/
     layout.js     Floorplan: corridor spine + BSP room blocks + doors. Re-exports
                   tiles.js and locks.js, so the rest of the tree has one address
     locks.js      Badge readers: which door gets which card, and the proofs
+    stairs.js     A flight up a room's wall, and the sealed loft it arrives in
     build.js      Floorplan -> meshes, colliders, nav grid, lights, windows
     props.js      Office furniture catalogue and the placement primitive
     rooms.js      Which props a room gets, and where they go against its walls
@@ -265,6 +266,56 @@ out with nobody sitting at them. Invisible on a grey box; instantly obvious the
 moment something with eight lit screens went in. `edgeProp` returns *where* it
 landed (`{cx, cz, rot, side}`) so a room can put a chair in front of what it just
 placed — `seatFacing` does that.
+
+### Stairs, and the room at the top of them (`gen/stairs.js` + `buildStairs`)
+Zero to two rooms a floor get a flight of stairs up one of their walls, arriving in a
+**loft**: a room that is not on the floorplan, with no door, no corridor and no second way
+out. That is what makes it worth stocking, and what it gets is the crates, pallets and
+cabinets nobody would carry back down.
+
+**Every design decision here falls out of the engine being 2.5D**, and none of it is
+arbitrary:
+
+- A collider is a pillar from the floor up to a `top`, with **no underside**. So a loft's
+  floor makes the space beneath it solid — a loft is not a mezzanine you walk under, it is
+  a block standing in the room with a room on top. That is a real building: the mezzanine
+  store bolted into the corner of a warehouse with stairs up the side.
+- The suspended ceiling is at 3.0 m, under the loft's own floor at 2.2 m, so the ceiling is
+  **cut** over the whole strip (`ceilingCut`) and the volume runs up to the loft's lid at
+  4.4 m instead. Cutting is done by masking the tiles handed to `maskToRects`, because that
+  function tests the value it is given and knows nothing about where it came from.
+- No tile grid can say "walkable, but two metres up", so the strip leaves the **nav grid**
+  entirely. Nobody follows you up — which costs the fight nothing, because there is nothing
+  to shoot at from inside a sealed box, and `_flood` in `nav.js` already seeds from the
+  nearest tile a body fits in, so a shot fired up there is heard as if it came from the
+  bottom of the stairs.
+- Which boxes may be **collided with at all** is therefore the subtle part, and it is one
+  flag (`collide` in `stairBoxes`). The treads, the block and the loft's own walls stand on
+  solid ground and may be colliders; the walls closing the void *above the flight* have open
+  air beneath them, and a collider there would brick up the stairs.
+
+Structural colliders carry `building: true` — they are shell, not furniture, and
+`validate-props.mjs` audits them with the walls. A 4 m loft floor read as a prop fails every
+dimension a prop has. Props *inside* a loft carry `level` instead (`liftSink`), because a
+collider is measured from y = 0: a 1.3 m cabinet in a loft has a `top` of 3.5, and `7.top`
+subtracts the floor it stands on rather than calling it a three-and-a-half-metre cabinet.
+
+**Three ways a loft can come out unreachable, all now proved rather than hoped for**
+(`11.stair-*`): a riser taller than the player's step (`RISER` is *derived* from `STEP_EPS`,
+so retuning the body cannot silently make a wall of a staircase), a flight that stops short
+of the loft floor, and — the one that was real for better than one flight in three — a
+bottom step with a filing cabinet in front of it, or the room's own wall. The planner proves
+there is room floor at the foot of the flight and `approachTiles` has the builder reserve it
+from the furnisher while leaving it in the nav grid, because that is where you stand to start
+climbing and where anybody chasing you ends up.
+
+Two smaller things worth knowing. The strip stands off every opening by `DOOR_CLEAR`, which
+lives in `gen/tiles.js` because the furnisher's door aprons use the same number; they were
+briefly 4 and 3 and the sweep found it at once as a crate standing in a doorway. And a loft
+is filled by walking a shuffled grid of half-metre spots with a **cap** on how many land:
+darts gave a loft of two things or of nine, and without the cap the big props took the first
+few spots and every leftover gap took the one prop still small enough to fit it — which came
+out as two pallets and eight fire extinguishers.
 
 ### What furniture is never allowed to close (`reserveClearances` in `gen/build.js`)
 A tile mask the furnisher may not place into, stamped before a single prop is put down —
