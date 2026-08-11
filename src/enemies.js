@@ -12,7 +12,6 @@ import { buildRig } from './rigs.js';
 // converted into a miss distance at the player's range, so backing off actually
 // makes you harder to hit instead of just changing a magic number.
 
-const EYE = 1.55;
 const SIGHT = 22;          // metres they can notice you at, with line of sight
 // How far gunfire carries — measured *through the building*, not through its
 // walls. A straight-line radius was the bug: someone one metre away through
@@ -328,19 +327,12 @@ export class Enemies {
     this.scene = scene;
     this.items = [];
     this.meshes = [];       // what bullets test against
-    this.time = 0;
     this.shoutTimer = 0;    // floor-wide, so only one of them calls you out
     this.onDeath = null;    // set by game.js — see _damage
     this.ragdolls = null;   // likewise; what happens to a body after _damage
     this._v = new THREE.Vector3();
     this._muzzle = new THREE.Vector3();
     this._aim = new THREE.Vector3();
-  }
-
-  get aliveCount() {
-    let n = 0;
-    for (const e of this.items) if (e.alive) n++;
-    return n;
   }
 
   // What the floor objective counts. The neutrals are alive and on the floor and
@@ -901,15 +893,6 @@ export class Enemies {
     return spots;
   }
 
-  // Head count per type on this floor — the HUD and the debug harness use it.
-  get roster() {
-    const counts = {};
-    for (const e of this.items) {
-      if (e.alive) counts[e.type.name] = (counts[e.type.name] ?? 0) + 1;
-    }
-    return counts;
-  }
-
   /**
    * Walkable tiles well away from where the player arrives.
    *
@@ -996,7 +979,6 @@ export class Enemies {
       x, z,
       yaw: group.rotation.y,
       health: tuning.health * type.hp,
-      maxHealth: tuning.health * type.hp,
       alive: true,
       state: 'idle',
       timer: rng.range(0, 1),
@@ -1170,7 +1152,6 @@ export class Enemies {
   }
 
   update(dt, ctx) {
-    this.time += dt;
     const { player, effects, audio, hud } = ctx;
     // Held so the paths that are not the update loop can reach it — a machine
     // shot dead has to stop running, and the bullet arrives from shooting.js.
@@ -1200,7 +1181,6 @@ export class Enemies {
       // for, and a negative value means there is no route at all.
       const along = this.nav.pathDistance(e.x, e.z);
       const hears = !sees && ctx.noise > 0 && along >= 0 && along < HEARING;
-      e.dist = dist;
 
       if (sees) {
         e.contact = 0;
