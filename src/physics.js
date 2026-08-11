@@ -118,6 +118,11 @@ export class Physics {
     // in gen/layout.js; kept as a field so nothing here has to import the
     // floorplan to know how tall a room is.
     this.ceilingY = 3.0;
+    // ...and where the world gives out underneath. Deeper than the deepest basement
+    // (LEVEL_Y below the floor plate, gen/stairs.js), because the floor is a collider
+    // now and this is only the backstop under it. Same reasoning as ceilingY: a field
+    // rather than an import, so the solver never has to read the floorplan.
+    this.floorGuardY = -6;
     // Static bodies, keyed by the level collider they were built from, so a
     // destroyed prop can take its own collision away with it.
     this._statics = new Map();
@@ -205,6 +210,13 @@ export class Physics {
         type: Body.STATIC,
         shape: new Plane(),
         material: this._worldMat,
+        // Below the deepest basement, not at y = 0. The real floor is a collider now
+        // (`floorPlate` in gen/build.js) with a hole where a staircase goes down, so a
+        // plane at zero would be a lid over every basement in the building and
+        // everything down there — loose crates, debris, a body — would be shoved up
+        // through the floor. This one is only the backstop that stops a body leaving
+        // the world if it ever gets past the plate.
+        position: new Vec3(0, this.floorGuardY, 0),
         collisionFilterGroup: GROUP_WORLD,
         collisionFilterMask: GROUP_PROP | GROUP_JOINTED,
       });

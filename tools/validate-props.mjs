@@ -7,7 +7,6 @@
 //   node tools/validate-props.mjs --dump 7003 7    # ASCII plan + per-room reachability table,
 //                                                  # then a 0.125 m zoom of the worst room
 //   node tools/validate-props.mjs --dump 7003 7 --room 15    # ... zoom a specific room
-//   node tools/validate-props.mjs --stairs-all     # a staircase in every room it fits
 //   node tools/validate-props.mjs --catalogue      # prop catalogue audit only
 //   node tools/validate-props.mjs --trace          # print stack traces for crashes
 //
@@ -105,13 +104,7 @@ const { PLAYER_RADIUS: BODY_R, BODY_RADIUS: ENEMY_R, STEP_EPS, BODY_H } =
 // The stairs are interrogated through the generator's OWN geometry, not through a
 // second opinion about where a tread ought to be — see gen/stairs.js, which exists
 // so the picture, the collision and this file read one set of boxes.
-const { stairBoxes, approachTiles, UPPER_Y, setStairsEverywhere } =
-  await import('../src/gen/stairs.js');
-// --stairs-all puts a staircase in every room that can hold one — a testing mode
-// rather than the game (see setStairsEverywhere there). One or two a floor is the
-// right rate to play and a hopeless one to sweep: it takes hundreds of floors to see
-// a dozen flights, and every invariant that matters here is per-flight.
-if (args.includes('--stairs-all')) setStairsEverywhere(true);
+const { stairBoxes, approachTiles, levelY, LOWER_Y, RISER } = await import('../src/gen/stairs.js');
 
 // ---------------------------------------------------------------------------
 // check bookkeeping (same shape as validate-layout.mjs)
@@ -172,7 +165,7 @@ const IDS = [
 
   ['8.dyn-nan', 'FAIL', 'DYNAMICS      finite position and size'],
   ['8.dyn-extent', 'FAIL', 'DYNAMICS      positive size on every axis'],
-  ['8.dyn-floor', 'FAIL', 'DYNAMICS      base sits at or above y = 0'],
+  ['8.dyn-floor', 'FAIL', 'DYNAMICS      base sits at or above the lowest floor in the building'],
   ['8.dyn-wall', 'FAIL', 'DYNAMICS      does not start intersecting a SOLID tile'],
 
   ['9.own-room', 'FAIL', 'ROOM BOUNDS   no furniture collider spans two rooms'],
@@ -180,7 +173,7 @@ const IDS = [
   ['9.inset', 'WARN', 'ROOM BOUNDS   room props stay inside the 0.15 m wall inset'],
 
   ['11.stair-step', 'FAIL', `STAIRS        every riser is a step, not a wall (<= ${STEP_EPS} m)`],
-  ['11.stair-meet', 'FAIL', 'STAIRS        the top tread arrives on the storey floor'],
+  ['11.stair-meet', 'FAIL', 'STAIRS        the run arrives on the floor of its own level'],
   ['11.stair-foot', 'FAIL', 'STAIRS        floor at the bottom of the flight a body can stand on'],
 
   ['10.nav-lie', 'WARN', 'NAV GRID      no walkable tile is buried inside a static collider'],
@@ -437,22 +430,28 @@ function validate(seed, floorNumber) {
     const treads = boxes.filter((b) => b.part === 'tread')
       .sort((a, b) => (plan.up > 0 ? mid(a) - mid(b) : mid(b) - mid(a)));
 
-    let below = 0;
+    // `y1` is the surface you put a foot on, going up or going down — a descending
+    // tread hangs from the level's floor to its own top.
+    let at = 0;
     for (const t of treads) {
-      const rise = t.y1 - below;
-      if (rise <= 0 || rise > STEP_EPS + EPS) {
+      const rise = Math.abs(t.y1 - at);
+      if (rise <= EPS || rise > STEP_EPS + EPS) {
         check('11.stair-step').fail(id, `riser of ${fmt(rise, 3)} m in a ${plan.room.role}`);
       }
-      below = t.y1;
+      at = t.y1;
     }
 
-    // The run has to arrive exactly on the storey's floor, not a step under or over
-    // it. Checked against the deck the builder actually drew as well as against
-    // UPPER_Y, so a change to either one alone cannot pass.
+    // The run has to arrive on the level's own floor, and exactly: one step over is a
+    // trip, one step under is a wall. Going down, the last step of all is the
+    // basement's slab, so the lowest tread is one riser above it. Checked against the
+    // deck the builder actually drew as well as against the level, so a change to
+    // either one alone cannot pass.
+    const y = levelY(plan);
+    const want = plan.dir > 0 ? y : y + RISER;
     const deck = boxes.find((b) => b.part === 'deck');
-    if (Math.abs(below - UPPER_Y) > EPS || !deck || Math.abs(deck.y1 - UPPER_Y) > EPS) {
+    if (Math.abs(at - want) > EPS || !deck || Math.abs(deck.y1 - y) > EPS) {
       check('11.stair-meet').fail(id,
-        `top tread at ${fmt(below, 3)} m, deck at ${fmt(deck?.y1 ?? NaN, 3)} m, storey at ${fmt(UPPER_Y, 3)} m`);
+        `last tread at ${fmt(at, 3)} m, wanted ${fmt(want, 3)}; deck at ${fmt(deck?.y1 ?? NaN, 3)} m, level at ${fmt(y, 3)} m`);
     }
 
     if (!approachTiles(plan, W).some((i) => walk[i])) {
@@ -543,7 +542,10 @@ function validate(seed, floorNumber) {
     const p = dyn.position, s = dyn.size;
     if (![p.x, p.y, p.z, s.x, s.y, s.z].every(Number.isFinite)) { dNaN++; continue; }
     if (s.x <= EPS || s.y <= EPS || s.z <= EPS) dExtent++;
-    if (p.y - s.y / 2 < -1e-6) dFloor++;
+    // Not "above zero" any more: a basement's floor is LOWER_Y (gen/stairs.js) and a
+    // crate down there is exactly where it should be. What is still a bug is a body
+    // under the deepest floor the building has.
+    if (p.y - s.y / 2 < LOWER_Y - 1e-6) dFloor++;
     const b = {
       minX: p.x - s.x / 2, maxX: p.x + s.x / 2,
       minZ: p.z - s.z / 2, maxZ: p.z + s.z / 2,
@@ -685,10 +687,10 @@ function validate(seed, floorNumber) {
   // tile the pathfinder will happily route an enemy into.
   let lies = 0;
   for (const c of furn) {
-    // A prop on the storey above is not on the nav grid and is not meant to be —
-    // the grid describes the ground, and a body walks under the whole storey. It is
-    // no more a lie than the ceiling is.
-    if ((c.base ?? 0) >= BODY_H) continue;
+    // A prop on another level is not on the nav grid and is not meant to be — the
+    // grid describes the ground, and a body walks under an attic and over a basement.
+    // Neither is more of a lie than the ceiling is.
+    if ((c.base ?? 0) >= BODY_H || c.top <= EPS) continue;
     const r = tileRange(c, HAIRLINE);
     let n = 0;
     for (let ty = r.ty0; ty <= r.ty1; ty++) {
@@ -1002,11 +1004,14 @@ function buildGeomGrid(layout, colliders, radius) {
     // block a body — carving it out here would report every room behind a door
     // as physically cut off from the spawn.
     if (c.door) continue;
-    // And this grid is the GROUND floor. Anything whose underside clears a body
-    // is walked under, not round: the floor slab of a storey above covers a whole
-    // room, and counting it would report that room as solid rock. Same test the
-    // player makes — see _moveHorizontal in player.js.
+    // And this grid is the GROUND floor, so two whole classes of collider are not
+    // obstacles on it, exactly as the player's own tests have it (_moveHorizontal in
+    // player.js). Anything whose underside clears a body is walked UNDER — an attic's
+    // floor slab covers a whole room and counting it would report that room as solid
+    // rock. Anything that never rises above the floor is walked ON: the floor plate
+    // itself, and the walls of a basement, which stand from its floor up to the plate.
     if ((c.base ?? 0) >= BODY_H) continue;
+    if (c.top <= EPS) continue;
     const gx0 = Math.max(0, Math.ceil((c.minX - radius - ox) / CS - 0.5));
     const gx1 = Math.min(GW - 1, Math.floor((c.maxX + radius - ox) / CS - 0.5));
     const gy0 = Math.max(0, Math.ceil((c.minZ - radius - oz) / CS - 0.5));

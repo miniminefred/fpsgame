@@ -3,7 +3,6 @@
 //   node tools/validate-layout.mjs                 # full sweep + summary
 //   node tools/validate-layout.mjs --seeds 60      # seeds per floor (default 30)
 //   node tools/validate-layout.mjs --dump 7 3      # ASCII map for seed 7, floor 3
-//   node tools/validate-layout.mjs --stairs-all    # a staircase in every room it fits
 //
 // generateLayout is pure — no DOM, no Three.js — so the whole sweep runs in
 // plain Node with no bundler in the loop.
@@ -24,7 +23,6 @@ import {
 // gen/rooms.js is pure (it imports only gen/props.js), so it loads in plain Node
 // alongside layout.js with no DOM in the way.
 import { ROOM_ROLES } from '../src/gen/rooms.js';
-import { setStairsEverywhere } from '../src/gen/stairs.js';
 
 const args = process.argv.slice(2);
 const argVal = (flag, dflt) => {
@@ -34,11 +32,6 @@ const argVal = (flag, dflt) => {
 
 const SEEDS_PER_FLOOR = Number(argVal('--seeds', 30));
 const FLOORS = 15;
-// --stairs-all puts a staircase in every room that can hold one, which is a testing
-// mode rather than the game (see setStairsEverywhere in gen/stairs.js). One or two a
-// floor is the right rate to play and a hopeless one to sweep: it takes hundreds of
-// floors to see a dozen flights, and the invariants that matter are per-flight.
-if (args.includes('--stairs-all')) setStairsEverywhere(true);
 const MAX_EXAMPLES = 6;
 // PAD, PROLOGUE_MIN, CORRIDOR_W and DOOR_W are imported, not restated. They used
 // to be copied here under a "must match layout.js" comment, which is a promise

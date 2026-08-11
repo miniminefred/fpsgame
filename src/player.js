@@ -337,10 +337,25 @@ export class Player {
     return false;
   }
 
-  // Highest surface directly beneath the player (0 = floor).
+  /**
+   * Highest surface directly beneath the player.
+   *
+   * This used to start at 0, because the floor was an assumption rather than a
+   * thing: y = 0 was where the building was and there was nothing underneath it.
+   * A basement needs the opposite — the floor is now GEOMETRY (`buildShell` emits a
+   * plate collider for the slab, with a hole where a staircase goes down), so the
+   * ground is simply the highest top under you and the plate is usually it.
+   *
+   * The fallback when nothing at all is underfoot is still 0, and that is what
+   * makes the change exactly equivalent everywhere else: on a floor with no room
+   * below it, the highest top under the player is either the plate at 0 or a prop
+   * above it, and the only positions the fallback can be reached from are ones the
+   * old code would also have answered 0 for. Falling out of the world is worse than
+   * being stood on the floor you should have been on.
+   */
   _supportHeight(pos) {
     const feetY = pos.y - EYE;
-    let groundY = 0;
+    let groundY = -Infinity;
     for (const b of this._candidates(pos.x, pos.z)) {
       if (b.top > feetY + STEP_EPS) continue;
       if (pos.x > b.minX - RADIUS && pos.x < b.maxX + RADIUS &&
@@ -348,6 +363,6 @@ export class Player {
         if (b.top > groundY) groundY = b.top;
       }
     }
-    return groundY;
+    return Number.isFinite(groundY) ? groundY : 0;
   }
 }
