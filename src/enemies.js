@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { BODY_RADIUS as RADIUS } from './nav.js';
 import { CORRIDOR, STAFF_ONLY, FIRST_CONTACT_GAP, worldX, worldZ } from './gen/layout.js';
 import { buildRig } from './rigs.js';
-import { angleLerp, lerp, smoothTo } from './util.js';
+import { TYPES, BYSTANDERS, pickType, pickTheme } from './enemy-types.js';
+import { DEATH_TIME, HIT_FLASH, SWING_TIME, animate, die } from './enemy-anim.js';
+import { angleLerp, smoothTo } from './util.js';
 
 // The people still working here.
 //
@@ -66,9 +68,6 @@ const BLAST_PUNCH = 3.5;
 // limb still costs you something, and no single round decides a fight on
 // geometry the player could not have controlled.
 const HIT_ZONES = { head: 1.12, torso: 1, limb: 0.92 };
-const DEATH_TIME = 2.2;
-const HIT_FLASH = 0.1;
-const SWING_TIME = 0.5;    // wind-up plus follow-through on a melee swing
 
 // How many of the staff, beyond the guaranteed holders, are carrying a spare
 // keycard. Low on purpose: at seventy to two hundred people a floor even this
@@ -114,214 +113,6 @@ const RESPONSE_HELD = 2;
 // not a straight line, so "far" never means "one metre away through the wall".
 const RESPONSE_MIN = 16;
 const RESPONSE_MAX = 60;
-// How far a seated body drops, and how far its legs come up to meet the floor.
-const SIT_DROP = 0.42;
-const SIT_LEGS = -1.5;         // radians — straight out in front
-
-// The security uniform, shared by the two halves of the shift — the one with a
-// sidearm and the one with a baton. It is one set of clothes on one kind of
-// person, so it is written down once and both types wear it; `guard` is what
-// the rest of the file tests instead of naming either of them, and it is what
-// the blue card is dealt on.
-const GUARD = {
-  suit: 0x14161a, shirt: 0x2e63b4, pants: 0x14161a, cap: 0x14161a,
-  capText: 'SECURITY', visor: 0x7d7973, guard: true,
-};
-
-// Staff. Every type is the same rig with different numbers and a different
-// suit, which keeps them readable at a glance in a grey corridor: the colour of
-// the visor tells you what is about to happen to you.
-//
-// The visor palette answers two questions in that order. First "do I shoot
-// this": anything hostile wears grey — or green, if it is no longer breathing —
-// and anything that leaves you alone wears an actual colour. Then "what is it":
-// the greys run a single ramp from near-white to near-black, brightest for the
-// ones that die to a look and darkest for the ones that do not, so the shade
-// reads as the threat even when the hue does not.
-//
-// `voice` names the set of vocals a type uses (see audio.js). Left off, a type
-// gobbles like the rest of the office; the green ones brought their own.
-//
-// Multipliers are applied to the floor's base tuning (see tuningFor in
-// game.js), so types scale with depth instead of going obsolete.
-const TYPES = {
-  intern: {
-    // Cheap, quick, and always in a group. Dies to a look but closes fast.
-    name: 'Intern', hp: 0.4, speed: 1.55, damage: 0.5, rate: 0.55, spread: 1,
-    range: 1.9, melee: true, scale: 0.9, blunt: ['keyboard', 'stapler', 'mug'],
-    suit: 0x5d6675, shirt: 0xeceee9, visor: 0xc8ced4, unlockFloor: 1, weight: 3,
-  },
-  facilities: {
-    // Swings a fire extinguisher. Slower than an intern, hits far harder.
-    name: 'Facilities', hp: 1.5, speed: 1.15, damage: 1.6, rate: 1.2, spread: 1,
-    range: 2.2, melee: true, scale: 1.05, blunt: ['extinguisher', 'chairLeg'],
-    suit: 0x2d3a2e, shirt: 0xf0a63c, visor: 0x63686e, unlockFloor: 2, weight: 2,
-  },
-  analyst: {
-    name: 'Analyst', hp: 1, speed: 1, damage: 1, rate: 1, spread: 1,
-    range: 15, melee: false, scale: 1,
-    suit: 0x41464e, shirt: 0xd9dde1, visor: 0x8b9198, unlockFloor: 1, weight: 4,
-  },
-  sysadmin: {
-    // Fast, inaccurate chip damage — the one that punishes standing still.
-    name: 'Sysadmin', hp: 0.8, speed: 1.12, damage: 0.45, rate: 0.4, spread: 1.7,
-    range: 13, melee: false, scale: 0.97,
-    suit: 0x2f4448, shirt: 0xbfe3d8, visor: 0xa2b4bf, unlockFloor: 3, weight: 3,
-  },
-  security: {
-    // Close-range bruiser: hits hard, misses at distance, keeps coming.
-    //
-    // The second uniform in the building, and the only source of the blue card
-    // — see _security. Black trousers, a blue shirt and a black cap with the
-    // job written across the front of it, which is three readings of the same
-    // fact at three ranges: the dark silhouette from the end of a corridor, the
-    // blue in the middle distance, the word once he is close enough for it to
-    // be too late. Nothing else on the floor is dressed in blue.
-    ...GUARD,
-    name: 'Security', hp: 1.7, speed: 0.98, damage: 1.5, rate: 1.15, spread: 2.1,
-    range: 9, melee: false, scale: 1.07, unlockFloor: 4, weight: 3,
-  },
-  guardBaton: {
-    // The same guard with the sidearm still holstered. Shares the name, because
-    // it is not a second kind of person — it is the half of the shift that drew
-    // the baton instead, and the roster has no business listing them apart.
-    //
-    // Hand-placed only (`weight: 0`): the mix belongs in the halls and in the
-    // security office, where _security puts it, and a room rolled full of
-    // Security is a room of people who were at their desks with a gun on.
-    ...GUARD,
-    name: 'Security', hp: 1.7, speed: 1.12, damage: 1.55, rate: 1.1, spread: 1,
-    range: 2.3, melee: true, blunt: ['baton'], scale: 1.07,
-    unlockFloor: 1, weight: 0,
-  },
-  manager: {
-    // Slow, tanky, accurate at range. Deal with it or leave the floor.
-    name: 'Manager', hp: 2.7, speed: 0.82, damage: 1.9, rate: 1.6, spread: 0.55,
-    range: 21, melee: false, scale: 1.14,
-    suit: 0x1c2126, shirt: 0xd8c08a, visor: 0x4f5460, unlockFloor: 6, weight: 2,
-  },
-  reanimated: {
-    // Green, and no longer on the payroll. Slow and soaks damage, but it only
-    // wants to be close to you, and it does not stop coming. The one type that
-    // punishes backing into a corner rather than standing in the open.
-    name: 'Reanimated', hp: 2.4, speed: 0.86, damage: 1.3, rate: 1.35, spread: 1,
-    range: 2.1, melee: true, scale: 1.03, blunt: ['chairLeg', 'extinguisher'],
-    suit: 0x33502c, shirt: 0x8fb063, visor: 0x66ff4d, voice: 'zombie',
-    unlockFloor: 1, weight: 3,
-  },
-  janitor: {
-    // The only person on the floor in a uniform, and the only one carrying a
-    // yellow card. Everything about him is built to be recognised before he is
-    // in range: blue trousers and a blue cap against a yellow shirt is the one
-    // colour scheme in the building that is not grey, and the mop gives him
-    // nearly a metre of reach — the longest swing on the floor by some way, so
-    // the tell has to arrive early enough to back out of.
-    //
-    // Placed by hand rather than rolled (`weight: 0`), because how many there
-    // are and where they are is the whole point of him: one to three doing
-    // rounds, and two more sitting in the broom closet. See _janitors.
-    name: 'Janitor', hp: 1.6, speed: 1.08, damage: 1.35, rate: 1.3, spread: 1,
-    range: 2.6, melee: true, scale: 1.03, blunt: ['mop'],
-    suit: 0x2f4d8a, shirt: 0xf2c93c, pants: 0x2f4d8a, cap: 0x2f4d8a,
-    visor: 0xb9bec4, unlockFloor: 1, weight: 0,
-  },
-
-  // --- the neutrals -----------------------------------------------------------
-  //
-  // Nobody on this side of the roster is fighting you, and none of them counts
-  // toward clearing the floor — you can walk past every one of them and take the
-  // exit. None of them wears a grey visor, and they all show up yellow on the
-  // minimap, because "do I have to shoot this" is a question you need answered
-  // from the far end of a corridor, not once it is already swinging at you.
-  // Unlike the hostiles they do not share one colour: three harmless people in
-  // identical visors read as one repeated joke, and the toilet guy in
-  // particular has to be recognisable before he is close enough to hear. All
-  // are placed by hand rather than rolled (see spawn), which is why the weights
-  // are zero.
-  panicker: {
-    // Has one problem, and it is not you: he is looking for a toilet and
-    // announcing it. Fast, and dies to a look.
-    name: 'Panicking Staffer', hp: 0.3, speed: 1.9, damage: 0, rate: 99, spread: 1,
-    range: 0, melee: false, scale: 0.95, panic: true, neutral: true,
-    screams: 'panic',
-    suit: 0xa8b2c0, shirt: 0xf6f8fa, visor: 0xffffff, unlockFloor: 1, weight: 0,
-  },
-  cleaner: {
-    // Working a different job to everyone else on the floor and in no hurry
-    // about it. Wanders the rooms, mutters, ignores the firefight entirely.
-    name: 'Night Cleaner', hp: 0.8, speed: 1.05, damage: 0, rate: 99, spread: 1,
-    range: 0, melee: false, scale: 1.02, neutral: true,
-    // The brown runs dark on purpose: a mid brown lands within a shade of the
-    // skin tone and the visor stops reading as a visor at all.
-    suit: 0x4a3a2c, shirt: 0xb98a55, visor: 0x8a4b18, unlockFloor: 1, weight: 0,
-  },
-  courier: {
-    // Has a delivery for someone on this floor and is going to make it. Brisk,
-    // corridor-bound, and entirely uninterested in what you are doing.
-    name: 'Courier', hp: 0.6, speed: 1.45, damage: 0, rate: 99, spread: 1,
-    range: 0, melee: false, scale: 0.99, neutral: true,
-    suit: 0x6b5a1e, shirt: 0xf2c14e, visor: 0xffc93a, unlockFloor: 1, weight: 0,
-  },
-  rat: {
-    // Not staff. Lives under the desks, crosses corridors at the worst moment,
-    // and dies to anything that touches it — the joke is entirely on you for
-    // spending a round of ammunition and a shout of your own on one.
-    //
-    // Darts rather than walks: bursts of speed with pauses in between, which is
-    // what makes the movement read as vermin instead of as a small courier.
-    name: 'Office Rat', hp: 0.05, speed: 2.4, damage: 0, rate: 99, spread: 1,
-    range: 0, melee: false, scale: 1, neutral: true, rig: 'rat', darts: true,
-    offMap: true,
-    voice: 'rat', screams: 'rat-idle',
-    suit: 0x4c443d, shirt: 0xb2848a, visor: 0xd8626e, unlockFloor: 1, weight: 0,
-  },
-  roomba: {
-    // The floor cleaner. Has a job, is doing it, and is the only thing on this
-    // floor with no opinion whatsoever about you — it will drive around your
-    // ankles in the middle of a firefight. One per floor, because two is a
-    // running joke and three is a fleet.
-    name: 'Floor Unit', hp: 0.4, speed: 0.42, damage: 0, rate: 99, spread: 1,
-    range: 0, melee: false, scale: 1, neutral: true, rig: 'roomba',
-    offMap: true, motor: 'roomba', screams: 'rat-idle',
-    suit: 0x2b2f36, shirt: 0x9aa3ab, visor: 0x63d6ff, unlockFloor: 1, weight: 0,
-  },
-  sentry: {
-    // Facilities' idea of a cost saving. Armoured and slow, accurate at range,
-    // and it never gets bored — the darkest visor on the floor is the one that
-    // means the thing looking at you is not going to wander off.
-    name: 'Sentry Unit', hp: 3.2, speed: 0.78, damage: 1.45, rate: 1.35, spread: 0.7,
-    range: 17, melee: false, scale: 1.18,
-    suit: 0x474d55, shirt: 0x9aa3ab, visor: 0x3a4048, voice: 'robot',
-    unlockFloor: 2, weight: 3,
-  },
-};
-
-// The neutrals that are not the toilet guy. He is guaranteed on every floor;
-// these fill in around him so the harmless staff are not one repeated joke.
-const BYSTANDERS = [TYPES.cleaner, TYPES.courier];
-
-// Who is working this floor tonight. Weights are relative, so a theme does not
-// replace the roster — it tilts it, and floors keep their own character without
-// any of them becoming one enemy repeated. Picked per floor, and named on the
-// way in so you know what you have walked into before it reaches you.
-// `light` is how much of the building's lighting is still on, and it is the
-// theme's second job: the name tells you what is working this floor, and the
-// dark tells you before you have finished reading it. Infestation is the
-// darkest — whatever came up the stairwell went through the switchboard first.
-// `rats` is how many are in the walls tonight — one is an office with a rat in
-// it, which is a joke you notice once; six is an infestation, which is the name
-// on the door. `patrols` is how many security are walking the corridors rather
-// than sat in their office, and it is zero on the floors where nobody is still
-// doing their rounds — though a floor with a security office on it always keeps
-// one, because that man is carrying the only key to it (see _security).
-const THEMES = [
-  { name: 'Business as usual', weight: 4, light: 1, rats: [1, 1], patrols: [1, 3], boost: {} },
-  { name: 'Infestation', weight: 3, light: 0.34, rats: [4, 6], patrols: [0, 0], boost: { reanimated: 7, intern: 2 } },
-  { name: 'Automated', weight: 3, light: 0.9, rats: [0, 1], patrols: [1, 2], boost: { sentry: 7, sysadmin: 3 } },
-  { name: 'Lockdown', weight: 2, light: 0.75, rats: [1, 1], patrols: [3, 4], boost: { security: 6, manager: 4 } },
-  { name: 'Night shift', weight: 2, light: 0.5, rats: [2, 3], patrols: [1, 2], boost: { reanimated: 4, sentry: 4, facilities: 3 } },
-  { name: 'All-hands', weight: 2, light: 1, rats: [1, 1], patrols: [2, 4], boost: { analyst: 6, intern: 5, manager: 3 } },
-];
 
 export class Enemies {
   constructor(scene) {
@@ -1169,7 +960,7 @@ export class Enemies {
     this.playerZ = pz;
 
     for (const e of this.items) {
-      if (!e.alive) { this._die(e, dt); continue; }
+      if (!e.alive) { die(e, dt); continue; }
 
       const dx = px - e.x;
       const dz = pz - e.z;
@@ -1200,14 +991,14 @@ export class Enemies {
       // does is being shot, and that makes them run rather than fight.
       if (e.neutral) {
         this._wander(e, dt, audio);
-        this._animate(e, dt, audio);
+        animate(e, dt, audio);
         continue;
       }
 
       this._think(e, dt, dist, sees, hears, ctx);
       this._move(e, dt, dx, dz, dist, sees);
       this._shoot(e, dt, dist, sees, px, py, pz, player, effects, audio, hud);
-      this._animate(e, dt, audio);
+      animate(e, dt, audio);
       this._mutter(e, dt, audio);
     }
   }
@@ -1555,203 +1346,6 @@ export class Enemies {
     }
   }
 
-  _animate(e, dt, audio) {
-    if (e.rig === 'rat') return this._animateRat(e, dt, audio);
-    if (e.rig === 'roomba') return this._animateRoomba(e, dt, audio);
-
-    // Sitting is a state of the body, not of the AI: the moment they stop being
-    // idle they are standing up, and from then on they animate like anybody
-    // else. Which means nothing downstream — pathing, swinging, ragdolling —
-    // ever has to know this was a thing.
-    if (e.seated && e.state !== 'idle') {
-      e.seated = false;
-      // Everything else the seated pose touched is written every frame by the
-      // walk cycle below and recovers on its own; the torso lean is not, so it
-      // is the one thing that has to be put back by hand.
-      e.torso.rotation.x = 0;
-    }
-    if (e.seated) return this._animateSeated(e, dt);
-
-    const moving = e.state === 'chase' || e.state === 'fight' || e.state === 'wander';
-    e.walkPhase += dt * (moving ? 9 : 1.4);
-
-    // One footfall per half stride cycle, taken off the leg animation itself so
-    // the sound lands with the foot rather than on a timer of its own.
-    const stride = Math.floor(e.walkPhase / Math.PI);
-    if (stride !== e.lastStep) {
-      e.lastStep = stride;
-      if (moving) audio.enemyStep(e);
-    }
-
-    const swing = moving ? Math.sin(e.walkPhase) * 0.6 : Math.sin(e.walkPhase) * 0.05;
-    e.legL.rotation.x = swing;
-    e.legR.rotation.x = -swing;
-    e.group.position.y = moving ? Math.abs(Math.sin(e.walkPhase)) * 0.045 : 0;
-
-    // Weapon comes up as soon as they mean it. Melee types instead throw both
-    // arms forward on the swing and drop them again.
-    const aiming = e.state === 'fight';
-    if (e.swing > 0) e.swing -= dt;
-
-    if (e.type.melee) {
-      // Wind up behind the head, then bring it down hard. The weapon rides the
-      // right arm so the two read as one motion.
-      const winding = e.swing > SWING_TIME * 0.55;
-      const arm = e.swing > 0 ? (winding ? 1.5 : -2.4) : (aiming ? -0.9 : -swing * 0.5);
-      const k = smoothTo(e.swing > 0 ? 24 : 9, dt);
-      e.armL.rotation.x = lerp(e.armL.rotation.x, arm * 0.6, k);
-      e.armR.rotation.x = lerp(e.armR.rotation.x, arm, k);
-      if (e.blunt) {
-        // Held out in front while it is being used, and carried the way its own
-        // kind is carried the rest of the time — which for a mop is dragging,
-        // head on the floor. See BLUNT in rigs.js.
-        const want = e.swing > 0 || aiming ? arm + 0.5 : e.bluntRest;
-        e.blunt.rotation.x = lerp(e.blunt.rotation.x, want, k);
-        e.blunt.position.y = 1.12 + Math.sin(e.walkPhase) * 0.02;
-      }
-    } else {
-      const armX = aiming ? -1.45 : swing * -0.5;
-      e.armL.rotation.x = lerp(e.armL.rotation.x, aiming ? -1.2 : -swing * 0.5, smoothTo(10, dt));
-      e.armR.rotation.x = lerp(e.armR.rotation.x, armX, smoothTo(10, dt));
-      e.gun.position.set(0.3, aiming ? 1.32 : 1.1, aiming ? -0.55 : -0.3);
-      e.gun.rotation.x = aiming ? 0 : 0.5;
-    }
-
-    if (e.hitFlash > 0) {
-      e.hitFlash -= dt;
-      const k = Math.max(0, e.hitFlash / HIT_FLASH);
-      for (const m of e.flash) m.emissive.setScalar(k * 0.9);
-    }
-  }
-
-  /**
-   * On the floor with their legs out in front of them, mop across the knees.
-   *
-   * Done by dropping the whole rig and folding the legs forward rather than by
-   * authoring a second skeleton: the hip joint is already at the top of the leg
-   * (see rigs.js), so rotating there is genuinely what sitting down does, and the
-   * bones ragdolls.js reads are the ones it was always going to read.
-   *
-   * The lean is a slow breath rather than a pose held rigid — two men waiting out
-   * a shift should not read as two mannequins somebody left in a cupboard.
-   */
-  _animateSeated(e, dt) {
-    e.walkPhase += dt * 0.9;
-    const breath = Math.sin(e.walkPhase) * 0.03;
-
-    e.group.position.y = -SIT_DROP;
-    e.legL.rotation.x = SIT_LEGS;
-    e.legR.rotation.x = SIT_LEGS - 0.12;
-    e.armL.rotation.x = -0.35 + breath;
-    e.armR.rotation.x = -0.5 + breath;
-    e.torso.rotation.x = 0.12 + breath;
-    if (e.blunt) {
-      // Mop across the lap, handle out, which is where you put it when you are
-      // not using it and is also why it is the first thing back in his hands.
-      e.blunt.rotation.x = -1.35;
-      e.blunt.position.y = 0.82;
-    }
-
-    if (e.hitFlash > 0) {
-      e.hitFlash -= dt;
-      const k = Math.max(0, e.hitFlash / HIT_FLASH);
-      for (const m of e.flash) m.emissive.setScalar(k * 0.9);
-    }
-  }
-
-  /**
-   * Four legs, a nose and a tail. The legs run at four times a person's cadence
-   * because the stride is a tenth as long, and the tail is driven one segment
-   * behind the next so a single sine wave at the root travels down it.
-   *
-   * When it stops it does not stand still: the nose keeps working. That twitch
-   * is the difference between a rat that has paused and a prop that has frozen.
-   */
-  _animateRat(e, dt, audio) {
-    const moving = e.moving !== false && e.darting !== false;
-    e.walkPhase += dt * (moving ? 34 : 3);
-
-    const stride = Math.floor(e.walkPhase / Math.PI);
-    if (stride !== e.lastStep) {
-      e.lastStep = stride;
-      // Every fourth footfall: at this cadence one clip per step is a machine
-      // gun of tiny claws.
-      if (moving && (stride & 3) === 0) audio.enemyStep(e);
-    }
-
-    const gait = Math.sin(e.walkPhase);
-    if (e.legs) {
-      const swing = moving ? gait * 0.9 : 0;
-      e.legs[0].rotation.x = swing;
-      e.legs[1].rotation.x = -swing;
-      e.legs[2].rotation.x = -swing;
-      e.legs[3].rotation.x = swing;
-    }
-
-    // Body bobs with the gait; nose dips and lifts when it has stopped to think.
-    e.group.position.y = moving ? Math.abs(gait) * 0.018 : 0;
-    e.head.rotation.x = moving ? gait * 0.08 : Math.sin(e.walkPhase * 2.2) * 0.16;
-
-    if (e.tail) {
-      let link = e.tail;
-      for (let i = 0; i < 3 && link; i++) {
-        link.rotation.y = Math.sin(e.walkPhase * 0.7 - i * 0.9) * (moving ? 0.34 : 0.12);
-        if (i === 0) link.rotation.x = -0.5;   // carried clear of the floor
-        link = link.children.find((c) => c.isGroup);
-      }
-    }
-
-    if (e.hitFlash > 0) {
-      e.hitFlash -= dt;
-      const k = Math.max(0, e.hitFlash / HIT_FLASH);
-      for (const m of e.flash) m.emissive.setScalar(k * 0.9);
-    }
-  }
-
-  /**
-   * The floor cleaner: a brush that turns, a status light, and a motor you can
-   * hear from the next room. There is no gait to animate — it slides, because
-   * that is what it does.
-   *
-   * The motor is a positional loop rather than a repeated clip: this thing runs
-   * continuously for as long as the floor lasts, and a one-shot retriggered
-   * forever would chop on every seam.
-   */
-  _animateRoomba(e, dt, audio) {
-    if (e.brush) e.brush.rotation.y += dt * 9;
-
-    if (!e.motor) e.motor = audio.startMotor(e);
-    else audio.moveMotor(e.motor, e.x, 0.1, e.z);
-
-    if (e.hitFlash > 0) {
-      e.hitFlash -= dt;
-      const k = Math.max(0, e.hitFlash / HIT_FLASH);
-      for (const m of e.flash) m.emissive.setScalar(k * 0.9);
-    }
-  }
-
-  // Topple forward, then sink through the floor and disappear.
-  //
-  // This is now the fallback rather than the usual case — a body that got a
-  // ragdoll is ragdolls.js's from the moment it stopped breathing, and touching
-  // its group here would fight the solver for it. It stays because a ragdoll is
-  // allowed to be refused, and a floor with no physics has to keep working.
-  _die(e, dt) {
-    if (e.ragdoll) return;
-    if (e.deathTime <= 0) return;
-    e.deathTime -= dt;
-
-    const k = 1 - e.deathTime / DEATH_TIME;
-    e.group.rotation.x = Math.min(Math.PI / 2, k * 4);
-    e.mats.visor.color.setRGB(0.25 * (1 - k), 0.05, 0.04);
-
-    if (k > 0.75) {
-      const sink = (k - 0.75) / 0.25;
-      e.group.position.y = -sink * 1.2;
-    }
-    if (e.deathTime <= 0) e.group.visible = false;
-  }
-
   // Called on every new floor. Materials are per-enemy (so a hit flash on one
   // doesn't light up the floor) and weapon geometry is per-enemy, so both have
   // to be released here or a long run bleeds GPU memory one floor at a time.
@@ -1772,9 +1366,6 @@ export class Enemies {
   dispose() { this.clear(); }
 }
 
-// Weighted pick from the types unlocked at this depth. Early floors are all
-// analysts and interns; the nastier staff join as you descend, and because
-// weights are relative the mix keeps shifting rather than simply adding.
 // Corridor waypoints for the panicking staffer. Sampled rather than exhaustive:
 // he only needs somewhere to be running to, and a floor holds thousands of
 // corridor tiles.
@@ -1792,39 +1383,4 @@ function collectCorridors(layout, nav) {
     }
   }
   return spots;
-}
-
-function pickType(floorNumber, rng, theme) {
-  // `weight: 0` types are placed by hand rather than rolled — see spawn.
-  const pool = Object.entries(TYPES)
-    .filter(([, t]) => t.unlockFloor <= floorNumber && t.weight > 0)
-    .map(([key, t]) => ({ t, w: theme?.boost[key] ?? t.weight }));
-
-  let total = 0;
-  for (const e of pool) total += e.w;
-
-  let roll = rng() * total;
-  for (const e of pool) {
-    roll -= e.w;
-    if (roll <= 0) return e.t;
-  }
-  return TYPES.analyst;
-}
-
-// Weighted pick over the themes whose signature types this floor can actually
-// staff — an Infestation with no Reanimated unlocked is just a normal floor
-// wearing a different name.
-function pickTheme(floorNumber, rng) {
-  const usable = THEMES.filter((theme) => {
-    const keys = Object.keys(theme.boost);
-    return !keys.length || keys.some((k) => TYPES[k] && TYPES[k].unlockFloor <= floorNumber);
-  });
-  let total = 0;
-  for (const theme of usable) total += theme.weight;
-  let roll = rng() * total;
-  for (const theme of usable) {
-    roll -= theme.weight;
-    if (roll <= 0) return theme;
-  }
-  return THEMES[0];
 }
