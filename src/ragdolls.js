@@ -206,26 +206,16 @@ export class Ragdolls {
     };
     this.items.push(item);
 
-    this._throw(item, hit, enemy);
+    this._throw(item, hit);
     return true;
   }
 
-  // The shove that makes it a death rather than a collapse: the body's last
-  // heading, plus the shot itself into whichever bone stopped it.
-  _throw(item, hit, enemy) {
-    // Whatever they were already doing, carried into the fall. Clamped, because
-    // knockback is a per-frame nudge in enemies.js rather than a velocity, and
-    // reading it as one unclamped would occasionally fire a corpse across the
-    // room for no visible reason.
-    const kx = clamp(enemy.knockX ?? 0, -3, 3);
-    const kz = clamp(enemy.knockZ ?? 0, -3, 3);
-
-    if (!hit?.dir) {
-      if (kx || kz) {
-        for (const p of item.parts) this.physics.setVelocity(p.handle, { x: kx, y: 0, z: kz });
-      }
-      return;
-    }
+  // The shove that makes it a death rather than a collapse: the shot itself,
+  // shared across the skeleton and driven into whichever bone stopped it.
+  _throw(item, hit) {
+    // No direction to throw along — a blast handled elsewhere, or a death that
+    // arrived without a bullet — so the body just falls where it stood.
+    if (!hit?.dir) return;
 
     // How heavy this shot was, and how far up the scale from a shove to a
     // launch that puts it. Everything below is a lerp on `t`.
@@ -248,9 +238,9 @@ export class Ragdolls {
     const carry = speed * share;
     for (const p of item.parts) {
       this.physics.setVelocity(p.handle, {
-        x: kx + dx * carry,
+        x: dx * carry,
         y: dy * carry,
-        z: kz + dz * carry,
+        z: dz * carry,
       });
     }
 

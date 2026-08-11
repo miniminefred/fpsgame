@@ -988,7 +988,6 @@ export class Enemies {
       walkPhase: rng.range(0, 6),
       hitFlash: 0,
       deathTime: 0,
-      knockX: 0, knockZ: 0,
       swing: 0,
       swingLanded: true,
       dist: Infinity,
@@ -1427,12 +1426,6 @@ export class Enemies {
       vx += -nz * e.strafe * speed * circle;
       vz += nx * e.strafe * speed * circle;
     }
-
-    // Decaying shove from being shot.
-    vx += e.knockX;
-    vz += e.knockZ;
-    e.knockX *= Math.max(0, 1 - dt * 6);
-    e.knockZ *= Math.max(0, 1 - dt * 6);
 
     if (vx || vz) {
       const blockedX = !this._tryMove(e, vx * dt, 0);
