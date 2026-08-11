@@ -52,11 +52,37 @@ const CLEAR_AT = 0.28;
 // standing between two of them should name both cards, not alternate.
 const REFUSE_GAP = 2.2;
 
+// The sensor grid: every door bucketed by where it stands, so that asking "is
+// anybody at this door" can be turned round into "which doors is this body at".
+//
+// The naive version asks every door about every enemy, and that is a trap
+// rather than merely a slow loop, because the cost is invisible exactly until
+// it matters. A door skips the enemy scan while it is locked — and while the
+// floor is still white-locked that is ~190 of them, so a fresh floor measures
+// clean. Then the player takes the first badge off the first body,
+// applyWallet clears every white lock at once, and all ~274 doorways start
+// scanning all ~200 enemies (corpses included — items is never pruned, and the
+// alive test used to be INSIDE the inner loop). ~50k hypots a frame appear in
+// one step, about thirty seconds into every floor, which is when the first
+// firefight starts. Walking the enemies instead makes it ~200 lookups of a
+// handful of doors each, and it does not care how many doors are unlocked.
+//
+// Doors never move, so the index is built once per floor in setDoors and a
+// lock clearing never invalidates it — applyWallet changes `lock`, not `x`/`z`.
+const CELL = SENSE * 2;        // metres per bucket: a query touches ~2x2 of them
+
+// Bucket key. A floor is a few hundred metres across at the very most, so 4096
+// cells of headroom either side of the origin is more than the generator can
+// build, and this stays a collision-free integer.
+const bucketKey = (cx, cz) => (cx + 4096) * 8192 + (cz + 4096);
+
 export class Doors {
   constructor({ scene, audio }) {
     this.scene = scene;
     this.audio = audio;
     this.items = [];
+    this.grid = new Map();     // bucket key -> doors standing in that cell
+    this.sensed = new Set();   // doors an enemy is at, refilled every frame
 
     // Set by game.js: the door reporting what its reader decided, since what a
     // floor does about it — hand the tiles back to nav, say so on the HUD — is
@@ -82,6 +108,20 @@ export class Doors {
       door.refuseTimer = 0;
       door.opaque = false;   // ...until the first _place says otherwise
       this._place(door);
+    }
+    this._index();
+  }
+
+  // (Re)builds the sensor grid from the current door list. Only the door list
+  // changing needs this — see the note on CELL.
+  _index() {
+    this.grid.clear();
+    this.sensed.clear();
+    for (const door of this.items) {
+      const key = bucketKey(Math.floor(door.x / CELL), Math.floor(door.z / CELL));
+      const cell = this.grid.get(key);
+      if (cell) cell.push(door);
+      else this.grid.set(key, [door]);
     }
   }
 
@@ -114,6 +154,8 @@ export class Doors {
 
   clear() {
     this.items = [];
+    this.grid.clear();
+    this.sensed.clear();
   }
 
   /**
@@ -125,6 +167,32 @@ export class Doors {
 
     const px = player.object.position.x;
     const pz = player.object.position.z;
+
+    // Everyone still on their feet, answered against the grid rather than
+    // against the door list: each body looks up only the buckets its own sense
+    // radius reaches. A locked door's sensor is off for the staff too, so it is
+    // never collected here — the same thing the old inner loop said by not
+    // running at all. The player is left as a straight test per door: that one
+    // is a single body against the list, which is already O(doors).
+    const sensed = this.sensed;
+    sensed.clear();
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      const cx0 = Math.floor((e.x - SENSE) / CELL);
+      const cx1 = Math.floor((e.x + SENSE) / CELL);
+      const cz0 = Math.floor((e.z - SENSE) / CELL);
+      const cz1 = Math.floor((e.z + SENSE) / CELL);
+      for (let cx = cx0; cx <= cx1; cx++) {
+        for (let cz = cz0; cz <= cz1; cz++) {
+          const cell = this.grid.get(bucketKey(cx, cz));
+          if (!cell) continue;
+          for (const door of cell) {
+            if (door.lock || sensed.has(door)) continue;
+            if (Math.hypot(e.x - door.x, e.z - door.z) < SENSE) sensed.add(door);
+          }
+        }
+      }
+    }
 
     for (const door of this.items) {
       if (door.refuseTimer > 0) door.refuseTimer -= dt;
@@ -141,10 +209,7 @@ export class Doors {
         }
         near = false;
       } else if (!near) {
-        for (const e of enemies) {
-          if (!e.alive) continue;
-          if (Math.hypot(e.x - door.x, e.z - door.z) < SENSE) { near = true; break; }
-        }
+        near = sensed.has(door);
       }
 
       if (near) door.hold = HOLD;
