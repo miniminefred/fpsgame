@@ -128,6 +128,11 @@ export class Sfx {
           onsetMs: take ? Math.round(take.offset * 1000) : 0,
           norm: take ? +take.norm.toFixed(2) : 0,
           mixed: take ? +(take.rms * take.norm * entry.gain).toFixed(4) : 0,
+          // What is sounding right now: this clip's own voices, and every voice
+          // in the engine. Reported so the counts are visible from the harness,
+          // never gated on — see the note above about there being no voice cap.
+          live: entry.live,
+          voices: this.voices,
         });
       });
     }
@@ -203,11 +208,6 @@ export class Sfx {
     }
     this._flushLoops();
     return true;
-  }
-
-  setVolume(v) {
-    this.volume = v;
-    if (this.master) this.master.gain.value = v;
   }
 
   /**

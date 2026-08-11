@@ -682,8 +682,3 @@ export const MODEL_REJECTS = {
   round_rug: "furn_round_rug.glb renders as three thin fringe slivers instead of a disc from every angle — the rug surface itself is missing/degenerate (130 verts, 2 materials).",
   water_fountain: "furn_water_fountain.glb is a byte-identical duplicate of store_water_cooler.glb (same poly.pizza source) — kept once as `water_cooler`.",
 };
-
-/** All table keys carrying the given tag. */
-export function modelsWithTag(tag) {
-  return Object.keys(MODEL_TABLE).filter((k) => MODEL_TABLE[k].tags.includes(tag));
-}

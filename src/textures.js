@@ -22,7 +22,6 @@ export function getAssets() {
 
 function build() {
   const wall = texture(paintedWall(0xdedbd6));
-  const wallDingy = texture(paintedWall(0xc8c6c0));
   const carpet = texture(carpetTile());
   const vinyl = texture(vinylTile());
   const ceiling = texture(ceilingTile());
@@ -39,7 +38,6 @@ function build() {
     materials: {
       // --- building shell
       wall: std(wall, 0xffffff, 0.94),
-      wallDingy: std(wallDingy, 0xffffff, 0.96),
       carpet: std(carpet, 0xffffff, 1),
       vinyl: std(vinyl, 0xffffff, 0.62),
       ceiling: std(ceiling, 0xffffff, 0.95),
@@ -79,7 +77,6 @@ function build() {
       screenOn: new THREE.MeshBasicMaterial({ color: 0x6fd3ff }),
       led: new THREE.MeshBasicMaterial({ color: 0x7dff9a }),
       hazard: flat(0xc8b23a, 0.8),
-      exit: new THREE.MeshBasicMaterial({ color: 0x64ffa0 }),
     },
   };
 }

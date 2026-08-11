@@ -7,7 +7,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 // One texture repeat covers this many world units. Floors, walls and ceilings
 // all use it, so a texture never stretches differently on a long wall than on a
 // short one.
-export const UV_SCALE = 1 / 2;
+const UV_SCALE = 1 / 2;
 
 const _center = new THREE.Vector3();
 
@@ -149,7 +149,6 @@ export class Batcher {
       mesh.name = group.key;
       mesh.castShadow = group.opts.castShadow ?? true;
       mesh.receiveShadow = group.opts.receiveShadow ?? true;
-      if (group.opts.renderOrder !== undefined) mesh.renderOrder = group.opts.renderOrder;
       scene.add(mesh);
       meshes.push(mesh);
       group.mesh = mesh;

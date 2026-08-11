@@ -351,11 +351,4 @@ export class NavGrid {
     out.set(dx / len, 0, dz / len);
     return out;
   }
-
-  // How far, in tiles, this point is from the field's origin (-1 if unreached).
-  distanceAt(x, z) {
-    const tx = this.tx(x), ty = this.ty(z);
-    if (!this.inBounds(tx, ty)) return -1;
-    return this.field[ty * this.W + tx];
-  }
 }

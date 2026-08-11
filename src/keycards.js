@@ -51,8 +51,6 @@ export const CARDS = {
   },
 };
 
-export const CARD_TIERS = Object.keys(CARDS);
-
 // The lamp on a badge reader. Here rather than in the two files that use it —
 // gen/build.js builds the reader, doors.js turns it green — because a reader
 // that says "open" in one colour and is built in another is the kind of bug you
@@ -71,7 +69,7 @@ export const HUD_ORDER = ['white', 'grey', 'black', 'blue', 'yellow'];
  * test. Black is the exception written out longhand: it is the only card that
  * satisfies a lock it is not, off the ladder included.
  */
-export function cardOpens(tier, lock) {
+function cardOpens(tier, lock) {
   if (!lock) return true;
   if (tier === lock) return true;
   if (tier === 'black') return true;

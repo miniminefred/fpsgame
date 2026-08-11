@@ -32,7 +32,7 @@ const noopCtx = () => new Proxy({}, {
     return (...a) => {
       // Gradients are the one return value textures.js actually uses.
       if (String(prop).startsWith('create')) {
-        return { addColorStop() {}, ...(String(prop) === 'createPattern' ? {} : {}) };
+        return { addColorStop() {} };
       }
       if (String(prop) === 'getImageData') {
         return { data: new Uint8ClampedArray(4), width: 1, height: 1 };
@@ -105,8 +105,8 @@ const { PLAYER_RADIUS: BODY_R, BODY_RADIUS: ENEMY_R } = await import('../src/met
 // ---------------------------------------------------------------------------
 
 class Check {
-  constructor(id, sev, title) {
-    this.id = id; this.sev = sev; this.title = title;
+  constructor(sev, title) {
+    this.sev = sev; this.title = title;
     this.runs = 0; this.fails = 0; this.examples = []; this.notes = new Map();
   }
   run() { this.runs++; }
@@ -171,7 +171,7 @@ const IDS = [
   ['10.decl-fit', 'WARN', 'CATALOGUE     obstacle box fits inside the declared w x d footprint'],
   ['10.geo-fit', 'WARN', 'CATALOGUE     visual geometry fits inside the declared w x d footprint'],
 ];
-for (const [id, sev, title] of IDS) checks.set(id, new Check(id, sev, title));
+for (const [id, sev, title] of IDS) checks.set(id, new Check(sev, title));
 
 // ---------------------------------------------------------------------------
 // small helpers
@@ -292,7 +292,7 @@ const stats = {
   propsPerFloor: [], staticPerFloor: [], dynPerFloor: [], wallColliders: [],
   perRoomByRole: new Map(),           // role -> counts[]
   roleReachShare: new Map(),          // role -> shares[]
-  roomWalkBefore: [], roomWalkAfter: [], roomReach: [],
+  roomWalkAfter: [], roomReach: [],
   footprintHist: new Map(),           // "kind" -> n
   areaHist: new Map(),                // area bucket -> n
   kindCollisions: new Map(),          // "kindA+kindB" -> n
@@ -745,10 +745,12 @@ function validate(seed, floorNumber) {
       }
     }
 
-    const before = 1;                       // every interior tile is open floor
+    // Before furnishing every interior tile is open floor by construction — the
+    // generator proves it (validate-layout's 5.room-tiles), so there is nothing
+    // to measure and no baseline worth accumulating. What furniture left behind
+    // is the only interesting half.
     const after = walkable / interior;
     const share = reached / interior;
-    stats.roomWalkBefore.push(before);
     stats.roomWalkAfter.push(after);
     stats.roomReach.push(share);
     stats.reachOfWalkable.push(walkable ? reached / walkable : 1);
@@ -800,9 +802,6 @@ function validate(seed, floorNumber) {
         stats.biggestPocketCase = `${id} ${r.role} (${reached}/${walkable} walkable tiles reachable)`;
       }
     }
-
-    // props per room, by role
-    if (!stats.perRoomByRole.has(r.role)) stats.perRoomByRole.set(r.role, []);
   });
   if (dead) check('4.room-dead').fail(id, `${dead} rooms with no floor reachable from their own door`);
   if (low) check('4.room-share').fail(id, `${low} rooms under ${REACH_SHARE * 100}% reachable from their own door`);
@@ -1147,17 +1146,15 @@ function catalogueReport() {
   if (declFail) check('10.decl-fit').fail('catalogue', `${declFail} kinds: ${declNotes.join(', ')}`);
   if (geoFail) check('10.geo-fit').fail('catalogue', `${geoFail} kinds: ${geoNotes.join(', ')}`);
 
-  // edgeProp's standoff maths, evaluated symbolically per kind.
-  console.log(line);
-  console.log('edgeProp() WALL STANDOFF ERROR  — sides 1 and 3 rotate the prop (rot 1/3),');
-  console.log('so the extent perpendicular to the wall is spec.d, but edgeProp offsets by spec.w/2.');
-  console.log('kind          side0/2 err   side1/3 err   effect');
-  for (const e of CAT.values()) {
-    const err13 = (e.w - e.d) / 2;   // halfD used (w/2) minus true half extent (d/2)
-    if (Math.abs(err13) < 1e-9) continue;
-    const effect = err13 > 0 ? `floats ${fmt(err13, 2)} m off the wall` : `pushed ${fmt(-err13, 2)} m into the wall`;
-    console.log(`${e.kind.padEnd(13)} ${fmt(0, 2).padStart(11)}   ${fmt(err13, 2).padStart(11)}   ${effect}`);
-  }
+  // There used to be an "edgeProp() WALL STANDOFF ERROR" table here, computing a
+  // per-kind error of (w - d) / 2 on sides 1 and 3 from the premise that edgeProp
+  // offset every side by spec.w/2 while a quarter-turned prop presents spec.d
+  // perpendicular to the wall. That was a real bug and it has been fixed —
+  // edgeProp now takes `standoff = spec.d / 2` for every side — so the table was
+  // printing a fabricated error for every kind whose w and d differ. The measured
+  // answer is still reported, by 10.edge-standoff and the wall-gap histogram at
+  // the end of the run, which read the real placements rather than restating the
+  // maths.
   console.log(line);
 }
 
@@ -1236,7 +1233,7 @@ for (const [role, counts] of [...stats.perRoomByRole.entries()].sort((a, b) => b
     + `${fmt(100 * median(rs)).padStart(12)}% ${fmt(100 * pct(rs, 0.1)).padStart(6)}% ${fmt(100 * lo(rs)).padStart(6)}%`);
 }
 console.log('');
-console.log(`room walkable share  before furnishing 100.0%   after ${fmt(100 * median(stats.roomWalkAfter))}% median, `
+console.log(`room walkable share  after furnishing ${fmt(100 * median(stats.roomWalkAfter))}% median, `
   + `${fmt(100 * pct(stats.roomWalkAfter, 0.1))}% p10, ${fmt(100 * lo(stats.roomWalkAfter))}% min`);
 console.log(`room reachable share (from its own doorway) ${fmt(100 * median(stats.roomReach))}% median, `
   + `${fmt(100 * pct(stats.roomReach, 0.1))}% p10, ${fmt(100 * lo(stats.roomReach))}% min`);

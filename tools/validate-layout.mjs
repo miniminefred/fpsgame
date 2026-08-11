@@ -15,6 +15,14 @@ import {
   generateLayout, TILE, SOLID, ROOM, CORRIDOR, DOOR, isOpen,
   FIRST_CONTACT_GAP, roleBranch, PAD, PROLOGUE_MIN, CORRIDOR_W, DOOR_W,
 } from '../src/gen/layout.js';
+// The furnisher's own list of roles. Adding a room role means touching three
+// unconnected places — the pick lists in assignRoles here, ROLES in rooms.js and
+// GRADE in build.js — and nothing in the code ties them together. This ties the
+// first pair: a role the furnisher has never heard of falls back to a private
+// office, which is a room that silently comes out as the wrong room.
+// gen/rooms.js is pure (it imports only gen/props.js), so it loads in plain Node
+// alongside layout.js with no DOM in the way.
+import { ROOM_ROLES } from '../src/gen/rooms.js';
 
 const args = process.argv.slice(2);
 const argVal = (flag, dflt) => {
@@ -32,14 +40,15 @@ const MAX_EXAMPLES = 6;
 // the wrong one back. FIRST_CONTACT_GAP is METRES straight line from the lifts,
 // which is what enemies.js measures too.
 const MAX_ROOM_DEPTH = 2; // rooms deeper than this from a corridor are a WARN
+const KNOWN_ROLES = new Set(ROOM_ROLES);
 
 // ---------------------------------------------------------------------------
 // check bookkeeping
 // ---------------------------------------------------------------------------
 
 class Check {
-  constructor(id, sev, title) {
-    this.id = id; this.sev = sev; this.title = title;
+  constructor(sev, title) {
+    this.sev = sev; this.title = title;
     this.runs = 0; this.fails = 0; this.examples = []; this.notes = new Map();
   }
   run() { this.runs++; }
@@ -98,8 +107,9 @@ const IDS = [
   ['7.one-room', 'FAIL', 'DEGENERATE    floor has 1 room'],
   ['7.walkable', 'FAIL', 'DEGENERATE    walkable area >= 15% of footprint'],
   ['7.roles', 'WARN', 'DEGENERATE    all four flavour roles present'],
+  ['7.roles-known', 'FAIL', 'DEGENERATE    every room role has a furnisher in gen/rooms.js'],
 ];
-for (const [id, sev, title] of IDS) checks.set(id, new Check(id, sev, title));
+for (const [id, sev, title] of IDS) checks.set(id, new Check(sev, title));
 
 // ---------------------------------------------------------------------------
 // tile helpers — deliberately NOT reusing layout.js's own bfs, so a bug in the
@@ -542,6 +552,16 @@ function validate(seed, floorNumber) {
   const roleSet = new Set(rooms.map((r) => r.role));
   const missing = ['storage', 'copyroom', 'server', 'breakroom'].filter((r) => !roleSet.has(r));
   if (missing.length) check('7.roles').fail(id, `missing roles: ${missing.join(',')}`);
+
+  // A role the generator hands out that rooms.js cannot furnish is not a crash —
+  // furnish() falls back to a private office — which is exactly why it needs a
+  // check: the floor still builds, and the room just quietly comes out as
+  // somebody's office instead of the server room the rest of the floor was told
+  // it had.
+  const unknownRoles = [...roleSet].filter((r) => !KNOWN_ROLES.has(r));
+  if (unknownRoles.length) {
+    check('7.roles-known').fail(id, `role(s) with no furnisher in rooms.js: ${unknownRoles.join(',')}`);
+  }
 
   // ---- 8. stats -----------------------------------------------------------
   stats.roomCounts.push(rooms.length);
