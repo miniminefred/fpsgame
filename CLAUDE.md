@@ -77,8 +77,8 @@ goes in the browser and in `/dev-models.html`.
 
 In the dev build `window.dev` exposes `{ game, player, enemies, shooting, keys, physics,
 destruction, extinguishers, doors, scene, camera, weapons, renderer, audio, casings,
-keycards, wallet, ragdolls, cameras }`, which is the fastest way to jump floors, teleport,
-or measure something from the console. Note the render loop is `requestAnimationFrame`, so
+keycards, wallet, ragdolls, cameras }` plus `stairsEverywhere()`, which is the fastest way to
+jump floors, teleport, or measure something from the console. Note the render loop is `requestAnimationFrame`, so
 a backgrounded tab does not tick — measure with the tab visible, or step `update()` by hand.
 
 `/dev-models.html` is a contact-sheet harness for inspecting the furniture models at true
@@ -329,6 +329,16 @@ with a filing cabinet in front of it, or the room's own wall. The planner proves
 floor at the foot of the flight and `approachTiles` has the builder reserve it from the
 furnisher while leaving it in the nav grid, because that is where you stand to start climbing
 and where anybody chasing you ends up.
+
+**Testing them is its own problem**, because one or two flights a floor is the right rate to
+play and a hopeless rate to check: most floors have none, and the ones that do put the thing in
+one room out of two hundred. So `setStairsEverywhere` gives a staircase to every room that can
+hold one — `dev.stairsEverywhere()` then `dev.game.nextFloor()` in the browser, or
+`--stairs-all` on either validator, which takes a sweep from ~130 flights to over 12,000. In
+practice "every room" means about 60% of them; the rest cannot fit a 4.8 m flight and a 1.5 m
+stairwell and still be a room, which is `ROOM_LEFT` and the wall-run test refusing. It is off
+by default, it is never set from a query string, and the browser toggle lives in the
+`import.meta.env.DEV` block, so it is not in a production bundle at all.
 
 Two smaller things worth knowing. The stairwell stands off every opening by `DOOR_CLEAR`,
 which lives in `gen/tiles.js` because the furnisher's door aprons use the same number; they

@@ -72,6 +72,24 @@ const APPROACH = 2;
 // floor has one is a building with a feature rather than a surprise.
 const PER_FLOOR = [0, 2];
 
+// Testing only: give a staircase to EVERY room that can hold one.
+//
+// One or two staircases a floor is the game, and it is also a miserable rate to
+// test against — most floors have none, and the ones that do put the thing in one
+// room out of two hundred. With this on, a single floor exercises the planner, the
+// geometry, the storey's furnishing and the collision against every room shape the
+// generator makes, which is how the flight-behind-a-filing-cabinet bug turned up.
+//
+// Off by default and it stays off in a shipped floor: nothing reads it, nothing
+// sets it from a query string, and the only ways in are `dev.stairsEverywhere()` in
+// the browser console and `--stairs-all` on either validator. It is deliberately a
+// module flag rather than an argument to `planStairs`, so turning it on does not
+// change one line of the generator's own signature.
+let everyRoom = false;
+
+export function setStairsEverywhere(on = true) { everyRoom = !!on; }
+export function stairsEverywhere() { return everyRoom; }
+
 /**
  * Picks the rooms that get one, and where in them the stairs run.
  *
@@ -85,7 +103,10 @@ const PER_FLOOR = [0, 2];
  * against their room's north wall.
  */
 export function planStairs(tiles, W, H, rooms, spawnRoom, exitRoom, rng) {
-  const want = rng.int(PER_FLOOR[0], PER_FLOOR[1]);
+  // `everyRoom` is the testing flag — see setStairsEverywhere. The lobby and the
+  // exit room stay excluded even then: a storey costs the room below nothing, but
+  // the stairwell does take a strip of its floor, and those two need theirs.
+  const want = everyRoom ? rooms.length : rng.int(PER_FLOOR[0], PER_FLOOR[1]);
   if (want <= 0) return [];
 
   const pool = rooms.filter((r) => r !== spawnRoom && r !== exitRoom);

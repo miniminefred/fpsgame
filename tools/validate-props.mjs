@@ -7,6 +7,7 @@
 //   node tools/validate-props.mjs --dump 7003 7    # ASCII plan + per-room reachability table,
 //                                                  # then a 0.125 m zoom of the worst room
 //   node tools/validate-props.mjs --dump 7003 7 --room 15    # ... zoom a specific room
+//   node tools/validate-props.mjs --stairs-all     # a staircase in every room it fits
 //   node tools/validate-props.mjs --catalogue      # prop catalogue audit only
 //   node tools/validate-props.mjs --trace          # print stack traces for crashes
 //
@@ -104,7 +105,13 @@ const { PLAYER_RADIUS: BODY_R, BODY_RADIUS: ENEMY_R, STEP_EPS, BODY_H } =
 // The stairs are interrogated through the generator's OWN geometry, not through a
 // second opinion about where a tread ought to be — see gen/stairs.js, which exists
 // so the picture, the collision and this file read one set of boxes.
-const { stairBoxes, approachTiles, UPPER_Y } = await import('../src/gen/stairs.js');
+const { stairBoxes, approachTiles, UPPER_Y, setStairsEverywhere } =
+  await import('../src/gen/stairs.js');
+// --stairs-all puts a staircase in every room that can hold one — a testing mode
+// rather than the game (see setStairsEverywhere there). One or two a floor is the
+// right rate to play and a hopeless one to sweep: it takes hundreds of floors to see
+// a dozen flights, and every invariant that matters here is per-flight.
+if (args.includes('--stairs-all')) setStairsEverywhere(true);
 
 // ---------------------------------------------------------------------------
 // check bookkeeping (same shape as validate-layout.mjs)

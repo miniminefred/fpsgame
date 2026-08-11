@@ -20,6 +20,7 @@ import { Ragdolls } from './ragdolls.js';
 import { Cameras } from './cameras.js';
 import { loadModels } from './gen/models.js';
 import { modelKeysUsed } from './gen/props.js';
+import { setStairsEverywhere } from './gen/stairs.js';
 import { Game } from './game.js';
 
 const renderer = createRenderer();
@@ -91,6 +92,19 @@ if (import.meta.env.DEV) {
   window.dev = {
     game, player, enemies, shooting, keys, physics, destruction, extinguishers, doors,
     scene, camera, weapons, renderer, audio, casings, keycards, wallet, ragdolls, cameras,
+
+    /**
+     * Testing: put a staircase in every room that can hold one, from the next floor
+     * on. `dev.stairsEverywhere(); dev.game.nextFloor()`.
+     *
+     * It regenerates rather than taking effect where you stand, because a floor's
+     * geometry, colliders and furniture are all built once at generation — there is
+     * no way to add a storey to the floor you are already on.
+     */
+    stairsEverywhere(on = true) {
+      setStairsEverywhere(on);
+      return `stairs in every room: ${on ? 'ON' : 'off'} — takes effect on the next floor`;
+    },
   };
 }
 
