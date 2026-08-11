@@ -17,6 +17,14 @@ export const WALL_H = 3.2;         // structural wall height
 export const CEIL_H = 3.0;         // suspended ceiling height
 export const DOOR_H = 2.1;
 
+// Tiles of floor kept clear on either side of a doorway. It lives here because
+// two unrelated things have to honour it and neither can import the other:
+// `reserveClearances` in gen/build.js stamps it so no prop is ever furnished into
+// a door swing, and gen/stairs.js keeps a staircase out of the same square. They
+// were briefly 4 and 3, and the sweep found it immediately as a crate standing in
+// a doorway — which is the FIRST_CONTACT_GAP failure in miniature.
+export const DOOR_CLEAR = 4;
+
 export const SOLID = 0;
 export const ROOM = 1;
 export const CORRIDOR = 2;

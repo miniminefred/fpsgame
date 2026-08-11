@@ -4,6 +4,7 @@ import {
   TILE, SOLID, ROOM, CORRIDOR, DOOR, isOpen, bfs, worldX, worldZ,
 } from './tiles.js';
 import { assignLocks, lockedMask, prologueRegion } from './locks.js';
+import { planStairs } from './stairs.js';
 
 // Procedural office floorplan.
 //
@@ -30,7 +31,7 @@ import { assignLocks, lockedMask, prologueRegion } from './locks.js';
 // cameras.js, minimap.js and both validators, and none of them cares that it now
 // has a file of its own.
 export {
-  TILE, WALL_H, CEIL_H, DOOR_H,
+  TILE, WALL_H, CEIL_H, DOOR_H, DOOR_CLEAR,
   SOLID, ROOM, CORRIDOR, DOOR, isOpen,
   worldX, worldZ, centreX, centreZ, tileX, tileY,
   bfs, slidePocketSide,
@@ -275,6 +276,13 @@ export function generateLayout(seed, floorNumber) {
   // itself shut.
   const locks = assignLocks(tiles, W, H, live, doors, spawnRoom, exitRoom, dist,
     makeRng(seed ^ 0x5bf03635));
+  // Its own stream for the same reason, and the reason bites harder here: how
+  // many stairs a floor gets is itself a die, and how many candidate rooms and
+  // walls were tried before one fitted is several more. Left on the floor's
+  // stream, a floor with a staircase would furnish every OTHER room differently
+  // from the same floor without one.
+  const stairs = planStairs(tiles, W, H, live, spawnRoom, exitRoom,
+    makeRng(seed ^ 0x7f4a7c15));
 
   const layout = {
     seed, floorNumber, W, H, TILE,
@@ -285,6 +293,9 @@ export function generateLayout(seed, floorNumber) {
     tiles, rooms: live, doors,
     spawnRoom, exitRoom,
     locks,
+    // The 0-2 rooms with a flight of stairs in them, and where in the room it
+    // runs. Authored here rather than in the builder so the layout sweep sees it.
+    stairs,
     // Every tile behind a badge reader, so the things that scatter themselves
     // over a floor — enemies, vermin — can keep out of rooms they would be
     // locked into. See enemies.js.

@@ -99,7 +99,12 @@ const SUB = 4;                 // cells per tile => 0.125 m cells
 // Imported, not restated. These were two literals under a "must match
 // src/player.js" comment — a validator whose whole job is catching drift,
 // holding its own copy of the number it validates against.
-const { PLAYER_RADIUS: BODY_R, BODY_RADIUS: ENEMY_R } = await import('../src/metrics.js');
+const { PLAYER_RADIUS: BODY_R, BODY_RADIUS: ENEMY_R, STEP_EPS } =
+  await import('../src/metrics.js');
+// The stairs are interrogated through the generator's OWN geometry, not through a
+// second opinion about where a tread ought to be — see gen/stairs.js, which exists
+// so the picture, the collision and this file read one set of boxes.
+const { stairBoxes, approachTiles } = await import('../src/gen/stairs.js');
 
 // ---------------------------------------------------------------------------
 // check bookkeeping (same shape as validate-layout.mjs)
@@ -166,6 +171,10 @@ const IDS = [
   ['9.own-room', 'FAIL', 'ROOM BOUNDS   no furniture collider spans two rooms'],
   ['9.escaped', 'FAIL', 'ROOM BOUNDS   no room prop escaped into a corridor / doorway'],
   ['9.inset', 'WARN', 'ROOM BOUNDS   room props stay inside the 0.15 m wall inset'],
+
+  ['11.stair-step', 'FAIL', `STAIRS        every riser is a step, not a wall (<= ${STEP_EPS} m)`],
+  ['11.stair-meet', 'FAIL', 'STAIRS        the top tread arrives on the loft floor'],
+  ['11.stair-foot', 'FAIL', 'STAIRS        floor at the bottom of the flight a body can stand on'],
 
   ['10.nav-lie', 'WARN', 'NAV GRID      no walkable tile is buried inside a static collider'],
   ['10.edge-standoff', 'WARN', 'EDGE PROPS    counter/vending sit within 0.35 m of a wall'],
@@ -364,7 +373,11 @@ function validate(seed, floorNumber) {
     // every doorway invariant, and counting one as wall would have the
     // reachability walk route around a door that opens.
     if (c.door) continue;
-    (c.top === WALL_H ? walls : furn).push(c);
+    // A stair tread and the deck it climbs to are shell that happens not to be
+    // full height (gen/stairs.js). They belong with the walls: they block a body
+    // and they are permanent, and auditing a 4 m deck as a prop would fail every
+    // dimension invariant a prop has for being exactly what it is meant to be.
+    (c.top === WALL_H || c.building ? walls : furn).push(c);
   }
 
   stats.wallColliders.push(walls.length);
@@ -385,10 +398,16 @@ function validate(seed, floorNumber) {
   let badExtent = 0, badNaN = 0, badSide = 0, badTop = 0;
   for (const c of furn) {
     const w = c.maxX - c.minX, d = c.maxZ - c.minZ;
+    // How tall the prop itself is, which on a level above the floor is not its
+    // `top`: a collider is a pillar measured from y = 0, so a 1.3 m cabinet in a
+    // loft has a top of 3.5. `level` is the floor it stands on — see liftSink in
+    // gen/build.js — and measuring against it is what keeps this check about the
+    // prop rather than about where the building put it.
+    const height = c.top - (c.level ?? 0);
     if (![c.minX, c.maxX, c.minZ, c.maxZ, c.top].every(Number.isFinite)) { badNaN++; continue; }
-    if (w <= EPS || d <= EPS || c.top <= EPS) badExtent++;
+    if (w <= EPS || d <= EPS || height <= EPS) badExtent++;
     if (w > MAX_PROP_SIDE || d > MAX_PROP_SIDE) badSide++;
-    if (c.top < MIN_PROP_TOP || c.top > MAX_PROP_TOP) badTop++;
+    if (height < MIN_PROP_TOP || height > MAX_PROP_TOP) badTop++;
 
     const kind = kindOf(c);
     bump(stats.footprintHist, kind);
@@ -399,6 +418,37 @@ function validate(seed, floorNumber) {
   if (badExtent) check('7.extent').fail(id, `${badExtent} colliders with zero/negative extent`);
   if (badSide) check('7.side').fail(id, `${badSide} colliders wider than ${MAX_PROP_SIDE} m`);
   if (badTop) check('7.top').fail(id, `${badTop} colliders with top outside [${MIN_PROP_TOP},${MAX_PROP_TOP}]`);
+
+  // ---- 11. the stairs ----------------------------------------------------
+  // A loft is only worth anything if you can get into it, and it can fail to be
+  // reachable in three unrelated ways: a riser too tall to step up, a flight that
+  // stops short of the loft's floor, or a bottom step with a filing cabinet — or
+  // the room's own wall — in front of it. All three shipped at least once.
+  for (const plan of layout.stairs) {
+    const boxes = stairBoxes(layout, plan);
+    const alongX = plan.axis === 'x';
+    const mid = (b) => (alongX ? b.minX + b.maxX : b.minZ + b.maxZ) / 2;
+    const treads = boxes.filter((b) => b.part === 'tread')
+      .sort((a, b) => (plan.up > 0 ? mid(a) - mid(b) : mid(b) - mid(a)));
+
+    let below = 0;
+    for (const t of treads) {
+      const rise = t.y1 - below;
+      if (rise <= 0 || rise > STEP_EPS + EPS) {
+        check('11.stair-step').fail(id, `riser of ${fmt(rise, 3)} m in a ${plan.room.role}`);
+      }
+      below = t.y1;
+    }
+
+    const block = boxes.find((b) => b.part === 'block');
+    if (!block || Math.abs(below - block.y1) > EPS) {
+      check('11.stair-meet').fail(id, `top tread at ${fmt(below, 3)} m, loft floor at ${fmt(block?.y1 ?? NaN, 3)} m`);
+    }
+
+    if (!approachTiles(plan, W).some((i) => walk[i])) {
+      check('11.stair-foot').fail(id, `nowhere to stand at the foot of a ${plan.room.role} flight`);
+    }
+  }
 
   // ---- 1. furniture inside walls -----------------------------------------
   let inWall = 0, inWallHair = 0, worstDepth = 0, worstKind = '';

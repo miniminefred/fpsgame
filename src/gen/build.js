@@ -6,10 +6,13 @@ import { tryPlace } from './props.js';
 import { furnish } from './rooms.js';
 import { modelInfo, stampModel, paintDebris } from './models.js';
 import {
-  TILE, WALL_H, CEIL_H, DOOR_H,
+  TILE, WALL_H, CEIL_H, DOOR_H, DOOR_CLEAR,
   SOLID, ROOM, CORRIDOR, DOOR, isOpen, worldX, worldZ, slidePocketSide,
 } from './layout.js';
 import { CARDS, READER_LIT, READER_OPEN } from '../keycards.js';
+import {
+  LOFT_Y, TOP_Y, approachTiles, ceilingCut, loftFloor, stairBoxes, stripTiles,
+} from './stairs.js';
 
 // Turns an abstract floorplan into everything the game needs: batched meshes,
 // collision AABBs, a nav grid for the enemies, and the list of ceiling lights
@@ -68,7 +71,7 @@ export function buildLevel(scene, layout) {
 
   reserveClearances(layout, reserved);
 
-  buildShell(layout, batcher, materials, colliders);
+  buildShell(layout, batcher, materials, colliders, ceilingCut(layout));
   buildDoorFrames(layout, batcher, materials);
   buildWindows(layout, batcher, materials, fixtures, destructibles);
   buildCeilingLights(layout, batcher, materials, fixtures, destructibles);
@@ -83,6 +86,11 @@ export function buildLevel(scene, layout) {
 
   const sink = makeSink(layout, batcher, materials,
     { blocked, occupied, reserved, colliders, dynamics, destructibles });
+  // Before the rooms are furnished, because the strip takes its tiles out of the
+  // nav grid and out of the furnisher's reach in the same pass — and because the
+  // deck's own junk is placed through the same sink and must be down before
+  // anything on the room floor can be shoved against it.
+  buildStairs(layout, batcher, materials, { colliders, blocked, occupied, fixtures }, sink, rng);
   furnishRooms(layout, sink, rng);
   furnishCorridors(layout, sink, rng);
 
@@ -135,7 +143,7 @@ export function buildLevel(scene, layout) {
 
 // --- shell: walls, floors, ceiling ------------------------------------------
 
-function buildShell(layout, batcher, materials, colliders) {
+function buildShell(layout, batcher, materials, colliders, ceilCut) {
   const { W, H, tiles } = layout;
 
   // Walls. Merging tile runs into rectangles first keeps this to a couple of
@@ -163,8 +171,12 @@ function buildShell(layout, batcher, materials, colliders) {
       { castShadow: false });
   }
 
-  // Suspended ceiling over everything walkable.
-  for (const r of maskToRects(tiles, W, H, isOpen)) {
+  // Suspended ceiling over everything walkable — except where a loft's volume goes
+  // straight through it (see ceilingCut in gen/stairs.js). The cut is applied by
+  // masking the tiles rather than by a second predicate, because maskToRects tests
+  // the VALUE it is handed and knows nothing about where it came from.
+  const ceilTiles = ceilCut ? tiles.map((t, i) => (ceilCut[i] ? SOLID : t)) : tiles;
+  for (const r of maskToRects(ceilTiles, W, H, isOpen)) {
     batcher.add('ceiling', materials.ceiling, applyWorldUVs(floorSlab(layout, r, CEIL_H, false)),
       { castShadow: false });
   }
@@ -964,6 +976,214 @@ function furnishRooms(layout, sink, rng) {
   }
 }
 
+// --- stairs -----------------------------------------------------------------
+
+// What ends up on a deck. Storage, because that is what a raised platform in an
+// office is for, and because a deck is the one place worth walking to for what is
+// on it rather than for where it goes.
+//
+// Nothing over 1.4 m tall is in the list, and that is a real constraint rather
+// than taste: a prop's collider is a pillar from the floor, so on a deck its
+// `top` comes out at DECK_Y plus its own height, and the props validator holds
+// every prop to 2.4 m. A 1.85 m locker on a metre-high deck is a 2.85 m prop.
+// Repeats are the weighting: a deck should read as stock that got put up out of
+// the way, so it is mostly crates and pallets with the odd bit of office in among
+// them.
+const LOFT_KINDS = [
+  'crate', 'crate', 'crate', 'crateStack', 'crateStack', 'crateStack',
+  'pallet', 'pallet', 'cabinet', 'cabinet', 'workbench', 'shelving',
+  'recyclingBin', 'trashCan', 'extinguisher', 'printer', 'stool', 'lockers',
+];
+// Keeps a prop's footprint off the loft's walls. Much smaller than the 0.15 m a
+// room keeps off its plaster: a loft is a store room, and the whole look of one is
+// stock shoved right up against the wall.
+const LOFT_INSET = 0.04;
+const TREAD_SKIN = 0.03;      // the walking surface laid over the step's body
+const NOSING = 0.07;          // yellow strip along the front edge of every tread
+// Materials by what the part IS, so the geometry half never names one.
+const PART_MATERIAL = { tread: 'trim', block: 'trim', wall: 'wall', lid: 'ceiling' };
+
+/**
+ * The flights of stairs, the lofts they climb to, and what is stacked inside.
+ *
+ * Every box comes from `stairBoxes` in gen/stairs.js rather than being worked out
+ * again here, so the picture, the player's collision and the solver cannot
+ * disagree about where a tread is — including which boxes may be collided with at
+ * all, which is the one genuinely subtle thing here. See that file.
+ *
+ * Colliders are marked `building`: they are shell, not furniture. Permanent, not
+ * destructible, and the props validator audits them as such — a 4 m loft floor
+ * read as a prop fails every dimension a prop has.
+ */
+function buildStairs(layout, batcher, materials, masks, sink, rng) {
+  const { W } = layout;
+
+  for (const plan of layout.stairs) {
+    const boxes = stairBoxes(layout, plan);
+
+    for (const b of boxes) {
+      if (b.part === 'tread') drawStep(batcher, materials, b, plan);
+      else drawPart(batcher, materials, b);
+
+      if (!b.collide) continue;
+      masks.colliders.push({
+        minX: b.minX, maxX: b.maxX, minZ: b.minZ, maxZ: b.maxZ,
+        top: b.y1, building: true,
+      });
+    }
+
+    // Out of the nav grid, because a 2D grid cannot say "walkable, but two metres
+    // up" and nobody can climb anyway — and out of the furnisher's reach, so no
+    // desk ends up buried in the flight. See gen/stairs.js for why this does not
+    // make the loft a place to hide.
+    for (const i of stripTiles(plan, W)) {
+      masks.blocked[i] = 1;
+      masks.occupied[i] = 1;
+    }
+    // The floor at the bottom of the flight is reserved from the furnisher but
+    // stays in the nav grid — you have to be able to stand there to start
+    // climbing, and so does anybody following you. Without it, better than one
+    // flight in three came out behind a filing cabinet.
+    for (const i of approachTiles(plan, W)) masks.occupied[i] = 1;
+
+    lightLoft(layout, plan, batcher, materials, masks.fixtures);
+    dressLoft(layout, plan, sink, masks.colliders, rng);
+  }
+}
+
+// A step is a grey body with the building's own floor laid over the top of it, and
+// a hazard strip along the edge you meet coming down. The strip OVERLAPS the tread
+// rather than resting flush on it, for the reason the door frames do: two faces in
+// one plane is a z-fight, two solids that interpenetrate is not.
+function drawStep(batcher, materials, b, plan) {
+  batcher.add('trim', materials.trim,
+    boxBetween(b.minX, b.y0, b.minZ, b.maxX, b.y1 - TREAD_SKIN, b.maxZ));
+  batcher.add('vinyl', materials.vinyl, applyWorldUVs(
+    boxBetween(b.minX, b.y1 - TREAD_SKIN, b.minZ, b.maxX, b.y1, b.maxZ)));
+
+  // The exposed edge is the one facing the bottom of the flight, which is the
+  // opposite way to the climb.
+  const alongX = plan.axis === 'x';
+  const front = plan.up > 0 ? (alongX ? b.minX : b.minZ) : (alongX ? b.maxX : b.maxZ) - NOSING;
+  batcher.add('hazard', materials.hazard, boxBetween(
+    alongX ? front : b.minX, b.y1 - NOSING, alongX ? b.minZ : front,
+    alongX ? front + NOSING : b.maxX, b.y1 + 0.004, alongX ? b.maxZ : front + NOSING));
+}
+
+function drawPart(batcher, materials, b) {
+  const key = PART_MATERIAL[b.part];
+  batcher.add(key, materials[key], applyWorldUVs(
+    boxBetween(b.minX, b.y0, b.minZ, b.maxX, b.y1, b.maxZ)));
+  // The loft's floor gets the building's floor laid on it, like a tread does.
+  if (b.part !== 'block') return;
+  batcher.add('vinyl', materials.vinyl, applyWorldUVs(
+    boxBetween(b.minX, b.y1 - TREAD_SKIN, b.minZ, b.maxX, b.y1, b.maxZ)));
+}
+
+// A loft has no window and its own lid, so without this it is a black box with
+// something in it. One panel, registered as a fixture like any other, so the light
+// pool treats it as the ceiling light it is.
+function lightLoft(layout, plan, batcher, materials, fixtures) {
+  const f = loftFloor(layout, plan);
+  const x = (f.minX + f.maxX) / 2, z = (f.minZ + f.maxZ) / 2;
+  const hw = Math.min(0.62, (f.maxX - f.minX) / 2 - 0.1);
+  const hd = Math.min(0.62, (f.maxZ - f.minZ) / 2 - 0.1);
+
+  batcher.add('panel', materials.panel,
+    slab(x - hw, z - hd, x + hw, z + hd, TOP_Y - 0.02, false),
+    { castShadow: false, receiveShadow: false });
+  fixtures.push({ x, y: TOP_Y - 0.12, z, color: 0xfdfbf2, intensity: 0.9, distance: 8 });
+}
+
+/**
+ * Fills the loft, through a sink that has been shifted up into it.
+ *
+ * Everything a prop draws — its boxes, its model, its collider's top — is lifted
+ * by LOFT_Y, so `tryPlace` and every prop in the catalogue furnish a loft without
+ * knowing there is one. The occupancy is the loft's OWN: the strip's tiles are
+ * already stamped occupied to keep the room floor's furniture out, and a level
+ * shares its tiles with the floor underneath it.
+ *
+ * Nothing is height-limited here, unlike a low platform would be — a loft has 2.2
+ * m of headroom, so the tall things that never fit anywhere else go in it.
+ */
+function dressLoft(layout, plan, sink, colliders, rng) {
+  const f = loftFloor(layout, plan);
+  const x0 = f.minX + LOFT_INSET, x1 = f.maxX - LOFT_INSET;
+  const z0 = f.minZ + LOFT_INSET, z1 = f.maxZ - LOFT_INSET;
+  if (x1 - x0 < 0.5 || z1 - z0 < 0.5) return;
+
+  const lifted = liftSink(sink, LOFT_Y, { x0, z0, x1, z1 }, colliders);
+
+  // Every half-metre cell of the loft gets a try, in a shuffled order. Darts were
+  // the first version and gave a loft of two things or a loft of nine: a spot that
+  // survives the fit test is a small fraction of a small floor, so a fixed number
+  // of random throws is a lottery rather than a density. Same lesson as camera
+  // placement in cameras.js.
+  const spots = [];
+  for (let z = z0 + TILE / 2; z <= z1 - TILE / 2 + 1e-9; z += TILE) {
+    for (let x = x0 + TILE / 2; x <= x1 - TILE / 2 + 1e-9; x += TILE) spots.push({ x, z });
+  }
+  // ...and a ceiling on how many actually go in. Without it the big things take
+  // the first few spots and then every leftover gap in the room takes the one prop
+  // still small enough to fit it — which came out as a loft holding two pallets
+  // and eight fire extinguishers. A store room is stacked, not tiled.
+  let left = Math.max(3, Math.round((x1 - x0) * (z1 - z0) / 0.9));
+
+  rng.shuffle(spots);
+  for (const s of spots) {
+    if (left <= 0) break;
+    // Several kinds per spot rather than one. With a single random pick, a spot
+    // that came up `workbench` in a loft two metres deep is simply lost, and the
+    // loft comes out with three things in it — what is stacked up there is the
+    // entire point of climbing.
+    const rot = rng.int(0, 3);
+    for (const kind of rng.shuffle(LOFT_KINDS.slice())) {
+      if (tryPlace(lifted, kind, s.x, s.z, rot, rng)) { left--; break; }
+    }
+  }
+}
+
+/**
+ * The same sink, one level up.
+ *
+ * Only four of its methods care about height and all four take absolute world y,
+ * so furnishing a level above the floor is four `+ dy`s and an occupancy grid of
+ * its own. Everything else — the destruction record, the debris capture, the model
+ * stamping — is the real sink's and behaves exactly as it does on the floor.
+ *
+ * The colliders it produces are stamped with the level they stand on, and that is
+ * not decoration: a prop's collider is a pillar measured from y = 0, so a 1.3 m
+ * cabinet in a loft has a `top` of 3.5 and no tool downstream could otherwise tell
+ * it from a prop three and a half metres tall. `7.top` in validate-props.mjs reads
+ * it. Everything added by the call is tagged rather than "the last one", so a prop
+ * that emits two colliders, or none, still comes out right.
+ */
+function liftSink(sink, dy, bounds, colliders) {
+  const used = [];   // world-space footprints already taken on this level
+  const inside = (x0, z0, x1, z1) =>
+    x0 >= bounds.x0 && x1 <= bounds.x1 && z0 >= bounds.z0 && z1 <= bounds.z1;
+
+  return {
+    ...sink,
+
+    canPlace(x0, z0, x1, z1) {
+      if (!inside(x0, z0, x1, z1)) return false;
+      return !used.some((u) => x0 < u.x1 && x1 > u.x0 && z0 < u.z1 && z1 > u.z0);
+    },
+    occupy(x0, z0, x1, z1) { used.push({ x0, z0, x1, z1 }); },
+
+    box(key, x0, y0, z0, x1, y1, z1) { sink.box(key, x0, y0 + dy, z0, x1, y1 + dy, z1); },
+    model(key, x, y, z, yaw) { return sink.model(key, x, y + dy, z, yaw); },
+
+    obstacle(x0, z0, x1, z1, top) {
+      const from = colliders.length;
+      sink.obstacle(x0, z0, x1, z1, top + dy);
+      for (let i = from; i < colliders.length; i++) colliders[i].level = dy;
+    },
+  };
+}
+
 // Corridors stay walkable, but a few props along the walls stop them reading as
 // empty tubes.
 function furnishCorridors(layout, sink, rng) {
@@ -991,7 +1211,9 @@ function reserveClearances(layout, reserved) {
     }
   };
 
-  const SWING = 4; // tiles of clear floor on both sides of a doorway
+  // DOOR_CLEAR tiles of clear floor on both sides of a doorway, shared with
+  // gen/stairs.js — see its declaration in gen/tiles.js.
+  const SWING = DOOR_CLEAR;
   for (const d of layout.doors) {
     if (d.vertical) stampTiles(d.x0 - SWING, d.y0 - 1, d.x1 + SWING, d.y1);
     else stampTiles(d.x0 - 1, d.y0 - SWING, d.x1, d.y1 + SWING);
