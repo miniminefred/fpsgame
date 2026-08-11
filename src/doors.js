@@ -26,6 +26,19 @@
 // nav grid, which has the opening closed (see gen/build.js), so a chase never
 // piles up against a door the chasers cannot open.
 //
+// ...and there is one exception to THAT, which is the alarm. The security
+// response is carrying a badge of its own (`keyed` in enemies.js), and for them
+// a locked door is a door: the sensor sees them, the panel opens, and they walk
+// through it. Which locks their badge fits is badgeOpens in keycards.js, and the
+// same predicate builds `badgeTiles` below — so what the sensor swings open and
+// what the nav grid routes them into are one decision made in one place. They
+// cannot disagree, and a body walking into a panel that will not move for it is
+// exactly what disagreeing would look like.
+//
+// A door held open by somebody coming out of it is open, and that is the whole
+// of the consequence: you can follow them back through while it is, and the
+// reader still says red, because nothing about your pocket changed.
+//
 // What clears a lock is picking up the card, not walking up to the door. That is
 // a deliberate choice and it is about the white card: white is on every door on
 // the floor, and unlocking those one doorway at a time means the whole building
@@ -38,6 +51,8 @@
 // It is permanent for the same reason it is instant: that moment is when the
 // opening rejoins the nav grid, and taking it away again would strand whoever
 // walked through it.
+
+import { badgeOpens } from './keycards.js';
 
 const SENSE = 2.8;             // metres from the opening that trips the sensor
 const SPEED = 3.4;             // fraction of the panel's width travelled per second
@@ -125,6 +140,24 @@ export class Doors {
     }
   }
 
+  /**
+   * The openings a badge holder may come through that the nav grid has shut.
+   *
+   * Handed to nav.setBadgeTiles once per floor. Only the locked ones are listed
+   * because the rest are already in the grid, and the test is badgeOpens rather
+   * than anything this file decides for itself: the sensor below asks the same
+   * question of the same body, and a route into a door that then refuses to open
+   * is the one failure this whole arrangement has to make impossible.
+   */
+  badgeTiles() {
+    const out = [];
+    for (const door of this.items) {
+      if (!door.lock || !badgeOpens(door.lock)) continue;
+      out.push(...door.navTiles);
+    }
+    return out;
+  }
+
   /** Every door on this floor still asking for a card. */
   get lockedCount() {
     let n = 0;
@@ -187,7 +220,10 @@ export class Doors {
           const cell = this.grid.get(bucketKey(cx, cz));
           if (!cell) continue;
           for (const door of cell) {
-            if (door.lock || sensed.has(door)) continue;
+            if (sensed.has(door)) continue;
+            // A locked door's sensor is off for the staff as well as for you —
+            // except for the alarm response, whose badge is the point of them.
+            if (door.lock && !(e.keyed && badgeOpens(door.lock))) continue;
             if (Math.hypot(e.x - door.x, e.z - door.z) < SENSE) sensed.add(door);
           }
         }
@@ -200,14 +236,19 @@ export class Doors {
       let near = Math.hypot(px - door.x, pz - door.z) < SENSE;
 
       if (door.lock) {
-        // Still badged, so its sensor is off — for everybody. All it does is say
-        // so, once every couple of seconds, to whoever walks into it.
-        if (near && door.refuseTimer <= 0) {
+        // Still badged, so its sensor is off for you. All it does is say so,
+        // once every couple of seconds, to whoever walks into it — and only
+        // while it is actually shut, because a panel somebody else has just
+        // opened is not refusing you anything, whatever the reader says.
+        if (near && door.open <= 0 && door.refuseTimer <= 0) {
           door.refuseTimer = REFUSE_GAP;
           this.audio?.doorRefused(door.at);
           this.onRefused?.(door);
         }
-        near = false;
+        // The badge holders are the exception, and the only one: `sensed` was
+        // filled above and a locked door is in it only if somebody carrying the
+        // card for it is standing there.
+        near = sensed.has(door);
       } else if (!near) {
         near = sensed.has(door);
       }

@@ -69,13 +69,35 @@ export const HUD_ORDER = ['white', 'grey', 'black', 'blue', 'yellow'];
  * test. Black is the exception written out longhand: it is the only card that
  * satisfies a lock it is not, off the ladder included.
  */
-function cardOpens(tier, lock) {
+export function cardOpens(tier, lock) {
   if (!lock) return true;
   if (tier === lock) return true;
   if (tier === 'black') return true;
   const held = CARDS[tier], want = CARDS[lock];
   if (!held || !want) return false;
   return want.rank > 0 && held.rank >= want.rank;
+}
+
+/**
+ * What building security is carrying when the alarm goes off.
+ *
+ * The player is not the only one on the floor with a pocket. A locked door is
+ * out of the nav grid for the staff (see doors.js), which is the right default
+ * — but it is a statement about people who have no reason to be anywhere else,
+ * and the response to an alarm is the exception: they are coming out of their
+ * own office and through the offices between them and you.
+ *
+ * So they get a keyring, and it is the shift's real one rather than a skeleton
+ * key: the staff badge, and the key to the room they were sitting in. Grey,
+ * yellow and black are somebody else's — which is what keeps the broom closet,
+ * the back-of-house rooms and the manager's office exactly as shut as they were
+ * before the klaxon, and keeps the black card the last beat of the floor.
+ */
+export const BADGE_TIERS = ['white', 'blue'];
+
+/** Does that keyring get through this lock? */
+export function badgeOpens(lock) {
+  return !lock || BADGE_TIERS.some((tier) => cardOpens(tier, lock));
 }
 
 /** Everything the player is carrying on this floor. */
