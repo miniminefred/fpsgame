@@ -1001,6 +1001,82 @@ function reserveClearances(layout, reserved) {
     const cx = Math.round(room.cx), cy = Math.round(room.cy);
     stampTiles(cx - 5, cy - 5, cx + 5, cy + 5);
   }
+
+  reserveThroughRoutes(layout, stampTiles);
+}
+
+// A lane is 2 tiles so it is 1 m wide. The body is 0.8 m (RADIUS in metrics.js)
+// and canPlace rounds a prop's footprint OUTWARD to whole tiles, so a two-tile
+// lane is a metre of floor no prop can reach into — where one tile would leave
+// 0.5 m and be no lane at all.
+const LANE = 2;
+
+/**
+ * A room you have to walk THROUGH keeps a lane between its doorways.
+ *
+ * Almost every room opens onto a corridor, and a corridor cannot be furnished
+ * shut — the props along one are 7 tiles apart in a 6-tile-wide hallway. So for
+ * almost every room, furniture blocking the way from one of its doors to another
+ * costs the player nothing: both halves are still reachable from the hall.
+ *
+ * The exception is a room whose doorway leads into another ROOM rather than a
+ * corridor, and it is the whole reason this exists. Then the far room's only
+ * route in is across this one, and two props standing corner to corner across
+ * the middle do not merely make the room awkward — they end the floor. A hostile
+ * still spawns in the sealed room, because the nav grid is coarser than a body
+ * and thinks the gap is walkable, so the objective can never reach zero and the
+ * run is over. That is `5.geom-connected` in tools/validate-props.mjs, and it is
+ * what caught this: a copyroom behind a crate and a shelving unit 0.85 m apart
+ * on the diagonal, which is under the 0.8 m of square body needed to pass.
+ *
+ * Reserving the lane rather than repairing it afterwards is deliberate, and it
+ * is what the rest of this function already does for the doorways themselves: a
+ * floor cannot be furnished into a state it then has to be rescued from.
+ */
+function reserveThroughRoutes(layout, stampTiles) {
+  const { rooms, doors } = layout;
+  const inside = (r, tx, ty) => tx >= r.x0 && tx < r.x1 && ty >= r.y0 && ty < r.y1;
+
+  // Both rooms a doorway joins. `room.doors` holds only the doors that room CUT
+  // (see cutDoor in gen/layout.js), and the room you walk through is usually the
+  // other one — so the sides are recovered from the tiles either side of the
+  // opening instead. A hall door probes two corridor tiles and drops out here,
+  // which is right: it is not in anybody's room.
+  const mouths = new Map();
+  for (const d of doors) {
+    const cx = Math.floor((d.x0 + d.x1) / 2), cy = Math.floor((d.y0 + d.y1) / 2);
+    const probes = d.vertical
+      ? [[d.x0 - 1, cy], [d.x1, cy]]
+      : [[cx, d.y0 - 1], [cx, d.y1]];
+    const sides = probes
+      .map(([px, py]) => ({ room: rooms.find((r) => inside(r, px, py)), at: [px, py] }))
+      .filter((s) => s.room);
+    // Two rooms either side means neither of them is a way out on its own.
+    const through = sides.length === 2;
+    for (const s of sides) {
+      if (!mouths.has(s.room)) mouths.set(s.room, []);
+      mouths.get(s.room).push({ at: s.at, through });
+    }
+  }
+
+  for (const [room, list] of mouths) {
+    if (list.length < 2 || !list.some((m) => m.through)) continue;
+    // Every other doorway back to the first one, so the lanes of a room with
+    // three doors still meet rather than forming two separate legs.
+    for (let i = 1; i < list.length; i++) reserveLane(room, list[0].at, list[i].at, stampTiles);
+  }
+}
+
+// An L of reserved floor between two tiles of one room: along z at `a`, then
+// along x at `b`. Both legs are widened toward the room's inside, because a
+// doorway sits against a wall and a lane hanging half in the plaster is 0.5 m.
+function reserveLane(room, [ax, ay], [bx, by], stampTiles) {
+  const wide = (v, lo, hi) => Math.max(lo, Math.min(v, hi - LANE + 1));
+  const laneY = wide(ay, room.y0, room.y1 - 1);
+  const laneX = wide(bx, room.x0, room.x1 - 1);
+
+  stampTiles(Math.min(ax, bx), laneY, Math.max(ax, bx), laneY + LANE - 1);
+  stampTiles(laneX, Math.min(ay, by), laneX + LANE - 1, Math.max(ay, by));
 }
 
 // --- the way out ------------------------------------------------------------
