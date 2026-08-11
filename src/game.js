@@ -126,10 +126,12 @@ export class Game {
    * A camera watched you long enough, or you walked through a laser.
    *
    * Everything about WHO turns up is enemies.js's (see `alarm` there); this is
-   * only what a floor does about it. Two of those three things exist because the
+   * only what a floor does about it. Two of those things exist because the
    * response is people who were not on the floor when it was generated: bullets
    * have to be told about them, and the objective counter is now wrong by
-   * however many arrived.
+   * however many arrived. The objective moves for a second reason as well — the
+   * men in the security office stop being behind a lock the moment they open it
+   * themselves, so they join the count of hostiles you can actually reach.
    */
   _onAlarm() {
     const response = this.enemies.alarm(
@@ -138,9 +140,15 @@ export class Game {
     this.shooting.addHittables(response.meshes);
     this.audio.alarm();
     this.hud.alarm();
-    this.hud.message(response.roused
-      ? `ALARM — ${response.spawned.length} INBOUND, AND THE OFFICE IS AWAKE`
-      : `ALARM — ${response.spawned.length} SECURITY INBOUND`, 2600);
+    // Three separate facts, and the player can act on each of them differently:
+    // how many are walking in, whether the blue room is about to unlock itself
+    // and empty into the corridor, and how much of the floor is now heading this
+    // way on its own. Assembled rather than written out, because any of the
+    // three can be nothing.
+    const news = [`${response.spawned.length} SECURITY INBOUND`];
+    if (response.roused) news.push('THE OFFICE IS COMING OUT');
+    if (response.heard) news.push(`${response.heard} MORE HEARD IT`);
+    this.hud.message(`ALARM — ${news.join(', ')}`, 2600);
     this._syncObjective();
   }
 
@@ -259,6 +267,10 @@ export class Game {
     // The doors own colliders that are already in that list; all they do at
     // runtime is drop them below the floor when the panel is out of the way.
     this.doors.setDoors(level.doors, level.nav);
+    // What an alarm response is allowed to walk through. The door list is asked
+    // rather than the lock list, because the doors are what will actually open
+    // for them — see badgeTiles there and setBadgeTiles in nav.js.
+    level.nav.setBadgeTiles(this.doors.badgeTiles());
     this.player.placeAt(level.spawn.x, level.spawn.z);
     // You step out of the lift with your sidearm out and everything loaded. The
     // arrival is the one moment in a floor where the game gets to put you
