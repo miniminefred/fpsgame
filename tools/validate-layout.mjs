@@ -11,7 +11,10 @@
 //   FAIL — a hard invariant the game depends on (unwinnable floor, broken mesh).
 //   WARN — the floor still works but the generation quality is off.
 
-import { generateLayout, TILE, SOLID, ROOM, CORRIDOR, DOOR, isOpen, FIRST_CONTACT_GAP, roleBranch } from '../src/gen/layout.js';
+import {
+  generateLayout, TILE, SOLID, ROOM, CORRIDOR, DOOR, isOpen,
+  FIRST_CONTACT_GAP, roleBranch, PAD, PROLOGUE_MIN, CORRIDOR_W, DOOR_W,
+} from '../src/gen/layout.js';
 
 const args = process.argv.slice(2);
 const argVal = (flag, dflt) => {
@@ -22,12 +25,12 @@ const argVal = (flag, dflt) => {
 const SEEDS_PER_FLOOR = Number(argVal('--seeds', 30));
 const FLOORS = 15;
 const MAX_EXAMPLES = 6;
-const PAD = 2;            // must match layout.js
-// ...and so must these, from hallLocks. FIRST_CONTACT_GAP is METRES straight
-// line from the lifts, which is what enemies.js measures too — the whole bug
-// this check exists for was these being tiles-walked at one end and
-// metres-straight-line at the other.
-const PROLOGUE_MIN = 40;
+// PAD, PROLOGUE_MIN, CORRIDOR_W and DOOR_W are imported, not restated. They used
+// to be copied here under a "must match layout.js" comment, which is a promise
+// nothing can keep — see FIRST_CONTACT_GAP, where the generator and its consumer
+// held the same name at two different values and the sweep cheerfully asserted
+// the wrong one back. FIRST_CONTACT_GAP is METRES straight line from the lifts,
+// which is what enemies.js measures too.
 const MAX_ROOM_DEPTH = 2; // rooms deeper than this from a corridor are a WARN
 
 // ---------------------------------------------------------------------------
@@ -321,7 +324,10 @@ function validate(seed, floorNumber) {
       const span = d.vertical ? h : w;
       const capA = d.vertical ? T(d.x0, d.y0 - 1) : T(d.x0 - 1, d.y0);
       const capB = d.vertical ? T(d.x0, d.y1) : T(d.x1, d.y0);
-      if (span < 4 || isOpen(capA) || isOpen(capB)) hallW++;
+      // Wall to wall means exactly the corridor's width. This was `span < 4`,
+      // which let a hall door be any of 4, 5 or 6 tiles without complaint — a
+      // loose restatement of the invariant rather than the invariant.
+      if (span !== CORRIDOR_W || isOpen(capA) || isOpen(capB)) hallW++;
 
       const leaf = Math.ceil(span / 2);
       for (let i = -1; i <= leaf; i++) {
@@ -332,7 +338,7 @@ function validate(seed, floorNumber) {
         const b = d.vertical ? T(d.x0 + q, d.y1) : T(d.x1, d.y0 + q);
         if (isOpen(a) || isOpen(b)) { hallSwing++; break; }
       }
-    } else if ((d.vertical ? h : w) !== 3) wrongW++;
+    } else if ((d.vertical ? h : w) !== DOOR_W) wrongW++;
 
     let sideA = 0, sideB = 0, tilesOk = true, anyReach = false;
     for (let y = d.y0; y < d.y1; y++) {
@@ -375,7 +381,7 @@ function validate(seed, floorNumber) {
   stats.abutPairs += abut;
 
   if (thick) check('6.door-thickness').fail(id, `${thick} doors not 1 tile thick`);
-  if (wrongW) check('6.door-width').fail(id, `${wrongW} doors not 3 tiles wide`);
+  if (wrongW) check('6.door-width').fail(id, `${wrongW} doors not ${DOOR_W} tiles wide`);
   if (notDoor) check('6.door-tiles').fail(id, `${notDoor} doors whose tiles are not DOOR`);
   if (oneSided) check('6.door-bothsides').fail(id, `${oneSided} doors with solid on one side`);
   if (dead) check('6.door-dead').fail(id, `${dead} doors walled in on both sides`);
@@ -565,7 +571,7 @@ function validate(seed, floorNumber) {
     for (let x = PAD; x < W - PAD; x++) if (tiles[y * W + x] !== CORRIDOR && tiles[y * W + x] !== DOOR) { full = false; break; }
     if (full) hTiles++;
   }
-  const nv = Math.round(vTiles / 6), nh = Math.round(hTiles / 6);
+  const nv = Math.round(vTiles / CORRIDOR_W), nh = Math.round(hTiles / CORRIDOR_W);
   stats.vCorr.set(nv, (stats.vCorr.get(nv) || 0) + 1);
   stats.hCorr.set(nh, (stats.hCorr.get(nh) || 0) + 1);
 }

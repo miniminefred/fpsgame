@@ -1,4 +1,5 @@
 import { makeRng } from './rng.js';
+import { clamp } from '../util.js';
 
 // Procedural office floorplan.
 //
@@ -18,11 +19,15 @@ export const WALL_H = 3.2;         // structural wall height
 export const CEIL_H = 3.0;         // suspended ceiling height
 export const DOOR_H = 2.1;
 
-const PAD = 2;                     // solid tiles of exterior wall on each side
-const CORRIDOR_W = 6;              // 3 m corridors
+// PAD, CORRIDOR_W and DOOR_W are exported because tools/validate-layout.mjs
+// checks against them, and a validator holding its own copy of the number it is
+// checking is the FIRST_CONTACT_GAP failure exactly: the sweep stops testing the
+// generator and starts asserting its own arithmetic back at it.
+export const PAD = 2;              // solid tiles of exterior wall on each side
+export const CORRIDOR_W = 6;       // 3 m corridors
 const MIN_LEAF = 10;               // smallest room block (=> 4.5 m interior)
 const MAX_LEAF = 26;               // above this a block always splits again
-const DOOR_W = 3;                  // 1.5 m doorways
+export const DOOR_W = 3;           // 1.5 m doorways
 // Minimum solid wall left between two openings. Without this, two rooms either
 // side of a shared wall each cut their own doorway and the second lands flush
 // against the first, merging them into one 3 m hole with a loose doorpost
@@ -212,14 +217,22 @@ export function generateLayout(seed, floorNumber) {
 }
 
 // Tile <-> world helpers. The building is centred on the origin.
+//
+// There are two world positions for a tile and they are half a tile apart:
+// `worldX` gives its CORNER, `centreX` gives its middle. That distinction is not
+// pedantry — it is the prologue bug written down. The generator measured the
+// first-contact gap from one and the consumer measured it from the other, and
+// the half tile between round() and floor() on the spawn tile moved the count by
+// nine, which is how a floor you could not start shipped. Whenever you convert,
+// say which of the two you meant.
 export const worldX = (l, tx) => tx * l.TILE + l.ox;
 export const worldZ = (l, ty) => ty * l.TILE + l.oz;
+export const centreX = (l, tx) => (tx + 0.5) * l.TILE + l.ox;
+export const centreZ = (l, ty) => (ty + 0.5) * l.TILE + l.oz;
 export const tileX = (l, x) => Math.floor((x - l.ox) / l.TILE);
 export const tileY = (l, z) => Math.floor((z - l.oz) / l.TILE);
 
 // --- generation internals ---------------------------------------------------
-
-const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 // `count` positions inside [min,max] that are at least `sep` apart.
 function pickLines(rng, min, max, count, sep) {
@@ -762,7 +775,7 @@ export const FIRST_CONTACT_GAP = 11;
 // runs before a stick of furniture is placed and cannot know which of them a
 // filing cabinet will end up in — so it is deliberately generous, and
 // _cardOutside has a fallback for the rest.
-const PROLOGUE_MIN = 40;
+export const PROLOGUE_MIN = 40;
 
 function assignLocks(tiles, W, H, rooms, doors, spawnRoom, exitRoom, dist, rng) {
   const sx = Math.round(spawnRoom.cx), sy = Math.round(spawnRoom.cy);
