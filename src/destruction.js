@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { eraseSpan } from './gen/geom.js';
+import { BodyPool } from './body-pool.js';
 
 // Everything on the floor coming apart.
 //
@@ -54,7 +55,10 @@ export class Destruction {
     this.lighting = lighting;
 
     this.level = null;
-    this.debris = [];
+    // Every fragment builds its own geometry, so the pool disposes it on retire.
+    this.debris = new BodyPool({
+      scene, physics, max: MAX_DEBRIS, life: DEBRIS_LIFETIME, ownGeometry: true,
+    });
   }
 
   // Called once per floor, after the level's meshes exist. Indexes each
@@ -260,41 +264,20 @@ export class Destruction {
         this.physics.impulse(handle, _away, mass * (2.2 + Math.random() * 2.4), point);
       }
 
-      this.debris.push({ mesh, handle, life: DEBRIS_LIFETIME });
+      this.debris.add(mesh, handle);
     }
-
-    while (this.debris.length > MAX_DEBRIS) this._retire(this.debris.shift());
   }
 
   // --- debris lifecycle -------------------------------------------------------
 
   update(dt) {
-    for (let i = this.debris.length - 1; i >= 0; i--) {
-      const entry = this.debris[i];
-      entry.life -= dt;
-      if (entry.life <= 0) {
-        this._retire(entry);
-        this.debris.splice(i, 1);
-        continue;
-      }
-      if (entry.handle && !this.physics.isSleeping(entry.handle)) {
-        this.physics.syncMesh(entry.mesh, entry.handle);
-      }
-    }
+    this.debris.update(dt);
   }
 
   // Must run while the physics world the handles belong to is still alive.
   clear() {
-    for (const entry of this.debris) this._retire(entry);
-    this.debris.length = 0;
+    this.debris.clear();
     this.level = null;
-  }
-
-  _retire(entry) {
-    if (!entry) return;
-    this.scene.remove(entry.mesh);
-    entry.mesh.geometry.dispose();
-    if (entry.handle) this.physics?.remove(entry.handle);
   }
 }
 

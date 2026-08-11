@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { BodyPool } from './body-pool.js';
 
 // Spent brass.
 //
@@ -35,7 +36,9 @@ export class Casings {
   constructor(scene, physics) {
     this.scene = scene;
     this.physics = physics;
-    this.live = [];
+    // Geometry and material are shared across every casing, so the pool must not
+    // dispose them with the mesh.
+    this.pool = new BodyPool({ scene, physics, max: MAX_LIVE, life: LIFETIME });
 
     this.geometry = new THREE.BoxGeometry(SHELL.w, SHELL.h, SHELL.l);
     this.material = new THREE.MeshStandardMaterial({
@@ -89,36 +92,16 @@ export class Casings {
     mesh.position.set(x, y, z);
     this.scene.add(mesh);
 
-    this.live.push({ mesh, handle, life: LIFETIME });
-    while (this.live.length > MAX_LIVE) this._retire(this.live.shift());
+    this.pool.add(mesh, handle);
   }
 
   update(dt) {
-    for (let i = this.live.length - 1; i >= 0; i--) {
-      const shell = this.live[i];
-      shell.life -= dt;
-      if (shell.life <= 0) {
-        this._retire(shell);
-        this.live.splice(i, 1);
-        continue;
-      }
-      if (!this.physics.isSleeping(shell.handle)) {
-        this.physics.syncMesh(shell.mesh, shell.handle);
-      }
-    }
+    this.pool.update(dt);
   }
 
   // Must run while the physics world the handles belong to is still alive.
   clear() {
-    for (const shell of this.live) this._retire(shell);
-    this.live.length = 0;
-  }
-
-  _retire(shell) {
-    if (!shell) return;
-    this.scene.remove(shell.mesh);
-    this.physics?.remove(shell.handle);
-    // Geometry and material are shared — only the mesh goes.
+    this.pool.clear();
   }
 
   dispose() {
