@@ -33,7 +33,16 @@
 //
 // Generated + hand-tuned; see MODEL_REJECTS at the bottom for what was dropped.
 
-export const MODEL_DIR = '/models/office/';
+// Built from a string at runtime, so Vite does not rewrite it and it has to ask
+// for the base itself. Root-absolute, this pointed at the domain root on GitHub
+// Pages (the game is served from /fpsgame/) and every one of the 71 GLBs 404ed —
+// which is *invisible*, because a prop with no model silently falls back to its
+// authored boxes. The floor still generated, still collided, still played; it
+// just quietly stopped being furnished with furniture.
+//
+// `?? '/'` is for Node: validate-layout and validate-props import this file for
+// the recorded footprints, and `import.meta.env` does not exist outside Vite.
+export const MODEL_DIR = (import.meta.env?.BASE_URL ?? '/') + 'models/office/';
 
 export const MODEL_TABLE = {
   desk: {

@@ -17,7 +17,18 @@
 
 import { clamp } from './util.js';
 
-const BASE = '/sounds/';
+// Vite rewrites the asset URLs it can *see* — a static import, an href, a url()
+// in CSS — and this is none of those: it is a prefix a string is built from at
+// runtime, so nothing rewrites it and it has to be told the base itself. The
+// root-absolute '/sounds/' it used to be worked perfectly on the dev server and
+// broke every clip on GitHub Pages, where the game is served from /fpsgame/ and
+// so asked the domain root for each file and got a 404. That failure is quiet in
+// the worst way: a missing clip is silence, and silence is what half this engine
+// is designed to produce on purpose.
+//
+// `?? '/'` is for Node: the two generator validators import their way into
+// modules that read this and `import.meta.env` does not exist outside Vite.
+const BASE = (import.meta.env?.BASE_URL ?? '/') + 'sounds/';
 
 const DEFAULT_PITCH = 0.06;   // ±6% playback rate unless a sound asks otherwise
 const DEFAULT_GAIN_VAR = 0.12;

@@ -123,6 +123,24 @@ load-bearing:
   find out. `master` was added to the allowlist to fix it; rename the branch and it will
   need doing again.
 
+**Any asset URL built from a string at runtime must ask for the base itself**, and this
+is the trap that actually shipped. Vite rewrites the asset references it can *see* — a
+static import, an `href`, a `url()` — and a prefix that a path is concatenated onto is
+none of those. `sfx.js` held `const BASE = '/sounds/'` and `gen/model-table.js` held
+`MODEL_DIR = '/models/office/'`; both are root-absolute, both were perfect on the dev
+server, and both asked `miniminefred.github.io` for a file that lives under `/fpsgame/`.
+Every clip and all 71 GLBs 404ed on the deployed build. They now read
+`(import.meta.env?.BASE_URL ?? '/') + '…'` — the `?? '/'` because the two validators
+import their way into `model-table.js` from Node, where `import.meta.env` does not exist.
+
+Both failures are quiet, which is why they lasted: a missing clip is silence, and a prop
+whose model fails to load falls back to its authored boxes by design, so the floor
+generates and plays and is simply no longer furnished with furniture. Note the weapon
+viewmodels were *fine* throughout — `weapons.js` uses relative paths
+(`models/1_pistol.glb`), which resolve against the document and so pick the subpath up for
+free. That is the whole difference, and it is worth copying: prefer relative, and if a path
+must be absolute, derive it from `BASE_URL`.
+
 `npm test` is deliberately **not** a gate on the deploy. The two generator sweeps are the
 right thing to run after touching `src/gen/`, but wiring them into publishing would mean a
 seed-dependent validator failure could block a deploy that has nothing to do with it.
