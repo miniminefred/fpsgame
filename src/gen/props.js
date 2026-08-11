@@ -626,6 +626,36 @@ export const PROPS = {
 
 // --- placement --------------------------------------------------------------
 
+// The footprint a prop will REALLY occupy, in world axes, at quarter turn `rot`.
+//
+// A prop with a downloaded model uses THAT model's measured footprint and not
+// the hand-authored `w`/`d`, because the model is what the floor ships with:
+// the fit test, the collider and the nav stamp are all cut from it (see
+// `tryPlace` below). So the model's footprint is the authoritative one, and the
+// catalogue's `w`/`d` is the fallback for a prop that has no model — or whose
+// GLB never arrived.
+//
+// Everything that reasons about where a prop will END UP has to ask the same
+// question, or the furnisher lays a room out around one size while the placer
+// reserves another. That gap is up to 0.25 m per prop — most of the 0.15 m a
+// room keeps clear of its own walls, and enough to turn `openPlan`'s "is there
+// a body's width of lane left" test into a guarantee of 0.55 m. `gen/rooms.js`
+// had exactly one call site that knew this (`meetingRoom`, for its chair row);
+// this is that lookup, made shared, so the wall standoffs and the lane tests
+// can stop disagreeing with the thing that actually reserves the floor.
+//
+// `rot` is the quarter turn the prop is placed at, and the odd turns present
+// its depth along x and its width along z — the same swap `tryPlace` makes.
+// Leave `rot` off to ask for the prop's own frame, where `d` is always the
+// dimension that faces a wall and `w` the one that runs along it.
+export function footprintOf(sink, kind, rot = 0) {
+  const spec = PROPS[kind];
+  const model = spec.model ? sink.modelInfo?.(spec.model) : null;
+  const w = model ? model.foot[0] : spec.w;
+  const d = model ? model.foot[1] : spec.d;
+  return (rot & 1) === 1 ? { w: d, d: w } : { w, d };
+}
+
 // Emits `kind` at (cx,cz) if its footprint is clear. Returns whether it landed.
 //
 // Props carrying a `mass` are loose: they become rigid bodies instead of static
@@ -641,13 +671,12 @@ export function tryPlace(sink, kind, cx, cz, rot, rng) {
   // A prop with a downloaded model uses THAT model's measured footprint, not
   // the hand-authored one, so collision always matches what you can see. If the
   // model is missing the prop falls back to its boxes and its own footprint.
+  // `footprintOf` is that rule, shared with the furnisher so both ends of a
+  // placement agree on how much floor is about to disappear.
   const model = spec.model ? sink.modelInfo(spec.model) : null;
-  const fw = model ? model.foot[0] : spec.w;
-  const fd = model ? model.foot[1] : spec.d;
-
-  const swap = (rot & 1) === 1;
-  const w = (swap ? fd : fw) / 2;
-  const d = (swap ? fw : fd) / 2;
+  const foot = footprintOf(sink, kind, rot);
+  const w = foot.w / 2;
+  const d = foot.d / 2;
 
   if (!sink.canPlace(cx - w, cz - d, cx + w, cz + d)) return false;
 
@@ -669,14 +698,30 @@ export function tryPlace(sink, kind, cx, cz, rot, rng) {
     const stamps = [{ key: spec.model, x: cx, y: 0, z: cz, yaw }];
 
     sink.beginStatic(spec.hp, spec.substance, spec.volatile);
-    sink.model(spec.model, cx, 0, cz, yaw);
+    // `model()` says whether anything was actually stamped. It wasn't if the
+    // GLB failed to fetch, or if there is no loader at all — which is every run
+    // of the headless validators in tools/. Only the PICTURE falls back in that
+    // case: the boxes that were going to be debris are re-emitted as the prop
+    // itself, exactly as the no-model branch below would have drawn them. The
+    // footprint and the collider stay the model's, because the model's
+    // footprint is what the shipped floor is laid out around, and a validator
+    // that reserved the fallback size would be proving the wrong floorplan.
+    const drawn = sink.model(spec.model, cx, 0, cz, yaw);
+    if (!drawn) for (const b of debris) sink.box(b.key, b.x0, b.y0, b.z0, b.x1, b.y1, b.z1);
 
     // What the model is carrying, drawn for real in the building's own palette
     // — the stock on a rack's decks. Unlike `build`, this is NOT captured: it
     // is the only picture of those boxes there is, and because it goes through
     // the same static record it joins the debris and the destroyed span for
     // free.
-    spec.dress?.(placer(sink, cx, cz, rot), rng);
+    //
+    // It is called either way, drawn or not, and that is deliberate: it draws
+    // from `rng`, and a floor has to come out the same whether or not a GLB
+    // happened to load. When there is no model the fallback boxes already carry
+    // their own stock, so the draws are made and thrown away rather than
+    // stacking a second set of cartons on the first.
+    if (drawn) spec.dress?.(placer(sink, cx, cz, rot), rng);
+    else sink.captureBoxes(() => spec.dress?.(placer(sink, cx, cz, rot), rng));
 
     // The model's own height, unless the prop stands something on top of itself
     // — a pallet is 19 cm and the stack on it is over a metre, and a collider
@@ -702,7 +747,11 @@ export function tryPlace(sink, kind, cx, cz, rot, rng) {
     }
 
     sink.paintDebris(debris, stamps);
-    sink.endStatic(debris);
+    // The debris list only ADDS to what the prop drew when the model drew the
+    // prop. If the boxes were re-emitted above they are already in the record,
+    // and handing them over a second time would break the prop into two of
+    // everything.
+    sink.endStatic(drawn ? debris : undefined);
   } else {
     // Static boxes: the geometry it is drawn with is already the geometry it
     // falls apart into, so there is nothing to capture separately.

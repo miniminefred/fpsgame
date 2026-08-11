@@ -1,4 +1,4 @@
-import { PROPS, QUARTER, tryPlace } from './props.js';
+import { QUARTER, tryPlace, footprintOf } from './props.js';
 
 // What each kind of room is furnished with. The catalogue in props.js says what
 // a desk IS; this says where desks go. Splitting them keeps a room type to a
@@ -58,13 +58,22 @@ function openPlan(sink, { x0, z0, x1, z1 }, rng) {
   // exactly: a prop deeper than that lane minus a body's width doesn't sit
   // against the wall, it closes the room off from its own doorway.
   //
-  // The desk is 1.6 x 0.8 and the partitions stand 0.62 m behind it; the chairs
-  // are loose and collide with nothing, so they don't enter into it.
+  // The desk's real width, not the catalogue's: it is drawn as a model, so what
+  // eats into the lane is the model's footprint (1.84 m, against the 1.6 m the
+  // fallback boxes are authored at). The partitions stand 0.62 m behind the pod
+  // centre and are 0.12 deep, so they reach 0.68 — further back than either
+  // desk does — and the chairs are loose and collide with nothing, so they
+  // don't enter into it.
   const bounds = { x0, z0, x1, z1 };
-  const laneX = padX + (PITCH_X - 1.6) / 2;
-  const laneZ = padZ + (PITCH_Z / 2 - 0.68);
+  const desk = footprintOf(sink, 'desk');
+  const laneX = padX + (PITCH_X - desk.w) / 2;
+  const laneZ = padZ + (PITCH_Z / 2 - Math.max(0.68, desk.d / 2));
+  // And the same for the prop being offered the wall. Asking the catalogue how
+  // deep a printer is answered 0.88 m for a machine that ships at 1.13 — so a
+  // lane this test had just certified as leaving a body's width came out 0.55 m
+  // wide, which is the exact failure it exists to prevent.
   const walls = (kind) => {
-    const need = PROPS[kind].d + 0.8;
+    const need = footprintOf(sink, kind).d + 0.8;
     return [...(laneZ >= need ? [0, 2] : []), ...(laneX >= need ? [1, 3] : [])];
   };
 
@@ -82,8 +91,10 @@ function meetingRoom(sink, bounds, rng) {
   const rot = alongX ? 0 : 1;
 
   if (tryPlace(sink, 'meetingTable', cx, cz, rot, rng)) {
-    const table = PROPS.meetingTable;
-    const half = (sink.modelInfo?.(table.model)?.foot[1] ?? table.d) / 2 + 0.42;
+    // Half the table's real depth — measured across its short axis whichever
+    // way round it went in, which is what `footprintOf` answers in the prop's
+    // own frame — plus room for a chair to be pushed under it.
+    const half = footprintOf(sink, 'meetingTable').d / 2 + 0.42;
     const seats = Math.max(2, Math.floor((alongX ? x1 - x0 : z1 - z0) / 0.85) - 1);
     for (let i = 0; i < seats; i++) {
       const t = (i - (seats - 1) / 2) * 0.85;
@@ -316,9 +327,13 @@ function privateOffice(sink, bounds, rng) {
 // Desk backed onto a wall with its chair tucked in front of it.
 function deskAgainstWall(sink, bounds, rng) {
   const { x0, z0, x1, z1 } = bounds;
-  const spec = PROPS.desk;
-  const standoff = spec.d / 2;
-  const margin = spec.w / 2;
+  // The footprint the placer will actually reserve — the desk's model is
+  // 1.84 x 0.97 where its fallback boxes are 1.6 x 0.8, so seating it off the
+  // catalogue's numbers put its back 8.5 cm through the wall inset and its
+  // chair 8.5 cm too close to it.
+  const { w: fw, d: fd } = footprintOf(sink, 'desk');
+  const standoff = fd / 2;
+  const margin = fw / 2;
 
   for (let tries = 0; tries < 10; tries++) {
     const side = rng.int(0, 3);
@@ -468,7 +483,16 @@ function aisles(sink, bounds, aislePitch, unitPitch, kind, rng) {
   // Too short to hold a rank and its gangways: leave it to the clutter.
   if (a1 - a0 < 2 * GANGWAY + unitPitch) return;
 
-  for (let b = b0 + aislePitch * 0.3; b < b1 - 0.4; b += aislePitch) {
+  // How far the last rank may stand from the far wall, which is half of what
+  // the rank is actually DEEP — the same footprint tryPlace will reserve, so a
+  // model-backed rack is measured at the size it ships at. This was a flat
+  // 0.4 m, which happened to suit a 1.06 m server rack and not the 1.31 m one
+  // the model turned out to be, and the last rank in every server room stood a
+  // couple of centimetres into the wall inset because of it. `b` is the aisle
+  // axis, and a rank presents its depth along it whichever way round the room
+  // is, which is why this asks in the prop's own frame.
+  const half = footprintOf(sink, kind).d / 2;
+  for (let b = b0 + aislePitch * 0.3; b < b1 - half; b += aislePitch) {
     for (let a = a0 + GANGWAY + unitPitch / 2; a < a1 - GANGWAY - unitPitch / 2 + 0.05; a += unitPitch) {
       if (alongX) tryPlace(sink, kind, a, b, rot, rng);
       else tryPlace(sink, kind, b, a, rot, rng);
@@ -532,9 +556,15 @@ function scatter(sink, bounds, kinds, perM2, rng) {
 // which wall the die picked.
 function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES) {
   const { x0, z0, x1, z1 } = bounds;
-  const spec = PROPS[kind];
-  const standoff = spec.d / 2;
-  const margin = spec.w / 2;   // so a 3 m table can't hang off the end of the wall
+  // Asked in the prop's OWN frame, where `d` is always the dimension that faces
+  // the wall and `w` the one that runs along it — which is the whole reason the
+  // side is the quarter turn. The numbers come from the model when there is
+  // one, because that is the footprint tryPlace is about to reserve; taking
+  // them from the catalogue instead stood a copier 0.44 m off a wall it is
+  // 0.565 m deep from the middle of, and a server rack likewise.
+  const { w: fw, d: fd } = footprintOf(sink, kind);
+  const standoff = fd / 2;
+  const margin = fw / 2;   // so a 3 m table can't hang off the end of the wall
 
   const alongX = x1 - x0 >= margin * 2;
   const alongZ = z1 - z0 >= margin * 2;

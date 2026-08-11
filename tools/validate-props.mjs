@@ -59,6 +59,7 @@ const { generateLayout, TILE, WALL_H, CEIL_H, SOLID, ROOM, CORRIDOR, DOOR, isOpe
   await import('../src/gen/layout.js');
 const { buildLevel } = await import('../src/gen/build.js');
 const { PROPS } = await import('../src/gen/props.js');
+const { MODEL_TABLE } = await import('../src/gen/model-table.js');
 const { makeRng } = await import('../src/gen/rng.js');
 
 // ---------------------------------------------------------------------------
@@ -259,6 +260,17 @@ function buildCatalogue() {
         bump(e.sigs, sigKey(w, d, obs.top));
       }
     }
+
+    // A model-backed prop does not ship the collider its `build` authored: it
+    // ships the MODEL's footprint at the model's height (see tryPlace), and
+    // that is the box this tool will find on the floor. Registering only the
+    // authored signature left every desk, copier and vending machine coming
+    // back as an unrecognised `?0.64x1.29@1.90` — which is not merely untidy,
+    // it is how 10.edge-standoff stops recognising `vending` and quietly
+    // measures nothing at all.
+    const m = spec.model ? MODEL_TABLE[spec.model] : null;
+    if (m?.foot) bump(e.sigs, sigKey(m.foot[0], m.foot[1], spec.obstacleTop ?? m.height ?? 0));
+
     CAT.set(kind, e);
   }
 }

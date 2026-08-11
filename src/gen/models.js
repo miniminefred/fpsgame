@@ -25,8 +25,41 @@ const templates = new Map();
 // weights that nothing here uses.
 const KEEP = ['position', 'normal', 'uv', 'color'];
 
+// What a placer needs to know about a model in order to reserve floor for it:
+// its footprint and its height. Both are recorded in MODEL_TABLE for all 71
+// entries, and `bake` only measures the bounding box when the table leaves one
+// out — so the numbers are knowable without a GLTFLoader, a fetch or a GPU.
+//
+// That is what this exists for. The headless validators in tools/ run in Node,
+// where `loadModels` never runs and `templates` stays empty; answering `null`
+// there fit-tested every model-backed prop at its hand-authored FALLBACK size
+// instead of the size it ships at — off by up to 0.25 m per prop — so the
+// placement invariants were being proved against a floorplan the game does not
+// build. The table is the same data the browser ends up with, so serving it
+// straight is what makes the sweep measure the shipped floor.
+//
+// `parts` being empty is the point, not an omission: `stampModel` and
+// `paintDebris` read `templates` and only `templates`, so a table-only entry
+// draws nothing and paints nothing. The prop falls back to its authored boxes
+// for the PICTURE (see `tryPlace`) while the FOOTPRINT stays the model's — in
+// Node, and in a browser whose GLB failed to fetch, alike. Those are the same
+// case and they should not disagree about where the furniture stands.
+function tableInfo(key) {
+  const spec = MODEL_TABLE[key];
+  // No entry, or an entry with no measured footprint, means there is nothing
+  // authoritative to reserve — the prop is on its own boxes, footprint included.
+  if (!spec?.foot) return null;
+  return {
+    parts: [],
+    foot: spec.foot,
+    height: spec.height ?? 0,
+    mount: spec.mount ?? 'floor',
+    tags: spec.tags ?? [],
+  };
+}
+
 export function modelInfo(key) {
-  return templates.get(key) ?? null;
+  return templates.get(key) ?? tableInfo(key);
 }
 
 // Loads the given keys (defaults to every entry in the table). Anything that
