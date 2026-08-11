@@ -58,7 +58,9 @@ First time on a fresh clone: `npm install`.
 
 ### 3. Test after every change
 Verify in the browser before considering the task done. `npm run build` must also stay
-green (it type-checks the bundle and catches import mistakes HMR can hide).
+green — it resolves every import in the graph, which is the class of mistake HMR hides.
+It does **not** type-check: there is no TypeScript here and Vite checks no types, so a
+green build says the modules fit together and nothing about whether they are right.
 
 `npm test` runs the two headless generator validators in `tools/`. They exist because
 generation bugs are invisible one floor at a time and obvious over hundreds — every defect
@@ -68,11 +70,17 @@ after touching anything in `src/gen/`. They fail the build only on hard invarian
 seeds. Note they run in Node, so GLB models cannot load and the props fall back to boxes —
 model-path placement has to be checked in the browser.
 
-In the dev build `window.dev` exposes `{ game, player, enemies, shooting, physics, scene,
-camera, weapons, renderer }`, which is the fastest way to jump floors, teleport, or measure
-something from the console. `/dev-models.html` is a contact-sheet harness for inspecting the
-furniture models at true relative scale (see the header of `src/dev-models.js` for its
-query parameters).
+In the dev build `window.dev` exposes `{ game, player, enemies, shooting, keys, physics,
+destruction, extinguishers, doors, scene, camera, weapons, renderer, audio, casings,
+keycards, wallet, ragdolls, cameras }`, which is the fastest way to jump floors, teleport,
+or measure something from the console. Note the render loop is `requestAnimationFrame`, so
+a backgrounded tab does not tick — measure with the tab visible, or step `update()` by hand.
+
+`/dev-models.html` is a contact-sheet harness for inspecting the furniture models at true
+relative scale (see the header of `src/dev-models.js` for its query parameters);
+`/dev-guns.html` does the same for the five weapon viewmodels and their measured muzzle
+points, building each gun through `weapons.js`'s own `buildWeaponRig` so it cannot drift
+from the gun the player holds.
 
 ## The game
 
@@ -92,6 +100,9 @@ tools/
 src/
   main.js         Bootstrap: wires modules, runs the render loop
   game.js         The run: floor progression and difficulty curves
+  util.js         Scalar helpers everyone shares: clamp, lerp, angles, hex-to-CSS
+  metrics.js      How big a body is and what it can do — the numbers that must agree
+  body-pool.js    The lifecycle of a loose body that times out (brass, debris)
   destruction.js  Everything coming apart: damage routing, debris, its lifecycle
   ragdolls.js     Jointed bodies for everything that dies, and their lifecycle
   rigs.js         What the staff, the vermin and the cleaner are made of
@@ -99,10 +110,14 @@ src/
   scene.js        Renderer, camera, fog
   lighting.js     Fill light + a pooled set of ceiling lights that follow the player
   nav.js          Tile navigation: flow field, line of sight, walkability
-  enemies.js      Enemy types, AI state machine, gunfire and melee
-  player.js       PointerLockControls + movement + AABB collision + health
+  enemies.js      Spawning, placement guarantees, the AI state machine, gunfire and melee
+  enemy-types.js  The roster: types, bystanders, floor themes, and the pickers
+  enemy-anim.js   Per-frame rig animation, and the toppling death fallback
+  input.js        Key state, pointer lock, and the fallback look mode when it is refused
+  player.js       Movement, AABB collision against an indexed floor, health
   shooting.js     Hitscan: fire rate, ammo, spread, recoil, damage, prop impulses
   weapons.js      Five GLB viewmodels, recoil/reload animation, per-gun combat stats
+  extinguishers.js  The secondary: a thrown cylinder, its gas, and what it sets off
   effects.js      Pooled tracers, impact flashes, bullet decals
   physics.js      cannon-es rigid bodies for loose furniture
   audio.js        Sound library + every game event that makes a noise
@@ -114,11 +129,19 @@ src/
   hud.js          Health, ammo, floor, objective, keycards, hit direction, toasts, death
   minimap.js      Per-floor floorplan raster + live player/enemy markers
   textures.js     Procedural canvas textures and the shared material cache
+  fx-textures.js  The generated sprites: muzzle flash, tracer, decal, glow, gas
+  dev-models.js   Drives dev-models.html
+  dev-guns.js     Drives dev-guns.html
+  dev-sounds.js   Drives dev-sounds.html
   style.css       All UI styling
   gen/
-    layout.js     Floorplan: corridor spine + BSP room blocks + doors
+    tiles.js      The tile vocabulary: sizes, the tile enum, tile<->world, bfs
+    layout.js     Floorplan: corridor spine + BSP room blocks + doors. Re-exports
+                  tiles.js and locks.js, so the rest of the tree has one address
+    locks.js      Badge readers: which door gets which card, and the proofs
     build.js      Floorplan -> meshes, colliders, nav grid, lights, windows
-    props.js      Office furniture catalogue and per-room-role furnishing
+    props.js      Office furniture catalogue and the placement primitive
+    rooms.js      Which props a room gets, and where they go against its walls
     models.js     Loads + bakes the downloaded furniture GLBs for batching
     model-table.js  Per-model scale/yaw/footprint normalization data
     geom.js       World-space UVs and the material/chunk geometry batcher
@@ -126,8 +149,15 @@ src/
     rng.js        Seeded PRNG (every floor is reproducible from its seed)
 public/sounds/    Generated MP3 sound set + sounds.json (the prompts that made it)
 dev-models.html   Contact sheet for eyeballing the furniture models
+dev-guns.html     Contact sheet for the weapon viewmodels and their muzzle points
 dev-sounds.html   Measures the whole sound set and flags clips to regenerate
 ```
+
+The three `dev-*.html` pages are **build inputs** (`vite.config.js`), which is about the
+build gate rather than the output: Vite's default input is `index.html` alone, so
+`src/dev-*.js` was outside the module graph entirely and `npm run build` did not check a
+line of it. `dev-guns.js` imports named exports from `weapons.js`; renaming either used to
+leave the build green and the harness silently broken.
 
 ## Tech stack
 
@@ -148,6 +178,7 @@ dev-sounds.html   Measures the whole sound set and flags clips to regenerate
 |-----|--------|
 | Mouse | Look around (when pointer is locked) |
 | W A S D | Move (relative to look direction) |
+| Arrow keys | Same as W A S D |
 | Shift | Sprint |
 | Space | Jump |
 | Left click | Shoot |
@@ -157,6 +188,66 @@ dev-sounds.html   Measures the whole sound set and flags clips to regenerate
 | Click | Grab the mouse / restart after dying |
 
 ## Key systems
+
+### The shared vocabulary (`util.js`, `metrics.js`, `body-pool.js`)
+Three small modules exist for one reason: **a number that two files must agree on has to
+live in one of them.** This project already has a monument to what happens otherwise —
+`FIRST_CONTACT_GAP` below, where the generator and its consumer held the same name at two
+different values in two different units, and about one floor in forty could not be started.
+That was not an unlucky bug, it was the predictable outcome of a copy, and the repo had
+several more of the same shape waiting:
+
+- `cameras.js` hard-coded `1.7` twice to reconstruct the player's head from their feet,
+  while `EYE` sat unexported in `player.js`. Retune the player's height and every laser
+  tripwire in the building silently mis-tests, with nothing to catch it.
+- `tools/validate-props.mjs` declared `BODY_R = 0.4 // must match RADIUS in src/player.js`.
+  A comment asking a human to be a compiler, in the tool whose entire job is catching drift.
+- `tools/validate-layout.mjs` restated `assignRoles`' branch ladder and had already got it
+  wrong — testing area before aspect, at a different threshold — so it reported **zero**
+  long-thin rooms on every sweep while the generator was producing thousands of them. The
+  sweep had stopped testing the generator and started asserting its own arithmetic back.
+
+So: `metrics.js` holds the body (radius, eye height, step tolerance, gravity, jump) and is
+deliberately free of Three.js so the headless validators can import it too. `JUMP_APEX` is
+*derived* there rather than written down, because `BEAM_Y` in `cameras.js` is designed
+against it — a tripwire you cannot clear is a tax, one you clear by accident is not a
+hazard, and deriving it means retuning the jump moves the tripwire instead of quietly
+invalidating it. `util.js` holds the scalar helpers (`clamp`, `lerp`, `angleLerp`,
+`smoothTo`, `dist2`, `hexCss`) that had two to five copies each across twelve files.
+`body-pool.js` holds the lifecycle of a loose body that times out — brass and debris were
+the same five operations written twice, down to the identical comment above both `clear()`s.
+
+`util.js` is scalar-only on purpose. The shared **vectors** are not collected, because
+`destruction.js` documents a real bug caused by two call sites sharing one scratch
+`Vector3`, and a module-level `UP` that anything might `.set()` is that bug waiting to be
+reintroduced.
+
+### Three things that used to scan the whole floor (`doors.js`, `enemies.js`, `player.js`)
+Everything on a floor grows with the floor number, and the game has no last floor. Three
+per-frame loops were written against an early floor and quietly became quadratic or linear
+in something unbounded. All three are now the same fix — bucket by position, query the cells
+that can matter — and all three were proved identical to the old scan before landing, which
+is the only way to change collision or sensing code here:
+
+- **Doors** tested every door against every enemy. The trap was that it was *invisible*: a
+  locked door short-circuits, so while the floor is still all-white the scan never runs.
+  Pick up the first white card, ~190 locks clear at once, and the cost appears — a
+  guaranteed frame-time cliff thirty seconds into every floor, which is exactly when the
+  first firefight starts. 8013 → 181 distance tests a frame.
+- **Enemy separation** carried the comment "cheap O(n²), but n is small". `n` reaches 200 on
+  a deep floor and `items` keeps the dead as well. 7832 → 32 tests a frame.
+- **Player collision** tested all ~2700 static boxes three times a frame (once per axis,
+  once for the ground), 1.8% of the frame budget at floor 12 and climbing for ever. Only the
+  **statics** are indexed: a wall, a fitted desk and a door panel never move — they retire by
+  setting `top`, which the scans already test and the index does not care about. Loose
+  furniture is re-derived from its physics body every frame and genuinely cannot be indexed,
+  so it stays a linear scan. That split is the whole reason indexing is safe here.
+
+The equivalence testing is worth copying. For the player, sampling positions uniformly over
+the slab produced thousands of "mismatches" that were all an artefact: half the slab is
+inside a wall, and resolving from inside a big box teleports you to its edge. The real
+domain is *positions the player can legally occupy*, and on that domain 40,000 samples and
+1,217 m of simulated walking agree to the last decimal.
 
 ### Backing a prop against a wall (`edgeProp` in `gen/rooms.js`)
 Props are authored facing **-z** (`gen/props.js`), and `edgeProp`'s side number
@@ -169,7 +260,7 @@ moment something with eight lit screens went in. `edgeProp` returns *where* it
 landed (`{cx, cz, rot, side}`) so a room can put a chair in front of what it just
 placed — `seatFacing` does that.
 
-### Floor generation (`gen/layout.js`)
+### Floor generation (`gen/layout.js`, on the vocabulary in `gen/tiles.js`)
 Real office floors are not mazes, so the generator does not build one. It carves a corridor
 spine first (2-4 vertical, 1-3 horizontal bands, guaranteed to intersect, so the corridor
 network is connected by construction), then BSP-subdivides each leftover block into rooms
@@ -216,7 +307,7 @@ of there being no wall across a corridor to cut a hole in:
   corridor's side, running the other way — so it turns 90°, stands proud of that wall, and
   steps back *against* the swing so an open leaf never folds over it.
 
-### The prologue (`freeThePrologue` in `gen/layout.js`)
+### The prologue (`freeThePrologue` in `gen/locks.js`)
 White is the one lock you meet holding nothing, so it is the one the floor has to prove it
 can hand you a key to. With every reader still red, the lifts must reach `PROLOGUE_MIN`
 tiles of corridor at least `PROLOGUE_REACH` from spawn — somewhere to stand the first body.
@@ -272,7 +363,7 @@ walls and light the ceiling of the room next door.
 Fixtures are placed per room and then along corridors, never on one global grid — rooms are
 only ~4.5 m across at the smallest, so a global grid leaves some rooms pitch black.
 
-### Enemies (`enemies.js` + `nav.js`)
+### Enemies (`enemies.js` + `enemy-types.js` + `enemy-anim.js` + `nav.js`)
 Everyone chases the same target, so instead of pathfinding per enemy one BFS distance field
 is flooded from the player and every enemy walks downhill on it. Anyone going somewhere
 *else* — the staffer looking for a toilet — gets a field of their own flooded from their
@@ -463,7 +554,7 @@ the killing shot can throw the bone it landed on; `splash()` synthesises an
 outward one. Explosions need nothing else — ragdoll bones are ordinary dynamic bodies, so
 `physics.blast()` already sweeps them.
 
-### Keycards (`keycards.js` + `assignLocks` in `gen/layout.js`)
+### Keycards (`keycards.js` + `assignLocks` in `gen/locks.js`)
 Every door in the building has a badge reader beside it. Cards do not travel
 between floors. The five fall into **two groups governed by completely different
 rules**, and conflating them is the mistake to avoid:
