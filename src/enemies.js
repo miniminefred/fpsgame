@@ -16,6 +16,22 @@ import { angleLerp, smoothTo } from './util.js';
 // makes you harder to hit instead of just changing a magic number.
 
 const SIGHT = 22;          // metres they can notice you at, with line of sight
+
+// How close two bodies get before they shove each other apart. One constant,
+// because the test and the push have to agree: this was written as `d2 > 0.64`
+// in one line and `(0.8 - d)` in the next — the same number squared and not —
+// and moving either on its own sends the shove negative, which pulls bodies
+// together instead of apart.
+const SEPARATION = 0.8;
+const SEPARATION_SQ = SEPARATION * SEPARATION;
+
+// Packed cell key for the separation grid. The building is centred on the origin
+// and never approaches half a cell-grid across, so the bias keeps both axes
+// positive and the key inside the safe-integer range.
+const CELL_BIAS = 4096;
+const packCell = (cx, cz) => (cx + CELL_BIAS) * 8192 + (cz + CELL_BIAS);
+const cellKey = (x, z) =>
+  packCell(Math.floor(x / SEPARATION), Math.floor(z / SEPARATION));
 // How far gunfire carries — measured *through the building*, not through its
 // walls. A straight-line radius was the bug: someone one metre away through
 // drywall and a thirty metre walk from the nearest door counted as right next to
@@ -125,6 +141,8 @@ export class Enemies {
     this._v = new THREE.Vector3();
     this._muzzle = new THREE.Vector3();
     this._aim = new THREE.Vector3();
+    // Cell -> the living bodies in it, rebuilt each frame. See _rebuildNeighbours.
+    this._cells = new Map();
   }
 
   // What the floor objective counts. The neutrals are alive and on the floor and
@@ -953,6 +971,10 @@ export class Enemies {
 
     if (this.nav) this.nav.updateField(dt, px, pz);
     if (this.shoutTimer > 0) this.shoutTimer -= dt;
+    // Bodies move during the loop below, so this is a snapshot taken at the top
+    // of the frame rather than an index kept live — which is what the old
+    // whole-roster scan effectively was too.
+    this._rebuildNeighbours();
 
     // Where a fleeing neutral is running away from — _repick needs it and is
     // called from places that have no player to hand.
@@ -1270,18 +1292,53 @@ export class Enemies {
     return true;
   }
 
-  // Keep bodies from occupying the same tile — cheap O(n^2), but n is small.
-  _separate(e, dt) {
-    for (const other of this.items) {
-      if (other === e || !other.alive) continue;
-      const dx = e.x - other.x;
-      const dz = e.z - other.z;
-      const d2 = dx * dx + dz * dz;
-      if (d2 > 0.64 || d2 < 1e-6) continue;
+  /**
+   * Bucket every living body by cell, once per frame.
+   *
+   * `_separate` used to walk the whole roster for each enemy — described as
+   * "cheap O(n^2), but n is small", which stopped being true: the difficulty
+   * curve reaches 200 on a deep floor, and `items` keeps the dead as well, so
+   * the loop was up to 40,000 distance tests a frame and growing quadratically
+   * with exactly the number the game raises as you descend. Nobody more than
+   * SEPARATION away can push anybody, so all but a handful of those tests were
+   * arithmetic performed to reject a body in another room.
+   *
+   * The cell is SEPARATION across, so a query is the 3x3 block around a body and
+   * cannot miss a neighbour close enough to matter. Keys are packed integers
+   * rather than strings: this runs every frame and string keys would trade the
+   * distance tests for allocations.
+   */
+  _rebuildNeighbours() {
+    this._cells.clear();
+    for (const e of this.items) {
+      if (!e.alive) continue;
+      const key = cellKey(e.x, e.z);
+      const bucket = this._cells.get(key);
+      if (bucket) bucket.push(e);
+      else this._cells.set(key, [e]);
+    }
+  }
 
-      const d = Math.sqrt(d2);
-      const push = (0.8 - d) * dt * 4;
-      this._tryMove(e, (dx / d) * push, (dz / d) * push);
+  // Keep bodies from occupying the same tile.
+  _separate(e, dt) {
+    const cx = Math.floor(e.x / SEPARATION);
+    const cz = Math.floor(e.z / SEPARATION);
+    for (let gz = cz - 1; gz <= cz + 1; gz++) {
+      for (let gx = cx - 1; gx <= cx + 1; gx++) {
+        const bucket = this._cells.get(packCell(gx, gz));
+        if (!bucket) continue;
+        for (const other of bucket) {
+          if (other === e || !other.alive) continue;
+          const dx = e.x - other.x;
+          const dz = e.z - other.z;
+          const d2 = dx * dx + dz * dz;
+          if (d2 > SEPARATION_SQ || d2 < 1e-6) continue;
+
+          const d = Math.sqrt(d2);
+          const push = (SEPARATION - d) * dt * 4;
+          this._tryMove(e, (dx / d) * push, (dz / d) * push);
+        }
+      }
     }
   }
 

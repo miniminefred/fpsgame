@@ -14,8 +14,10 @@
 
 import { CARDS } from './keycards.js';
 import { hexCss } from './util.js';
-
-const SOLID = 0, ROOM = 1, CORRIDOR = 2, DOOR = 3;
+// The tile enum is imported rather than restated. It used to be a local copy of
+// the four numbers, which every other consumer takes from the generator — so a
+// fifth tile type would have been drawn as a room here, silently, and only here.
+import { SOLID, ROOM, CORRIDOR, DOOR } from './gen/layout.js';
 
 // CSS pixels per tile. A tile is 0.5 m, so 2.6 puts about 33 m across the widget
 // — a couple of rooms in every direction, which is the range at which knowing
