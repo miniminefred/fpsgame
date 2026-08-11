@@ -6,11 +6,12 @@ import { TYPES, BYSTANDERS, pickType, pickTheme } from './enemy-types.js';
 import { DEATH_TIME, HIT_FLASH, SWING_TIME, animate, die } from './enemy-anim.js';
 import { angleLerp, smoothTo } from './util.js';
 import { EYE } from './metrics.js';
+import { approachSpot, planAt } from './gen/stairs.js';
 
 // How far off the ground the player's feet have to be to be on another level of the
-// building rather than standing on a desk. A storey's floor is at WALL_H (see
-// UPPER_Y in gen/stairs.js) and the tallest thing anybody can climb onto down here
-// is a 2.1 m locker, so anything above that is upstairs and nothing else is.
+// building rather than standing on a desk. A level's floor is LEVEL_Y up or down (see
+// gen/stairs.js) and the tallest thing anybody can climb onto down here is a 2.1 m
+// locker, so past this you are on another level and nothing else puts you there.
 const STOREY_GAP = 2.4;
 
 // The people still working here.
@@ -1041,18 +1042,35 @@ export class Enemies {
     // whole-roster scan effectively was too. It also counts the badge holders,
     // which is why it comes before the flood that depends on there being any.
     this._rebuildNeighbours();
-    if (this.nav) this.nav.updateField(dt, px, pz, this.keyedAlive > 0);
+
+    /**
+     * Which level the player is on, and where the floor should think they are.
+     *
+     * Nav is one tile grid for the ground floor and cannot hold a second level: an
+     * attic and a basement sit on the same tiles as the room they belong to. So while
+     * the player is off the ground floor, everything the floor does about them is
+     * done about the FOOT OF THEIR STAIRS, which is the honest answer to "how do I
+     * get to you" and the only one this grid can give.
+     *
+     * Left to itself, `_flood` seeds from the nearest tile a body fits in — which is
+     * some arbitrary spot in the room overhead, and measurably fragile: standing in a
+     * basement under a well-furnished office, it seeded inside a 48-tile pocket of
+     * that room's furniture and the whole floor came back with no route at all.
+     * Nobody heard a shot fired down there. Seeding at the approach instead is both
+     * correct and robust, because `approachTiles` is reserved floor by construction.
+     */
+    const level = this.layout ? planAt(this.layout, px, pz, py - EYE) : null;
+    const heard = level ? approachSpot(this.layout, level) : { x: px, z: pz };
+    if (this.nav) this.nav.updateField(dt, heard.x, heard.z, this.keyedAlive > 0);
     if (this.shoutTimer > 0) this.shoutTimer -= dt;
 
-    // Sight is a 2D grid and everybody on the roster is on the ground floor, so a
-    // player who has gone up the stairs (gen/stairs.js) is directly over their
-    // heads with a floor slab in between and `losClear` cheerfully says yes. Enemy
-    // fire is not a raycast — `_shoot` fires because `sees` is true — so without
-    // this they shoot you through the deck from the room below. Off the ground
-    // floor, nobody sees you at all; they still HEAR you, on the field, which
-    // seeds from the nearest tile a body fits in and so puts the noise at the
-    // bottom of your stairs. Which is exactly where they should be waiting.
-    const upstairs = py - EYE > STOREY_GAP;
+    // And nobody SEES you off the ground floor. Sight is that same 2D grid, so a
+    // player one level up or down is directly over or under their heads with a floor
+    // slab in between and `losClear` cheerfully says yes — and enemy fire is not a
+    // raycast, `_shoot` fires because `sees` is true, so they would shoot you through
+    // the deck. This used to test only for being UP, which meant a basement was a
+    // room you could be shot in through the floor.
+    const offGround = Math.abs(py - EYE) > STOREY_GAP;
 
     // Where a fleeing neutral is running away from — _repick needs it and is
     // called from places that have no player to hand.
@@ -1065,11 +1083,12 @@ export class Enemies {
       const dx = px - e.x;
       const dz = pz - e.z;
       const dist = Math.hypot(dx, dz) || 0.001;
-      const sees = !upstairs && dist < SIGHT && this.nav.losClear(e.x, e.z, px, pz);
+      const sees = !offGround && dist < SIGHT && this.nav.losClear(e.x, e.z, px, pz);
       // Hearing only matters when they cannot see you — if they can, sight has
       // already told them everything, and at a longer range. The distance is the
-      // walked one: the field is flooded from the player, so it is already paid
-      // for, and a negative value means there is no route at all.
+      // walked one: the field is flooded from the player (or from the foot of their
+      // stairs, if they are off the ground floor), so it is already paid for, and a
+      // negative value means there is no route at all.
       const along = this.nav.pathDistance(e.x, e.z);
       const hears = !sees && ctx.noise > 0 && along >= 0 && along < HEARING;
 

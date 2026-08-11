@@ -139,6 +139,36 @@ export function approachTiles(plan, W, into = []) {
 }
 
 /**
+ * The middle of that floor, in world space — where the stairs start.
+ *
+ * This is where the rest of the building thinks you are while you are up in an attic
+ * or down in a basement: the nav grid is one grid for the ground floor and cannot
+ * hold a second level, so the honest answer to "how do I get to the player" is "to
+ * the foot of their stairs". See `update` in enemies.js.
+ */
+export function approachSpot(layout, plan) {
+  const r = approachRect(plan);
+  return {
+    x: worldX(layout, (r.x0 + r.x1) / 2),
+    z: worldZ(layout, (r.y0 + r.y1) / 2),
+  };
+}
+
+/** The staircase whose level a point is standing on, or null for the ground floor. */
+export function planAt(layout, x, z, feetY) {
+  if (Math.abs(feetY) < LEVEL_Y * 0.5) return null;
+  const dir = feetY > 0 ? 1 : -1;
+  const tx = Math.round((x - layout.ox) / TILE - 0.5);
+  const ty = Math.round((z - layout.oz) / TILE - 0.5);
+  for (const plan of layout.stairs) {
+    if (plan.dir !== dir) continue;
+    const r = plan.room;
+    if (tx >= r.x0 && tx < r.x1 && ty >= r.y0 && ty < r.y1) return plan;
+  }
+  return null;
+}
+
+/**
  * Which tiles a stairwell leaves nothing overhead or underfoot.
  *
  * A ceiling across the top of an attic flight would be a sheet of tiles through the

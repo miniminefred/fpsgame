@@ -45,6 +45,14 @@ git commit -m "<short description of what changed>"
 One logical change = one commit. Never batch multiple changes into one commit, and never
 leave changes uncommitted at the end of a session. This is the rollback safety net.
 
+**Every commit is `miniminefred` and nothing else** —
+`miniminefred <315911906+miniminefred@users.noreply.github.com>`, which is set globally
+in `~/.gitconfig` and again as this repo's local config. Commit as that identity and
+nothing else, and never add a `Co-Authored-By: Claude ...` trailer or a
+"Generated with Claude Code" line. This repo is **public**, so a commit under another
+identity publishes it in permanent history: all 152 commits had to be rewritten and
+force-pushed on 2026-08-11 to get it out again. See `~/.claude/CLAUDE.md`.
+
 ### 2. Start the dev server on session start
 Check if already running; start if not:
 ```powershell
@@ -86,6 +94,43 @@ relative scale (see the header of `src/dev-models.js` for its query parameters);
 `/dev-guns.html` does the same for the five weapon viewmodels and their measured muzzle
 points, building each gun through `weapons.js`'s own `buildWeaponRig` so it cannot drift
 from the gun the player holds.
+
+## Publishing — GitHub Pages
+
+Public at **github.com/miniminefred/fpsgame**, live at
+**https://miniminefred.github.io/fpsgame/**. `.github/workflows/deploy.yml` builds and
+publishes on every push to `master`, plus manual dispatch. Four things in it are
+load-bearing:
+
+- **The Pages base path is passed on the command line, not set in `vite.config.js`** —
+  `npm run build -- --base=/fpsgame/`. Pages serves from a subpath and Vite writes asset
+  URLs at build time, so without it every script, GLB and MP3 resolves to `/assets/...` and
+  404s. Keeping it in the workflow is what lets `npm run dev` and `npm run preview` go on
+  serving from `/` exactly as before — local development is untouched by any of this.
+- **The three dev harnesses ship with the game**, because `vite.config.js` lists them as
+  build inputs. `dev-guns.html`, `dev-models.html` and `dev-sounds.html` are all live on
+  the Pages site, which is how you inspect a model or a viewmodel without a checkout. It
+  costs nothing: they are separate entries the shipped `index.html` never references.
+  `window.dev` is **not** exposed there — the `import.meta.env.DEV` block is compiled out
+  of a production build, so `stairsEverywhere()` and the rest are dev-server only.
+- **`pages: write` and `id-token: write`** are both required: `deploy-pages` authenticates
+  to Pages with an OIDC token, so a job holding only `contents: read` builds fine and then
+  fails on the last step.
+- **The `github-pages` environment carries a deployment branch allowlist**, built from
+  whatever the default branch was *when Pages was first enabled*. This repo is on `master`
+  but Pages was enabled while the fresh empty repo still defaulted to `main`, so the very
+  first deploy was rejected — a green build and a failed deploy, which is a confusing way to
+  find out. `master` was added to the allowlist to fix it; rename the branch and it will
+  need doing again.
+
+`npm test` is deliberately **not** a gate on the deploy. The two generator sweeps are the
+right thing to run after touching `src/gen/`, but wiring them into publishing would mean a
+seed-dependent validator failure could block a deploy that has nothing to do with it.
+
+One trap when running the build by hand in **Git Bash**: MSYS path conversion rewrites
+`--base=/fpsgame/` into `--base=/Program Files/Git/fpsgame/`. It builds green and emits a
+bundle whose asset paths cannot resolve. `MSYS_NO_PATHCONV=1` prevents it; PowerShell and
+the Ubuntu runner do not have the problem.
 
 ## The game
 
