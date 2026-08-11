@@ -145,7 +145,7 @@ src/
     layout.js     Floorplan: corridor spine + BSP room blocks + doors. Re-exports
                   tiles.js and locks.js, so the rest of the tree has one address
     locks.js      Badge readers: which door gets which card, and the proofs
-    stairs.js     A flight up a room's wall, and the sealed loft it arrives in
+    stairs.js     A staircase up a room's wall, and the sealed storey above it
     build.js      Floorplan -> meshes, colliders, nav grid, lights, windows
     props.js      Office furniture catalogue and the placement primitive
     rooms.js      Which props a room gets, and where they go against its walls
@@ -214,8 +214,11 @@ several more of the same shape waiting:
   long-thin rooms on every sweep while the generator was producing thousands of them. The
   sweep had stopped testing the generator and started asserting its own arithmetic back.
 
-So: `metrics.js` holds the body (radius, eye height, step tolerance, gravity, jump) and is
-deliberately free of Three.js so the headless validators can import it too. `JUMP_APEX` is
+So: `metrics.js` holds the body (radius, eye height, **height**, step tolerance, gravity, jump)
+and is deliberately free of Three.js so the headless validators can import it too. `BODY_H` is
+the newest of them and it earns its place the same way: once a collider could have an underside
+(see the stairs below), "is this box in my way" became a question about a body's height, and
+`player.js`, `physics.js` and `validate-props.mjs` all have to answer it identically. `JUMP_APEX` is
 *derived* there rather than written down, because `BEAM_Y` in `cameras.js` is designed
 against it — a tripwire you cannot clear is a tax, one you clear by accident is not a
 hazard, and deriving it means retuning the jump moves the tripwire instead of quietly
@@ -267,55 +270,73 @@ moment something with eight lit screens went in. `edgeProp` returns *where* it
 landed (`{cx, cz, rot, side}`) so a room can put a chair in front of what it just
 placed — `seatFacing` does that.
 
-### Stairs, and the room at the top of them (`gen/stairs.js` + `buildStairs`)
-Zero to two rooms a floor get a flight of stairs up one of their walls, arriving in a
-**loft**: a room that is not on the floorplan, with no door, no corridor and no second way
-out. That is what makes it worth stocking, and what it gets is the crates, pallets and
+### Stairs, and the storey at the top of them (`gen/stairs.js` + `buildStairs`)
+Zero to two rooms a floor get a staircase up one of their walls to a **second storey**: the
+room below with its ceiling for a floor. Same footprint, its own walls standing over the walls
+downstairs, its own roof and its own lights, and no door, no corridor and no second way out —
+the stairwell its stairs come up through is the only way in. The room underneath loses nothing
+but the stairwell, because the storey is built on the roof rather than on a block in somebody's
+office. That is what makes it worth stocking, and what it gets is the crates, pallets and
 cabinets nobody would carry back down.
 
-**Every design decision here falls out of the engine being 2.5D**, and none of it is
-arbitrary:
+**A collider has an underside, and that is what makes a storey possible at all.** Every box in
+this engine was a pillar from the floor up to a `top`: that is why the ceiling never had to be
+collided with, and why the first version of this feature was a plinth in the corner of a room
+with a room on top of it. A slab at head height with no underside blocks the room beneath it.
+So colliders carry **`base`**, and the two tests that ask "is this in my way" now ask about a
+body's *height* rather than its feet — low enough to step onto is `top <= feet + STEP_EPS`,
+high enough to walk under is `base >= feet + BODY_H` (`_moveHorizontal` in `player.js`,
+`addStatics` in `physics.js`, and `buildGeomGrid` in the props validator, which otherwise
+reports a whole room as solid rock). Nothing on the floorplan sets `base`; with it absent the
+test reads `0 >= feet + 1.82`, false for any body above ground, so every wall, desk and door
+panel behaves exactly as it did.
 
-- A collider is a pillar from the floor up to a `top`, with **no underside**. So a loft's
-  floor makes the space beneath it solid — a loft is not a mezzanine you walk under, it is
-  a block standing in the room with a room on top. That is a real building: the mezzanine
-  store bolted into the corner of a warehouse with stairs up the side.
-- The suspended ceiling is at 3.0 m, under the loft's own floor at 2.2 m, so the ceiling is
-  **cut** over the whole strip (`ceilingCut`) and the volume runs up to the loft's lid at
-  4.4 m instead. Cutting is done by masking the tiles handed to `maskToRects`, because that
-  function tests the value it is given and knows nothing about where it came from.
-- No tile grid can say "walkable, but two metres up", so the strip leaves the **nav grid**
-  entirely. Nobody follows you up — which costs the fight nothing, because there is nothing
-  to shoot at from inside a sealed box, and `_flood` in `nav.js` already seeds from the
-  nearest tile a body fits in, so a shot fired up there is heard as if it came from the
-  bottom of the stairs.
-- Which boxes may be **collided with at all** is therefore the subtle part, and it is one
-  flag (`collide` in `stairBoxes`). The treads, the block and the loft's own walls stand on
-  solid ground and may be colliders; the walls closing the void *above the flight* have open
-  air beneath them, and a collider there would brick up the stairs.
+What is still 2.5D, and shapes the rest:
 
-Structural colliders carry `building: true` — they are shell, not furniture, and
-`validate-props.mjs` audits them with the walls. A 4 m loft floor read as a prop fails every
-dimension a prop has. Props *inside* a loft carry `level` instead (`liftSink`), because a
-collider is measured from y = 0: a 1.3 m cabinet in a loft has a `top` of 3.5, and `7.top`
-subtracts the floor it stands on rather than calling it a three-and-a-half-metre cabinet.
+- Nav, sight and hearing are one tile grid per floor, and no grid can say "walkable, but a
+  storey up". The stairwell leaves the nav grid, so nobody follows you and nothing spawns
+  upstairs.
+- **Sight needed telling too**, and this is the sharp edge: `losClear` is that same 2D grid,
+  the whole roster is on the ground, and enemy fire is *not* a raycast — `_shoot` fires
+  because `sees` is true. So a player upstairs was being shot through the deck from the room
+  below. Off the ground floor nobody sees you (`STOREY_GAP` in `enemies.js`, set above the
+  tallest thing you can climb onto downstairs). They still **hear** you, and `_flood` seeds
+  from the nearest tile a body fits in, so a shot fired upstairs puts them at the bottom of
+  your stairs — which is where they should be waiting.
+- The suspended ceiling *and* the storey's floor slab are both cut over the stairwell
+  (`ceilingCut`), or the stairs come up into a sheet of ceiling tiles and through the head of
+  whoever is climbing them.
+- A storey is furnished through a **sink of its own** (`furnishUpstairs`). The collider list,
+  the loose props and the destruction records are the floor's — a crate upstairs is shot apart
+  like any other. But occupancy and walkability are questions about a *level*: sharing the real
+  masks would have a filing cabinet on the second floor make the office beneath it impassable,
+  and handing its tiles back when it is shot would open a tile a desk downstairs is standing
+  on. `masks.level` is what says so, and it is the sink itself rather than a wrapper so that
+  `tryPlace` and all 30 props in the catalogue furnish a storey without one line of them
+  knowing there is one.
 
-**Three ways a loft can come out unreachable, all now proved rather than hoped for**
-(`11.stair-*`): a riser taller than the player's step (`RISER` is *derived* from `STEP_EPS`,
-so retuning the body cannot silently make a wall of a staircase), a flight that stops short
-of the loft floor, and — the one that was real for better than one flight in three — a
-bottom step with a filing cabinet in front of it, or the room's own wall. The planner proves
-there is room floor at the foot of the flight and `approachTiles` has the builder reserve it
-from the furnisher while leaving it in the nav grid, because that is where you stand to start
-climbing and where anybody chasing you ends up.
+Structural colliders carry `building: true` — shell, not furniture, and `validate-props.mjs`
+audits them with the walls. Props keep `base`, which is also what the plan-space checks read:
+`7.top` measures `top - base` (a 1.3 m cabinet upstairs has a top of 4.5), and `2.overlap`,
+`2.dyn-*` and the doorway checks compare only things on the same level, because two props on
+different floors are not in each other's way however exactly their footprints line up.
 
-Two smaller things worth knowing. The strip stands off every opening by `DOOR_CLEAR`, which
-lives in `gen/tiles.js` because the furnisher's door aprons use the same number; they were
-briefly 4 and 3 and the sweep found it at once as a crate standing in a doorway. And a loft
-is filled by walking a shuffled grid of half-metre spots with a **cap** on how many land:
-darts gave a loft of two things or of nine, and without the cap the big props took the first
-few spots and every leftover gap took the one prop still small enough to fit it — which came
-out as two pallets and eight fire extinguishers.
+**Three ways a storey can come out unreachable, all proved rather than hoped for**
+(`11.stair-*`): a riser taller than the player's step (`RISER` is *derived* from `STEP_EPS`, so
+retuning the body cannot silently make a wall of a staircase), a flight that stops short of the
+storey floor, and — the one that was real for better than one flight in three — a bottom step
+with a filing cabinet in front of it, or the room's own wall. The planner proves there is room
+floor at the foot of the flight and `approachTiles` has the builder reserve it from the
+furnisher while leaving it in the nav grid, because that is where you stand to start climbing
+and where anybody chasing you ends up.
+
+Two smaller things worth knowing. The stairwell stands off every opening by `DOOR_CLEAR`,
+which lives in `gen/tiles.js` because the furnisher's door aprons use the same number; they
+were briefly 4 and 3 and the sweep found it at once as a crate standing in a doorway. And a
+storey is filled by walking a shuffled grid of half-metre spots with a **cap** on how many
+land: darts gave a room of two things or of nine, and without the cap the big props took the
+first few spots and every leftover gap took the one prop still small enough to fit it — which
+came out as two pallets and eight fire extinguishers.
 
 ### What furniture is never allowed to close (`reserveClearances` in `gen/build.js`)
 A tile mask the furnisher may not place into, stamped before a single prop is put down —
