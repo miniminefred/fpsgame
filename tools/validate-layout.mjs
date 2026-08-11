@@ -11,7 +11,7 @@
 //   FAIL — a hard invariant the game depends on (unwinnable floor, broken mesh).
 //   WARN — the floor still works but the generation quality is off.
 
-import { generateLayout, TILE, SOLID, ROOM, CORRIDOR, DOOR, isOpen, FIRST_CONTACT_GAP } from '../src/gen/layout.js';
+import { generateLayout, TILE, SOLID, ROOM, CORRIDOR, DOOR, isOpen, FIRST_CONTACT_GAP, roleBranch } from '../src/gen/layout.js';
 
 const args = process.argv.slice(2);
 const argVal = (flag, dflt) => {
@@ -165,7 +165,7 @@ const hist = (m) => [...m.entries()].sort((a, b) => a[0] - b[0]).map(([k, v]) =>
 const stats = {
   roomCounts: [], roomAreas: [], roomMinDim: [], roomAspect: [],
   corridorShare: [], walkableShare: [], doorCounts: [], doorsPerRoom: [],
-  exitDist: [], roles: new Map(), roleBranch: { openplan85: 0, mid40: 0, longThin: 0, small: 0 },
+  exitDist: [], roles: new Map(), roleBranch: { longThin: 0, big: 0, mid: 0, small: 0 },
   depth: new Map(), vCorr: new Map(), hCorr: new Map(),
   abutPairs: 0, deadDoors: 0, alcoveDoors: 0, totalDoors: 0, hallDoors: 0, hallLocked: 0,
   prologue: [],
@@ -548,12 +548,9 @@ function validate(seed, floorNumber) {
     stats.roomAspect.push(Math.max(r.wTiles, r.hTiles) / Math.min(r.wTiles, r.hTiles));
     stats.doorsPerRoom.push(r.doors.length);
     stats.roles.set(r.role, (stats.roles.get(r.role) || 0) + 1);
-    // Which branch of assignRoles() this room's shape lands in.
-    const long = Math.max(r.wTiles, r.hTiles) / Math.min(r.wTiles, r.hTiles);
-    if (r.areaM2 > 85) stats.roleBranch.openplan85++;
-    else if (r.areaM2 > 40) stats.roleBranch.mid40++;
-    else if (long > 2.1) stats.roleBranch.longThin++;
-    else stats.roleBranch.small++;
+    // Which branch of assignRoles() this room's shape lands in. Asked of the
+    // generator rather than restated here — the restatement had drifted.
+    stats.roleBranch[roleBranch(r)]++;
   }
 
   // Corridor spine width: how many full-height / full-width corridor lines.
@@ -674,7 +671,7 @@ if (stats.lockCounts.length) {
     + [...stats.lockTiers.entries()].map(([t, n]) => `${t} ${n}`).join('  '));
 }
 const rb = stats.roleBranch;
-console.log(`assignRoles branches  areaM2>85 ${rb.openplan85}   >40 ${rb.mid40}   aspect>2.1 ${rb.longThin}   small ${rb.small}`);
+console.log(`assignRoles branches  long-thin ${rb.longThin}   big ${rb.big}   mid ${rb.mid}   small ${rb.small}`);
 const roleTotal = [...stats.roles.values()].reduce((a, b) => a + b, 0);
 console.log('role distribution   ' + [...stats.roles.entries()].sort((a, b) => b[1] - a[1])
   .map(([r, n]) => `${r} ${n} (${fmt((n / roleTotal) * 100)}%)`).join('  '));

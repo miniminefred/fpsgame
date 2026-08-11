@@ -610,24 +610,43 @@ function pickSpawnRoom(rooms, rng) {
   return rng.pick(good.length ? good : rooms);
 }
 
+// Where the role ladder splits. Aspect is tested before area on purpose: a long
+// thin room is a service room whatever its floor area, and testing area first
+// made that branch unreachable.
+const LONG_THIN = 1.9;   // longest side / shortest side
+const BIG_ROOM = 85;     // m², open plan and canteens
+const MID_ROOM = 40;     // m², the meeting-room band
+
+/**
+ * Which branch of the role table a room's shape lands in.
+ *
+ * Exported because `validate-layout.mjs` reports this distribution, and its own
+ * copy of the ladder had drifted: it tested area before aspect and used 2.1 for
+ * the aspect cut, so it reported zero long-thin rooms on every sweep while the
+ * generator was in fact producing thousands of them — which is the whole
+ * storage/archive/utility supply. A tool asserting its own wrong number back at
+ * the generator is exactly the failure FIRST_CONTACT_GAP is a monument to, so
+ * there is one ladder now and both ends call it.
+ */
+export function roleBranch(r) {
+  const long = Math.max(r.wTiles, r.hTiles) / Math.min(r.wTiles, r.hTiles);
+  if (long > LONG_THIN) return 'longThin';
+  if (r.areaM2 > BIG_ROOM) return 'big';
+  if (r.areaM2 > MID_ROOM) return 'mid';
+  return 'small';
+}
+
+// What each branch may be. Long-thin rooms furnish as ranks with an aisle
+// between them, which is why they are back-of-house whatever their area.
+const ROLE_PICKS = {
+  longThin: ['storage', 'copyroom', 'server', 'storage', 'archive', 'utility', 'mailroom'],
+  big: ['openplan', 'openplan', 'openplan', 'canteen'],
+  mid: ['openplan', 'meeting', 'breakroom', 'storage', 'training', 'itbay', 'canteen', 'reception'],
+  small: ['office', 'office', 'copyroom', 'storage', 'breakroom', 'utility', 'archive', 'server'],
+};
+
 function assignRoles(rooms, spawnRoom, exitRoom, rng) {
-  for (const r of rooms) {
-    // Aspect is tested before area on purpose: a long thin room is a service
-    // room whatever its floor area, and testing area first made this branch
-    // unreachable.
-    const long = Math.max(r.wTiles, r.hTiles) / Math.min(r.wTiles, r.hTiles);
-    if (long > 1.9) {
-      // A long thin room is back-of-house whatever its floor area — the ones
-      // that furnish as ranks with an aisle between them.
-      r.role = rng.pick(['storage', 'copyroom', 'server', 'storage', 'archive', 'utility', 'mailroom']);
-    } else if (r.areaM2 > 85) {
-      r.role = rng.pick(['openplan', 'openplan', 'openplan', 'canteen']);
-    } else if (r.areaM2 > 40) {
-      r.role = rng.pick(['openplan', 'meeting', 'breakroom', 'storage', 'training', 'itbay', 'canteen', 'reception']);
-    } else {
-      r.role = rng.pick(['office', 'office', 'copyroom', 'storage', 'breakroom', 'utility', 'archive', 'server']);
-    }
-  }
+  for (const r of rooms) r.role = rng.pick(ROLE_PICKS[roleBranch(r)]);
 
   // Guarantee the flavour rooms the floor is meant to have — but only in rooms
   // the right size for them, so no floor gets a 150 m² "storage cupboard". The
