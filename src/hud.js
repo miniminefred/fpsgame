@@ -54,6 +54,7 @@ export class Hud {
     this._marker = 0;    // seconds of hitmarker left
     this._vignette = 0;  // 0..1 damage flash
     this._toast = 0;     // seconds of toast left
+    this._toastNext = null;   // ...and what to say once it has gone. See message
 
     // Where the player is and which way they are looking, refreshed every frame
     // by game.js. The wedges need it because they point at a WORLD direction:
@@ -205,13 +206,22 @@ export class Hud {
     slot.strength = Math.max(slot.strength, strength);
   }
 
-  // Big centred toast: "FLOOR 3", "FLOOR CLEAR", "EXIT UNLOCKED".
-  message(text, ms = 1600) {
+  /**
+   * Big centred toast: "FLOOR 3", "FLOOR CLEAR", "EXIT UNLOCKED".
+   *
+   * `then` is a second `{ text, ms }` to say once this one has gone, and it
+   * exists because of what the toast is: 42px of capitals at 12px of letter
+   * spacing, and `#toast` is `white-space: nowrap`. Two facts on one line is
+   * about forty characters, which runs off both sides of the screen — so two
+   * facts are two toasts, one after the other.
+   */
+  message(text, ms = 1600, then = null) {
     this.toastEl.textContent = text;
     this.toastEl.classList.remove('show');
     void this.toastEl.offsetWidth;
     this.toastEl.classList.add('show');
     this._toast = ms / 1000;
+    this._toastNext = then;
   }
 
   gameOver(show, stats = {}) {
@@ -222,8 +232,10 @@ export class Hud {
     this.gameOverEl.classList.toggle('show', !!show);
     document.body.classList.toggle('dead', !!show);   // fades the live HUD out
     if (show) {
-      // Clear anything mid-flight so the death screen reads clean.
+      // Clear anything mid-flight so the death screen reads clean — including
+      // whatever was queued to follow, which would otherwise pop up over it.
       this._toast = 0;
+      this._toastNext = null;
       this.toastEl.classList.remove('show');
       this._vignette = 0;
       this.vignetteEl.style.opacity = '0';
@@ -250,7 +262,15 @@ export class Hud {
     if (this._toast > 0) {
       this._toast -= dt;
       if (this._toast <= TOAST_FADE) this.toastEl.classList.remove('show');
-      if (this._toast <= 0) this._toast = 0;
+      if (this._toast <= 0) {
+        this._toast = 0;
+        // Anything queued behind it goes up now the line is clear. Taken off
+        // the field first, so the follow-up's own `then` (null, normally) is
+        // what decides whether this keeps going.
+        const next = this._toastNext;
+        this._toastNext = null;
+        if (next) this.message(next.text, next.ms);
+      }
     }
 
     this._placeHitDirs(dt);

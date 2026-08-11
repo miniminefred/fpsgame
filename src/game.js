@@ -140,15 +140,18 @@ export class Game {
     this.shooting.addHittables(response.meshes);
     this.audio.alarm();
     this.hud.alarm();
-    // Three separate facts, and the player can act on each of them differently:
-    // how many are walking in, whether the blue room is about to unlock itself
-    // and empty into the corridor, and how much of the floor is now heading this
-    // way on its own. Assembled rather than written out, because any of the
-    // three can be nothing.
-    const news = [`${response.spawned.length} SECURITY INBOUND`];
-    if (response.roused) news.push('THE OFFICE IS COMING OUT');
-    if (response.heard) news.push(`${response.heard} MORE HEARD IT`);
-    this.hud.message(`ALARM — ${news.join(', ')}`, 2600);
+    // The building says it first, in the building's own words, because that is
+    // what the klaxon and the red wash are already doing and the line should
+    // sound like the same thing rather than like a status report.
+    //
+    // Then what it cost you, a beat later and as one number: the men sent up,
+    // the ones coming out of the office, and everybody who heard it and is now
+    // walking this way. Three separate counts is three things to read in the
+    // half second before the first of them arrives, and only their sum changes
+    // what the player does about it.
+    const coming = response.spawned.length + response.roused + response.heard;
+    this.hud.message('ALARM ALARM — INTRUDER', 1700,
+      coming ? { text: `${coming} COMING FOR YOU`, ms: 2300 } : null);
     this._syncObjective();
   }
 
