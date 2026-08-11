@@ -37,6 +37,14 @@ export class NavGrid {
     this.fieldAge = Infinity;
     this.fieldOrigin = -1;
 
+    // The second grid, for whoever is carrying a badge — nothing until
+    // setBadgeTiles says otherwise. See it for why it exists at all.
+    this.badgeWalk = null;
+    this.badgeFits = null;
+    this.badgeField = null;
+    this.badgeAge = Infinity;
+    this.badgeOrigin = -1;
+
     // `walk` is where a *point* may stand; `fits` is where a whole body may.
     // Routing on `walk` and then moving with a radius test is a contradiction:
     // the field happily leads an enemy into a 0.4 m gap between two desks that
@@ -95,6 +103,10 @@ export class NavGrid {
     for (const i of indices) {
       if (this.walk[i] || !isOpen(this.tiles[i])) continue;
       this.walk[i] = 1;
+      // The badge grid is a superset of this one, so whatever opens here opens
+      // there — and it has to be told, or a badge holder keeps routing round a
+      // desk that is no longer standing.
+      if (this.badgeWalk) this.badgeWalk[i] = 1;
       opened = true;
     }
     if (!opened) return;
@@ -106,12 +118,68 @@ export class NavGrid {
         for (let tx = cx - R; tx <= cx + R; tx++) {
           if (!this.inBounds(tx, ty)) continue;
           const j = ty * this.W + tx;
-          this.fits[j] = this.walk[j] && this.clear(this.wx(tx), this.wz(ty), BODY_RADIUS) ? 1 : 0;
+          const x = this.wx(tx), z = this.wz(ty);
+          this.fits[j] = this.walk[j] && this._clearOn(this.walk, x, z, BODY_RADIUS) ? 1 : 0;
+          if (this.badgeFits) {
+            this.badgeFits[j] =
+              this.badgeWalk[j] && this._clearOn(this.badgeWalk, x, z, BODY_RADIUS) ? 1 : 0;
+          }
         }
       }
     }
 
     this.fieldAge = Infinity;
+    this.badgeAge = Infinity;
+  }
+
+  /**
+   * The openings a badge gets you through, and the grid that comes with them.
+   *
+   * A locked doorway is out of the nav grid entirely (see gen/build.js), which
+   * is what stops a chase piling up against a door the chasers cannot open. That
+   * is the right default and it stays the default — but it is also a statement
+   * about who is walking, not about the building, and one group on the floor is
+   * carrying the badge: the security response to an alarm, who are coming
+   * through their own office door whatever it says on the reader.
+   *
+   * So they get a grid of their own: `walk` plus these tiles, eroded by the body
+   * radius the same way, and a distance field flooded over it. Everybody else
+   * keeps routing on the grid that has the locks in it, so the exception is
+   * exactly as wide as the people it was granted to.
+   *
+   * `indices` comes from doors.js rather than from here, because which locks a
+   * badge actually opens is the door's business — and the sensor that swings the
+   * panel and the field that routes a body into it must not be able to disagree.
+   */
+  setBadgeTiles(indices) {
+    this.badgeWalk = null;
+    this.badgeFits = null;
+    this.badgeField = null;
+    this.badgeAge = Infinity;
+    this.badgeOrigin = -1;
+    if (!indices?.length) return;
+
+    const walk = Uint8Array.from(this.walk);
+    let any = false;
+    for (const i of indices) {
+      if (i < 0 || i >= walk.length || walk[i] || !isOpen(this.tiles[i])) continue;
+      walk[i] = 1;
+      any = true;
+    }
+    // Nothing on this floor is shut to them that is not already open, so the
+    // second field would be a copy of the first and is not worth flooding.
+    if (!any) return;
+
+    this.badgeWalk = walk;
+    this.badgeFits = new Uint8Array(this.W * this.H);
+    for (let ty = 0; ty < this.H; ty++) {
+      for (let tx = 0; tx < this.W; tx++) {
+        const i = ty * this.W + tx;
+        if (!walk[i]) continue;
+        if (this._clearOn(walk, this.wx(tx), this.wz(ty), BODY_RADIUS)) this.badgeFits[i] = 1;
+      }
+    }
+    this.badgeField = new Int32Array(this.W * this.H);
   }
 
   tx(x) { return Math.floor((x - this.ox) / this.TILE); }
@@ -126,17 +194,28 @@ export class NavGrid {
   }
 
   // Can a whole body stand centred on this tile? This is what pathing uses.
-  fitsAt(tx, ty) {
-    return this.inBounds(tx, ty) && this.fits[ty * this.W + tx] === 1;
+  // `fits` names which eroded grid is being asked — see setBadgeTiles.
+  fitsAt(tx, ty, fits = this.fits) {
+    return this.inBounds(tx, ty) && fits[ty * this.W + tx] === 1;
   }
 
   // Is a body of the given radius clear of walls and furniture here?
-  clear(x, z, radius) {
+  clear(x, z, radius) { return this._clearOn(this.walk, x, z, radius); }
+
+  // The same question asked by somebody who can open a locked door. Routing on
+  // the badge field and then testing against `walk` is the contradiction the
+  // erosion note above warns about, one lock further out: the field would lead
+  // them into a doorway their own collision test then refuses to enter.
+  clearBadge(x, z, radius) {
+    return this._clearOn(this.badgeWalk ?? this.walk, x, z, radius);
+  }
+
+  _clearOn(grid, x, z, radius) {
     const t0x = this.tx(x - radius), t1x = this.tx(x + radius);
     const t0z = this.ty(z - radius), t1z = this.ty(z + radius);
     for (let ty = t0z; ty <= t1z; ty++) {
       for (let tx = t0x; tx <= t1x; tx++) {
-        if (!this.walkable(tx, ty)) return false;
+        if (!this.inBounds(tx, ty) || grid[ty * this.W + tx] !== 1) return false;
       }
     }
     return true;
@@ -170,18 +249,29 @@ export class NavGrid {
 
   // Refreshes the distance field if it has gone stale or the target has moved
   // to a different tile. Cheap enough to call every frame.
-  updateField(dt, targetX, targetZ) {
+  //
+  // `badge` asks for the second field as well (see setBadgeTiles). It is a whole
+  // extra flood of the floor, so it is paid for only while somebody who can walk
+  // it is alive — which on most floors, for most of their length, is nobody.
+  updateField(dt, targetX, targetZ, badge = false) {
     this.fieldAge += dt;
+    this.badgeAge += dt;
     const tx = this.tx(targetX);
     const ty = this.ty(targetZ);
     if (!this.inBounds(tx, ty)) return;
 
     const origin = ty * this.W + tx;
-    if (this.fieldAge < REPATH_INTERVAL && origin === this.fieldOrigin) return;
+    if (this.fieldAge >= REPATH_INTERVAL || origin !== this.fieldOrigin) {
+      this.fieldAge = 0;
+      this.fieldOrigin = origin;
+      this._flood(tx, ty, this.field);
+    }
 
-    this.fieldAge = 0;
-    this.fieldOrigin = origin;
-    this._flood(tx, ty, this.field);
+    if (!badge || !this.badgeField) return;
+    if (this.badgeAge < REPATH_INTERVAL && origin === this.badgeOrigin) return;
+    this.badgeAge = 0;
+    this.badgeOrigin = origin;
+    this._flood(tx, ty, this.badgeField, this.badgeFits);
   }
 
   /**
@@ -209,18 +299,18 @@ export class NavGrid {
     return new Int32Array(this.W * this.H);
   }
 
-  _flood(sx, sy, field) {
-    const { W, H, fits, queue } = this;
+  _flood(sx, sy, field, fits = this.fits) {
+    const { W, H, queue } = this;
     field.fill(-1);
 
     // The origin is often somewhere no body fits (on a desk, in a corner, a
     // metre inside a wall) — start from the nearest tile where one does.
-    if (!this.fitsAt(sx, sy)) {
+    if (!this.fitsAt(sx, sy, fits)) {
       let found = false;
       for (let r = 1; r <= 8 && !found; r++) {
         for (let dy = -r; dy <= r && !found; dy++) {
           for (let dx = -r; dx <= r && !found; dx++) {
-            if (this.fitsAt(sx + dx, sy + dy)) { sx += dx; sy += dy; found = true; }
+            if (this.fitsAt(sx + dx, sy + dy, fits)) { sx += dx; sy += dy; found = true; }
           }
         }
       }
@@ -319,9 +409,17 @@ export class NavGrid {
     return this.descendOn(this.field, x, z, out);
   }
 
+  // The same, for somebody who can open a locked door. Falls back to the shared
+  // field on a floor with no badge grid, which is the same answer: without a
+  // lock in the way the two fields agree tile for tile.
+  descendBadge(x, z, out) {
+    if (!this.badgeField) return this.descend(x, z, out);
+    return this.descendOn(this.badgeField, x, z, out, this.badgeFits);
+  }
+
   // Direction of steepest descent on any field, as a world-space unit vector.
   // Returns null when the mover is stranded off it.
-  descendOn(field, x, z, out) {
+  descendOn(field, x, z, out, fits = this.fits) {
     const tx = this.tx(x), ty = this.ty(z);
     if (!this.inBounds(tx, ty)) return null;
 
@@ -332,10 +430,11 @@ export class NavGrid {
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
         if (!dx && !dy) continue;
-        if (!this.fitsAt(tx + dx, ty + dy)) continue;
+        if (!this.fitsAt(tx + dx, ty + dy, fits)) continue;
         // Diagonals are only legal if both orthogonal neighbours are open, so
         // nobody clips a wall corner.
-        if (dx && dy && (!this.fitsAt(tx + dx, ty) || !this.fitsAt(tx, ty + dy))) continue;
+        if (dx && dy &&
+            (!this.fitsAt(tx + dx, ty, fits) || !this.fitsAt(tx, ty + dy, fits))) continue;
 
         const d = field[(ty + dy) * this.W + (tx + dx)];
         if (d >= 0 && d < best) { best = d; bestX = dx; bestZ = dy; }
