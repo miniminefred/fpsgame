@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { getAssets } from '../textures.js';
 import { maskToRects } from './rects.js';
 import { Batcher, boxBetween, slab, applyWorldUVs } from './geom.js';
-import { tryPlace } from './props.js';
+import { footprintOf, tryPlace } from './props.js';
 import { furnish } from './rooms.js';
 import { modelInfo, stampModel, paintDebris } from './models.js';
 import {
@@ -11,7 +11,7 @@ import {
 } from './layout.js';
 import { CARDS, READER_LIT, READER_OPEN } from '../keycards.js';
 import {
-  LOFT_Y, TOP_Y, approachTiles, ceilingCut, loftFloor, stairBoxes, stripTiles,
+  UPPER_Y, UPPER_CEIL, approachTiles, ceilingCut, upperFloor, stairBoxes, stripTiles,
 } from './stairs.js';
 
 // Turns an abstract floorplan into everything the game needs: batched meshes,
@@ -90,9 +90,12 @@ export function buildLevel(scene, layout) {
   // nav grid and out of the furnisher's reach in the same pass — and because the
   // deck's own junk is placed through the same sink and must be down before
   // anything on the room floor can be shoved against it.
-  buildStairs(layout, batcher, materials, { colliders, blocked, occupied, fixtures }, sink, rng);
+  buildStairs(layout, batcher, materials, { colliders, blocked, occupied, fixtures }, rng);
   furnishRooms(layout, sink, rng);
   furnishCorridors(layout, sink, rng);
+  // Last, and through a sink of its own: a storey above has its own occupancy and
+  // is not on the nav grid at all. See furnishUpstairs.
+  furnishUpstairs(layout, batcher, materials, { colliders, dynamics, destructibles }, rng);
 
   const meshes = batcher.build(scene);
   objects.push(...meshes);
@@ -750,9 +753,20 @@ const UP = new THREE.Vector3(0, 1, 0);
 
 // --- furnishing -------------------------------------------------------------
 
+/**
+ * Everything a prop needs to put itself into the world.
+ *
+ * `masks.level` is the floor this sink furnishes, and it is 0 for the building. A
+ * sink at a level draws every box, model and collider that much higher, gives its
+ * colliders an underside, and stays out of the nav grid — which is the whole of
+ * what "furnish the storey upstairs" means. Doing it here rather than in a wrapper
+ * is deliberate: `tryPlace` and all 30 props in the catalogue then furnish a second
+ * storey without one line of them knowing there is one.
+ */
 function makeSink(layout, batcher, materials, masks) {
   const { W, H, tiles } = layout;
   const { blocked, occupied, reserved, colliders, dynamics, destructibles } = masks;
+  const level = masks.level ?? 0;
 
   // While a dynamic prop is being authored, its boxes are collected here
   // instead of going into the static batch — they need to stay a separate
@@ -814,10 +828,10 @@ function makeSink(layout, batcher, materials, masks) {
     occupy(x0, z0, x1, z1) { stamp(occupied, x0, z0, x1, z1); },
 
     box(key, x0, y0, z0, x1, y1, z1) {
-      const b = { key, x0, y0, z0, x1, y1, z1 };
+      const b = { key, x0, y0: y0 + level, z0, x1, y1: y1 + level, z1 };
       if (capture) { capture.push(b); return; }
       if (pending) { pending.boxes.push(b); return; }
-      batcher.add(key, materials[key], boxBetween(x0, y0, z0, x1, y1, z1));
+      batcher.add(key, materials[key], boxBetween(b.x0, b.y0, b.z0, b.x1, b.y1, b.z1));
       record?.boxes.push(b);
     },
 
@@ -825,7 +839,11 @@ function makeSink(layout, batcher, materials, masks) {
       // A dynamic prop's footprint moves, so it can't become a static collider
       // or a permanent hole in the nav grid. A dry run isn't there at all.
       if (pending || capture) return;
-      const collider = { minX: x0, maxX: x1, minZ: z0, maxZ: z1, top };
+      const collider = { minX: x0, maxX: x1, minZ: z0, maxZ: z1, top: top + level };
+      // Its underside, on a sink that is furnishing a storey rather than the
+      // ground. Without it the collider is a pillar from the floor and a crate
+      // upstairs is a pillar through the room below — see gen/stairs.js.
+      if (level) collider.base = level;
       colliders.push(collider);
       record?.colliders.push(collider);
       // Anything the player can't step over blocks the enemies too. The
@@ -833,7 +851,14 @@ function makeSink(layout, batcher, materials, masks) {
       // player.js): a sofa at 0.44 m and a plant pot at 0.34 m are both solid
       // to walk into, so leaving them out of the nav grid gave the enemies
       // routes straight through the furniture.
-      if (top > 0.3) stampCentres(blocked, x0, z0, x1, z1, record?.navTiles);
+      //
+      // None of which applies to a prop that is not on the floor. The nav grid is
+      // one grid per floor and it describes the ground: stamping this one would
+      // have a crate upstairs make the office below impassable, and handing its
+      // tiles back when it is shot would open a tile a desk down there is
+      // standing on. So a storey's props are simply not in it — which is the same
+      // decision as the stairwell's, for the same reason.
+      if (!level && top > 0.3) stampCentres(blocked, x0, z0, x1, z1, record?.navTiles);
     },
 
     // --- downloaded models -------------------------------------------------
@@ -841,7 +866,7 @@ function makeSink(layout, batcher, materials, masks) {
 
     // Batched by source material, so a floor of desks is a couple of draw calls.
     model(key, x, y, z, yaw) {
-      return stampModel(key, x, y, z, yaw, (geometry, material) => {
+      return stampModel(key, x, y + level, z, yaw, (geometry, material) => {
         batcher.add(`mdl:${material.name || 'm'}:${material.id}`, material, geometry);
       });
     },
@@ -989,53 +1014,50 @@ function furnishRooms(layout, sink, rng) {
 // Repeats are the weighting: a deck should read as stock that got put up out of
 // the way, so it is mostly crates and pallets with the odd bit of office in among
 // them.
-const LOFT_KINDS = [
+const UPPER_KINDS = [
   'crate', 'crate', 'crate', 'crateStack', 'crateStack', 'crateStack',
   'pallet', 'pallet', 'cabinet', 'cabinet', 'workbench', 'shelving',
   'recyclingBin', 'trashCan', 'extinguisher', 'printer', 'stool', 'lockers',
 ];
-// Keeps a prop's footprint off the loft's walls. Much smaller than the 0.15 m a
-// room keeps off its plaster: a loft is a store room, and the whole look of one is
-// stock shoved right up against the wall.
-const LOFT_INSET = 0.04;
+// The same 0.15 m a room keeps off its plaster, for the same reason: the storey's
+// wall ring stands over the wall downstairs, so its inside face is exactly where
+// the room's is.
+const UPPER_INSET = 0.15;
 const TREAD_SKIN = 0.03;      // the walking surface laid over the step's body
 const NOSING = 0.07;          // yellow strip along the front edge of every tread
 // Materials by what the part IS, so the geometry half never names one.
-const PART_MATERIAL = { tread: 'trim', block: 'trim', wall: 'wall', lid: 'ceiling' };
+const PART_MATERIAL = { tread: 'trim', deck: 'trim', wall: 'wall', roof: 'ceiling' };
 
 /**
- * The flights of stairs, the lofts they climb to, and what is stacked inside.
+ * The staircases, the storeys they climb to, and what is up there.
  *
  * Every box comes from `stairBoxes` in gen/stairs.js rather than being worked out
- * again here, so the picture, the player's collision and the solver cannot
- * disagree about where a tread is — including which boxes may be collided with at
- * all, which is the one genuinely subtle thing here. See that file.
+ * again here, so the picture, the player's collision, the solver and the validators
+ * cannot come to different conclusions about where a tread is.
  *
  * Colliders are marked `building`: they are shell, not furniture. Permanent, not
- * destructible, and the props validator audits them as such — a 4 m loft floor
- * read as a prop fails every dimension a prop has.
+ * destructible, and the props validator audits them as such — a whole storey's
+ * floor slab read as a prop fails every dimension a prop has. They also carry
+ * `base`, which is what makes the storey possible at all: see gen/stairs.js.
  */
-function buildStairs(layout, batcher, materials, masks, sink, rng) {
+function buildStairs(layout, batcher, materials, masks, rng) {
   const { W } = layout;
 
   for (const plan of layout.stairs) {
-    const boxes = stairBoxes(layout, plan);
-
-    for (const b of boxes) {
+    for (const b of stairBoxes(layout, plan)) {
       if (b.part === 'tread') drawStep(batcher, materials, b, plan);
       else drawPart(batcher, materials, b);
 
-      if (!b.collide) continue;
       masks.colliders.push({
         minX: b.minX, maxX: b.maxX, minZ: b.minZ, maxZ: b.maxZ,
-        top: b.y1, building: true,
+        base: b.base, top: b.y1, building: true,
       });
     }
 
-    // Out of the nav grid, because a 2D grid cannot say "walkable, but two metres
-    // up" and nobody can climb anyway — and out of the furnisher's reach, so no
-    // desk ends up buried in the flight. See gen/stairs.js for why this does not
-    // make the loft a place to hide.
+    // The stairwell leaves the nav grid, because a 2D grid cannot say "walkable,
+    // but a storey up" and nobody can climb anyway — and leaves the furnisher's
+    // reach, so no desk ends up buried in the flight. See gen/stairs.js for why
+    // this does not make upstairs a place to hide.
     for (const i of stripTiles(plan, W)) {
       masks.blocked[i] = 1;
       masks.occupied[i] = 1;
@@ -1046,8 +1068,7 @@ function buildStairs(layout, batcher, materials, masks, sink, rng) {
     // flight in three came out behind a filing cabinet.
     for (const i of approachTiles(plan, W)) masks.occupied[i] = 1;
 
-    lightLoft(layout, plan, batcher, materials, masks.fixtures);
-    dressLoft(layout, plan, sink, masks.colliders, rng);
+    lightUpstairs(layout, plan, batcher, materials, masks.fixtures);
   }
 }
 
@@ -1073,115 +1094,117 @@ function drawStep(batcher, materials, b, plan) {
 function drawPart(batcher, materials, b) {
   const key = PART_MATERIAL[b.part];
   batcher.add(key, materials[key], applyWorldUVs(
-    boxBetween(b.minX, b.y0, b.minZ, b.maxX, b.y1, b.maxZ)));
-  // The loft's floor gets the building's floor laid on it, like a tread does.
-  if (b.part !== 'block') return;
+    boxBetween(b.minX, b.base, b.minZ, b.maxX, b.y1, b.maxZ)));
+  // The storey's deck gets a floor laid on it, like a tread does — you walk on it.
+  if (b.part !== 'deck') return;
   batcher.add('vinyl', materials.vinyl, applyWorldUVs(
     boxBetween(b.minX, b.y1 - TREAD_SKIN, b.minZ, b.maxX, b.y1, b.maxZ)));
 }
 
-// A loft has no window and its own lid, so without this it is a black box with
-// something in it. One panel, registered as a fixture like any other, so the light
-// pool treats it as the ceiling light it is.
-function lightLoft(layout, plan, batcher, materials, fixtures) {
-  const f = loftFloor(layout, plan);
-  const x = (f.minX + f.maxX) / 2, z = (f.minZ + f.maxZ) / 2;
-  const hw = Math.min(0.62, (f.maxX - f.minX) / 2 - 0.1);
-  const hd = Math.min(0.62, (f.maxZ - f.minZ) / 2 - 0.1);
+// The storey has no window and a roof of its own, so without this it is a black
+// room with something in it. Panels on a pitch like any other room's, registered as
+// fixtures, so the light pool treats them as the ceiling lights they are.
+function lightUpstairs(layout, plan, batcher, materials, fixtures) {
+  const f = upperFloor(layout, plan);
+  const nx = Math.max(1, Math.round((f.maxX - f.minX) / LIGHT_PITCH));
+  const nz = Math.max(1, Math.round((f.maxZ - f.minZ) / LIGHT_PITCH));
 
-  batcher.add('panel', materials.panel,
-    slab(x - hw, z - hd, x + hw, z + hd, TOP_Y - 0.02, false),
-    { castShadow: false, receiveShadow: false });
-  fixtures.push({ x, y: TOP_Y - 0.12, z, color: 0xfdfbf2, intensity: 0.9, distance: 8 });
-}
-
-/**
- * Fills the loft, through a sink that has been shifted up into it.
- *
- * Everything a prop draws — its boxes, its model, its collider's top — is lifted
- * by LOFT_Y, so `tryPlace` and every prop in the catalogue furnish a loft without
- * knowing there is one. The occupancy is the loft's OWN: the strip's tiles are
- * already stamped occupied to keep the room floor's furniture out, and a level
- * shares its tiles with the floor underneath it.
- *
- * Nothing is height-limited here, unlike a low platform would be — a loft has 2.2
- * m of headroom, so the tall things that never fit anywhere else go in it.
- */
-function dressLoft(layout, plan, sink, colliders, rng) {
-  const f = loftFloor(layout, plan);
-  const x0 = f.minX + LOFT_INSET, x1 = f.maxX - LOFT_INSET;
-  const z0 = f.minZ + LOFT_INSET, z1 = f.maxZ - LOFT_INSET;
-  if (x1 - x0 < 0.5 || z1 - z0 < 0.5) return;
-
-  const lifted = liftSink(sink, LOFT_Y, { x0, z0, x1, z1 }, colliders);
-
-  // Every half-metre cell of the loft gets a try, in a shuffled order. Darts were
-  // the first version and gave a loft of two things or a loft of nine: a spot that
-  // survives the fit test is a small fraction of a small floor, so a fixed number
-  // of random throws is a lottery rather than a density. Same lesson as camera
-  // placement in cameras.js.
-  const spots = [];
-  for (let z = z0 + TILE / 2; z <= z1 - TILE / 2 + 1e-9; z += TILE) {
-    for (let x = x0 + TILE / 2; x <= x1 - TILE / 2 + 1e-9; x += TILE) spots.push({ x, z });
-  }
-  // ...and a ceiling on how many actually go in. Without it the big things take
-  // the first few spots and then every leftover gap in the room takes the one prop
-  // still small enough to fit it — which came out as a loft holding two pallets
-  // and eight fire extinguishers. A store room is stacked, not tiled.
-  let left = Math.max(3, Math.round((x1 - x0) * (z1 - z0) / 0.9));
-
-  rng.shuffle(spots);
-  for (const s of spots) {
-    if (left <= 0) break;
-    // Several kinds per spot rather than one. With a single random pick, a spot
-    // that came up `workbench` in a loft two metres deep is simply lost, and the
-    // loft comes out with three things in it — what is stacked up there is the
-    // entire point of climbing.
-    const rot = rng.int(0, 3);
-    for (const kind of rng.shuffle(LOFT_KINDS.slice())) {
-      if (tryPlace(lifted, kind, s.x, s.z, rot, rng)) { left--; break; }
+  for (let iz = 0; iz < nz; iz++) {
+    for (let ix = 0; ix < nx; ix++) {
+      const x = f.minX + ((ix + 0.5) / nx) * (f.maxX - f.minX);
+      const z = f.minZ + ((iz + 0.5) / nz) * (f.maxZ - f.minZ);
+      batcher.add('panel', materials.panel,
+        slab(x - 0.62, z - 0.16, x + 0.62, z + 0.16, UPPER_CEIL - 0.02, false),
+        { castShadow: false, receiveShadow: false });
+      fixtures.push({ x, y: UPPER_CEIL - 0.12, z, color: 0xfdfbf2, intensity: 0.85, distance: 10 });
     }
   }
 }
 
 /**
- * The same sink, one level up.
+ * Furnishes the storey above, through a sink of its own.
  *
- * Only four of its methods care about height and all four take absolute world y,
- * so furnishing a level above the floor is four `+ dy`s and an occupancy grid of
- * its own. Everything else — the destruction record, the debris capture, the model
- * stamping — is the real sink's and behaves exactly as it does on the floor.
+ * A second storey gets masks of its own and that is the whole trick. The collider
+ * list, the loose props and the destruction records are the floor's — a crate
+ * upstairs is shot apart exactly like one downstairs. But "is this tile taken" and
+ * "can a body walk here" are questions about a LEVEL, and the answers upstairs have
+ * nothing to do with the answers below: sharing the real masks would have a filing
+ * cabinet on the second floor make the office beneath it impassable.
  *
- * The colliders it produces are stamped with the level they stand on, and that is
- * not decoration: a prop's collider is a pillar measured from y = 0, so a 1.3 m
- * cabinet in a loft has a `top` of 3.5 and no tool downstream could otherwise tell
- * it from a prop three and a half metres tall. `7.top` in validate-props.mjs reads
- * it. Everything added by the call is tagged rather than "the last one", so a prop
- * that emits two colliders, or none, still comes out right.
+ * The stairwell is reserved, so nothing is ever placed in the hole the stairs come
+ * up through. Nothing is height-limited, unlike a low platform would be — a storey
+ * has a full room's headroom, so the tall things go up there too.
  */
-function liftSink(sink, dy, bounds, colliders) {
-  const used = [];   // world-space footprints already taken on this level
-  const inside = (x0, z0, x1, z1) =>
-    x0 >= bounds.x0 && x1 <= bounds.x1 && z0 >= bounds.z0 && z1 <= bounds.z1;
+function furnishUpstairs(layout, batcher, materials, shared, rng) {
+  if (!layout.stairs.length) return;
+  const { W, H } = layout;
 
-  return {
-    ...sink,
+  // Reserved is everything EXCEPT this storey's own floor, which is the room below
+  // it minus the stairwell. Inverted rather than listed because the tile grid a
+  // prop is fitted against is the floorplan's, and the floorplan has no idea a
+  // second storey exists: without this a two-metre workbench upstairs could reach
+  // past the deck and out over the corridor, held up by nothing at all.
+  const reserved = new Uint8Array(W * H).fill(1);
+  for (const plan of layout.stairs) {
+    const r = plan.room;
+    for (let ty = r.y0; ty < r.y1; ty++) {
+      for (let tx = r.x0; tx < r.x1; tx++) reserved[ty * W + tx] = 0;
+    }
+  }
+  for (const plan of layout.stairs) {
+    for (const i of stripTiles(plan, W)) reserved[i] = 1;
+  }
 
-    canPlace(x0, z0, x1, z1) {
-      if (!inside(x0, z0, x1, z1)) return false;
-      return !used.some((u) => x0 < u.x1 && x1 > u.x0 && z0 < u.z1 && z1 > u.z0);
-    },
-    occupy(x0, z0, x1, z1) { used.push({ x0, z0, x1, z1 }); },
+  const sink = makeSink(layout, batcher, materials, {
+    level: UPPER_Y,
+    blocked: new Uint8Array(W * H),
+    occupied: new Uint8Array(W * H),
+    reserved,
+    colliders: shared.colliders,
+    dynamics: shared.dynamics,
+    destructibles: shared.destructibles,
+  });
 
-    box(key, x0, y0, z0, x1, y1, z1) { sink.box(key, x0, y0 + dy, z0, x1, y1 + dy, z1); },
-    model(key, x, y, z, yaw) { return sink.model(key, x, y + dy, z, yaw); },
+  for (const plan of layout.stairs) {
+    const f = upperFloor(layout, plan);
+    const x0 = f.minX + UPPER_INSET, x1 = f.maxX - UPPER_INSET;
+    const z0 = f.minZ + UPPER_INSET, z1 = f.maxZ - UPPER_INSET;
+    if (x1 - x0 < 0.5 || z1 - z0 < 0.5) continue;
 
-    obstacle(x0, z0, x1, z1, top) {
-      const from = colliders.length;
-      sink.obstacle(x0, z0, x1, z1, top + dy);
-      for (let i = from; i < colliders.length; i++) colliders[i].level = dy;
-    },
-  };
+    // Every half-metre cell gets a try, in a shuffled order. Darts were the first
+    // version and gave a storey of two things or of nine: a spot that survives the
+    // fit test is a small fraction of a room, so a fixed number of random throws is
+    // a lottery rather than a density. Same lesson as camera placement in cameras.js.
+    const spots = [];
+    for (let z = z0 + TILE / 2; z <= z1 - TILE / 2 + 1e-9; z += TILE) {
+      for (let x = x0 + TILE / 2; x <= x1 - TILE / 2 + 1e-9; x += TILE) spots.push({ x, z });
+    }
+    // ...and a ceiling on how many land. Without it the big things take the first
+    // few spots and then every leftover gap takes the one prop still small enough to
+    // fit it, which came out as two pallets and eight fire extinguishers. A store
+    // room is stacked, not tiled.
+    let left = Math.max(4, Math.round((x1 - x0) * (z1 - z0) / 1.6));
+
+    rng.shuffle(spots);
+    for (const s of spots) {
+      if (left <= 0) break;
+      // Several kinds per spot rather than one. With a single random pick, a spot
+      // that came up `workbench` against a wall is simply lost, and what is up there
+      // is the entire point of climbing.
+      const rot = rng.int(0, 3);
+      for (const kind of rng.shuffle(UPPER_KINDS.slice())) {
+        // The tile grid a prop is fitted against is the floorplan's, which stops
+        // at the wall and knows nothing about the 0.15 m a room keeps off its
+        // plaster. So the inset is tested here, through the same `footprintOf`
+        // every other placement uses — never PROPS[kind].w/.d, which is a quarter
+        // of a metre out on half the model-backed props.
+        const f2 = footprintOf(sink, kind, rot);
+        if (s.x - f2.w / 2 < x0 || s.x + f2.w / 2 > x1) continue;
+        if (s.z - f2.d / 2 < z0 || s.z + f2.d / 2 > z1) continue;
+        if (tryPlace(sink, kind, s.x, s.z, rot, rng)) { left--; break; }
+      }
+    }
+  }
 }
 
 // Corridors stay walkable, but a few props along the walls stop them reading as

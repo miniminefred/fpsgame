@@ -21,6 +21,12 @@ export const PLAYER_RADIUS = 0.4;   // horizontal collision radius
 export const BODY_RADIUS = 0.36;    // ...and everyone who is not the player
 export const EYE = 1.7;             // eye height above the feet
 export const STEP_EPS = 0.25;       // within this of the feet is a step up, not a wall
+// How tall a body actually is, eyes plus the rest of a head. It exists because a
+// collider now has an underside (`base`), so "does this box stand in my way" has
+// finally become a question about a body's HEIGHT rather than only its feet — the
+// floor slab of the storey above must stop the man walking on it and not the one
+// walking underneath. See _moveHorizontal in player.js.
+export const BODY_H = EYE + 0.12;
 
 export const GRAVITY = 26;
 export const JUMP_SPEED = 8.4;

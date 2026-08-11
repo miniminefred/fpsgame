@@ -4,7 +4,7 @@ import { setupPointerLock } from './input.js';
 import { smoothTo } from './util.js';
 // The body's own dimensions live in metrics.js, because cameras.js and both
 // headless validators need the same numbers and used to keep their own copies.
-import { EYE, GRAVITY, JUMP_SPEED, PLAYER_RADIUS as RADIUS, STEP_EPS } from './metrics.js';
+import { BODY_H, EYE, GRAVITY, JUMP_SPEED, PLAYER_RADIUS as RADIUS, STEP_EPS } from './metrics.js';
 
 // Broadphase cell for the static collision boxes. 2 m is four tiles — big enough
 // that a wall lands in few cells, small enough that a query rejects most of a
@@ -280,15 +280,27 @@ export class Player {
     this.onStep?.(sprinting);
   }
 
-  // Move one axis at a time and push back out of any box that rises above the
-  // feet, resolving opposite to the direction of travel.
+  /**
+   * Move one axis at a time and push back out of any box that stands in the way,
+   * resolving opposite to the direction of travel.
+   *
+   * A box is only in the way if it overlaps the body VERTICALLY as well: low
+   * enough to be stepped onto is `top <= feet + STEP_EPS`, and high enough to walk
+   * under is `base >= feet + BODY_H`. That second test is what a second storey
+   * needs — its floor slab has to stop whoever is standing on it and nobody at
+   * all downstairs — and it is written `b.base ?? 0` because almost nothing has an
+   * underside: a wall, a desk and a door panel all start at the floor. With `base`
+   * absent the test reads `0 >= feet + 1.82`, which is false for any body above
+   * ground, so every collider the game had before this behaves exactly as it did.
+   */
   _moveHorizontal(pos, dx, dz) {
     const feetY = pos.y - EYE;
+    const overhead = (b) => (b.base ?? 0) >= feetY + BODY_H;
 
     pos.x += dx;
     if (dx !== 0) {
       for (const b of this._candidates(pos.x, pos.z)) {
-        if (b.top <= feetY + STEP_EPS) continue;
+        if (b.top <= feetY + STEP_EPS || overhead(b)) continue;
         if (!this._overlapsXZ(pos, b)) continue;
         // Loose furniture gets shoved aside rather than stopping you dead —
         // a chair blocking a corridor you can't move would be miserable.
@@ -301,7 +313,7 @@ export class Player {
     pos.z += dz;
     if (dz !== 0) {
       for (const b of this._candidates(pos.x, pos.z)) {
-        if (b.top <= feetY + STEP_EPS) continue;
+        if (b.top <= feetY + STEP_EPS || overhead(b)) continue;
         if (!this._overlapsXZ(pos, b)) continue;
         if (b.push) { this.onPush?.(b, 0, Math.sign(dz)); continue; }
         pos.z = dz > 0 ? b.minZ - RADIUS : b.maxZ + RADIUS;
@@ -317,7 +329,8 @@ export class Player {
 
   _blocked(x, z, feetY) {
     for (const b of this._candidates(x, z)) {
-      if (b.top <= feetY + STEP_EPS) continue;
+      // Same two tests as _moveHorizontal: too low to stop you, or overhead.
+      if (b.top <= feetY + STEP_EPS || (b.base ?? 0) >= feetY + BODY_H) continue;
       if (x > b.minX - RADIUS && x < b.maxX + RADIUS &&
           z > b.minZ - RADIUS && z < b.maxZ + RADIUS) return true;
     }

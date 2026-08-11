@@ -5,6 +5,13 @@ import { buildRig } from './rigs.js';
 import { TYPES, BYSTANDERS, pickType, pickTheme } from './enemy-types.js';
 import { DEATH_TIME, HIT_FLASH, SWING_TIME, animate, die } from './enemy-anim.js';
 import { angleLerp, smoothTo } from './util.js';
+import { EYE } from './metrics.js';
+
+// How far off the ground the player's feet have to be to be on another level of the
+// building rather than standing on a desk. A storey's floor is at WALL_H (see
+// UPPER_Y in gen/stairs.js) and the tallest thing anybody can climb onto down here
+// is a 2.1 m locker, so anything above that is upstairs and nothing else is.
+const STOREY_GAP = 2.4;
 
 // The people still working here.
 //
@@ -1037,6 +1044,16 @@ export class Enemies {
     if (this.nav) this.nav.updateField(dt, px, pz, this.keyedAlive > 0);
     if (this.shoutTimer > 0) this.shoutTimer -= dt;
 
+    // Sight is a 2D grid and everybody on the roster is on the ground floor, so a
+    // player who has gone up the stairs (gen/stairs.js) is directly over their
+    // heads with a floor slab in between and `losClear` cheerfully says yes. Enemy
+    // fire is not a raycast — `_shoot` fires because `sees` is true — so without
+    // this they shoot you through the deck from the room below. Off the ground
+    // floor, nobody sees you at all; they still HEAR you, on the field, which
+    // seeds from the nearest tile a body fits in and so puts the noise at the
+    // bottom of your stairs. Which is exactly where they should be waiting.
+    const upstairs = py - EYE > STOREY_GAP;
+
     // Where a fleeing neutral is running away from — _repick needs it and is
     // called from places that have no player to hand.
     this.playerX = px;
@@ -1048,7 +1065,7 @@ export class Enemies {
       const dx = px - e.x;
       const dz = pz - e.z;
       const dist = Math.hypot(dx, dz) || 0.001;
-      const sees = dist < SIGHT && this.nav.losClear(e.x, e.z, px, pz);
+      const sees = !upstairs && dist < SIGHT && this.nav.losClear(e.x, e.z, px, pz);
       // Hearing only matters when they cannot see you — if they can, sight has
       // already told them everything, and at a longer range. The distance is the
       // walked one: the field is flooded from the player, so it is already paid

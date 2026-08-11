@@ -99,12 +99,12 @@ const SUB = 4;                 // cells per tile => 0.125 m cells
 // Imported, not restated. These were two literals under a "must match
 // src/player.js" comment — a validator whose whole job is catching drift,
 // holding its own copy of the number it validates against.
-const { PLAYER_RADIUS: BODY_R, BODY_RADIUS: ENEMY_R, STEP_EPS } =
+const { PLAYER_RADIUS: BODY_R, BODY_RADIUS: ENEMY_R, STEP_EPS, BODY_H } =
   await import('../src/metrics.js');
 // The stairs are interrogated through the generator's OWN geometry, not through a
 // second opinion about where a tread ought to be — see gen/stairs.js, which exists
 // so the picture, the collision and this file read one set of boxes.
-const { stairBoxes, approachTiles } = await import('../src/gen/stairs.js');
+const { stairBoxes, approachTiles, UPPER_Y } = await import('../src/gen/stairs.js');
 
 // ---------------------------------------------------------------------------
 // check bookkeeping (same shape as validate-layout.mjs)
@@ -173,7 +173,7 @@ const IDS = [
   ['9.inset', 'WARN', 'ROOM BOUNDS   room props stay inside the 0.15 m wall inset'],
 
   ['11.stair-step', 'FAIL', `STAIRS        every riser is a step, not a wall (<= ${STEP_EPS} m)`],
-  ['11.stair-meet', 'FAIL', 'STAIRS        the top tread arrives on the loft floor'],
+  ['11.stair-meet', 'FAIL', 'STAIRS        the top tread arrives on the storey floor'],
   ['11.stair-foot', 'FAIL', 'STAIRS        floor at the bottom of the flight a body can stand on'],
 
   ['10.nav-lie', 'WARN', 'NAV GRID      no walkable tile is buried inside a static collider'],
@@ -398,12 +398,11 @@ function validate(seed, floorNumber) {
   let badExtent = 0, badNaN = 0, badSide = 0, badTop = 0;
   for (const c of furn) {
     const w = c.maxX - c.minX, d = c.maxZ - c.minZ;
-    // How tall the prop itself is, which on a level above the floor is not its
-    // `top`: a collider is a pillar measured from y = 0, so a 1.3 m cabinet in a
-    // loft has a top of 3.5. `level` is the floor it stands on — see liftSink in
-    // gen/build.js — and measuring against it is what keeps this check about the
-    // prop rather than about where the building put it.
-    const height = c.top - (c.level ?? 0);
+    // How tall the prop itself is, which for one on the storey above is not its
+    // `top`: a 1.3 m cabinet up there has a top of 4.5 and an underside at 3.2.
+    // Measuring between them keeps this check about the prop rather than about
+    // which floor the building put it on.
+    const height = c.top - (c.base ?? 0);
     if (![c.minX, c.maxX, c.minZ, c.maxZ, c.top].every(Number.isFinite)) { badNaN++; continue; }
     if (w <= EPS || d <= EPS || height <= EPS) badExtent++;
     if (w > MAX_PROP_SIDE || d > MAX_PROP_SIDE) badSide++;
@@ -440,9 +439,13 @@ function validate(seed, floorNumber) {
       below = t.y1;
     }
 
-    const block = boxes.find((b) => b.part === 'block');
-    if (!block || Math.abs(below - block.y1) > EPS) {
-      check('11.stair-meet').fail(id, `top tread at ${fmt(below, 3)} m, loft floor at ${fmt(block?.y1 ?? NaN, 3)} m`);
+    // The run has to arrive exactly on the storey's floor, not a step under or over
+    // it. Checked against the deck the builder actually drew as well as against
+    // UPPER_Y, so a change to either one alone cannot pass.
+    const deck = boxes.find((b) => b.part === 'deck');
+    if (Math.abs(below - UPPER_Y) > EPS || !deck || Math.abs(deck.y1 - UPPER_Y) > EPS) {
+      check('11.stair-meet').fail(id,
+        `top tread at ${fmt(below, 3)} m, deck at ${fmt(deck?.y1 ?? NaN, 3)} m, storey at ${fmt(UPPER_Y, 3)} m`);
     }
 
     if (!approachTiles(plan, W).some((i) => walk[i])) {
@@ -501,6 +504,11 @@ function validate(seed, floorNumber) {
         const pk = i < j ? i * 1e6 + j : j * 1e6 + i;
         if (seen.has(pk)) continue;
         seen.add(pk);
+        // Two props on different floors are not in each other's way, however
+        // exactly their footprints line up — which for a second storey standing on
+        // the room below is most of them. This is a plan test, so the level has to
+        // be part of it.
+        if ((furn[i].base ?? 0) !== (furn[j].base ?? 0)) continue;
         const o = planOverlap(furn[i], furn[j]);
         if (!o) continue;
         pairsHair++;
@@ -532,7 +540,7 @@ function validate(seed, floorNumber) {
     const b = {
       minX: p.x - s.x / 2, maxX: p.x + s.x / 2,
       minZ: p.z - s.z / 2, maxZ: p.z + s.z / 2,
-      top: p.y + s.y / 2,
+      base: p.y - s.y / 2, top: p.y + s.y / 2,
     };
     dynBoxes.push(b);
     const r = tileRange(b, EPS);
@@ -550,13 +558,21 @@ function validate(seed, floorNumber) {
   if (dFloor) check('8.dyn-floor').fail(id, `${dFloor} dynamics with their base below y=0`);
   if (dWall) check('8.dyn-wall').fail(id, `${dWall} dynamics starting inside a wall`);
 
+  // Two things only interpenetrate if they overlap in HEIGHT as well as in plan,
+  // which used to be free: everything stood on the same floor. A storey standing on
+  // the room below shares its whole footprint with it, so without this every crate
+  // upstairs reads as buried in a desk downstairs.
+  const sameHeight = (a, b) => (a.base ?? 0) < b.top - EPS && (b.base ?? 0) < a.top - EPS;
+
   let dynPairs = 0, dynStatic = 0;
   for (let i = 0; i < dynBoxes.length; i++) {
     for (let j = i + 1; j < dynBoxes.length; j++) {
+      if (!sameHeight(dynBoxes[i], dynBoxes[j])) continue;
       const o = planOverlap(dynBoxes[i], dynBoxes[j], HAIRLINE);
       if (o) dynPairs++;
     }
     for (const c of furn) {
+      if (!sameHeight(dynBoxes[i], c)) continue;
       const o = planOverlap(dynBoxes[i], c, HAIRLINE);
       if (o) dynStatic++;
     }
@@ -576,6 +592,9 @@ function validate(seed, floorNumber) {
       : { minX: wx(d.x0), maxX: wx(d.x1), minZ: wz(d.y0 - SWING), maxZ: wz(d.y1 + SWING) };
 
     for (const c of furn) {
+      // A doorway is a hole in a wall on THIS floor. A crate standing over one on
+      // the storey above is not in it, however the footprints line up.
+      if (c.base) continue;
       const od = planOverlap(c, doorBox, HAIRLINE);
       if (od) { doorHits++; worstDoorD = Math.max(worstDoorD, od.depth); }
       else if (planOverlap(c, swingBox, HAIRLINE)) swingHits++;
@@ -659,6 +678,10 @@ function validate(seed, floorNumber) {
   // tile the pathfinder will happily route an enemy into.
   let lies = 0;
   for (const c of furn) {
+    // A prop on the storey above is not on the nav grid and is not meant to be —
+    // the grid describes the ground, and a body walks under the whole storey. It is
+    // no more a lie than the ceiling is.
+    if ((c.base ?? 0) >= BODY_H) continue;
     const r = tileRange(c, HAIRLINE);
     let n = 0;
     for (let ty = r.ty0; ty <= r.ty1; ty++) {
@@ -972,6 +995,11 @@ function buildGeomGrid(layout, colliders, radius) {
     // block a body — carving it out here would report every room behind a door
     // as physically cut off from the spawn.
     if (c.door) continue;
+    // And this grid is the GROUND floor. Anything whose underside clears a body
+    // is walked under, not round: the floor slab of a storey above covers a whole
+    // room, and counting it would report that room as solid rock. Same test the
+    // player makes — see _moveHorizontal in player.js.
+    if ((c.base ?? 0) >= BODY_H) continue;
     const gx0 = Math.max(0, Math.ceil((c.minX - radius - ox) / CS - 0.5));
     const gx1 = Math.min(GW - 1, Math.floor((c.maxX + radius - ox) / CS - 0.5));
     const gy0 = Math.max(0, Math.ceil((c.minZ - radius - oz) / CS - 0.5));

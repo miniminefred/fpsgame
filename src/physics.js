@@ -234,7 +234,12 @@ export class Physics {
     for (const b of boxes) {
       const w = b.maxX - b.minX;
       const d = b.maxZ - b.minZ;
-      const h = b.top;
+      // `base` is the underside, which almost nothing has: a wall, a desk and a
+      // door panel all start at the floor. A second storey's slab does (see
+      // gen/stairs.js), and the solver has to know, or debris rests on the ground
+      // floor's ceiling. Absent, this is `b.top - 0` and the box is what it was.
+      const base = b.base ?? 0;
+      const h = b.top - base;
       // Zero-thickness colliders have no volume for the narrowphase to work
       // with and would only pollute the broadphase list.
       if (!(w > 1e-4) || !(d > 1e-4) || !(h > 1e-4)) continue;
@@ -243,7 +248,7 @@ export class Physics {
         mass: 0,
         type: Body.STATIC,
         shape: new Box(new Vec3(w / 2, h / 2, d / 2)),
-        position: new Vec3((b.minX + b.maxX) / 2, h / 2, (b.minZ + b.maxZ) / 2),
+        position: new Vec3((b.minX + b.maxX) / 2, base + h / 2, (b.minZ + b.maxZ) / 2),
         material: this._worldMat,
         collisionFilterGroup: GROUP_WORLD,
         collisionFilterMask: GROUP_PROP | GROUP_JOINTED,
