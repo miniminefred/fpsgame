@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { setupPointerLock } from './input.js';
+import { smoothTo } from './util.js';
 
 const EYE = 1.7;           // eye height above the player's feet (units)
 const MOVE_SPEED = 5.6;    // units / second — office corridors, not a racetrack
@@ -150,7 +151,7 @@ export class Player {
       if (this._wish.lengthSq() > 0) this._wish.normalize().multiplyScalar(speed);
 
       // Ease into the target velocity so starting and stopping has some weight.
-      const k = 1 - Math.exp(-ACCEL * dt);
+      const k = smoothTo(ACCEL, dt);
       this._vel.x += (this._wish.x - this._vel.x) * k;
       this._vel.z += (this._wish.z - this._vel.z) * k;
 

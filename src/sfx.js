@@ -15,6 +15,8 @@
 // pose arrives as plain numbers, which keeps the seam narrow enough that the only
 // thing to get wrong is the maths, and that lives in audio.js.
 
+import { clamp } from './util.js';
+
 const BASE = '/sounds/';
 
 const DEFAULT_PITCH = 0.06;   // ±6% playback rate unless a sound asks otherwise
@@ -427,7 +429,7 @@ function measure(buffer, bed) {
   if (bed || rms <= 0) return { buffer, offset: 0, norm: 1, rms, peak };
 
   // Pull toward a common loudness, but never so far that the peak clips.
-  let norm = Math.min(MAX_BOOST, Math.max(MIN_TRIM, TARGET_RMS / rms));
+  let norm = clamp(TARGET_RMS / rms, MIN_TRIM, MAX_BOOST);
   if (peak > 0) norm = Math.min(norm, 0.99 / peak);
 
   const threshold = peak * ONSET_FLOOR;

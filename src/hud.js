@@ -5,6 +5,8 @@
 // effect is driven from `update(dt)` off the render loop rather than setTimeout,
 // so effects pause exactly when the game does.
 
+import { angleDelta, clamp01 } from './util.js';
+
 const HIT_S = 0.11;        // hitmarker flash
 const KILL_S = 0.20;       // kill marker lingers a little longer
 const VIGNETTE_DECAY = 2.4; // full-strength damage flash fades in ~0.4 s
@@ -19,17 +21,6 @@ const HITDIR_HOLD = 0.35;      // ...held at full before it starts fading
 // on top of each other. An SMG burst is one attacker, and it should look like
 // one attacker.
 const HITDIR_MERGE = 0.3;      // radians
-
-const TAU = Math.PI * 2;
-// Shortest signed angle from a to b.
-const angleDelta = (a, b) => {
-  let d = (b - a) % TAU;
-  if (d > Math.PI) d -= TAU;
-  if (d < -Math.PI) d += TAU;
-  return d;
-};
-
-const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 export class Hud {
   constructor() {

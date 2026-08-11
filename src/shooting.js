@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { clamp, clamp01 } from './util.js';
 
 // Hitscan shooting: fire rate, ammo/reload, spread, camera recoil, damage.
 //
@@ -301,7 +302,7 @@ export class Shooting {
   // never owes back more than it took.
   _pitch(delta) {
     this._euler.setFromQuaternion(this.camera.quaternion);
-    const target = THREE.MathUtils.clamp(this._euler.x + delta, -PITCH_LIMIT, PITCH_LIMIT);
+    const target = clamp(this._euler.x + delta, -PITCH_LIMIT, PITCH_LIMIT);
     const applied = target - this._euler.x;
     if (applied !== 0) this.camera.rotateX(applied);
     return applied;
@@ -350,8 +351,6 @@ function throwPunch(stats, distance) {
   const k = clamp01((to - distance) / Math.max(0.01, to - THROW_NEAR));
   return (stats.punch ?? 1) * (1 + ((stats.throwMul ?? 1) - 1) * k);
 }
-
-const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 function falloff(distance, stats) {
   const from = stats.falloffFrom;

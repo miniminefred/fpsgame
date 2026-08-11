@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { clamp } from './util.js';
 
 // What happens to a body after it stops being a person.
 //
@@ -386,4 +387,3 @@ export class Ragdolls {
 }
 
 const UP = new THREE.Vector3(0, 1, 0);
-const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);

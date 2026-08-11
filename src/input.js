@@ -1,4 +1,5 @@
 import { Euler } from 'three';
+import { clamp } from './util.js';
 
 // Keyboard state + pointer-lock overlay wiring.
 
@@ -130,7 +131,7 @@ export function setupPointerLock(controls, domElement) {
       euler.setFromQuaternion(camera.quaternion);
       euler.y -= (event.clientX - lastX) * LOOK_SENSITIVITY;
       euler.x -= (event.clientY - lastY) * LOOK_SENSITIVITY;
-      euler.x = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, euler.x));
+      euler.x = clamp(euler.x, -PITCH_LIMIT, PITCH_LIMIT);
       camera.quaternion.setFromEuler(euler);
     }
     lastX = event.clientX;

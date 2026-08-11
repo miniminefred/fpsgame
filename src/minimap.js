@@ -13,6 +13,7 @@
 // you can see is the part you are about to walk into.
 
 import { CARDS } from './keycards.js';
+import { hexCss } from './util.js';
 
 const SOLID = 0, ROOM = 1, CORRIDOR = 2, DOOR = 3;
 
@@ -131,7 +132,7 @@ export class Minimap {
     for (const { room, tier, staffOnly } of level.locks || []) {
       const spec = staffOnly ? CARDS[tier] : null;
       if (!spec) continue;
-      const css = `#${spec.color.toString(16).padStart(6, '0')}`;
+      const css = hexCss(spec.color);
       g.fillStyle = css;
       g.globalAlpha = 0.2;
       g.fillRect(px(room.x0), py(room.y0), (room.x1 - room.x0) * s, (room.y1 - room.y0) * s);

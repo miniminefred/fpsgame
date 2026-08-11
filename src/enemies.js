@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { BODY_RADIUS as RADIUS } from './nav.js';
 import { CORRIDOR, STAFF_ONLY, FIRST_CONTACT_GAP, worldX, worldZ } from './gen/layout.js';
 import { buildRig } from './rigs.js';
+import { angleLerp, lerp, smoothTo } from './util.js';
 
 // The people still working here.
 //
@@ -1287,7 +1288,7 @@ export class Enemies {
     e.moving = true;
     e.group.position.x = e.x;
     e.group.position.z = e.z;
-    e.yaw = angleLerp(e.yaw, Math.atan2(-dir.x, -dir.z), 1 - Math.exp(-9 * dt));
+    e.yaw = angleLerp(e.yaw, Math.atan2(-dir.x, -dir.z), smoothTo(9, dt));
     e.group.rotation.y = e.yaw;
   }
 
@@ -1465,7 +1466,7 @@ export class Enemies {
     const wantYaw = (e.state === 'fight' || e.state === 'alert' || sees)
       ? Math.atan2(-dx, -dz)
       : (vx || vz) ? Math.atan2(-vx, -vz) : e.yaw;
-    e.yaw = angleLerp(e.yaw, wantYaw, 1 - Math.exp(-9 * dt));
+    e.yaw = angleLerp(e.yaw, wantYaw, smoothTo(9, dt));
     e.group.rotation.y = e.yaw;
   }
 
@@ -1597,7 +1598,7 @@ export class Enemies {
       // right arm so the two read as one motion.
       const winding = e.swing > SWING_TIME * 0.55;
       const arm = e.swing > 0 ? (winding ? 1.5 : -2.4) : (aiming ? -0.9 : -swing * 0.5);
-      const k = 1 - Math.exp(-(e.swing > 0 ? 24 : 9) * dt);
+      const k = smoothTo(e.swing > 0 ? 24 : 9, dt);
       e.armL.rotation.x = lerp(e.armL.rotation.x, arm * 0.6, k);
       e.armR.rotation.x = lerp(e.armR.rotation.x, arm, k);
       if (e.blunt) {
@@ -1610,8 +1611,8 @@ export class Enemies {
       }
     } else {
       const armX = aiming ? -1.45 : swing * -0.5;
-      e.armL.rotation.x = lerp(e.armL.rotation.x, aiming ? -1.2 : -swing * 0.5, 1 - Math.exp(-10 * dt));
-      e.armR.rotation.x = lerp(e.armR.rotation.x, armX, 1 - Math.exp(-10 * dt));
+      e.armL.rotation.x = lerp(e.armL.rotation.x, aiming ? -1.2 : -swing * 0.5, smoothTo(10, dt));
+      e.armR.rotation.x = lerp(e.armR.rotation.x, armX, smoothTo(10, dt));
       e.gun.position.set(0.3, aiming ? 1.32 : 1.1, aiming ? -0.55 : -0.3);
       e.gun.rotation.x = aiming ? 0 : 0.5;
     }
@@ -1826,12 +1827,4 @@ function pickTheme(floorNumber, rng) {
     if (roll <= 0) return theme;
   }
   return THEMES[0];
-}
-
-const lerp = (a, b, t) => a + (b - a) * t;
-
-function angleLerp(a, b, t) {
-  let d = ((b - a + Math.PI) % (Math.PI * 2)) - Math.PI;
-  if (d < -Math.PI) d += Math.PI * 2;
-  return a + d * t;
 }

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { getFx } from './fx-textures.js';
+import { hexCss } from './util.js';
 
 // Keycards: what the staff are carrying, and what it opens.
 //
@@ -119,7 +120,7 @@ export class Wallet {
     return HUD_ORDER.filter((t) => this.held.has(t)).map((tier) => ({
       tier,
       name: CARDS[tier].name,
-      css: `#${CARDS[tier].color.toString(16).padStart(6, '0')}`,
+      css: hexCss(CARDS[tier].color),
     }));
   }
 }

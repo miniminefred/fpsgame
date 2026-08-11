@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { hexCss } from './util.js';
 
 // What the things walking around a floor are made of.
 //
@@ -99,9 +100,9 @@ function capLabel(text, ink, cloth) {
   canvas.width = 256;
   canvas.height = 64;
   const g = canvas.getContext('2d');
-  g.fillStyle = `#${cloth.toString(16).padStart(6, '0')}`;
+  g.fillStyle = hexCss(cloth);
   g.fillRect(0, 0, 256, 64);
-  g.fillStyle = `#${ink.toString(16).padStart(6, '0')}`;
+  g.fillStyle = hexCss(ink);
   g.font = 'bold 44px system-ui, sans-serif';
   g.textAlign = 'center';
   g.textBaseline = 'middle';

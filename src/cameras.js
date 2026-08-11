@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CEIL_H, CORRIDOR, ROOM, SOLID, worldX, worldZ } from './gen/layout.js';
+import { angleLerp, clamp, clamp01, smoothTo } from './util.js';
 
 // Building security: the things on the walls that are watching the floor.
 //
@@ -139,7 +140,7 @@ export class Cameras {
     // How many of them are tripwires, decided up front and then shuffled in
     // among the rest, so a floor always gets some of each rather than however
     // the coin happened to land ten times running.
-    const lasers = Math.max(1, Math.min(want - 1, Math.round(want * LASER_SHARE)));
+    const lasers = clamp(Math.round(want * LASER_SHARE), 1, want - 1);
     const kinds = rng.shuffle([
       ...new Array(lasers).fill(true),
       ...new Array(want - lasers).fill(false),
@@ -433,7 +434,7 @@ export class Cameras {
     const want = cam.seen
       ? Math.atan2(-dx, -dz)
       : cam.rest + Math.sin(this._t * SWEEP_RATE + cam.phase) * SWEEP_ARC;
-    cam.aim = angleLerp(cam.aim, want, 1 - Math.exp(-(cam.seen ? TRACK_K : SWEEP_K) * dt));
+    cam.aim = angleLerp(cam.aim, want, smoothTo(cam.seen ? TRACK_K : SWEEP_K, dt));
     cam.pivot.rotation.y = cam.aim;
   }
 
@@ -475,13 +476,7 @@ function segmentDistance(px, pz, ax, az, bx, bz) {
   const dx = bx - ax, dz = bz - az;
   const len2 = dx * dx + dz * dz;
   const t = len2 > 0
-    ? Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / len2))
+    ? clamp01(((px - ax) * dx + (pz - az) * dz) / len2)
     : 0;
   return Math.hypot(px - (ax + dx * t), pz - (az + dz * t));
-}
-
-function angleLerp(a, b, t) {
-  let d = ((b - a + Math.PI) % (Math.PI * 2)) - Math.PI;
-  if (d < -Math.PI) d += Math.PI * 2;
-  return a + d * t;
 }

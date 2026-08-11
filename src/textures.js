@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { hexCss } from './util.js';
 
 // Every surface in the building is drawn with a canvas texture generated here —
 // no image assets. The palette is deliberately narrow: greys and off-whites for
@@ -165,7 +166,7 @@ function doorPanelFace() {
 // Flat painted drywall: near-uniform, with just enough grain to catch the light.
 function paintedWall(base) {
   const [c, g] = makeCanvas();
-  g.fillStyle = `#${base.toString(16).padStart(6, '0')}`;
+  g.fillStyle = hexCss(base);
   g.fillRect(0, 0, PX, PX);
 
   speckle(g, PX, PX, 900, (ctx) => {
