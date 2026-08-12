@@ -1117,10 +1117,10 @@ function makeSink(layout, batcher, materials, masks) {
 
     // --- static props ------------------------------------------------------
 
-    beginStatic(hp, substance, volatile = false) {
+    beginStatic(hp, substance, volatile = false, powerCore = false) {
       record = hp > 0
         ? {
-          hp, substance, volatile,
+          hp, substance, volatile, powerCore,
           boxes: [], colliders: [], navTiles: [], spans: batcher.beginSpans(),
         }
         : null;
@@ -1147,6 +1147,9 @@ function makeSink(layout, batcher, materials, masks) {
         hp: r.hp,
         // A pressure vessel. Destroying it launches it instead of breaking it.
         volatile: r.volatile,
+        // The one destructible that fans its own kill out floor-wide — see
+        // destruction.js's _shatter and game.js's _onPowerCut.
+        powerCore: r.powerCore,
         spans: r.spans,
         colliders: r.colliders,
         navTiles: r.navTiles,

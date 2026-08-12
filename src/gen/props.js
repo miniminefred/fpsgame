@@ -623,6 +623,49 @@ export const PROPS = {
     },
   },
 
+  // The generator room's own centrepiece (see the `generator` role in
+  // gen/rooms.js) — one per floor at most, and the only prop on the floor
+  // that does anything when it dies: `powerCore` is read by destruction.js,
+  // which fans the kill out into a floor-wide blackout (see game.js's
+  // `_onPowerCut`). Its footprint is close to MAX_PROP_SIDE and its HP is
+  // far above anything else on the floor, on purpose — it is the room's
+  // reason to exist, not furniture to clear on the way past.
+  //
+  // The collidable housing is kept under 2.2 m so its one `obstacle()` box
+  // clears MAX_PROP_TOP; the exhaust stack above that is real geometry with
+  // no collider of its own, reaching up into the generator room's own
+  // double-height shaft (nobody can climb the housing to reach it anyway).
+  generator: {
+    w: 3.4, d: 2.6, hp: 500, substance: 'electronic', powerCore: true,
+    build(p, rng) {
+      const H = 2.1;
+      p.box('metal', -1.7, 0, -1.3, 1.7, 0.15, 1.3);            // base plinth
+      p.box('metalDark', -1.6, 0.15, -1.1, 1.6, H, 1.1);        // main housing
+      p.box('metal', -1.5, H, -1.0, 1.5, H + 0.15, 1.0);        // top cap
+
+      // Vertical ribs down each long side.
+      for (const sx of [-1.55, -1.05, 1.05, 1.55]) {
+        p.box('metal', sx - 0.06, 0.15, -1.12, sx + 0.06, H, -1.02);
+        p.box('metal', sx - 0.06, 0.15, 1.02, sx + 0.06, H, 1.12);
+      }
+
+      // Hazard stripe round the base, and a control face with a few live LEDs.
+      p.box('hazard', -1.61, 0.6, -1.11, 1.61, 0.78, 1.11);
+      p.box('metalDark', 1.6, 0.9, -0.5, 1.66, 1.6, 0.5);
+      for (let i = 0; i < 4; i++) {
+        const y = 1.0 + i * 0.14;
+        p.box(rng.chance(0.7) ? 'led' : 'screen', 1.66, y, -0.4, 1.68, y + 0.06, 0.4);
+      }
+
+      // The exhaust stack: decorative only, reaching up into the room's own
+      // double-height shaft — see generatorRoomCut in gen/build.js.
+      p.box('metalDark', -0.35, H + 0.15, -0.35, 0.35, H + 1.7, 0.35);
+      p.box('metal', -0.45, H + 1.7, -0.45, 0.45, H + 1.9, 0.45);
+
+      p.obstacle(-1.7, -1.3, 1.7, 1.3, H + 0.15);
+    },
+  },
+
   // How a cow got into an office block is not this file's problem. Purely
   // decorative, and shot-proof rather than destructible — it's a fixture of
   // the floor it turns up on, not furniture (see enemies.js for how rarely,
@@ -709,7 +752,7 @@ export function tryPlace(sink, kind, cx, cz, rot, rng) {
     // colours rather than the palette the fallback boxes were authored in.
     const stamps = [{ key: spec.model, x: cx, y: 0, z: cz, yaw }];
 
-    sink.beginStatic(spec.hp, spec.substance, spec.volatile);
+    sink.beginStatic(spec.hp, spec.substance, spec.volatile, spec.powerCore);
     // `model()` says whether anything was actually stamped. It wasn't if the
     // GLB failed to fetch, or if there is no loader at all — which is every run
     // of the headless validators in tools/. Only the PICTURE falls back in that
@@ -767,7 +810,7 @@ export function tryPlace(sink, kind, cx, cz, rot, rng) {
   } else {
     // Static boxes: the geometry it is drawn with is already the geometry it
     // falls apart into, so there is nothing to capture separately.
-    sink.beginStatic(spec.hp, spec.substance, spec.volatile);
+    sink.beginStatic(spec.hp, spec.substance, spec.volatile, spec.powerCore);
     spec.build(placer(sink, cx, cz, rot), rng);
     sink.endStatic();
   }
