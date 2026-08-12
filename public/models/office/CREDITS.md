@@ -1,14 +1,14 @@
 # Office prop credits
 
-73 models, all free to use, sourced from [Poly Pizza](https://poly.pizza) —
+74 models, all free to use, sourced from [Poly Pizza](https://poly.pizza) —
 the same library as this project's weapon viewmodels (see `../CREDITS.md`).
 
-License split: **CC-BY** 45, **CC0** 28.
+License split: **CC-BY** 45, **CC0** 29.
 CC-BY models are attributed per row below.
 
 ## Authors
 
-- **Quaternius** — 17 models
+- **Quaternius** — 18 models
 - **J-Toastie** — 13 models
 - **Zsky** — 11 models
 - **CreativeTrio** — 7 models
@@ -79,6 +79,7 @@ Thank you to all of them.
 | `bookshelf` | `store_bookshelf.glb` | Bookcase with Books | Quaternius | CC0 | https://poly.pizza/m/tACDGJ4CGW |
 | `box_stack` | `store_box_stack.glb` | Cardboard Boxes | Quaternius | CC0 | https://poly.pizza/m/V9KbWC8Vd6 |
 | `ceiling_lamp` | `furn_ceiling_lamp.glb` | Ceiling Light | Quaternius | CC0 | https://poly.pizza/m/sRNcgQFbLB |
+| `cow` | `animal_cow.glb` | Cow | Quaternius | CC0 | https://poly.pizza/m/5XSc2Fka3F |
 | `crate` | `store_crate.glb` | Crate | Quaternius | CC0 | https://poly.pizza/m/3VGWnZPXmG |
 | `door` | `furn_door.glb` | Door | Quaternius | CC0 | https://poly.pizza/m/TOMs7NG2FG |
 | `double_door` | `furn_double_door.glb` | Door Double | Quaternius | CC0 | https://poly.pizza/m/blrNJIEdns |
