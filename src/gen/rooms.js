@@ -366,6 +366,42 @@ function seatAt(side, x0, z0, x1, z1, standoff, margin, rng) {
   }
 }
 
+// Backs a `spanning` prop against one whole wall, corner to corner, and returns
+// where it landed (or null). The prop is built to the length it is given rather
+// than to a catalogue width — see `spanning` in gen/props.js.
+//
+// The retreat is the point of having a helper at all. Reaching both corners
+// means reserving every tile across the room, and the furnisher is not the only
+// thing with a claim on them: reserveClearances in gen/build.js stamps doorway
+// aprons into the shared grid without regard for whose room the tile is in, so
+// one unrelated doorway on the other side of that wall can veto the full span.
+// Giving up there would leave the room without the one thing it is named for,
+// so it steps in half a metre a side and asks again, and only then falls back
+// to the catalogue size somewhere else on the wall.
+function wallSpanProp(sink, bounds, kind, rng, side) {
+  const { x0, z0, x1, z1 } = bounds;
+  const { d: fd } = footprintOf(sink, kind);
+  const standoff = fd / 2;
+  const alongX = side === 0 || side === 2;
+  const full = alongX ? x1 - x0 : z1 - z0;
+  const mid = alongX ? (x0 + x1) / 2 : (z0 + z1) / 2;
+  const out = side === 0 ? z1 - standoff : side === 2 ? z0 + standoff
+    : side === 1 ? x0 + standoff : x1 - standoff;
+
+  // Starting a hair inside the bounds rather than exactly on them. `bounds` is
+  // already the 0.15 m wall inset every prop in the building is held to, and a
+  // prop whose edge lands exactly on it is one rounding error from being
+  // reported as through the plaster (9.inset in tools/validate-props.mjs).
+  for (let span = full - 0.04; span >= full - 1.5 && span > 2; span -= 0.5) {
+    const cx = alongX ? mid : out;
+    const cz = alongX ? out : mid;
+    if (tryPlace(sink, kind, cx, cz, side, rng, span)) {
+      return { cx, cz, rot: side, side, span };
+    }
+  }
+  return null;
+}
+
 // The chair that goes with whatever was just backed against a wall: a body's
 // width out in front of it, turned round to face it.
 function seatFacing(sink, cx, cz, rot, rng, gap = 0.95) {
@@ -448,13 +484,14 @@ function generatorRoom(sink, bounds, rng, room, doors) {
   // `room.doors` empty and `room.doors[0]` undefined.
   const door = doorsOnRoom(doors, room)[0];
   const oppositeWall = (doorSide(door, room) + 2) % 4;
-  if (!edgeProp(sink, bounds, 'generator', rng, [oppositeWall])) {
-    // The one wall it wants can, rarely, already be unavailable — a doorway
-    // swing zone from some unrelated room elsewhere on the floor lands there
-    // by coincidence (reserveClearances in gen/build.js stamps those into the
-    // shared `reserved` grid without regard for which room owns the tile). A
-    // generator on the wrong wall beats a generator room with no generator in
-    // it, so this falls back to whichever wall will actually take it.
+  // Corner to corner, not a five-metre cabinet parked against the middle of a
+  // fifteen-metre wall: the machine IS the far end of the room, and the whole
+  // composition of the space — walk in, and it is in front of you, floor to
+  // roof and wall to wall — depends on it reaching both sides.
+  if (!wallSpanProp(sink, bounds, 'generator', rng, oppositeWall)) {
+    // The one wall it wants can, rarely, be unavailable even at the catalogue
+    // width. A generator on the wrong wall beats a generator room with no
+    // generator in it, so this falls back to whichever wall will take it.
     edgeProp(sink, bounds, 'generator', rng);
   }
 

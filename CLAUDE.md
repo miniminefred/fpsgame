@@ -436,6 +436,59 @@ land: darts gave a room of two things or of nine, and without the cap the big pr
 first few spots and every leftover gap took the one prop still small enough to fit it — which
 came out as two pallets and eight fire extinguishers.
 
+### The generator room (`generatorRoom` in `gen/rooms.js` + `buildGeneratorMezzanine`)
+One big room a floor, when the slab throws up somewhere that fits (area over 110 m², a
+short side of 15 tiles, and exactly one door), becomes the plant room: no suspended
+ceiling and no roof over it, walls a full storey taller than everything else, and a
+machine at the far end you can shoot to cut the power to the whole floor.
+
+Three things about it are structural rather than decorative:
+
+- **The generator spans its wall corner to corner.** It is the one `spanning` prop in the
+  catalogue (`gen/props.js`): it is built to the width it is ASKED for rather than to a
+  number typed into the catalogue, because what it is for is being the far end of the
+  room, and a five-metre cabinet against the middle of a fifteen-metre wall is a cabinet.
+  `wallSpanProp` in `gen/rooms.js` is the placement, and its retreat is the point of it —
+  reaching both corners means reserving every tile across the room, and `reserveClearances`
+  stamps doorway aprons into the shared grid without regard for whose room the tile is in,
+  so one unrelated doorway on the far side of that wall can veto the full span. It steps in
+  half a metre a side and asks again before falling back to the catalogue size.
+- **Its pipework is inside its own footprint.** The machine carries coolant tanks, a header
+  and droppers, gauges, valve wheels and a service gantry, and all of that stands a third of
+  a metre proud of the housing — so the prop declares 3.0 m deep, not the 2.4 m the housing
+  measures, and the whole thing is authored in its own frame and shifted back by one `BACK`
+  constant. `10.geo-fit` in `validate-props.mjs` is what says so: a prop whose declared
+  footprint stops short of its own geometry is a prop you can put your shoulder through.
+- **Half the room is a mezzanine.** A deck one storey up over the left or right half,
+  overlooking the machine across a glass railing, with a row of workstations — desks,
+  screens, and the partition walls between them — and a flight up beside the door. It is
+  colliders-only: pushed straight into `masks.colliders` rather than through
+  `sink.obstacle()`, so the nav grid never learns about it. Nobody up there gets shot at or
+  shoots down, which is a real compromise accepted for a one-room flourish rather than a
+  second attic-and-basement system.
+
+The mezzanine is worked in the room's own two axes — `u` from the door wall inward, `v`
+across from the mezzanine's own wall — and two things in it were learned the hard way:
+
+- **The flight climbs whichever way fits, and that is a question about the room's shape
+  rather than a preference.** Climbing in +u, away from the door along the side wall, is
+  tried first because it leaves the door wall clear. A room whose one door is in its LONG
+  wall has only the short side to give and cannot take that flight at all, so there the run
+  goes along the door wall from the side wall inward. Pinning it to one direction is a
+  generator room with no way up on about a third of the floors that have one.
+- **The deck is notched round the stairwell, and a flight laid across the doorway is
+  refused.** A slab over a staircase is the same mistake as a ceiling over one (see
+  `ceilingCut` in `gen/stairs.js`) and you find it out head first. The doorway check matters
+  more: the mezzanine is colliders-only, so a flight standing in the room's only door would
+  seal it with the nav grid still insisting the floor under the steps is walkable — a room
+  that reads as reachable while a body stands outside it unable to get in, and `hostileCount`
+  never reaching zero.
+
+The row of desks runs along whichever of the deck's two axes is longer, which is not
+tidiness: the stairwell notch eats one end of one of them, and which one depends on the
+flight direction. Pinning the row to `u` gave a four-metre wall and a row of exactly one
+desk on every room that took the door-wall flight, which is not a row.
+
 ### What furniture is never allowed to close (`reserveClearances` in `gen/build.js`)
 A tile mask the furnisher may not place into, stamped before a single prop is put down —
 because a floor should not be furnished into a state it then has to be rescued from. Doorways

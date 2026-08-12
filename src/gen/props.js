@@ -645,37 +645,112 @@ export const PROPS = {
     // is well past MAX_PROP_SIDE/MAX_PROP_TOP and carries `building: true` to
     // be judged as shell rather than furniture, the same as a wall or a
     // staircase (see `obstacle`'s `building` param).
-    w: 5.2, d: 2.4, hp: 500, substance: 'electronic', powerCore: true,
-    build(p, rng) {
+    //
+    // `spanning`: it is built to the width it is ASKED for and runs wall to
+    // wall (see wallSpanProp in gen/rooms.js). A plant room's generator that
+    // stops two metres short of the corner reads as a big cabinet somebody put
+    // there; one that reaches both side walls reads as the reason the room
+    // exists. `w` stays as the fallback for the rare floor where the full span
+    // will not place, and as the size everything that does not ask measures.
+    spanning: true,
+    // 3.0 deep, not the 2.4 the housing alone measures: the pipework and the
+    // service gantry stand a third of a metre proud of its front, and a prop
+    // whose declared footprint stops short of its own geometry is a prop you
+    // can put your shoulder through (10.geo-fit in tools/validate-props.mjs).
+    w: 5.2, d: 3.0, hp: 500, substance: 'electronic', powerCore: true,
+    build(p, rng, w = 5.2) {
       const H = 4.2;
-      p.box('metal', -2.6, 0, -1.2, 2.6, 0.15, 1.2);              // base plinth
-      p.box('metalDark', -2.5, 0.15, -1.0, 2.5, H, 1.0);          // main housing
-      p.box('metal', -2.4, H, -0.9, 2.4, H + 0.2, 0.9);           // top cap
+      const hw = w / 2;
+      // Everything below is authored in the machine's own frame, where 0 is the
+      // middle of the housing — then shifted back by BACK so the whole thing,
+      // pipework included, sits centred in the 3.0 m footprint above with its
+      // plinth against the wall. Authoring the offset into 30 z coordinates by
+      // hand is how one of them ends up 0.2 m out from the rest.
+      const BACK = 0.2;
+      const box = (key, x0, y0, z0, x1, y1, z1) =>
+        p.box(key, x0, y0, z0 + BACK, x1, y1, z1 + BACK);
+      // Everything below is authored as a fraction of the half-width or as a
+      // fixed metre offset from an end, never as a hard-coded x — that is what
+      // lets one machine be 7 m on one floor and 15 m on the next without
+      // stretching its details into a different machine.
+      const inset = (m) => Math.max(0, hw - m);
 
-      // Vertical ribs down the front and back faces.
-      for (const sx of [-2.3, -1.6, -0.9, 0.9, 1.6, 2.3]) {
-        p.box('metal', sx - 0.08, 0.15, -1.02, sx + 0.08, H, -0.9);
-        p.box('metal', sx - 0.08, 0.15, 0.9, sx + 0.08, H, 1.02);
+      box('metal', -hw, 0, -1.2, hw, 0.15, 1.2);                     // base plinth
+      box('metalDark', -inset(0.1), 0.15, -1.0, inset(0.1), H, 1.0); // main housing
+      box('metal', -inset(0.2), H, -0.9, inset(0.2), H + 0.2, 0.9);  // top cap
+
+      // Vertical ribs down the front and back faces, one every ~0.75 m so the
+      // rhythm is the same on any width.
+      const ribs = Math.max(4, Math.round(w / 0.75));
+      for (let i = 0; i <= ribs; i++) {
+        const sx = -inset(0.3) + (i / ribs) * 2 * inset(0.3);
+        box('metal', sx - 0.08, 0.15, -1.02, sx + 0.08, H, -0.9);
+        box('metal', sx - 0.08, 0.15, 0.9, sx + 0.08, H, 1.02);
       }
 
       // Hazard band round the base, and a tall control face with rows of live
       // LEDs — both on the front (-Z), so they read from wherever the wall
-      // put it.
-      p.box('hazard', -2.51, 0.7, -1.01, 2.51, 0.92, 1.01);
-      p.box('metalDark', -0.9, 0.9, -1.06, 0.9, 3.4, -1.0);
+      // put it. The control face stays 1.8 m wide whatever the machine does:
+      // it is a thing a person stands at, and a person is one size.
+      box('hazard', -inset(0.09), 0.7, -1.01, inset(0.09), 0.92, 1.01);
+      box('metalDark', -0.9, 0.9, -1.06, 0.9, 3.4, -1.0);
       for (let row = 0; row < 8; row++) {
         const y = 1.1 + row * 0.28;
-        p.box(rng.chance(0.7) ? 'led' : 'screen', -0.8, y, -1.08, 0.8, y + 0.1, -1.06);
+        box(rng.chance(0.7) ? 'led' : 'screen', -0.8, y, -1.08, 0.8, y + 0.1, -1.06);
       }
+
+      // --- the things bolted to it -------------------------------------------
+      // A machine this size is never just the box: it is the box plus the
+      // pipework, the tanks it is fed from and the gantry somebody services it
+      // off. Drawn as part of the prop rather than as neighbouring furniture so
+      // that shooting the generator takes the lot with it.
+
+      // Coolant tanks standing at each end, capped and strapped.
+      for (const sx of [-inset(0.85), inset(0.85)]) {
+        box('metal', sx - 0.62, 0.15, -1.05, sx + 0.62, 2.5, 0.2);
+        box('metalDark', sx - 0.66, 2.5, -1.09, sx + 0.66, 2.66, 0.24);
+        box('hazard', sx - 0.64, 1.5, -1.07, sx + 0.64, 1.68, 0.22);
+      }
+
+      // The main pipe run: a header along the full width at head height, with
+      // droppers into the housing every couple of metres.
+      box('metal', -inset(0.05), 2.85, -1.34, inset(0.05), 3.15, -1.04);
+      const drops = Math.max(2, Math.round(w / 2.2));
+      for (let i = 0; i < drops; i++) {
+        const sx = -inset(1.2) + (i + 0.5) * (2 * inset(1.2)) / drops;
+        box('metal', sx - 0.11, 1.05, -1.3, sx + 0.11, 2.85, -1.08);
+        // A valve wheel on every other dropper, and a gauge on the rest.
+        if (i % 2 === 0) {
+          box('metalDark', sx - 0.26, 2.0, -1.38, sx + 0.26, 2.06, -1.24);
+          box('metalDark', sx - 0.04, 1.86, -1.38, sx + 0.04, 2.2, -1.24);
+        } else {
+          box('metal', sx - 0.14, 1.95, -1.4, sx + 0.14, 2.23, -1.28);
+          box(rng.chance(0.5) ? 'led' : 'screen', sx - 0.1, 1.99, -1.42, sx + 0.1, 2.19, -1.4);
+        }
+      }
+
+      // The service gantry: a grated walk along the front at half height with
+      // its own handrail, reached from nowhere — plant rooms are full of them.
+      box('metalDark', -inset(0.3), 2.62, -1.5, inset(0.3), 2.7, -1.16);
+      for (let i = 0; i <= Math.max(2, Math.round(w / 1.6)); i++) {
+        const sx = -inset(0.3) + (i / Math.max(2, Math.round(w / 1.6))) * 2 * inset(0.3);
+        box('metal', sx - 0.03, 2.7, -1.48, sx + 0.03, 3.6, -1.42);
+      }
+      box('metal', -inset(0.3), 3.54, -1.5, inset(0.3), 3.6, -1.42);
+
+      // Cable tray leaving the top and running back into the wall.
+      box('metalDark', -inset(1.6), H + 0.2, 0.55, inset(1.6), H + 0.34, 0.95);
 
       // Twin exhaust stacks: decorative only, reaching well up into the
       // room's own double-height shaft — see generatorRoomCut in gen/build.js.
-      for (const sx of [-1.3, 1.3]) {
-        p.box('metalDark', sx - 0.4, H + 0.2, -0.4, sx + 0.4, H + 1.5, 0.4);
-        p.box('metal', sx - 0.5, H + 1.5, -0.5, sx + 0.5, H + 1.7, 0.5);
+      // Spaced off the ends rather than at a fixed ±1.3, so a wide machine
+      // gets them out over its own shoulders instead of huddled in the middle.
+      for (const sx of [-inset(w * 0.28), inset(w * 0.28)]) {
+        box('metalDark', sx - 0.4, H + 0.2, -0.4, sx + 0.4, H + 1.5, 0.4);
+        box('metal', sx - 0.5, H + 1.5, -0.5, sx + 0.5, H + 1.7, 0.5);
       }
 
-      p.obstacle(-2.6, -1.2, 2.6, 1.2, H + 0.2, true);
+      p.obstacle(-hw, -1.5, hw, 1.5, H + 0.2, true);
     },
   },
 
@@ -716,10 +791,15 @@ export const PROPS = {
 // its depth along x and its width along z — the same swap `tryPlace` makes.
 // Leave `rot` off to ask for the prop's own frame, where `d` is always the
 // dimension that faces a wall and `w` the one that runs along it.
-export function footprintOf(sink, kind, rot = 0) {
+export function footprintOf(sink, kind, rot = 0, span = 0) {
   const spec = PROPS[kind];
   const model = spec.model ? sink.modelInfo?.(spec.model) : null;
-  const w = model ? model.foot[0] : spec.w;
+  // A `spanning` prop is built to whatever width it is asked for rather than to
+  // a catalogue number, because what it is for is filling a wall — and a wall's
+  // length is a property of the room, which this file has never known. Only the
+  // width moves: the depth is still how far the thing sticks out, and that is
+  // the prop's own business.
+  const w = span && spec.spanning ? span : model ? model.foot[0] : spec.w;
   const d = model ? model.foot[1] : spec.d;
   return (rot & 1) === 1 ? { w: d, d: w } : { w, d };
 }
@@ -733,7 +813,7 @@ export function footprintOf(sink, kind, rot = 0) {
 // a GLB still runs its `build` here. The boxes are captured without being
 // emitted (`captureBoxes`), so the model is what you see and the boxes are only
 // what it falls into.
-export function tryPlace(sink, kind, cx, cz, rot, rng) {
+export function tryPlace(sink, kind, cx, cz, rot, rng, span = 0) {
   const spec = PROPS[kind];
 
   // A prop with a downloaded model uses THAT model's measured footprint, not
@@ -742,21 +822,27 @@ export function tryPlace(sink, kind, cx, cz, rot, rng) {
   // `footprintOf` is that rule, shared with the furnisher so both ends of a
   // placement agree on how much floor is about to disappear.
   const model = spec.model ? sink.modelInfo(spec.model) : null;
-  const foot = footprintOf(sink, kind, rot);
+  const foot = footprintOf(sink, kind, rot, span);
   const w = foot.w / 2;
   const d = foot.d / 2;
+  // Handed to every `build` as its third argument. Only a `spanning` prop reads
+  // it; for the other thirty it is one ignored parameter, which is cheaper than
+  // a second placement path that would then have to be kept in step with this
+  // one — the debris capture, the desktop stamps and the occupancy all have to
+  // happen the same way whatever the prop's width came from.
+  const drawW = span && spec.spanning ? span : spec.w;
 
   if (!sink.canPlace(cx - w, cz - d, cx + w, cz + d)) return false;
 
   if (spec.mass) {
     // Loose: its own rigid body, and its own mesh so physics can move it.
     sink.beginDynamic(spec.mass, spec.hp, spec.substance);
-    spec.build(placer(sink, cx, cz, rot), rng);
+    spec.build(placer(sink, cx, cz, rot), rng, drawW);
     sink.endDynamic();
   } else if (model) {
     // The debris has to be worked out before the model is stamped, so the
     // capture pass doesn't swallow the model's geometry along with it.
-    const debris = sink.captureBoxes(() => spec.build(placer(sink, cx, cz, rot), rng));
+    const debris = sink.captureBoxes(() => spec.build(placer(sink, cx, cz, rot), rng, drawW));
 
     // The quarter turns rotate the front from -Z toward +X, which is a negative
     // rotation about Y in Three's right-handed frame.
@@ -824,7 +910,7 @@ export function tryPlace(sink, kind, cx, cz, rot, rng) {
     // Static boxes: the geometry it is drawn with is already the geometry it
     // falls apart into, so there is nothing to capture separately.
     sink.beginStatic(spec.hp, spec.substance, spec.volatile, spec.powerCore);
-    spec.build(placer(sink, cx, cz, rot), rng);
+    spec.build(placer(sink, cx, cz, rot), rng, drawW);
     sink.endStatic();
   }
 
