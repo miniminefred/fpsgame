@@ -1004,6 +1004,14 @@ function buildGeomGrid(layout, colliders, radius) {
     // block a body — carving it out here would report every room behind a door
     // as physically cut off from the spawn.
     if (c.door) continue;
+    // Same idea for a flight of stairs: this flood has no notion of climbing,
+    // only of "clear at head height", so a run of ordinary risers reads as a
+    // solid wall. The REAL stairwell system sidesteps this by removing its
+    // treads from the tile grid entirely (see stripTiles in gen/stairs.js), so
+    // they never become "open floor" for this grid in the first place; the
+    // generator room's mezzanine (gen/build.js) isn't wired into that system
+    // and tags its own treads `climb: true` instead, for the same reason.
+    if (c.climb) continue;
     // And this grid is the GROUND floor, so two whole classes of collider are not
     // obstacles on it, exactly as the player's own tests have it (_moveHorizontal in
     // player.js). Anything whose underside clears a body is walked UNDER — an attic's

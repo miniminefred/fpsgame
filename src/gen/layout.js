@@ -40,7 +40,7 @@ export {
 // tidiness — enemies.js imports it from here and measures the prologue guarantee
 // against the same number the generator proved. See its comment in gen/locks.js
 // for what happened the one time there were two of them.
-export { FIRST_CONTACT_GAP, PROLOGUE_MIN, STAFF_ONLY } from './locks.js';
+export { FIRST_CONTACT_GAP, PROLOGUE_MIN, STAFF_ONLY, doorsOnRoom } from './locks.js';
 
 // PAD, CORRIDOR_W and DOOR_W are exported because tools/validate-layout.mjs
 // checks against them, and a validator holding its own copy of the number it is

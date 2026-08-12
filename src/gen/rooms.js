@@ -1,5 +1,5 @@
 import { QUARTER, tryPlace, footprintOf } from './props.js';
-import { doorSide } from './layout.js';
+import { doorSide, doorsOnRoom } from './layout.js';
 
 // What each kind of room is furnished with. The catalogue in props.js says what
 // a desk IS; this says where desks go. Splitting them keeps a room type to a
@@ -10,13 +10,15 @@ import { doorSide } from './layout.js';
 // facing a whiteboard in training, a wall of racks in the server room.
 
 // Fills a room according to its role. Room bounds arrive in world metres,
-// already shrunk by the wall clearance the builder wants to keep.
-export function furnish(sink, room, bounds, rng) {
+// already shrunk by the wall clearance the builder wants to keep. `doors` is
+// the floor's whole list, not just this room's own — only generatorRoom needs
+// it (see doorsOnRoom there), and every other role ignores the extra argument.
+export function furnish(sink, room, bounds, rng, doors) {
   const { x0, z0, x1, z1 } = bounds;
   if (x1 - x0 < 1.5 || z1 - z0 < 1.5) return;
 
   const fill = ROLES[room.role] ?? privateOffice;
-  fill(sink, bounds, rng, room);
+  fill(sink, bounds, rng, room, doors);
 }
 
 // Cubicle farm: pods on a 3.7 x 3.0 m pitch, each a desk backed by an L of
@@ -435,12 +437,26 @@ function broomCloset(sink, bounds, rng) {
 // below is placed against whatever wall it left. The rest reads as the crew
 // that works this room: monitoring terminals rather than desks, and the
 // crates and spares an industrial space accumulates.
-function generatorRoom(sink, bounds, rng, room) {
+function generatorRoom(sink, bounds, rng, room, doors) {
   // Dead opposite the room's one door (see the `generator` fits predicate in
   // gen/layout.js, which guarantees there's exactly one) — walk in and it's
   // the first thing you see, on the far wall rather than tucked to one side.
-  const oppositeWall = (doorSide(room.doors[0], room) + 2) % 4;
-  edgeProp(sink, bounds, 'generator', rng, [oppositeWall]);
+  // `doorsOnRoom` rather than `room.doors[0]`: the fits predicate already had
+  // to use it instead of `room.doors.length` for the same reason — the room's
+  // own list only holds doors IT cut, and its one real doorway may have been
+  // cut by the room next door into their shared wall, which would leave
+  // `room.doors` empty and `room.doors[0]` undefined.
+  const door = doorsOnRoom(doors, room)[0];
+  const oppositeWall = (doorSide(door, room) + 2) % 4;
+  if (!edgeProp(sink, bounds, 'generator', rng, [oppositeWall])) {
+    // The one wall it wants can, rarely, already be unavailable — a doorway
+    // swing zone from some unrelated room elsewhere on the floor lands there
+    // by coincidence (reserveClearances in gen/build.js stamps those into the
+    // shared `reserved` grid without regard for which room owns the tile). A
+    // generator on the wrong wall beats a generator room with no generator in
+    // it, so this falls back to whichever wall will actually take it.
+    edgeProp(sink, bounds, 'generator', rng);
+  }
 
   edgeProp(sink, bounds, 'workbench', rng);
   if (rng.chance(0.8)) edgeProp(sink, bounds, 'workbench', rng);

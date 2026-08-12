@@ -7,11 +7,11 @@ import { furnish } from './rooms.js';
 import { modelInfo, stampModel, paintDebris } from './models.js';
 import {
   TILE, WALL_H, CEIL_H, DOOR_H, DOOR_CLEAR,
-  SOLID, ROOM, CORRIDOR, DOOR, isOpen, worldX, worldZ, slidePocketSide,
+  SOLID, ROOM, CORRIDOR, DOOR, isOpen, worldX, worldZ, slidePocketSide, doorSide, doorsOnRoom,
 } from './layout.js';
 import { CARDS, READER_LIT, READER_OPEN } from '../keycards.js';
 import {
-  UPPER_Y, UPPER_CEIL, LOWER_Y, PLATE_T, ROOF_T, approachTiles, levelFloor, levelY, punchRects,
+  UPPER_Y, UPPER_CEIL, LOWER_Y, PLATE_T, ROOF_T, RISER, approachTiles, levelFloor, levelY, punchRects,
   stairBoxes, stairwellCut, roofCollisionCut, stripTiles, rampSpec, approachRect,
 } from './stairs.js';
 
@@ -109,6 +109,7 @@ export function buildLevel(scene, layout) {
   // deck's own junk is placed through the same sink and must be down before
   // anything on the room floor can be shoved against it.
   buildStairs(layout, batcher, materials, { colliders, blocked, occupied, fixtures }, rng);
+  buildGeneratorMezzanine(layout, batcher, materials, { colliders, occupied }, rng);
   furnishRooms(layout, sink, rng);
   furnishCorridors(layout, sink, rng);
   const cow = placeCow(layout, sink, rng);
@@ -366,6 +367,187 @@ function drawWalls(layout, tiles, batcher, materials, colliders, wallH, building
     const collider = { minX: x0, maxX: x1, minZ: z0, maxZ: z1, top: wallH };
     if (building) collider.building = true;
     colliders.push(collider);
+  }
+}
+
+// A catwalk over the generator room's own floor, on one of the two walls
+// perpendicular to the door-generator axis (never the door's own wall — you'd
+// climb it standing in the doorway — and never the generator's, which already
+// owns that one). Physical only, the same way the loose deck of a storey isn't
+// — colliders pushed straight into `masks.colliders` rather than through
+// `sink.obstacle()`, so none of it touches the nav grid: an enemy on the
+// ground floor is blind to the height difference, same as the ground is blind
+// to a storey's own furniture. That's a real gameplay compromise (nobody up
+// here gets shot at, or shoots down), accepted for what's a one-room flourish
+// rather than a second attic-and-basement system.
+function buildGeneratorMezzanine(layout, batcher, materials, masks, rng) {
+  const room = layout.rooms.find((r) => r.role === 'generator');
+  if (!room) return;
+  // `doorsOnRoom`, not `room.doors[0]`: the room's own list only holds doors
+  // IT cut, and its one real doorway may belong to the room next door — see
+  // the same note in generatorRoom (gen/rooms.js).
+  const door = doorsOnRoom(layout.doors, room)[0];
+  if (!door) return;
+
+  const doorWallSide = doorSide(door, room);
+  const side = rng.chance(0.5) ? (doorWallSide + 1) % 4 : (doorWallSide + 3) % 4;
+  const alongX = side === 0 || side === 2;
+
+  const x0 = worldX(layout, room.x0), x1 = worldX(layout, room.x1);
+  const z0 = worldZ(layout, room.y0), z1 = worldZ(layout, room.y1);
+
+  const DECK_Y = WALL_H;        // one ordinary storey up — the same datum the
+                                 // attic/basement system uses, just not wired
+                                 // into it (see the note above).
+  const DECK_T = 0.2;
+  const MARGIN = 1.0;           // clear of the corners
+  const RAIL_H = 1.0;
+  const RAIL_T = 0.06;
+  const GOING = 0.3;
+  const STAIR_W = 1.2;
+
+  // The flight's rise-per-step matches every other staircase in the building
+  // (RISER, from gen/stairs.js — small enough to walk up without jumping), so
+  // its run is fixed by that and by DECK_Y, not chosen independently. The
+  // deck's own depth is then set to exactly that run: the two are the same
+  // number so the top step lands flush on the platform's edge instead of a
+  // storey up with a gap between them.
+  const steps = Math.ceil(DECK_Y / RISER);
+  const riser = DECK_Y / steps;
+  const DECK_DEPTH = steps * GOING;
+
+  // That run is long (a gentle flight up one storey always is) — long enough
+  // that it needs checking against the room's OTHER dimension, not just the
+  // wall it's checked against below. A room barely over the `short >= 15`
+  // floor from the generator's own fits predicate could be too shallow for
+  // it, and a flight that reaches the far wall is worse than no flight.
+  const outSpan = (side === 0 || side === 2) ? (z1 - z0) : (x1 - x0);
+  if (outSpan < DECK_DEPTH + 1.5) return;
+
+  const a0 = alongX ? x0 + MARGIN : z0 + MARGIN;
+  const a1 = alongX ? x1 - MARGIN : z1 - MARGIN;
+  if (a1 - a0 < STAIR_W + 3) return;   // not enough wall to be worth it
+
+  // This wall is always perpendicular to both the door's and the generator's
+  // (never parallel to either — it's the one role predicate away from being
+  // one of them), so it shares exactly one corner with each. Which of ITS OWN
+  // two ends (a0 or a1) touches the generator's wall follows from which
+  // corner each pair of walls shares: an even-numbered wall's a0-end and a
+  // 2-numbered wall's a0-end both sit on wall 1, its a1-end and wall 3's a0
+  // both sit on wall 3's own corner, and so on round the room. Worked out
+  // once as a table rather than re-derived per call.
+  const CORNER = { 0: [1, 3], 1: [2, 0], 2: [1, 3], 3: [2, 0] };
+  const generatorSide = (doorWallSide + 2) % 4;
+  const touchesA0 = CORNER[side][0] === generatorSide;
+
+  // The generator's own footprint reaches DEPTH_GEN into the room from ITS
+  // wall — and because that wall is perpendicular to this one, "into the
+  // room from the generator's wall" and "along this wall" are the SAME axis.
+  // MARGIN alone (measured from the bare corner) doesn't account for that;
+  // this does, on whichever end actually touches it.
+  const GEN_CLEARANCE = 3.0;
+  const s0 = touchesA0 ? a0 + (GEN_CLEARANCE - MARGIN) : a0;
+  const s1 = touchesA0 ? a1 : a1 - (GEN_CLEARANCE - MARGIN);
+  if (s1 - s0 < STAIR_W + 3) return;
+
+  // And capped well short of whatever's left, too — this is a catwalk along
+  // part of one wall, not its full length.
+  const aEnd = s0 + Math.min(s1 - s0, 6.5);
+
+  // `wallOut` is this wall's own position on the axis it faces; `sign` is
+  // which way the room is from it — the deck and the stairs both grow from
+  // the wall by `sign * distance`.
+  const wallOut = side === 0 ? z1 : side === 2 ? z0 : side === 1 ? x0 : x1;
+  const sign = (side === 0 || side === 3) ? -1 : 1;
+
+  const toBox = (aLo, aHi, outLo, outHi) => (alongX
+    ? { x0: aLo, x1: aHi, z0: Math.min(outLo, outHi), z1: Math.max(outLo, outHi) }
+    : { x0: Math.min(outLo, outHi), x1: Math.max(outLo, outHi), z0: aLo, z1: aHi });
+
+  // The deck: a slab bolted to the wall, standing on nothing visible — this
+  // is an interior industrial catwalk, not a load-bearing structure anybody
+  // is meant to look underneath.
+  const deckOut = wallOut + sign * DECK_DEPTH;
+  const deck = toBox(s0 + STAIR_W, aEnd, wallOut, deckOut);
+  batcher.add('trim', materials.trim, applyWorldUVs(
+    boxBetween(deck.x0, DECK_Y - DECK_T, deck.z0, deck.x1, DECK_Y, deck.z1)));
+  masks.colliders.push({
+    minX: deck.x0, maxX: deck.x1, minZ: deck.z0, maxZ: deck.z1,
+    base: DECK_Y - DECK_T, top: DECK_Y, building: true,
+  });
+
+  // The glass railing along the open edge, so the drop into the shaft below
+  // is visible rather than a surprise.
+  const rail = toBox(s0 + STAIR_W, aEnd, deckOut - RAIL_T, deckOut + RAIL_T);
+  batcher.add('glass', materials.glass,
+    boxBetween(rail.x0, DECK_Y, rail.z0, rail.x1, DECK_Y + RAIL_H, rail.z1));
+  batcher.add('metalDark', materials.metalDark, boxBetween(
+    rail.x0 - 0.02, DECK_Y + RAIL_H - 0.03, rail.z0 - 0.02,
+    rail.x1 + 0.02, DECK_Y + RAIL_H + 0.03, rail.z1 + 0.02));
+  masks.colliders.push({
+    minX: rail.x0, maxX: rail.x1, minZ: rail.z0, maxZ: rail.z1,
+    base: DECK_Y, top: DECK_Y + RAIL_H, building: true,
+  });
+
+  // The PC row along the back, facing out over the railing at the generator.
+  const stations = Math.max(2, Math.floor((aEnd - (s0 + STAIR_W)) / 1.4));
+  for (let i = 0; i < stations; i++) {
+    const t = (s0 + STAIR_W) + (i + 0.5) * (aEnd - (s0 + STAIR_W)) / stations;
+    const desk = toBox(t - 0.4, t + 0.4, wallOut + sign * 0.05, wallOut + sign * 0.55);
+    batcher.add('laminate', materials.laminate,
+      boxBetween(desk.x0, DECK_Y, desk.z0, desk.x1, DECK_Y + 0.05, desk.z1));
+    const monAt = wallOut + sign * 0.45;
+    const mon = toBox(t - 0.22, t + 0.22, monAt - 0.02, monAt + 0.02);
+    batcher.add('screenOn', materials.screenOn,
+      boxBetween(mon.x0, DECK_Y + 0.1, mon.z0, mon.x1, DECK_Y + 0.35, mon.z1));
+  }
+
+  // The stairs: a straight flight of solid pillars climbing from the floor to
+  // the deck's own height, RISER by RISER — same climbable rise as every
+  // other staircase in the building (see gen/stairs.js), just authored
+  // directly rather than through the layout-level stairwell system.
+  for (let i = 0; i < steps; i++) {
+    const outLo = wallOut + sign * (i * GOING);
+    const outHi = wallOut + sign * ((i + 1) * GOING);
+    const stepTop = (i + 1) * riser;
+    const step = toBox(s0, s0 + STAIR_W, outLo, outHi);
+
+    batcher.add('trim', materials.trim,
+      boxBetween(step.x0, 0, step.z0, step.x1, stepTop, step.z1));
+    // Shell, not furniture, unconditionally — the same call gen/stairs.js
+    // makes for every one of its own treads, tall or short: a step is
+    // structure, and `building: true` is what keeps it out of the furniture
+    // dimension/doorway-swing checks. `climb: true` is this flight's own
+    // problem to solve, not validate-props.mjs's: nothing here is registered
+    // in `layout.stairs`, so the generic geometric-reachability flood (which
+    // has no notion of climbing, only of "clear at head height") would
+    // otherwise see 16 solid risers and call the room sealed. A real body
+    // climbs them exactly like any other staircase; this just says so.
+    masks.colliders.push({
+      minX: step.x0, maxX: step.x1, minZ: step.z0, maxZ: step.z1, top: stepTop,
+      building: true, climb: true,
+    });
+  }
+
+  // Keep the furnisher off the stairs' own footprint and the ground under the
+  // deck — a workbench parked under a staircase would be standing in it. Deck
+  // and stairs share the same "out" extent by construction (see DECK_DEPTH
+  // above), so one rectangle covers both.
+  const reserve = toBox(s0, aEnd, wallOut, deckOut);
+  stampOccupied(masks.occupied, layout, reserve.x0, reserve.z0, reserve.x1, reserve.z1);
+}
+
+// Marks every tile a world-space rectangle touches, rounding outward — the
+// same generous rounding `makeSink`'s own `stamp` uses, for the same reason:
+// under-reserving is what lets the next thing placed overlap it.
+function stampOccupied(mask, layout, x0, z0, x1, z1) {
+  const { W, H, TILE, ox, oz } = layout;
+  const tx0 = Math.max(0, Math.floor((x0 - ox) / TILE));
+  const tx1 = Math.min(W - 1, Math.ceil((x1 - ox) / TILE) - 1);
+  const ty0 = Math.max(0, Math.floor((z0 - oz) / TILE));
+  const ty1 = Math.min(H - 1, Math.ceil((z1 - oz) / TILE) - 1);
+  for (let ty = ty0; ty <= ty1; ty++) {
+    for (let tx = tx0; tx <= tx1; tx++) mask[ty * W + tx] = 1;
   }
 }
 
@@ -1275,7 +1457,7 @@ function furnishRooms(layout, sink, rng) {
       x1: worldX(layout, room.x1) - 0.15,
       z1: worldZ(layout, room.y1) - 0.15,
     };
-    furnish(sink, room, bounds, rng);
+    furnish(sink, room, bounds, rng, layout.doors);
   }
 }
 
