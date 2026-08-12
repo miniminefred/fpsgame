@@ -1,4 +1,5 @@
 import { Level, distanceToExit } from './level.js';
+import { generateLayout } from './gen/layout.js';
 import { makeRng, randomSeed } from './gen/rng.js';
 import { CARDS } from './keycards.js';
 import { PLAYER_RADIUS } from './metrics.js';
@@ -291,14 +292,20 @@ export class Game {
     const room = level.layout.rooms.find((r) => r.role === 'generator');
     if (!room) return;
 
-    for (let tries = 0; tries < 60; tries++) {
-      const tx = room.x0 + Math.floor(Math.random() * (room.x1 - room.x0));
-      const ty = room.y0 + Math.floor(Math.random() * (room.y1 - room.y0));
-      if (!level.nav.walkable(tx, ty)) continue;
-      const x = level.nav.wx(tx), z = level.nav.wz(ty);
-      if (!level.nav.clear(x, z, PLAYER_RADIUS)) continue;
-      this.player.placeAt(x, z);
-      return;
+    // An exhaustive scan rather than random sampling — nextFloor already
+    // guarantees the room exists, and this room is furnished, so a handful
+    // of random misses in a big room is exactly the failure mode that made
+    // this flaky. Scanning every tile can't miss a walkable, clear one if
+    // there is one, and there always is: the generator's own placement never
+    // seals a room this size.
+    for (let ty = room.y0; ty < room.y1; ty++) {
+      for (let tx = room.x0; tx < room.x1; tx++) {
+        if (!level.nav.walkable(tx, ty)) continue;
+        const x = level.nav.wx(tx), z = level.nav.wz(ty);
+        if (!level.nav.clear(x, z, PLAYER_RADIUS)) continue;
+        this.player.placeAt(x, z);
+        return;
+      }
     }
   }
 
@@ -315,7 +322,21 @@ export class Game {
 
   nextFloor() {
     this.floor++;
-    const seed = randomSeed();
+    let seed = randomSeed();
+
+    // DEV-ONLY: the generator room is opportunistic (see the `generator`
+    // fits predicate in gen/layout.js) — most floors don't roll one at all,
+    // which is what made _devSpawnByGenerator a no-op more often than not.
+    // Rerolling the seed here, cheaply, with just the layout rather than the
+    // full geometry build, means a dev build always lands on a floor that
+    // has one; a production build takes its first roll exactly as before.
+    if (import.meta.env.DEV) {
+      for (let tries = 0; tries < 300; tries++) {
+        if (generateLayout(seed, this.floor).rooms.some((r) => r.role === 'generator')) break;
+        seed = randomSeed();
+      }
+    }
+
     const rng = makeRng(seed ^ 0x9e3779b9);
 
     // Debris and brass from the last floor have to go before its physics world
