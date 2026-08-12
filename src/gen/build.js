@@ -415,13 +415,26 @@ function buildGeneratorMezzanine(layout, batcher, materials, masks, rng) {
   // nearly all of them.
   const GOING = 0.26;
   const STAIR_W = 1.2;
-  // The deck stops this far off the generator's wall. It has to clear the
-  // machine itself — 3.0 m deep now that its pipework is inside its own
-  // footprint (see `generator` in gen/props.js) plus the 0.15 m wall inset —
-  // and then leave a slot past it, so the thing is seen whole from up here
-  // rather than met at chest height.
-  const GEN_CLEAR = 3.45;
-  const DOOR_CLEAR = 0.8;       // a body's width of daylight beside the doorway
+  // The deck stops this far off the generator's wall, and the number is derived
+  // rather than chosen: 0.15 m of wall inset, plus the machine's own 3.0 m depth
+  // (its pipework is inside its footprint — see `generator` in gen/props.js),
+  // plus one whole TILE.
+  //
+  // That last term is the one that bites. This runs BEFORE furnishRooms, and it
+  // ends by stamping the deck's footprint into `occupied` so nothing is placed
+  // under the stairs — through stampOccupied, which rounds OUTWARD to whole
+  // tiles. Undershoot here and the reserve creeps into the band the generator
+  // is about to be placed in, `canPlace` fails across the whole wall, and
+  // wallSpanProp quietly falls back to the 5.2 m catalogue size. Nothing errors:
+  // the room just gets a cabinet against the middle of a fifteen-metre wall
+  // instead of the machine it exists for. Trimmed to 3.45 to win a little more
+  // deck, this happened immediately and was found by measuring the generator's
+  // collider against its wall, not by looking at it.
+  const GEN_CLEAR = 0.15 + 3.0 + TILE;
+  // A body's width of daylight beside the doorway. NOT the imported DOOR_CLEAR,
+  // which is the furnisher's doorway apron in tiles and a different thing
+  // entirely — naming this one the same shadowed it inside this function.
+  const DOORWAY_GAP = 0.8;
 
   // The flight's rise-per-step matches every other staircase in the building
   // (RISER, from gen/stairs.js — small enough to walk up without jumping), so
@@ -492,11 +505,11 @@ function buildGeneratorMezzanine(layout, batcher, materials, masks, rng) {
     // short side to give and cannot take that flight, and there the run goes
     // the other way, along the door wall from the side wall inward. Between
     // them they cover every room the role predicate lets through.
-    if (depth >= RUN + 0.9 && width >= STAIR_W + 1.4 && doorV > STAIR_W + DOOR_CLEAR) {
+    if (depth >= RUN + 0.9 && width >= STAIR_W + 1.4 && doorV > STAIR_W + DOORWAY_GAP) {
       return { side, alongX, vWall, vSign, uSign, uDoor, depth, width,
         notchU: RUN, notchV: STAIR_W, climbU: true };
     }
-    if (width >= RUN + 0.9 && depth >= STAIR_W + 1.4 && doorV > RUN + DOOR_CLEAR) {
+    if (width >= RUN + 0.9 && depth >= STAIR_W + 1.4 && doorV > RUN + DOORWAY_GAP) {
       return { side, alongX, vWall, vSign, uSign, uDoor, depth, width,
         notchU: STAIR_W, notchV: RUN, climbU: false };
     }

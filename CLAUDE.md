@@ -459,6 +459,16 @@ Three things about it are structural rather than decorative:
   measures, and the whole thing is authored in its own frame and shifted back by one `BACK`
   constant. `10.geo-fit` in `validate-props.mjs` is what says so: a prop whose declared
   footprint stops short of its own geometry is a prop you can put your shoulder through.
+- **The mezzanine is built BEFORE the room is furnished, and that ordering is a trap.**
+  `buildGeneratorMezzanine` ends by stamping the deck's footprint into `occupied` so
+  nothing is placed under the stairs, and `stampOccupied` rounds outward to whole tiles.
+  Its standoff from the generator's wall (`GEN_CLEAR`) is therefore *derived* — wall inset
+  plus the machine's own depth plus one whole `TILE` — and not a number chosen to look
+  right. Trimmed by a quarter of a metre to win a little more deck, the reserve creeps
+  into the band the generator is about to be placed in, `canPlace` fails across the whole
+  wall, and `wallSpanProp` falls back to the catalogue size. Nothing errors: the room just
+  quietly gets a cabinet instead of the machine it exists for. Caught by measuring the
+  generator's collider against its wall over a sweep of floors, not by looking at it.
 - **Half the room is a mezzanine.** A deck one storey up over the left or right half,
   overlooking the machine across a glass railing, with a row of workstations — desks,
   screens, and the partition walls between them — and a flight up beside the door. It is
