@@ -75,8 +75,18 @@ export function buildLevel(scene, layout) {
   // The floor is a slab with a thickness now, and a basement's stairs cut a hole
   // through it. Both cuts are the same tiles; which surface loses them is which way
   // the stairs go.
-  buildShell(layout, batcher, materials, colliders,
-    { ceiling: stairwellCut(layout, 1), floor: stairwellCut(layout, -1), roof: roofCollisionCut(layout) });
+  //
+  // The generator room cuts a hole of its own, straight up: no suspended ceiling
+  // and no structural roof over its own footprint, so it reads as double-height —
+  // walls still standing at the ordinary WALL_H all round it, just with nothing
+  // capping them. The floor plate is untouched; only ceiling and roof lose the
+  // tiles.
+  const genCut = generatorRoomCut(layout);
+  buildShell(layout, batcher, materials, colliders, {
+    ceiling: orMask(stairwellCut(layout, 1), genCut),
+    floor: stairwellCut(layout, -1),
+    roof: orMask(roofCollisionCut(layout), genCut),
+  });
   colliders.push(...floorPlate(layout));
   buildDoorFrames(layout, batcher, materials);
   buildWindows(layout, batcher, materials, fixtures, destructibles);
@@ -292,6 +302,25 @@ function buildShell(layout, batcher, materials, colliders, cuts) {
 // maskToRects tests what it is handed and knows nothing about where it came from.
 function masked(tiles, cut) {
   return cut ? tiles.map((t, i) => (cut[i] ? SOLID : t)) : tiles;
+}
+
+// The generator room's own tile footprint — see buildLevel's cuts.ceiling/roof.
+// At most one room on the floor has this role, but the loop costs nothing to
+// leave general.
+function generatorRoomCut(layout) {
+  const cut = new Uint8Array(layout.W * layout.H);
+  for (const r of layout.rooms) {
+    if (r.role !== 'generator') continue;
+    for (let ty = r.y0; ty < r.y1; ty++) {
+      for (let tx = r.x0; tx < r.x1; tx++) cut[ty * layout.W + tx] = 1;
+    }
+  }
+  return cut;
+}
+
+function orMask(a, b) {
+  for (let i = 0; i < a.length; i++) if (b[i]) a[i] = 1;
+  return a;
 }
 
 /**
