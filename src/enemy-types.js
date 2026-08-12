@@ -113,6 +113,17 @@ export const TYPES = {
     suit: 0x2f4d8a, shirt: 0xf2c93c, pants: 0x2f4d8a, cap: 0x2f4d8a,
     visor: 0xb9bec4, unlockFloor: 1, weight: 0,
   },
+  technician: {
+    // The generator room's own (see the `generator` role in gen/rooms.js and
+    // `_generatorRoom` in enemies.js): a handful of the room's workers who are
+    // not going to let you near their machine. Hand-placed only (`weight: 0`)
+    // like every other room-specific hostile — the mix of these against the
+    // room's docile `worker`s is the whole point of the room, not something a
+    // weighted roll should ever produce elsewhere.
+    name: 'Technician', hp: 1.4, speed: 1.05, damage: 1.5, rate: 1.2, spread: 1,
+    range: 2.3, melee: true, scale: 1.02, blunt: ['chairLeg', 'extinguisher'],
+    suit: 0x494338, shirt: 0xd97a2e, visor: 0x8f959b, unlockFloor: 1, weight: 0,
+  },
 
   // --- the neutrals -----------------------------------------------------------
   //
@@ -149,6 +160,16 @@ export const TYPES = {
     name: 'Courier', hp: 0.6, speed: 1.45, damage: 0, rate: 99, spread: 1,
     range: 0, melee: false, scale: 0.99, neutral: true,
     suit: 0x6b5a1e, shirt: 0xf2c14e, visor: 0xffc93a, unlockFloor: 1, weight: 0,
+  },
+  worker: {
+    // The generator room's docile majority — logged in on the terminals
+    // around it, or just standing near the thing, and no more interested in
+    // you than the cleaner is. Hi-vis orange, which nothing else in the
+    // building wears. Hand-placed only, alongside `technician` — see
+    // `_generatorRoom` in enemies.js.
+    name: 'Maintenance Worker', hp: 0.5, speed: 1.0, damage: 0, rate: 99, spread: 1,
+    range: 0, melee: false, scale: 1.0, neutral: true,
+    suit: 0x4a4642, shirt: 0xff8c3d, visor: 0xffa64d, unlockFloor: 1, weight: 0,
   },
   rat: {
     // Not staff. Lives under the desks, crosses corridors at the worst moment,
