@@ -29,6 +29,7 @@ export default defineConfig({
         devGuns: resolve(import.meta.dirname, 'dev-guns.html'),
         devModels: resolve(import.meta.dirname, 'dev-models.html'),
         devSounds: resolve(import.meta.dirname, 'dev-sounds.html'),
+        devLayout: resolve(import.meta.dirname, 'dev-layout.html'),
       },
     },
   },

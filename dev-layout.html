@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HUD layout harness</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #16181c; color: #cfe3f2; padding: 16px 20px 40px;
+      font: 12px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+      display: grid; grid-template-columns: minmax(360px, 1fr) auto; gap: 22px;
+      align-items: start; min-height: 100vh;
+    }
+    h1 { font-size: 15px; color: #ffe9a8; font-weight: 600; margin-bottom: 2px; }
+    p.lead { color: #8ea3b5; margin-bottom: 12px; max-width: 74ch; }
+    .bar { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+    label { color: #8ea3b5; cursor: pointer; user-select: none; }
+    button {
+      font: inherit; background: #2b3038; color: #cfe3f2; border: 1px solid #3a414b;
+      border-radius: 3px; padding: 3px 10px; cursor: pointer;
+    }
+    button:hover { background: #353c46; }
+    .case { border-left: 2px solid #2b3038; padding: 3px 0 3px 9px; margin-bottom: 4px; }
+    .case.good { border-left-color: #3f6b48; }
+    .case.bad { border-left-color: #ff6b6b; }
+    .case-head span { color: #5d6b78; margin-left: 6px; }
+    .case-head em { font-style: normal; float: right; }
+    .case.good em { color: #7fd18d; }
+    .case.bad em { color: #ff6b6b; }
+    .case ul { list-style: none; margin: 2px 0 4px; }
+    .case li { color: #ffc26b; }
+    .case li::before { content: "! "; color: #ff6b6b; }
+    .good { color: #7fd18d; }
+    .bad { color: #ff6b6b; }
+    #stage {
+      position: sticky; top: 16px;
+      border: 1px solid #2b3038; background: #000;
+      /* The frame is measured at its true CSS size and only DRAWN small, so a
+         phone-sized viewport still fits on the page next to the report. The
+         media queries inside it never see the scale. */
+      transform-origin: top right;
+    }
+    #game { display: block; width: 390px; height: 844px; border: 0; }
+  </style>
+</head>
+<body>
+  <div>
+    <h1>HUD layout harness</h1>
+    <p class="lead">
+      The game in an iframe at one device size after another, with every HUD
+      element and every touch control measured against every other one. A phone
+      is not a small desktop — the readouts and the two thumbs want the same
+      four corners, and whether they got them is a question about rectangles,
+      which is not a thing to settle by eye at twelve viewport sizes.
+    </p>
+    <div class="bar">
+      <label><input type="checkbox" id="touchmode" checked /> touch controls</label>
+      <button id="run">Re-run all</button>
+      <span id="summary"></span>
+    </div>
+    <div id="report"></div>
+  </div>
+
+  <div id="stage"><iframe id="game" src="/index.html" title="game"></iframe></div>
+
+  <script type="module" src="/src/dev-layout.js"></script>
+</body>
+</html>

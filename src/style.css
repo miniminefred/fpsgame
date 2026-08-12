@@ -207,6 +207,12 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
 #mission {
   position: absolute; left: calc(20px + var(--sa-l)); top: calc(18px + var(--sa-t));
   padding-left: 10px; border-left: 2px solid var(--accent);
+  /* The objective is a sentence with a live hostile count in it, so its width
+     is not something this file gets to know. Left unbounded it reaches the
+     middle of the top edge on a phone and sits under the fullscreen button;
+     bounded, it wraps, and the corner it is anchored to has nothing else in
+     it to wrap into. */
+  max-width: calc(50% - 34px);
 }
 #floor {
   font-size: 19px; font-weight: 300; letter-spacing: 4px;
@@ -311,7 +317,11 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
 
 /* -------------------------------------------------------------------- toast */
 #toast {
-  position: absolute; left: 50%; top: 26%;
+  position: absolute; left: 50%;
+  /* 26% of a short viewport is level with the minimap, and the banner is wide
+     enough (nowrap, 12 px of letter-spacing) to reach the top-right corner on
+     any screen. The floor holds it under the tallest that block ever gets. */
+  top: max(26%, 224px);
   transform: translate(-50%, -6px) scale(0.98);
   font-size: 42px; font-weight: 200; letter-spacing: 12px;
   text-transform: uppercase; white-space: nowrap;
@@ -452,7 +462,12 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
    tablet does not end up with a fire button the size of a saucer and a small
    phone does not get one too small to hit.
    ========================================================================== */
-#touch {
+/* On :root and not on #touch, even though #touch is the only thing that draws
+   from them: #health and #gunbox have to climb above the controls, they live in
+   #hud, and a custom property declared on #touch inherits to its descendants
+   only — a sibling subtree reads it as unset and the whole rule silently
+   collapses to nothing. */
+:root {
   --edge-l: calc(14px + var(--sa-l));
   --edge-r: calc(14px + var(--sa-r));
   --edge-b: calc(14px + var(--sa-b));
@@ -461,14 +476,15 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
   --sub:   clamp(46px, 12vmin, 62px);
   --chip:  clamp(27px, 7.4vmin, 36px);
   --gap:   10px;
-  /* The right-hand stack, measured from the bottom: fire, then the row above
-     it, then the weapon chips, then the ammo readout. Written once here so
-     moving one tier moves everything above it — #gunbox is in the HUD and
-     cannot see these otherwise. */
+  /* The right-hand stack, measured from the bottom: fire, then the row beside
+     and above it, then the weapon chips, then the ammo readout. Written once
+     so moving one tier moves everything above it. */
   --tier-1: calc(var(--edge-b) + var(--fire) + var(--gap) + var(--sub));
   --tier-2: calc(var(--tier-1) + 12px);
   --tier-3: calc(var(--tier-2) + var(--chip) + 12px);
+}
 
+#touch {
   position: fixed; inset: 0; z-index: 6;
   display: none;
   pointer-events: none;
@@ -650,11 +666,19 @@ body.touch #overlay .touch-keys { display: flex; }
 @media (max-height: 520px) {
   #mission { top: calc(10px + var(--sa-t)); }
   #mapbox { top: calc(10px + var(--sa-t)); gap: 3px; }
-  #minimap { width: 88px; height: 88px; }
+  #minimap { width: 80px; height: 80px; }
   #score { font-size: 8.5px; }
   #health { bottom: calc(12px + var(--sa-b)); }
   #gunbox { bottom: calc(12px + var(--sa-b)); }
   #ammo { font-size: 22px; }
+  /* The right edge is the tight one when the screen is short: the minimap
+     comes down from the top, the ammo counter climbs up from above the fire
+     button, and on a 360 px-tall phone they met. Compacting the gun block is
+     what buys the gap back — it is three lines of small text and a row of
+     card chips, and every one of them was sized for a desktop. */
+  #weapon { font-size: 9.5px; letter-spacing: 1.5px; }
+  #keycards { gap: 4px; margin-bottom: 4px; min-height: 11px; }
+  #keycards .card { width: 16px; height: 11px; }
 
   /* The hit ring is a fixed 150 px radius, which on a short screen is most of
      the way to the top and bottom edges — the wedges clip, and the two that
@@ -666,7 +690,7 @@ body.touch #overlay .touch-keys { display: flex; }
   }
   #watch { top: calc(50% + 42px); }
 
-  #toast { top: 15%; font-size: 19px; letter-spacing: 4px; }
+  #toast { top: 128px; font-size: 19px; letter-spacing: 4px; }
 
   #overlay { gap: 5px; }
   #overlay .tag { font-size: 9px; letter-spacing: 3px; }
