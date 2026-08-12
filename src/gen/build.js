@@ -254,21 +254,32 @@ function buildShell(layout, batcher, materials, colliders, cuts) {
       { castShadow: false });
   }
 
-  // The roof, as real collision — chunked the same way the walls are rather than
-  // as one floor-spanning slab: `_moveHorizontal` resolves a collision by pushing
-  // to the box's OWN far face, which is the right move for something the size of
-  // a room and a same-frame teleport to the edge of the building for something
-  // the size of the floor. A giant unchunked roof did exactly that the moment a
-  // player's feet — from a jump, or just standing on tall furniture — landed in
-  // the band this collider blocks but nothing else does.
+  // The roof, structural rather than the suspended panel below it — a real box,
+  // not a one-sided plane, because the suspended ceiling is drawn facing DOWN
+  // only (`floorSlab(..., false)`) on the assumption there is always a real
+  // structural deck above it hiding its top and edges from ever being seen. That
+  // was true by construction until a body could get above `WALL_H` at all: once
+  // it could, the gap between the suspended tile and here was daylight straight
+  // through into whatever the fog clears to, from a viewpoint the panel was never
+  // built to be looked at from below or the side.
+  //
+  // Collision is chunked the same way the walls are rather than as one
+  // floor-spanning slab: `_moveHorizontal` resolves a collision by pushing to the
+  // box's OWN far face, which is the right move for something the size of a room
+  // and a same-frame teleport to the edge of the building for something the size
+  // of the floor. A giant unchunked roof did exactly that the moment a player's
+  // feet — from a jump, or just standing on tall furniture — landed in the band
+  // this collider blocks but nothing else does.
   //
   // An attic's own ROOM, not just its stairwell, stays out of this pass entirely:
   // its deck (`stairBoxes`) already covers that footprint one storey up, and a
-  // room's worth of "roof" sitting at floor height inside the attic would be the
+  // room's worth of roof sitting at floor height inside the attic would be the
   // same bug this whole pass exists to fix, just scoped to one room.
   for (const r of maskToRects(masked(tiles, cuts.roof), W, H, isOpen)) {
     const x0 = worldX(layout, r.x0), x1 = worldX(layout, r.x1);
     const z0 = worldZ(layout, r.y0), z1 = worldZ(layout, r.y1);
+    batcher.add('ceiling', materials.ceiling,
+      applyWorldUVs(boxBetween(x0, WALL_H, z0, x1, WALL_H + ROOF_T, z1)), { castShadow: false });
     colliders.push({
       minX: x0, maxX: x1, minZ: z0, maxZ: z1,
       base: WALL_H, top: WALL_H + ROOF_T, building: true, ceiling: true,
