@@ -680,6 +680,13 @@ function assignRoles(rooms, spawnRoom, exitRoom, rng) {
   // a shuffled draw, so which back-of-house rooms a floor has is part of what
   // tells one floor from another.
   const wants = [
+    // The generator room goes first: it wants the biggest, squarest room on
+    // the floor, and every other entry below it is happy with something
+    // smaller — so it gets first pick before a less demanding role claims the
+    // one room that could have held it. Not every floor rolls a room this
+    // size, and that's fine: see buildLevel's generator handling, which is
+    // opportunistic the same way the security office and broom closet are.
+    ['generator', (r) => r.areaM2 > 100 && Math.min(r.wTiles, r.hTiles) >= 14],
     ['storage', (r) => r.areaM2 < 90],
     ['copyroom', (r) => r.areaM2 < 55],
     ['server', (r) => r.areaM2 < 70],
