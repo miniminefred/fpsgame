@@ -675,6 +675,24 @@ export const MODEL_TABLE = {
     tags: ['plant', 'clutter'],
     mount: 'desktop',
   },
+  // Verified headlessly (this file has no skin/rig, so a plain Box3 on its raw
+  // geometry is trustworthy — unlike a rigged character, which this pipeline
+  // has no skinning support for at all: `models.js` bakes down to one static
+  // merged geometry per material, using whatever the raw vertex buffer holds,
+  // so an animated GLB renders in whatever pose its buffer happens to store
+  // rather than the pose you'd see it play. A first, rigged "Cow" download was
+  // discarded for exactly that reason — it baked to a bizarre 2×5×9 m blob.
+  // yaw is a guess (0) and wants confirming in /dev-models.html — nothing here
+  // can tell which way an asset's nose points without rendering it.
+  cow: {
+    file: 'animal_cow.glb',
+    scale: 0.1612,
+    yaw: 0,
+    foot: [0.54, 2.2],
+    height: 1.2,
+    tags: ['animal'],
+    mount: 'floor',
+  },
   rug: {
     file: 'furn_rug.glb',
     scale: 0.96987,
