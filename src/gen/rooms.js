@@ -426,6 +426,29 @@ function broomCloset(sink, bounds, rng) {
   scatter(sink, bounds, ['crateStack'], 11, rng);
 }
 
+// The generator room: a big double-height plant room (see generatorRoomCut in
+// gen/build.js) built around the one prop that matters. `tryPlace` goes first
+// and dead centre, so every other item in here is placed against whatever
+// floor it left — same ordering as `furnishRooms` relying on the generator
+// having already claimed the middle of the room before anything else asks for
+// space. The rest reads as the crew that works this room: monitoring
+// terminals rather than desks, and the crates and spares an industrial space
+// accumulates.
+function generatorRoom(sink, bounds, rng) {
+  const { x0, z0, x1, z1 } = bounds;
+  tryPlace(sink, 'generator', (x0 + x1) / 2, (z0 + z1) / 2, rng.int(0, 3), rng);
+
+  edgeProp(sink, bounds, 'workbench', rng);
+  if (rng.chance(0.8)) edgeProp(sink, bounds, 'workbench', rng);
+  edgeProp(sink, bounds, 'serverRack', rng);
+  if (rng.chance(0.7)) edgeProp(sink, bounds, 'serverRack', rng);
+  if (rng.chance(0.7)) edgeProp(sink, bounds, 'cabinet', rng);
+  if (rng.chance(0.6)) edgeProp(sink, bounds, 'lockers', rng);
+  edgeProp(sink, bounds, 'extinguisher', rng);
+  if (rng.chance(0.5)) edgeProp(sink, bounds, 'extinguisher', rng);
+  scatter(sink, bounds, ['crateStack', 'crate', 'pallet'], 26, rng);
+}
+
 function lobby(sink, bounds, rng) {
   edgeProp(sink, bounds, 'plant', rng);
   if (rng.chance(0.7)) edgeProp(sink, bounds, 'sofa', rng);
@@ -453,6 +476,7 @@ const ROLES = {
   manager: managerOffice,
   security: securityOffice,
   closet: broomCloset,
+  generator: generatorRoom,
   lobby,
   exit: lobby,
 };
