@@ -46,6 +46,16 @@ import { STEP_EPS } from '../metrics.js';
 export const RISER = Math.min(0.2, STEP_EPS * 0.8);
 const GOING = 0.3;                        // how deep one tread is, front to back
 
+// A roof (or a basement's lid) has an underside too, and the same rule that makes
+// a tread climbable would make a thin enough ceiling climbable from below — stand
+// under one within STEP_EPS and `_moveHorizontal` reads it as a kerb to step onto
+// rather than a thing to stop under. Kept clear of STEP_EPS by a solid margin, the
+// same derivation as RISER, just on the far side of it: 0.12 m used to leave a
+// storey's own roof mountable from a jump off the furniture inside it, and once on
+// top there was nothing else in the whole building above a wall's `top` to stop
+// walking wherever a roof happened to be missing.
+export const ROOF_T = STEP_EPS + 0.15;
+
 // A level stands on the structural deck, which is the top of the walls downstairs —
 // that is the whole idea, so it is WALL_H rather than a number of its own. An attic
 // is one deck up and a basement is one deck down, and both get the same headroom as
@@ -59,7 +69,6 @@ export const UPPER_CEIL = UPPER_Y + CEIL_H;
 // ceiling — so the basement's headroom is CEIL_H too.
 export const PLATE_T = LEVEL_Y - CEIL_H;
 const WALL_T = 0.14;
-const ROOF_T = 0.12;
 
 /** The floor a plan's level sits at: an attic above, a basement below. */
 export const levelY = (plan) => (plan.dir > 0 ? UPPER_Y : LOWER_Y);

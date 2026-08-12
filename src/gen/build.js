@@ -11,7 +11,7 @@ import {
 } from './layout.js';
 import { CARDS, READER_LIT, READER_OPEN } from '../keycards.js';
 import {
-  UPPER_Y, UPPER_CEIL, LOWER_Y, PLATE_T, approachTiles, levelFloor, levelY, punchRects,
+  UPPER_Y, UPPER_CEIL, LOWER_Y, PLATE_T, ROOF_T, approachTiles, levelFloor, levelY, punchRects,
   stairBoxes, stairwellCut, stripTiles, rampSpec, approachRect,
 } from './stairs.js';
 
@@ -78,6 +78,7 @@ export function buildLevel(scene, layout) {
   buildShell(layout, batcher, materials, colliders,
     { ceiling: stairwellCut(layout, 1), floor: stairwellCut(layout, -1) });
   colliders.push(...floorPlate(layout));
+  colliders.push(...roofPlate(layout));
   buildDoorFrames(layout, batcher, materials);
   buildWindows(layout, batcher, materials, fixtures, destructibles);
   buildCeilingLights(layout, batcher, materials, fixtures, destructibles);
@@ -291,6 +292,37 @@ function floorPlate(layout) {
   return rects.map((r) => ({
     minX: r.x0, maxX: r.x1, minZ: r.z0, maxZ: r.z1,
     base: -PLATE_T, top: 0, building: true,
+  }));
+}
+
+/**
+ * The building's own roof, as coarse collision — the mirror of `floorPlate`.
+ *
+ * A plain room's wall stops at `WALL_H` and nothing was ever above it: the
+ * suspended ceiling drawn there is `batcher.add`-only, so a body that got above a
+ * wall's `top` by any means had the run of the whole floor's rooftops, with
+ * nothing to block it until the next storey's own roof. This slab is what a
+ * player standing at `WALL_H` should actually meet.
+ *
+ * An attic punches out its own room's WHOLE footprint here, not just its
+ * stairwell — its own deck (`stairBoxes`) already covers that footprint at this
+ * exact height, cut for the stairwell it actually needs open, and this slab
+ * sitting on top of that deck rather than beside its hole would seal the attic's
+ * own floor against the attic's own player.
+ */
+function roofPlate(layout) {
+  let rects = [{
+    x0: worldX(layout, 0), z0: worldZ(layout, 0),
+    x1: worldX(layout, layout.W), z1: worldZ(layout, layout.H),
+  }];
+  for (const plan of layout.stairs) {
+    if (plan.dir < 0) continue;
+    const f = levelFloor(layout, plan);
+    rects = punchRects(rects, { x0: f.minX, z0: f.minZ, x1: f.maxX, z1: f.maxZ });
+  }
+  return rects.map((r) => ({
+    minX: r.x0, maxX: r.x1, minZ: r.z0, maxZ: r.z1,
+    base: WALL_H, top: WALL_H + ROOF_T, building: true,
   }));
 }
 
