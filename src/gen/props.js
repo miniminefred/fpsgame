@@ -29,12 +29,12 @@ function placer(sink, cx, cz, rot) {
         cx + Math.min(ax, bx), y0, cz + Math.min(az, bz),
         cx + Math.max(ax, bx), y1, cz + Math.max(az, bz));
     },
-    obstacle(lx0, lz0, lx1, lz1, top) {
+    obstacle(lx0, lz0, lx1, lz1, top, building) {
       const [ax, az] = turn(lx0, lz0);
       const [bx, bz] = turn(lx1, lz1);
       sink.obstacle(
         cx + Math.min(ax, bx), cz + Math.min(az, bz),
-        cx + Math.max(ax, bx), cz + Math.max(az, bz), top);
+        cx + Math.max(ax, bx), cz + Math.max(az, bz), top, building);
     },
   };
 }
@@ -639,35 +639,43 @@ export const PROPS = {
     // Backed against a wall like everything else load-bearing in a room (see
     // edgeProp in gen/rooms.js) rather than standing free in the middle, so
     // its control face is authored on -Z — this file's own "front" convention
-    // — with the wall-facing +Z side left plain.
-    w: 3.4, d: 2.6, hp: 500, substance: 'electronic', powerCore: true,
+    // — with the wall-facing +Z side left plain. Genuinely massive on purpose
+    // — it's meant to dominate the wall it's on, which is now two ordinary
+    // storeys tall (see generatorWallMask in gen/build.js) — so its collider
+    // is well past MAX_PROP_SIDE/MAX_PROP_TOP and carries `building: true` to
+    // be judged as shell rather than furniture, the same as a wall or a
+    // staircase (see `obstacle`'s `building` param).
+    w: 5.2, d: 2.4, hp: 500, substance: 'electronic', powerCore: true,
     build(p, rng) {
-      const H = 2.1;
-      p.box('metal', -1.7, 0, -1.3, 1.7, 0.15, 1.3);            // base plinth
-      p.box('metalDark', -1.6, 0.15, -1.1, 1.6, H, 1.1);        // main housing
-      p.box('metal', -1.5, H, -1.0, 1.5, H + 0.15, 1.0);        // top cap
+      const H = 4.2;
+      p.box('metal', -2.6, 0, -1.2, 2.6, 0.15, 1.2);              // base plinth
+      p.box('metalDark', -2.5, 0.15, -1.0, 2.5, H, 1.0);          // main housing
+      p.box('metal', -2.4, H, -0.9, 2.4, H + 0.2, 0.9);           // top cap
 
       // Vertical ribs down the front and back faces.
-      for (const sx of [-1.55, -1.05, 1.05, 1.55]) {
-        p.box('metal', sx - 0.06, 0.15, -1.12, sx + 0.06, H, -1.02);
-        p.box('metal', sx - 0.06, 0.15, 1.02, sx + 0.06, H, 1.12);
+      for (const sx of [-2.3, -1.6, -0.9, 0.9, 1.6, 2.3]) {
+        p.box('metal', sx - 0.08, 0.15, -1.02, sx + 0.08, H, -0.9);
+        p.box('metal', sx - 0.08, 0.15, 0.9, sx + 0.08, H, 1.02);
       }
 
-      // Hazard stripe round the base, and a control face with a few live LEDs
-      // — both on the front (-Z), so they read from wherever the wall put it.
-      p.box('hazard', -1.61, 0.6, -1.11, 1.61, 0.78, 1.11);
-      p.box('metalDark', -0.5, 0.9, -1.16, 0.5, 1.6, -1.1);
-      for (let i = 0; i < 4; i++) {
-        const y = 1.0 + i * 0.14;
-        p.box(rng.chance(0.7) ? 'led' : 'screen', -0.4, y, -1.18, 0.4, y + 0.06, -1.16);
+      // Hazard band round the base, and a tall control face with rows of live
+      // LEDs — both on the front (-Z), so they read from wherever the wall
+      // put it.
+      p.box('hazard', -2.51, 0.7, -1.01, 2.51, 0.92, 1.01);
+      p.box('metalDark', -0.9, 0.9, -1.06, 0.9, 3.4, -1.0);
+      for (let row = 0; row < 8; row++) {
+        const y = 1.1 + row * 0.28;
+        p.box(rng.chance(0.7) ? 'led' : 'screen', -0.8, y, -1.08, 0.8, y + 0.1, -1.06);
       }
 
-      // The exhaust stack: decorative only, reaching up into the room's own
-      // double-height shaft — see generatorRoomCut in gen/build.js.
-      p.box('metalDark', -0.35, H + 0.15, -0.35, 0.35, H + 1.7, 0.35);
-      p.box('metal', -0.45, H + 1.7, -0.45, 0.45, H + 1.9, 0.45);
+      // Twin exhaust stacks: decorative only, reaching well up into the
+      // room's own double-height shaft — see generatorRoomCut in gen/build.js.
+      for (const sx of [-1.3, 1.3]) {
+        p.box('metalDark', sx - 0.4, H + 0.2, -0.4, sx + 0.4, H + 1.5, 0.4);
+        p.box('metal', sx - 0.5, H + 1.5, -0.5, sx + 0.5, H + 1.7, 0.5);
+      }
 
-      p.obstacle(-1.7, -1.3, 1.7, 1.3, H + 0.15);
+      p.obstacle(-2.6, -1.2, 2.6, 1.2, H + 0.2, true);
     },
   },
 

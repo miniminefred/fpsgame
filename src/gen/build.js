@@ -230,17 +230,19 @@ function buildShell(layout, batcher, materials, colliders, cuts) {
 
   // Walls. Merging tile runs into rectangles first keeps this to a couple of
   // hundred boxes instead of tens of thousands.
-  for (const r of maskToRects(tiles, W, H, (t) => t === SOLID)) {
-    const x0 = worldX(layout, r.x0), x1 = worldX(layout, r.x1);
-    const z0 = worldZ(layout, r.y0), z1 = worldZ(layout, r.y1);
-
-    batcher.add('wall', materials.wall, applyWorldUVs(boxBetween(x0, 0, z0, x1, WALL_H, z1)));
-    // Skirting board, proud of the wall face so it catches a highlight.
-    batcher.add('trim', materials.trim,
-      boxBetween(x0 - 0.015, 0, z0 - 0.015, x1 + 0.015, BASEBOARD_H, z1 + 0.015));
-
-    colliders.push({ minX: x0, maxX: x1, minZ: z0, maxZ: z1, top: WALL_H });
-  }
+  //
+  // Two passes rather than one: the generator room's own walls stand a full
+  // storey taller (see generatorWallMask) — genuinely, not just an open shaft
+  // above the ordinary height, so the room reads as walled up two storeys
+  // rather than roofless. Splitting the SOLID mask in two and running the same
+  // rect-merge twice is cheaper than teaching maskToRects about height.
+  // SOLID is 0, so the placeholder for "not part of this pass" has to be
+  // anything else — ROOM works fine, maskToRects only ever tests `=== SOLID`.
+  const tallMask = generatorWallMask(layout);
+  const normalWalls = tiles.map((t, i) => (t === SOLID && !tallMask[i] ? SOLID : ROOM));
+  const tallWalls = tiles.map((t, i) => (t === SOLID && tallMask[i] ? SOLID : ROOM));
+  drawWalls(layout, normalWalls, batcher, materials, colliders, WALL_H, false);
+  drawWalls(layout, tallWalls, batcher, materials, colliders, WALL_H * 2, true);
 
   // The floor, which is a SLAB and not a sheet. It used to be one plane at y = 0,
   // which is invisible right up until you can see its edge — and a staircase down to
@@ -325,6 +327,46 @@ function generatorRoomCut(layout) {
 function orMask(a, b) {
   for (let i = 0; i < a.length; i++) if (b[i]) a[i] = 1;
   return a;
+}
+
+// SOLID tiles immediately next to the generator room's own footprint — its
+// four walls, basically, including the stub either side of its one doorway.
+// Empty (no tiles set) on every floor without one, same as generatorRoomCut.
+function generatorWallMask(layout) {
+  const { W, H, tiles } = layout;
+  const footprint = generatorRoomCut(layout);
+  const mask = new Uint8Array(W * H);
+  for (let ty = 0; ty < H; ty++) {
+    for (let tx = 0; tx < W; tx++) {
+      const i = ty * W + tx;
+      if (tiles[i] !== SOLID) continue;
+      if ((tx > 0 && footprint[i - 1]) || (tx < W - 1 && footprint[i + 1]) ||
+          (ty > 0 && footprint[i - W]) || (ty < H - 1 && footprint[i + W])) {
+        mask[i] = 1;
+      }
+    }
+  }
+  return mask;
+}
+
+// One wall pass at a given height, over a tile array that is SOLID only where
+// this pass should draw (see the two calls in buildShell). `building: true`
+// on the taller pass exempts it from validate-props.mjs's furniture height
+// cap the same way an ordinary WALL_H wall already is — see MAX_PROP_TOP.
+function drawWalls(layout, tiles, batcher, materials, colliders, wallH, building) {
+  const { W, H } = layout;
+  for (const r of maskToRects(tiles, W, H, (t) => t === SOLID)) {
+    const x0 = worldX(layout, r.x0), x1 = worldX(layout, r.x1);
+    const z0 = worldZ(layout, r.y0), z1 = worldZ(layout, r.y1);
+
+    batcher.add('wall', materials.wall, applyWorldUVs(boxBetween(x0, 0, z0, x1, wallH, z1)));
+    batcher.add('trim', materials.trim,
+      boxBetween(x0 - 0.015, 0, z0 - 0.015, x1 + 0.015, BASEBOARD_H, z1 + 0.015));
+
+    const collider = { minX: x0, maxX: x1, minZ: z0, maxZ: z1, top: wallH };
+    if (building) collider.building = true;
+    colliders.push(collider);
+  }
 }
 
 /**
@@ -1064,7 +1106,7 @@ function makeSink(layout, batcher, materials, masks) {
       record?.boxes.push(b);
     },
 
-    obstacle(x0, z0, x1, z1, top) {
+    obstacle(x0, z0, x1, z1, top, building) {
       // A dynamic prop's footprint moves, so it can't become a static collider
       // or a permanent hole in the nav grid. A dry run isn't there at all.
       if (pending || capture) return;
@@ -1073,6 +1115,10 @@ function makeSink(layout, batcher, materials, masks) {
       // ground. Without it the collider is a pillar from the floor and a crate
       // upstairs is a pillar through the room below — see gen/stairs.js.
       if (level) collider.base = level;
+      // Shell, not furniture — exempts a genuinely oversized prop (the
+      // generator) from validate-props.mjs's MAX_PROP_SIDE/MAX_PROP_TOP
+      // furniture caps, the same way a wall or a staircase already is.
+      if (building) collider.building = true;
       colliders.push(collider);
       record?.colliders.push(collider);
       // Anything the player can't step over blocks the enemies too. The

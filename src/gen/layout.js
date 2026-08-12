@@ -34,7 +34,7 @@ export {
   TILE, WALL_H, CEIL_H, DOOR_H, DOOR_CLEAR,
   SOLID, ROOM, CORRIDOR, DOOR, isOpen,
   worldX, worldZ, centreX, centreZ, tileX, tileY,
-  bfs, slidePocketSide,
+  bfs, slidePocketSide, doorSide,
 } from './tiles.js';
 // FIRST_CONTACT_GAP is re-exported rather than re-declared, and that is not
 // tidiness — enemies.js imports it from here and measures the prologue guarantee
@@ -687,12 +687,16 @@ function assignRoles(rooms, spawnRoom, exitRoom, rng) {
     // BSP leaf tops out at MAX_LEAF (26 tiles, 13 m) on a side, so past
     // roughly 110 m² a rectangular room is already pushed up against that
     // ceiling on its long axis — which is the point: this asks for as close
-    // to that ceiling as the floor rolled. Not every floor manages it, and
-    // that's fine: see buildLevel's generator handling, which is opportunistic
-    // the same way the security office and broom closet are.
+    // to that ceiling as the floor rolled. It also wants exactly one door: the
+    // generator sits on the wall facing it (see generatorRoom in gen/rooms.js),
+    // and a second doorway would either land behind the generator or give the
+    // room a second "front", neither of which reads as the one-way plant room
+    // this is meant to be. Not every floor manages all of this, and that's
+    // fine: see buildLevel's generator handling, which is opportunistic the
+    // same way the security office and broom closet are.
     ['generator', (r) => {
       const long = Math.max(r.wTiles, r.hTiles), short = Math.min(r.wTiles, r.hTiles);
-      return r.areaM2 > 110 && short >= 15 && long / short >= 1.35;
+      return r.areaM2 > 110 && short >= 15 && long / short >= 1.35 && r.doors.length === 1;
     }],
     ['storage', (r) => r.areaM2 < 90],
     ['copyroom', (r) => r.areaM2 < 55],

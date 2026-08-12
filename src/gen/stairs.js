@@ -122,7 +122,10 @@ const PER_FLOOR = [2, 4];
 export function planStairs(tiles, W, H, rooms, spawnRoom, exitRoom, rng) {
   const want = rng.int(PER_FLOOR[0], PER_FLOOR[1]);
 
-  const pool = rooms.filter((r) => r !== spawnRoom && r !== exitRoom);
+  // Not the generator room: its own walls already stand two storeys tall (see
+  // generatorWallMask in gen/build.js), which is exactly the airspace an attic
+  // built on top of it would want too.
+  const pool = rooms.filter((r) => r !== spawnRoom && r !== exitRoom && r.role !== 'generator');
   rng.shuffle(pool);
 
   const out = [];

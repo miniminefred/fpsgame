@@ -1,4 +1,5 @@
 import { QUARTER, tryPlace, footprintOf } from './props.js';
+import { doorSide } from './layout.js';
 
 // What each kind of room is furnished with. The catalogue in props.js says what
 // a desk IS; this says where desks go. Splitting them keeps a room type to a
@@ -15,7 +16,7 @@ export function furnish(sink, room, bounds, rng) {
   if (x1 - x0 < 1.5 || z1 - z0 < 1.5) return;
 
   const fill = ROLES[room.role] ?? privateOffice;
-  fill(sink, bounds, rng);
+  fill(sink, bounds, rng, room);
 }
 
 // Cubicle farm: pods on a 3.7 x 3.0 m pitch, each a desk backed by an L of
@@ -434,8 +435,12 @@ function broomCloset(sink, bounds, rng) {
 // below is placed against whatever wall it left. The rest reads as the crew
 // that works this room: monitoring terminals rather than desks, and the
 // crates and spares an industrial space accumulates.
-function generatorRoom(sink, bounds, rng) {
-  edgeProp(sink, bounds, 'generator', rng);
+function generatorRoom(sink, bounds, rng, room) {
+  // Dead opposite the room's one door (see the `generator` fits predicate in
+  // gen/layout.js, which guarantees there's exactly one) — walk in and it's
+  // the first thing you see, on the far wall rather than tucked to one side.
+  const oppositeWall = (doorSide(room.doors[0], room) + 2) % 4;
+  edgeProp(sink, bounds, 'generator', rng, [oppositeWall]);
 
   edgeProp(sink, bounds, 'workbench', rng);
   if (rng.chance(0.8)) edgeProp(sink, bounds, 'workbench', rng);

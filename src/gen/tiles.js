@@ -125,6 +125,26 @@ export function slidePocketSide(tiles, W, H, door, prefer = 1) {
   return fits(prefer) ? prefer : fits(-prefer) ? -prefer : 0;
 }
 
+/**
+ * Which of a room's four walls a door sits on, in the same 0/1/2/3 = +z/-x/-z/+x
+ * convention `edgeProp` and `QUARTER` use in gen/props.js — the door's own
+ * side IS the quarter-turn a wall-backed prop needs to face into the room from
+ * that wall, so a caller wanting "the wall opposite the door" just adds 2 mod 4.
+ *
+ * Measured from the door's centre to each of the room's four walls rather than
+ * compared against `room.x0/x1/y0/y1` directly, because that comparison has to
+ * get the door rect's inclusive/exclusive edges exactly right and a door is a
+ * wall-thickness tile OUTSIDE the room, not one of its interior tiles. Nearest
+ * wall is right regardless, and a door only has one wall to be near.
+ */
+export function doorSide(door, room) {
+  const cx = (door.x0 + door.x1) / 2, cy = (door.y0 + door.y1) / 2;
+  const dist = [room.y1 - cy, cx - room.x0, cy - room.y0, room.x1 - cx];
+  let best = 0;
+  for (let i = 1; i < 4; i++) if (Math.abs(dist[i]) < Math.abs(dist[best])) best = i;
+  return best;
+}
+
 // --- rectangle fills and tile tests -----------------------------------------
 //
 // A room and a doorway are both just rectangles of tiles, and the lock proofs
