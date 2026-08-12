@@ -69,6 +69,13 @@ function frameDoc() {
   return frame.contentDocument;
 }
 
+// The longest thing the game ever puts in the banner. Probing with a short
+// string is how the first version of this harness passed every size while the
+// keycard message ran off both edges of a phone: the toast is centred and
+// nowrap-ish, so its width is the whole question and the text is the width.
+// If a longer message is ever added, it belongs here.
+const LONGEST_TOAST = 'BLACK KEYCARD DROPPED — ONE LEFT, AND YOU KNOW WHERE';
+
 // The toast and the camera meter are driven by game events, so the harness
 // shows them by hand — measuring a hidden element measures nothing.
 function forceTransient(doc, on) {
@@ -76,7 +83,7 @@ function forceTransient(doc, on) {
   const watch = doc.getElementById('watch');
   if (toast) {
     toast.classList.toggle('show', on);
-    if (on && !toast.textContent.trim()) toast.textContent = 'FLOOR CLEARED';
+    if (on) toast.textContent = LONGEST_TOAST;
   }
   watch?.classList.toggle('show', on);
 }

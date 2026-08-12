@@ -324,7 +324,14 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
   top: max(26%, 224px);
   transform: translate(-50%, -6px) scale(0.98);
   font-size: 42px; font-weight: 200; letter-spacing: 12px;
-  text-transform: uppercase; white-space: nowrap;
+  text-transform: uppercase;
+  /* It used to be nowrap, and the longest thing the game says through here —
+     "BLACK KEYCARD DROPPED — ONE LEFT, AND YOU KNOW WHERE" — is 52 capitals at
+     12 px of letter spacing, which is about 1900 px of one line. It ran off
+     both edges of a desktop and was most of a metre wide on a phone. Wrapping
+     costs a banner that is occasionally two lines; not wrapping costs the
+     sentence. */
+  max-width: min(92vw, 1080px); text-align: center; line-height: 1.14;
   color: var(--ink);
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9), 0 6px 34px rgba(0, 0, 0, 0.75);
   opacity: 0;
@@ -643,7 +650,10 @@ body.touch #overlay .touch-keys { display: flex; }
   #keycards { gap: 4px; margin-bottom: 4px; min-height: 11px; }
   #keycards .card { width: 16px; height: 11px; }
 
-  #toast { font-size: 21px; letter-spacing: 5px; }
+  /* Wrapped, the banner's line count is set by the letter spacing far more
+     than by the font size: at 5 px a phone fits two words to a line and the
+     keycard message becomes six of them. */
+  #toast { font-size: 18px; letter-spacing: 2.4px; }
   #toast::after { bottom: -8px; width: 32px; margin-left: -16px; }
   #watch-bar { width: 116px; }
   #watch-label { font-size: 10px; letter-spacing: 3.5px; }
@@ -690,7 +700,7 @@ body.touch #overlay .touch-keys { display: flex; }
   }
   #watch { top: calc(50% + 42px); }
 
-  #toast { top: 128px; font-size: 19px; letter-spacing: 4px; }
+  #toast { top: 128px; font-size: 18px; letter-spacing: 2.4px; }
 
   #overlay { gap: 5px; }
   #overlay .tag { font-size: 9px; letter-spacing: 3px; }

@@ -211,9 +211,10 @@ export class Hud {
    *
    * `then` is a second `{ text, ms }` to say once this one has gone, and it
    * exists because of what the toast is: 42px of capitals at 12px of letter
-   * spacing, and `#toast` is `white-space: nowrap`. Two facts on one line is
-   * about forty characters, which runs off both sides of the screen — so two
-   * facts are two toasts, one after the other.
+   * spacing. Two facts on one line is about forty characters, which is a metre
+   * of banner — so two facts are two toasts, one after the other. The element
+   * now wraps rather than running off both edges (see `#toast` in style.css),
+   * which makes an over-long message survivable; it does not make it good.
    */
   message(text, ms = 1600, then = null) {
     this.toastEl.textContent = text;
