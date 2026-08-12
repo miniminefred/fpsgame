@@ -427,16 +427,15 @@ function broomCloset(sink, bounds, rng) {
 }
 
 // The generator room: a big double-height plant room (see generatorRoomCut in
-// gen/build.js) built around the one prop that matters. `tryPlace` goes first
-// and dead centre, so every other item in here is placed against whatever
-// floor it left — same ordering as `furnishRooms` relying on the generator
-// having already claimed the middle of the room before anything else asks for
-// space. The rest reads as the crew that works this room: monitoring
-// terminals rather than desks, and the crates and spares an industrial space
-// accumulates.
+// gen/build.js) built around the one prop that matters. It goes in FIRST and
+// against a wall like anything else load-bearing in here — same reasoning as
+// the camera desk in securityOffice: a room this size open in the middle
+// reads as a hangar with a box in it, not a plant room, and every other item
+// below is placed against whatever wall it left. The rest reads as the crew
+// that works this room: monitoring terminals rather than desks, and the
+// crates and spares an industrial space accumulates.
 function generatorRoom(sink, bounds, rng) {
-  const { x0, z0, x1, z1 } = bounds;
-  tryPlace(sink, 'generator', (x0 + x1) / 2, (z0 + z1) / 2, rng.int(0, 3), rng);
+  edgeProp(sink, bounds, 'generator', rng);
 
   edgeProp(sink, bounds, 'workbench', rng);
   if (rng.chance(0.8)) edgeProp(sink, bounds, 'workbench', rng);

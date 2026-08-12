@@ -636,6 +636,10 @@ export const PROPS = {
   // no collider of its own, reaching up into the generator room's own
   // double-height shaft (nobody can climb the housing to reach it anyway).
   generator: {
+    // Backed against a wall like everything else load-bearing in a room (see
+    // edgeProp in gen/rooms.js) rather than standing free in the middle, so
+    // its control face is authored on -Z — this file's own "front" convention
+    // — with the wall-facing +Z side left plain.
     w: 3.4, d: 2.6, hp: 500, substance: 'electronic', powerCore: true,
     build(p, rng) {
       const H = 2.1;
@@ -643,18 +647,19 @@ export const PROPS = {
       p.box('metalDark', -1.6, 0.15, -1.1, 1.6, H, 1.1);        // main housing
       p.box('metal', -1.5, H, -1.0, 1.5, H + 0.15, 1.0);        // top cap
 
-      // Vertical ribs down each long side.
+      // Vertical ribs down the front and back faces.
       for (const sx of [-1.55, -1.05, 1.05, 1.55]) {
         p.box('metal', sx - 0.06, 0.15, -1.12, sx + 0.06, H, -1.02);
         p.box('metal', sx - 0.06, 0.15, 1.02, sx + 0.06, H, 1.12);
       }
 
-      // Hazard stripe round the base, and a control face with a few live LEDs.
+      // Hazard stripe round the base, and a control face with a few live LEDs
+      // — both on the front (-Z), so they read from wherever the wall put it.
       p.box('hazard', -1.61, 0.6, -1.11, 1.61, 0.78, 1.11);
-      p.box('metalDark', 1.6, 0.9, -0.5, 1.66, 1.6, 0.5);
+      p.box('metalDark', -0.5, 0.9, -1.16, 0.5, 1.6, -1.1);
       for (let i = 0; i < 4; i++) {
         const y = 1.0 + i * 0.14;
-        p.box(rng.chance(0.7) ? 'led' : 'screen', 1.66, y, -0.4, 1.68, y + 0.06, 0.4);
+        p.box(rng.chance(0.7) ? 'led' : 'screen', -0.4, y, -1.18, 0.4, y + 0.06, -1.16);
       }
 
       // The exhaust stack: decorative only, reaching up into the room's own
