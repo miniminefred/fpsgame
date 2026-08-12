@@ -3,6 +3,15 @@ import { clamp } from './util.js';
 
 // Keyboard state + pointer-lock overlay wiring.
 
+// Whether the on-screen controls have taken over (set by touch.js). The mouse
+// paths below stay wired but go quiet, because a tap on a phone still emits a
+// synthetic mousedown/mousemove pair at the finger: leave them live and every
+// tap on the HUD fires the gun, while every second tap snaps the view round to
+// wherever the finger landed. Nothing here decides the mode — touch.js owns
+// that, and this module only has to obey it.
+let touchMode = false;
+export function setTouchMode(on) { touchMode = on; }
+
 export function createInput() {
   const keys = {
     forward: false, back: false, left: false, right: false, jump: false,
@@ -16,7 +25,7 @@ export function createInput() {
   addEventListener('keyup', (e) => setKey(keys, e.code, false));
 
   addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return;
+    if (touchMode || e.button !== 0) return;
     keys.fire = true;
     keys.firePressed = true;
   });
@@ -75,12 +84,26 @@ const LOOK_SENSITIVITY = 0.002;   // radians per pixel, matching PointerLockCont
 // One camera, one ceiling.
 export const PITCH_LIMIT = Math.PI / 2 - 0.02;
 
+// Turn the view by an angular delta, in radians. Both the no-capture mouse
+// fallback below and the look pad in touch.js need exactly this, and they have
+// to agree: the pitch clamp already existed twice once, and the second copy is
+// what made the gun's kick point at the floor (see PITCH_LIMIT above). One
+// scratch Euler is safe here where a shared Vector3 would not be, because
+// setFromQuaternion overwrites all three components before anything reads them.
+const lookEuler = new Euler(0, 0, 0, 'YXZ');
+export function applyLook(camera, dYaw, dPitch) {
+  lookEuler.setFromQuaternion(camera.quaternion);
+  lookEuler.y -= dYaw;
+  lookEuler.x -= dPitch;
+  lookEuler.x = clamp(lookEuler.x, -PITCH_LIMIT, PITCH_LIMIT);
+  camera.quaternion.setFromEuler(lookEuler);
+}
+
 export function setupPointerLock(controls, domElement) {
   const overlay = document.getElementById('overlay');
   const crosshair = document.getElementById('crosshair');
   const hint = document.getElementById('lock-hint');
   const camera = controls.object;
-  const euler = new Euler(0, 0, 0, 'YXZ');
 
   let retry = 0;
   let lastX = null;
@@ -131,14 +154,12 @@ export function setupPointerLock(controls, domElement) {
   // between successive cursor positions instead. Same maths as
   // PointerLockControls, so the two modes feel identical.
   addEventListener('mousemove', (event) => {
-    if (controls.isLocked || !controls.engaged) return;
+    if (touchMode || controls.isLocked || !controls.engaged) return;
 
     if (lastX !== null) {
-      euler.setFromQuaternion(camera.quaternion);
-      euler.y -= (event.clientX - lastX) * LOOK_SENSITIVITY;
-      euler.x -= (event.clientY - lastY) * LOOK_SENSITIVITY;
-      euler.x = clamp(euler.x, -PITCH_LIMIT, PITCH_LIMIT);
-      camera.quaternion.setFromEuler(euler);
+      applyLook(camera,
+        (event.clientX - lastX) * LOOK_SENSITIVITY,
+        (event.clientY - lastY) * LOOK_SENSITIVITY);
     }
     lastX = event.clientX;
     lastY = event.clientY;
