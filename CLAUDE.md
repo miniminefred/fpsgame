@@ -99,6 +99,15 @@ relative scale (see the header of `src/dev-models.js` for its query parameters);
 points, building each gun through `weapons.js`'s own `buildWeaponRig` so it cannot drift
 from the gun the player holds.
 
+`/dev-layout.html` is the one to run after touching **anything in `style.css` or the HUD
+markup**. It loads the real game in an iframe, resizes it to a dozen real device sizes in
+both orientations, and measures every HUD element and every touch control against every
+other one — overlaps and anything hanging off an edge. The iframe is the whole trick: the
+media queries key off ITS viewport, so a 390x844 frame is a phone as far as the CSS is
+concerned even on a desktop monitor, and one page load covers every size. It found four
+collisions the day it was written. It does not run under `npm test`, because it needs a
+browser to lay anything out.
+
 ## Publishing — GitHub Pages
 
 Public at **github.com/miniminefred/fpsgame**, live at
@@ -111,9 +120,10 @@ load-bearing:
   URLs at build time, so without it every script, GLB and MP3 resolves to `/assets/...` and
   404s. Keeping it in the workflow is what lets `npm run dev` and `npm run preview` go on
   serving from `/` exactly as before — local development is untouched by any of this.
-- **The three dev harnesses ship with the game**, because `vite.config.js` lists them as
-  build inputs. `dev-guns.html`, `dev-models.html` and `dev-sounds.html` are all live on
-  the Pages site, which is how you inspect a model or a viewmodel without a checkout. It
+- **The four dev harnesses ship with the game**, because `vite.config.js` lists them as
+  build inputs. `dev-guns.html`, `dev-models.html`, `dev-sounds.html` and
+  `dev-layout.html` are all live on the Pages site, which is how you inspect a model, a
+  viewmodel or the phone HUD without a checkout. It
   costs nothing: they are separate entries the shipped `index.html` never references.
   `window.dev` is **not** exposed there — the `import.meta.env.DEV` block is compiled out
   of a production build, so `stairsEverywhere()` and the rest are dev-server only.
@@ -188,6 +198,7 @@ src/
   enemy-types.js  The roster: types, bystanders, floor themes, and the pickers
   enemy-anim.js   Per-frame rig animation, and the toppling death fallback
   input.js        Key state, pointer lock, and the fallback look mode when it is refused
+  touch.js        The on-screen controls, and deciding whether a finger is driving
   player.js       Movement, AABB collision against an indexed floor, health
   shooting.js     Hitscan: fire rate, ammo, spread, recoil, damage, prop impulses
   weapons.js      Five GLB viewmodels, recoil/reload animation, per-gun combat stats
@@ -207,6 +218,7 @@ src/
   dev-models.js   Drives dev-models.html
   dev-guns.js     Drives dev-guns.html
   dev-sounds.js   Drives dev-sounds.html
+  dev-layout.js   Drives dev-layout.html
   style.css       All UI styling
   gen/
     tiles.js      The tile vocabulary: sizes, the tile enum, tile<->world, bfs
@@ -226,9 +238,10 @@ public/sounds/    Generated MP3 sound set + sounds.json (the prompts that made i
 dev-models.html   Contact sheet for eyeballing the furniture models
 dev-guns.html     Contact sheet for the weapon viewmodels and their muzzle points
 dev-sounds.html   Measures the whole sound set and flags clips to regenerate
+dev-layout.html   Measures the HUD at a dozen device sizes and flags overlaps
 ```
 
-The three `dev-*.html` pages are **build inputs** (`vite.config.js`), which is about the
+The four `dev-*.html` pages are **build inputs** (`vite.config.js`), which is about the
 build gate rather than the output: Vite's default input is `index.html` alone, so
 `src/dev-*.js` was outside the module graph entirely and `npm run build` did not check a
 line of it. `dev-guns.js` imports named exports from `weapons.js`; renaming either used to
@@ -261,6 +274,16 @@ leave the build green and the harness silently broken.
 | 1 - 5 | Switch weapon (light to heavy) |
 | Esc | Release the mouse |
 | Click | Grab the mouse / restart after dying |
+
+On a touch device the same actions are on screen instead — see below.
+
+| Touch | Action |
+|-------|--------|
+| Left thumb, lower half | Virtual stick: walk, and sprint at full deflection |
+| Right thumb, anywhere free | Drag to look |
+| FIRE / JUMP / RELOAD | Bottom right, under the right thumb |
+| 1 - 5 | Weapon chips above the buttons |
+| Top-centre button | Fullscreen |
 
 ## Key systems
 
@@ -972,6 +995,50 @@ what damage with no direction (standing inside a blast) does. The pool is six we
 markup and the HUD never creates DOM; two hits within `HITDIR_MERGE` of each other refresh
 one wedge instead of stacking, because an SMG burst is one attacker and should look like
 one. `game.js` feeds position and yaw in every frame via `setFacing`.
+
+### Touch controls (`touch.js` + `#touch` in `index.html`)
+The game is playable on a phone, and none of it is on a PC — the on-screen controls do
+not exist until a finger actually lands. Four things carry the design:
+
+- **The layer is inert and the module hit-tests the rectangles itself.** Everything in
+  `#touch` is `pointer-events: none`, and one document-level `touchstart` listener works
+  out what each finger is doing by measuring the buttons. Walking, looking and shooting
+  are three fingers down at the same time, and per-element listeners see that as three
+  unrelated gesture streams with no way to tell which finger is which. Holding the touch
+  identifiers is what makes it one pair of hands on a controller. It also means a button
+  can never swallow the tap that starts the run, which is the rule the HUD already lives
+  under.
+- **Detection is a guess plus a fact.** `pointer: coarse` and no `any-pointer: fine` is
+  the opening guess, so a phone shows "TAP TO PLAY" and the touch legend before it has
+  been touched; a tablet with a trackpad correctly boots to the desktop controls. The
+  fact is the first real `touchstart`, which enables the controls whatever the guess
+  said — and a `KeyW` hands them back, so a laptop somebody prodded once returns to
+  mouse and keyboard.
+- **The mouse paths have to go quiet, not just be ignored.** A tap on a phone still emits
+  a synthetic `mousedown`/`mousemove` pair at the finger. Leave those live and every tap
+  fires the gun and every second tap snaps the view to wherever the finger landed, so
+  `input.js` holds a `touchMode` flag that shuts both off. The two exceptions are
+  deliberate: the tap that starts the run and the tap that restarts after dying are
+  `click` and `mousedown` handlers, so `touch.js` does **not** `preventDefault` while the
+  start screen or the death screen is up. Consuming those makes the game unstartable, on
+  mobile only.
+- **`applyLook` is shared with the mouse fallback**, because the pitch clamp already
+  existed twice once and the second copy is what aimed the gun's kick at the floor.
+
+The stick's base jumps to wherever the thumb landed and goes home on release, so its
+drawn position is a suggestion rather than a target. Sprint is full deflection rather
+than a sixth button.
+
+**The HUD moves out of the way rather than being drawn over.** The left column climbs
+above the stick and the right column above the button stack, off `--tier-*` variables in
+`style.css` that the buttons are laid out from — declared on `:root` and not on `#touch`,
+because `#health` and `#gunbox` live in `#hud` and a custom property on a sibling subtree
+reads as unset, which silently collapses the whole rule. Sizes are `vmin`-based and
+clamped at both ends, so a control is the same fraction of the short edge whichever way
+the phone is held. Small-screen typography is keyed off the viewport rather than off
+`body.touch`, because a browser window dragged thin has exactly the same problem and
+should not have to be touched before it fits. `/dev-layout.html` is what proves any of
+this.
 
 ### Sound (`sfx.js` + `audio.js` + `public/sounds/`)
 Everything audible is a generated MP3 (see the `sound-generation` skill; `sounds.json`
