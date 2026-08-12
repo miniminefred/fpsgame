@@ -694,6 +694,13 @@
       "variants": 2
     },
     {
+      "name": "moo",
+      "text": "single loud deep cow moo, one clear mooo vocalization, close mic, dry, no music, no other animals, no background noise",
+      "duration": 3.0,
+      "influence": 0.7,
+      "variants": 2
+    },
+    {
       "name": "panic-1",
       "text": "panicking man screaming \"I NEED TO POOP!\", desperate, close mic, dry, no music",
       "duration": 1.8,

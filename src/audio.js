@@ -158,6 +158,11 @@ const LIBRARY = {
   'door-open':  { variants: 3, gain: 0.55, pitch: 0.06 },
   'door-close': { variants: 3, gain: 0.50, pitch: 0.06 },
 
+  // The cow. One per floor at most and never more than that, so it is mixed to
+  // carry — the whole point of it is being heard from well outside the room it
+  // is standing in.
+  moo: { variants: 2, gain: 1.1, pitch: 0.05 },
+
   'floor-clear': { gain: 0.55, pitch: 0.01 },
   descend:       { gain: 0.70, pitch: 0.02 },
   'low-health':  { variants: 2, gain: 0.45, pitch: 0.02 },
@@ -510,6 +515,11 @@ export class GameAudio {
   /** Furniture shoved aside by the player walking into it. */
   propShove(point) {
     this._placed('prop-shove', point);
+  }
+
+  /** The cow, announcing itself. */
+  moo(point) {
+    this._placed('moo', point);
   }
 
   // --- building security --------------------------------------------------------
