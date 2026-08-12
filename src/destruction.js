@@ -180,6 +180,29 @@ export class Destruction {
     const glassy = entry.kind !== 'prop';
     this.effects.impact(point, _up.set(0, 1, 0), glassy ? 0xdff0ff : 0xffe4b0);
     this.audio.breakThing(entry.kind, entry.substance, point);
+
+    // The one destructible that fans its own kill out floor-wide, the same
+    // shape as `volatile` above: one flag on the entry, read here, handed to
+    // whoever wants to do something about it — see game.js's `_onPowerCut`.
+    if (entry.powerCore) this.onPowerCut?.(entry, point);
+  }
+
+  /**
+   * A fraction of the floor's ceiling panels, chosen at random, broken the
+   * same way a bullet would — same span erasure, same debris, same
+   * `lighting.removeFixture`. Used by the generator's power cut: dimming the
+   * fill lighting (see `lighting.setMood`) reads as "the lights are off", but
+   * a floor whose power just died should look like it, not just feel darker.
+   */
+  blackoutPanels(fraction) {
+    if (!this.level) return;
+    const panels = (this.level.destructibles ?? []).filter((e) => e.kind === 'panel' && !e.broken);
+    const n = Math.round(panels.length * fraction);
+    for (let i = 0; i < n && panels.length; i++) {
+      const [entry] = panels.splice(Math.floor(Math.random() * panels.length), 1);
+      const f = entry.fixtures[0];
+      this._shatter(entry, _up.set(0, -1, 0), _blast.set(f.x, f.y, f.z));
+    }
   }
 
   // Loose prop: retire the intact body and re-emit its boxes as independent

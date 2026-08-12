@@ -32,6 +32,18 @@ const SHOVE_INTERVAL = 0.4;
 // long between one moo and the next, randomised so it doesn't read as a loop.
 const MOO_INTERVAL = [7, 16];
 
+// The generator (see gen/props.js), on the floor that has one. `BLACKOUT_MOOD`
+// is the engine's own darkest supported level (see lighting.setMood's own
+// floor at 0.15) rather than a new number, so "the power just died" and "the
+// theme is Infestation" bottom out at the same place. The blast is deliberately
+// smaller than the extinguisher's (BLAST_RADIUS/BLAST_DAMAGE in
+// extinguishers.js) — this is a consequence of a fight, not a weapon.
+const BLACKOUT_MOOD = 0.15;
+const BLACKOUT_PANEL_FRACTION = 0.35;
+const POWER_CUT_BLAST_RADIUS = 5;
+const POWER_CUT_BLAST_DAMAGE = 45;
+const POWER_CUT_BLAST_PUSH = 6;
+
 export class Game {
   /**
    * Every collaborator is required. main.js is the only thing that constructs a
@@ -119,6 +131,7 @@ export class Game {
     this.enemies.onDeath = (e) => this._onEnemyDeath(e);
     this.doors.onRefused = (door) => this._onDoorRefused(door);
     this.wallet.onChange = (wallet, tier) => this._onCardTaken(wallet, tier);
+    this.destruction.onPowerCut = (entry, point) => this._onPowerCut(point);
 
     this.cameras.onSpotted = (cam) => this.audio.cameraSpotted(cam.at);
     this.cameras.onAlarm = () => this._onAlarm();
@@ -159,6 +172,39 @@ export class Game {
     this.hud.message('ALARM ALARM — INTRUDER', 1700,
       coming ? { text: `${coming} COMING FOR YOU`, ms: 2300 } : null);
     this._syncObjective();
+  }
+
+  /**
+   * The generator's own kill (see `powerCore` in gen/props.js), fanned out the
+   * same way an alarm is: `destruction.js` only knows that ONE flagged prop
+   * died and hands the point back here, and this is what a floor actually does
+   * about it. Two things sell "the power just died" rather than "the room got
+   * a bit darker": the fill lighting drops to the engine's floor (the same
+   * number a pitch-black theme already uses, so nothing here invents a
+   * darker-than-dark), and a real fraction of the floor's ceiling panels break
+   * outright. The blast on top is a consequence of the room you were just
+   * standing in coming apart, not a weapon — see the constants above for how
+   * it compares to the extinguisher's.
+   */
+  _onPowerCut(point) {
+    this.lighting.setMood(BLACKOUT_MOOD);
+    this.destruction.blackoutPanels(BLACKOUT_PANEL_FRACTION);
+
+    this.physics?.blast(point, POWER_CUT_BLAST_RADIUS, POWER_CUT_BLAST_PUSH);
+    this.destruction.blast(point, POWER_CUT_BLAST_RADIUS, POWER_CUT_BLAST_DAMAGE);
+    this.enemies.splash(point.x, point.z, POWER_CUT_BLAST_RADIUS, POWER_CUT_BLAST_DAMAGE, this.audio);
+
+    const dx = this.player.object.position.x - point.x;
+    const dy = this.player.object.position.y - point.y;
+    const dz = this.player.object.position.z - point.z;
+    const dist = Math.hypot(dx, dy, dz);
+    if (dist < POWER_CUT_BLAST_RADIUS) {
+      const damage = POWER_CUT_BLAST_DAMAGE * (1 - dist / POWER_CUT_BLAST_RADIUS);
+      this.player.takeDamage(damage);
+      this.hud.damage(Math.min(1, damage / 25), point.x, point.z);
+    }
+
+    this.hud.message('POWER FAILURE', 2200);
   }
 
   // --- keycards ---------------------------------------------------------------
