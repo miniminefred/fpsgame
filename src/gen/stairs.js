@@ -212,6 +212,26 @@ export function stairwellCut(layout, dir) {
 }
 
 /**
+ * Where the ordinary roof collider (`buildShell` in gen/build.js) has to stay
+ * off entirely: an attic's stairwell, same as the ceiling above it, AND an
+ * attic's whole room — not just its stairwell. The attic's own deck already
+ * covers that footprint one storey up, and a slab of ordinary roof sitting at
+ * floor height inside the attic would be the exact bug this collider exists to
+ * fix, just scoped to one room instead of the whole building.
+ */
+export function roofCollisionCut(layout) {
+  const cut = stairwellCut(layout, 1);
+  for (const plan of layout.stairs) {
+    if (plan.dir < 0) continue;
+    const r = plan.room;
+    for (let ty = r.y0; ty < r.y1; ty++) {
+      for (let tx = r.x0; tx < r.x1; tx++) cut[ty * layout.W + tx] = 1;
+    }
+  }
+  return cut;
+}
+
+/**
  * Every solid the stairs and the level they serve are made of, in world space.
  *
  * One function, so the picture, the player's collision, the solver and the

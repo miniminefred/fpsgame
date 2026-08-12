@@ -12,7 +12,7 @@ import {
 import { CARDS, READER_LIT, READER_OPEN } from '../keycards.js';
 import {
   UPPER_Y, UPPER_CEIL, LOWER_Y, PLATE_T, ROOF_T, approachTiles, levelFloor, levelY, punchRects,
-  stairBoxes, stairwellCut, stripTiles, rampSpec, approachRect,
+  stairBoxes, stairwellCut, roofCollisionCut, stripTiles, rampSpec, approachRect,
 } from './stairs.js';
 
 // Turns an abstract floorplan into everything the game needs: batched meshes,
@@ -76,9 +76,8 @@ export function buildLevel(scene, layout) {
   // through it. Both cuts are the same tiles; which surface loses them is which way
   // the stairs go.
   buildShell(layout, batcher, materials, colliders,
-    { ceiling: stairwellCut(layout, 1), floor: stairwellCut(layout, -1) });
+    { ceiling: stairwellCut(layout, 1), floor: stairwellCut(layout, -1), roof: roofCollisionCut(layout) });
   colliders.push(...floorPlate(layout));
-  colliders.push(...roofPlate(layout));
   buildDoorFrames(layout, batcher, materials);
   buildWindows(layout, batcher, materials, fixtures, destructibles);
   buildCeilingLights(layout, batcher, materials, fixtures, destructibles);
@@ -254,6 +253,24 @@ function buildShell(layout, batcher, materials, colliders, cuts) {
     batcher.add('ceiling', materials.ceiling, applyWorldUVs(floorSlab(layout, r, CEIL_H, false)),
       { castShadow: false });
   }
+
+  // The roof, as real collision — chunked the same way the walls are rather than
+  // as one floor-spanning slab: `_moveHorizontal` resolves a collision by pushing
+  // to the box's OWN far face, which is the right move for something the size of
+  // a room and a same-frame teleport to the edge of the building for something
+  // the size of the floor. A giant unchunked roof did exactly that the moment a
+  // player's feet — from a jump, or just standing on tall furniture — landed in
+  // the band this collider blocks but nothing else does.
+  //
+  // An attic's own ROOM, not just its stairwell, stays out of this pass entirely:
+  // its deck (`stairBoxes`) already covers that footprint one storey up, and a
+  // room's worth of "roof" sitting at floor height inside the attic would be the
+  // same bug this whole pass exists to fix, just scoped to one room.
+  for (const r of maskToRects(masked(tiles, cuts.roof), W, H, isOpen)) {
+    const x0 = worldX(layout, r.x0), x1 = worldX(layout, r.x1);
+    const z0 = worldZ(layout, r.y0), z1 = worldZ(layout, r.y1);
+    colliders.push({ minX: x0, maxX: x1, minZ: z0, maxZ: z1, base: WALL_H, top: WALL_H + ROOF_T, building: true });
+  }
 }
 
 // Tiles with a stairwell's hole taken out of them, for the surface it passes
@@ -292,37 +309,6 @@ function floorPlate(layout) {
   return rects.map((r) => ({
     minX: r.x0, maxX: r.x1, minZ: r.z0, maxZ: r.z1,
     base: -PLATE_T, top: 0, building: true,
-  }));
-}
-
-/**
- * The building's own roof, as coarse collision — the mirror of `floorPlate`.
- *
- * A plain room's wall stops at `WALL_H` and nothing was ever above it: the
- * suspended ceiling drawn there is `batcher.add`-only, so a body that got above a
- * wall's `top` by any means had the run of the whole floor's rooftops, with
- * nothing to block it until the next storey's own roof. This slab is what a
- * player standing at `WALL_H` should actually meet.
- *
- * An attic punches out its own room's WHOLE footprint here, not just its
- * stairwell — its own deck (`stairBoxes`) already covers that footprint at this
- * exact height, cut for the stairwell it actually needs open, and this slab
- * sitting on top of that deck rather than beside its hole would seal the attic's
- * own floor against the attic's own player.
- */
-function roofPlate(layout) {
-  let rects = [{
-    x0: worldX(layout, 0), z0: worldZ(layout, 0),
-    x1: worldX(layout, layout.W), z1: worldZ(layout, layout.H),
-  }];
-  for (const plan of layout.stairs) {
-    if (plan.dir < 0) continue;
-    const f = levelFloor(layout, plan);
-    rects = punchRects(rects, { x0: f.minX, z0: f.minZ, x1: f.maxX, z1: f.maxZ });
-  }
-  return rects.map((r) => ({
-    minX: r.x0, maxX: r.x1, minZ: r.z0, maxZ: r.z1,
-    base: WALL_H, top: WALL_H + ROOF_T, building: true,
   }));
 }
 
