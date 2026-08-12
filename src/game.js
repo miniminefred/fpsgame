@@ -1,6 +1,7 @@
 import { Level, distanceToExit } from './level.js';
 import { makeRng, randomSeed } from './gen/rng.js';
 import { CARDS } from './keycards.js';
+import { PLAYER_RADIUS } from './metrics.js';
 
 // The run: generate a floor, clear it, take the exit down, repeat forever.
 //
@@ -283,6 +284,24 @@ export class Game {
     this.hud.message(`LOCKED — NEEDS A ${(spec?.name ?? '').toUpperCase()} KEYCARD`, 1400);
   }
 
+  // DEV-ONLY testing aid, called right after the real spawn is placed — see
+  // the call site. Finds any walkable, clear tile inside the generator room
+  // and re-places the player there instead; a floor without one is untouched.
+  _devSpawnByGenerator(level) {
+    const room = level.layout.rooms.find((r) => r.role === 'generator');
+    if (!room) return;
+
+    for (let tries = 0; tries < 60; tries++) {
+      const tx = room.x0 + Math.floor(Math.random() * (room.x1 - room.x0));
+      const ty = room.y0 + Math.floor(Math.random() * (room.y1 - room.y0));
+      if (!level.nav.walkable(tx, ty)) continue;
+      const x = level.nav.wx(tx), z = level.nav.wz(ty);
+      if (!level.nav.clear(x, z, PLAYER_RADIUS)) continue;
+      this.player.placeAt(x, z);
+      return;
+    }
+  }
+
   // Fresh run from floor 1.
   start() {
     this.floor = 0;
@@ -327,6 +346,12 @@ export class Game {
     // for them — see badgeTiles there and setBadgeTiles in nav.js.
     level.nav.setBadgeTiles(this.doors.badgeTiles());
     this.player.placeAt(level.spawn.x, level.spawn.z);
+    // DEV-ONLY: land beside the generator room instead of the normal lobby
+    // spawn, when this floor rolled one — testing the room without a walk
+    // across the floor first. Stripped from production builds along with
+    // the rest of window.dev; a floor with no generator room just keeps the
+    // ordinary spawn.
+    if (import.meta.env.DEV) this._devSpawnByGenerator(level);
     // You step out of the lift with your sidearm out and everything loaded. The
     // arrival is the one moment in a floor where the game gets to put you
     // straight, and both halves of that are about starting from a known place:
