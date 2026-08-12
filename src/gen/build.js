@@ -51,6 +51,7 @@ const GRADE = {
   server: BACK_OF_HOUSE,
   closet: BACK_OF_HOUSE,
   security: BACK_OF_HOUSE,
+  generator: BACK_OF_HOUSE,
 };
 
 export function buildLevel(scene, layout) {
@@ -91,6 +92,7 @@ export function buildLevel(scene, layout) {
   buildDoorFrames(layout, batcher, materials);
   buildWindows(layout, batcher, materials, fixtures, destructibles);
   buildCeilingLights(layout, batcher, materials, fixtures, destructibles);
+  buildGeneratorLights(layout, batcher, materials, fixtures, destructibles);
   // Doors are their own meshes rather than batched geometry, for the obvious
   // reason: a batched thing cannot move.
   // One instanced set of badge readers for every door on the floor, whichever
@@ -609,6 +611,10 @@ function buildCeilingLights(layout, batcher, materials, fixtures, destructibles)
   };
 
   for (const room of layout.rooms) {
+    // No suspended ceiling to hang a panel from — see buildGeneratorLights,
+    // which mounts this room's fixtures on the walls instead.
+    if (room.role === 'generator') continue;
+
     const x0 = worldX(layout, room.x0), x1 = worldX(layout, room.x1);
     const z0 = worldZ(layout, room.y0), z1 = worldZ(layout, room.y1);
     const nx = Math.max(1, Math.round((x1 - x0) / LIGHT_PITCH));
@@ -632,6 +638,57 @@ function buildCeilingLights(layout, batcher, materials, fixtures, destructibles)
       const runX = tiles[ty * W + tx - 4] === CORRIDOR && tiles[ty * W + tx + 4] === CORRIDOR;
       addFixture(worldX(layout, tx + 0.5), worldZ(layout, ty + 0.5), runX);
     }
+  }
+}
+
+// The generator room's own lights: mounted on its walls rather than its
+// ceiling, because it doesn't have one (see generatorRoomCut). Same
+// fixture/destructible shape as a ceiling panel — kind: 'panel', one light
+// each, shot out or blacked out the same way — just standing proud of a wall
+// instead of set into a suspended tile.
+function buildGeneratorLights(layout, batcher, materials, fixtures, destructibles) {
+  const room = layout.rooms.find((r) => r.role === 'generator');
+  if (!room) return;
+
+  const x0 = worldX(layout, room.x0), x1 = worldX(layout, room.x1);
+  const z0 = worldZ(layout, room.y0), z1 = worldZ(layout, room.y1);
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  const grade = GRADE.generator;
+  const Y = 2.6;          // below WALL_H, well above head height
+  const STANDOFF = 0.14;  // off the wall face, the same idea as edgeProp's
+
+  const walls = [
+    { x: cx, z: z0 + STANDOFF, alongX: true },
+    { x: cx, z: z1 - STANDOFF, alongX: true },
+    { x: x0 + STANDOFF, z: cz, alongX: false },
+    { x: x1 - STANDOFF, z: cz, alongX: false },
+  ];
+
+  for (const w of walls) {
+    const hw = w.alongX ? 0.5 : 0.12;
+    const hd = w.alongX ? 0.12 : 0.5;
+
+    const spans = batcher.beginSpans();
+    batcher.add(grade.key, materials[grade.key],
+      slab(w.x - hw, w.z - hd, w.x + hw, w.z + hd, Y, false), { castShadow: false, receiveShadow: false });
+    batcher.endSpans();
+
+    const fixture = { x: w.x, y: Y - 0.05, z: w.z, color: grade.color, intensity: grade.intensity, distance: 12 };
+    fixtures.push(fixture);
+
+    destructibles.push({
+      kind: 'panel',
+      hp: PANEL_HP,
+      spans,
+      colliders: [],
+      navTiles: [],
+      fixtures: [fixture],
+      parts: [{
+        material: materials[grade.key],
+        x0: w.x - hw, y0: Y - 0.03, z0: w.z - hd, x1: w.x + hw, y1: Y, z1: w.z + hd,
+      }],
+      broken: false,
+    });
   }
 }
 
