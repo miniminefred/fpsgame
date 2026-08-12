@@ -45,13 +45,17 @@ git commit -m "<short description of what changed>"
 One logical change = one commit. Never batch multiple changes into one commit, and never
 leave changes uncommitted at the end of a session. This is the rollback safety net.
 
-**Every commit is `miniminefred` and nothing else** —
+**Every commit is authored and committed as `miniminefred`** —
 `miniminefred <315911906+miniminefred@users.noreply.github.com>`, which is set globally
-in `~/.gitconfig` and again as this repo's local config. Commit as that identity and
-nothing else, and never add a `Co-Authored-By: Claude ...` trailer or a
-"Generated with Claude Code" line. This repo is **public**, so a commit under another
-identity publishes it in permanent history: all 152 commits had to be rewritten and
-force-pushed on 2026-08-11 to get it out again. See `~/.claude/CLAUDE.md`.
+in `~/.gitconfig` and again as this repo's local config. That identity and nothing else:
+no other name or address, no `Co-Authored-By: Claude ...` trailer, no "Generated with
+Claude Code" line. This repo is **public**, so every commit publishes whatever identity
+it carries into permanent history, permanently — and the `users.noreply.github.com` form
+is what links a commit to the GitHub account without exposing a real address. Getting
+this right is cheap; correcting it is not, as the rewrite and force-push of all 152
+commits on 2026-08-11 established. If a clone ever picks up a *local* `user.name` /
+`user.email` saying otherwise, fix the config rather than committing under it.
+See `~/.claude/CLAUDE.md`.
 
 ### 2. Start the dev server on session start
 Check if already running; start if not:
