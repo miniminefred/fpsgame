@@ -28,6 +28,10 @@ const BREATH_SPEED = 4;        // moving at least this fast to be out of breath
 // has to happen here, where the collision is actually understood.
 const SHOVE_INTERVAL = 0.4;
 
+// The cow (see placeCow in gen/build.js), on the rare floor that has one: how
+// long between one moo and the next, randomised so it doesn't read as a loop.
+const MOO_INTERVAL = [7, 16];
+
 export class Game {
   /**
    * Every collaborator is required. main.js is the only thing that constructs a
@@ -104,6 +108,8 @@ export class Game {
     this.pulseTimer = 0;
     this.breathTimer = 0;
     this.shoveTimer = 0;
+    this.cow = null;
+    this.mooTimer = 0;
 
     this.shooting.onPropHit = (dyn, dir, point, damage) =>
       this.destruction.damageProp(dyn, dir, point, damage);
@@ -314,6 +320,9 @@ export class Game {
     this.lighting.setOcclusion(level.nav.losClear.bind(level.nav));
     this.minimap.setLevel(level.map);
 
+    this.cow = level.cow;
+    this.mooTimer = this.cow ? randomMooDelay() : 0;
+
     this.cleared = false;
     this.droppedBlack = false;
     this.hud.setWatch(0);
@@ -418,6 +427,7 @@ export class Game {
 
       this._checkFloorState(dt, level);
       this._vitals(dt);
+      this._cowMoo(dt);
     }
 
     // Before setHealth, because the hit wedges are aimed off this and a hit
@@ -488,6 +498,17 @@ export class Game {
     }
   }
 
+  // The cow (see placeCow in gen/build.js), on the rare floor that has one.
+  // Its own position rather than the player's — the whole point is that it
+  // carries across the floor from a room you are not standing in.
+  _cowMoo(dt) {
+    if (!this.cow) return;
+    this.mooTimer -= dt;
+    if (this.mooTimer > 0) return;
+    this.mooTimer = randomMooDelay();
+    this.audio.moo({ x: this.cow.x, y: 1, z: this.cow.z });
+  }
+
   _syncObjective(remaining = this.enemies.hostileCount) {
     this.hud.setObjective(this.cleared
       ? 'Find the exit'
@@ -509,6 +530,10 @@ export class Game {
     this.start();
     return true;
   }
+}
+
+function randomMooDelay() {
+  return MOO_INTERVAL[0] + Math.random() * (MOO_INTERVAL[1] - MOO_INTERVAL[0]);
 }
 
 // Difficulty curves. Every one of these is deliberately gentle — the floors get

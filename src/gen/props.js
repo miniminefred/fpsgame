@@ -622,6 +622,18 @@ export const PROPS = {
       p.obstacle(-0.99, -0.39, 0.99, 0.39, H);
     },
   },
+
+  // How a cow got into an office block is not this file's problem. Purely
+  // decorative, and shot-proof rather than destructible — it's a fixture of
+  // the floor it turns up on, not furniture (see enemies.js for how rarely,
+  // and how randomly, that is).
+  cow: {
+    w: 0.6, d: 2.3, model: 'cow', hp: 0,
+    build(p) {
+      p.box('plastic', -0.27, 0, -1.1, 0.27, 1.15, 1.1);
+      p.obstacle(-0.27, -1.1, 0.27, 1.1, 1.15);
+    },
+  },
 };
 
 // --- placement --------------------------------------------------------------

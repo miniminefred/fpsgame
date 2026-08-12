@@ -111,6 +111,7 @@ export function buildLevel(scene, layout) {
   buildStairs(layout, batcher, materials, { colliders, blocked, occupied, fixtures }, rng);
   furnishRooms(layout, sink, rng);
   furnishCorridors(layout, sink, rng);
+  const cow = placeCow(layout, sink, rng);
   // Last, and through sinks of their own: a level off the ground floor has its own
   // occupancy and its own nav layer. See furnishLevels.
   const levelBlocked = new Uint8Array(W * H);
@@ -160,6 +161,7 @@ export function buildLevel(scene, layout) {
     doors,
     fixtures,
     exitObject,
+    cow,             // {x, z} if this floor rolled one, else null — see placeCow
     nav: {
       W, H, TILE, ox: layout.ox, oz: layout.oz, walk, tiles,
       levels: levelNav(layout, levelBlocked),
@@ -1226,6 +1228,32 @@ function furnishRooms(layout, sink, rng) {
     };
     furnish(sink, room, bounds, rng);
   }
+}
+
+// How a cow got into an office block is not this file's problem either — see
+// the `cow` entry in gen/props.js. One floor in COW_CHANCE gets one, in one
+// random room, tried after every room is furnished so it only ever claims
+// floor space nothing else wanted. Not the spawn room (nowhere to hide a punch
+// line before the player has even moved) or the exit (the last thing seen on
+// the way out is the objective, not the joke).
+const COW_CHANCE = 0.15;
+
+function placeCow(layout, sink, rng) {
+  if (!rng.chance(COW_CHANCE)) return null;
+
+  const candidates = rng.shuffle(
+    layout.rooms.filter((r) => r !== layout.spawnRoom && r !== layout.exitRoom));
+  for (const room of candidates) {
+    const x0 = worldX(layout, room.x0) + 0.2, x1 = worldX(layout, room.x1) - 0.2;
+    const z0 = worldZ(layout, room.y0) + 0.2, z1 = worldZ(layout, room.y1) - 0.2;
+    if (x1 - x0 < 1 || z1 - z0 < 1) continue;
+
+    for (let tries = 0; tries < 12; tries++) {
+      const x = rng.range(x0, x1), z = rng.range(z0, z1);
+      if (tryPlace(sink, 'cow', x, z, rng.int(0, 3), rng)) return { x, z };
+    }
+  }
+  return null;
 }
 
 // --- stairs -----------------------------------------------------------------
