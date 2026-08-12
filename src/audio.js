@@ -166,7 +166,11 @@ const LIBRARY = {
   // The floor cleaner's motor. A bed as far as decoding goes — measured but not
   // level-corrected or onset-trimmed, because both would break the seam it
   // loops on — but played through a panner that follows it around the floor.
-  roomba: { gain: 0.55, pitch: 0, bed: true },
+  // Gain in line with the other beds below rather than nearly double them: it is
+  // positional with a 4 m refDistance (see sfx.js), so standing anywhere near it
+  // — which is the only way to ever hear it — was full volume, for as long as it
+  // stayed in the room, which a one-shot sound never has to survive.
+  roomba: { gain: 0.28, pitch: 0, bed: true },
 
   'amb-office': { gain: 0.30, pitch: 0, bed: true },
   'amb-drone':  { gain: 0.22, pitch: 0, bed: true },
