@@ -3,7 +3,7 @@ import { clamp } from '../util.js';
 import {
   TILE, SOLID, ROOM, CORRIDOR, DOOR, isOpen, bfs, worldX, worldZ,
 } from './tiles.js';
-import { assignLocks, lockedMask, prologueRegion } from './locks.js';
+import { assignLocks, lockedMask, prologueRegion, doorsOnRoom } from './locks.js';
 import { planStairs } from './stairs.js';
 
 // Procedural office floorplan.
@@ -267,7 +267,7 @@ export function generateLayout(seed, floorNumber) {
     ? rng.pick(ranked.slice(0, Math.max(1, Math.ceil(ranked.length * 0.25)))).r
     : spawnRoom;
 
-  assignRoles(live, spawnRoom, exitRoom, rng);
+  assignRoles(live, spawnRoom, exitRoom, doors, rng);
   // On its own stream, not the floor's. Everything downstream of here — the
   // furniture in every room on the floor — draws from `rng`, so spending a
   // variable number of numbers on picking locks would re-roll the contents of a
@@ -671,7 +671,7 @@ const ROLE_PICKS = {
   small: ['office', 'office', 'copyroom', 'storage', 'breakroom', 'utility', 'archive', 'server'],
 };
 
-function assignRoles(rooms, spawnRoom, exitRoom, rng) {
+function assignRoles(rooms, spawnRoom, exitRoom, doors, rng) {
   for (const r of rooms) r.role = rng.pick(ROLE_PICKS[roleBranch(r)]);
 
   // Guarantee the flavour rooms the floor is meant to have — but only in rooms
@@ -691,12 +691,20 @@ function assignRoles(rooms, spawnRoom, exitRoom, rng) {
     // generator sits on the wall facing it (see generatorRoom in gen/rooms.js),
     // and a second doorway would either land behind the generator or give the
     // room a second "front", neither of which reads as the one-way plant room
-    // this is meant to be. Not every floor manages all of this, and that's
-    // fine: see buildLevel's generator handling, which is opportunistic the
-    // same way the security office and broom closet are.
+    // this is meant to be. Checked with `doorsOnRoom` rather than `r.doors`,
+    // which counts only the doors the room itself cut — the room next door may
+    // have cut its own into a wall shared with this one (see doorsOnRoom's own
+    // comment in gen/locks.js), and a hidden second doorway is worse than
+    // whatever a real one would have been: the generator's own wall-facing
+    // placement, and every clearance lane a hidden door pulls in behind it
+    // (see reserveClearances), start fighting over the same floor. Not every
+    // floor manages all of this, and that's fine: see buildLevel's generator
+    // handling, which is opportunistic the same way the security office and
+    // broom closet are.
     ['generator', (r) => {
       const long = Math.max(r.wTiles, r.hTiles), short = Math.min(r.wTiles, r.hTiles);
-      return r.areaM2 > 110 && short >= 15 && long / short >= 1.35 && r.doors.length === 1;
+      return r.areaM2 > 110 && short >= 15 && long / short >= 1.35
+        && doorsOnRoom(doors, r).length === 1;
     }],
     ['storage', (r) => r.areaM2 < 90],
     ['copyroom', (r) => r.areaM2 < 55],

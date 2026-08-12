@@ -419,7 +419,7 @@ function survivesWithout(sealed, W, H, sx, sy, rooms, candidate, locks, exitRoom
  * lock at all — so locking a room means locking every opening that leads into
  * it, which is what this finds.
  */
-function doorsOnRoom(doors, room) {
+export function doorsOnRoom(doors, room) {
   const inside = (x, y) => x >= room.x0 && x < room.x1 && y >= room.y0 && y < room.y1;
   return doors.filter((d) => {
     for (let y = d.y0; y < d.y1; y++) {
