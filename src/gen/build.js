@@ -1339,7 +1339,7 @@ function buildStairs(layout, batcher, materials, masks, rng) {
 // one plane is a z-fight, two solids that interpenetrate is not.
 function drawStep(batcher, materials, b, plan) {
   batcher.add('trim', materials.trim,
-    boxBetween(b.minX, b.y0, b.minZ, b.maxX, b.y1 - TREAD_SKIN, b.maxZ));
+    boxBetween(b.minX, b.base, b.minZ, b.maxX, b.y1 - TREAD_SKIN, b.maxZ));
   batcher.add('vinyl', materials.vinyl, applyWorldUVs(
     boxBetween(b.minX, b.y1 - TREAD_SKIN, b.minZ, b.maxX, b.y1, b.maxZ)));
 
