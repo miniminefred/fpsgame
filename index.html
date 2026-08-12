@@ -2,7 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- viewport-fit=cover so the canvas reaches under a notch; the HUD is then
+       held off it with env(safe-area-inset-*). No user scaling, because a
+       pinch mid-firefight zooms the page rather than the scope, and double-tap
+       to zoom puts a 300 ms delay on every tap that survives it. -->
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0e1114" />
   <title>Alfred — Office Descent</title>
   <link rel="stylesheet" href="/src/style.css" />
 </head>
@@ -14,7 +23,7 @@
     <div class="tag">Procedural &middot; Endless</div>
     <h1>OFFICE DESCENT</h1>
     <p>Clear the floor. Find the exit. Descend. There is no ground floor.</p>
-    <div class="cta">Click to play</div>
+    <div class="cta"><span class="pc-only">Click to play</span><span class="touch-only">Tap to play</span></div>
     <!-- Two flex rows rather than one wrapped block: the <kbd>s are bordered
          boxes taller than their own line box, so relying on line-height to keep
          the rows apart makes them collide. -->
@@ -30,6 +39,12 @@
         <span><kbd>R</kbd> reload</span>
         <span><kbd>1</kbd>–<kbd>5</kbd> weapons</span>
       </div>
+    </div>
+    <!-- Swapped in for the key legend on a touch device. Same job, and the
+         keyboard rows are meaningless on a phone. -->
+    <div class="keys touch-keys">
+      <div class="row"><span>Left thumb walks</span><span>Right thumb looks</span></div>
+      <div class="row"><span>Buttons: fire, jump, reload</span><span>1–5 switch weapon</span></div>
     </div>
   </div>
 
@@ -103,8 +118,38 @@
         <div class="stat"><span id="go-floor">1</span><label>floor reached</label></div>
         <div class="stat"><span id="go-kills">0</span><label>hostiles down</label></div>
       </div>
-      <div class="go-cta">Click to restart</div>
+      <div class="go-cta"><span class="pc-only">Click to restart</span><span class="touch-only">Tap to restart</span></div>
     </div>
+  </div>
+
+  <!-- ============================================================
+       Touch controls. In the markup on every device and shown only
+       under body.touch, which src/touch.js sets when it decides a
+       finger is driving.
+
+       These are VISUALS ONLY — the whole layer is pointer-events:
+       none and touch.js hit-tests the rectangles itself, because
+       walking, looking and shooting are three fingers at once and
+       per-element listeners cannot tell one from another. It is also
+       what keeps the layer from ever eating the tap that starts the
+       run, which is the same rule the HUD lives under.
+       ============================================================ -->
+  <div id="touch" aria-hidden="true">
+    <div id="tstick"><div id="tstick-nub"></div></div>
+
+    <div class="tbtn tbtn-fire" data-btn="fire">FIRE</div>
+    <div class="tbtn tbtn-sub" data-btn="jump">JUMP</div>
+    <div class="tbtn tbtn-sub" data-btn="reload">RE<br />LOAD</div>
+
+    <div id="tweapons">
+      <div class="twep" data-btn="0">1</div>
+      <div class="twep" data-btn="1">2</div>
+      <div class="twep" data-btn="2">3</div>
+      <div class="twep" data-btn="3">4</div>
+      <div class="twep" data-btn="4">5</div>
+    </div>
+
+    <div class="tbtn tbtn-full" data-btn="full">&#9974;</div>
   </div>
 
   <script type="module" src="/src/main.js"></script>

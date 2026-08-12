@@ -2,6 +2,7 @@ import { Timer } from 'three';
 import { createRenderer, createScene, createCamera, handleResize } from './scene.js';
 import { createLighting } from './lighting.js';
 import { createInput, onDigitKeys } from './input.js';
+import { createTouchControls } from './touch.js';
 import { Player } from './player.js';
 import { Weapons } from './weapons.js';
 import { Effects } from './effects.js';
@@ -42,7 +43,13 @@ const audio = new GameAudio();
 const lighting = createLighting(scene);
 
 const physics = new Physics();
-const weapons = new Weapons(camera, (i, name) => hud.setWeapon(i, name));
+// Declared before the gun so the weapon-change callback can light the matching
+// on-screen chip; it is only ever read after createTouchControls has run.
+let touch = null;
+const weapons = new Weapons(camera, (i, name) => {
+  hud.setWeapon(i, name);
+  touch?.setWeapon(i);
+});
 const casings = new Casings(scene, physics);
 const shooting = new Shooting({
   camera, controls: player.controls, keys, weapons, effects, enemies, hud, audio, physics, casings,
@@ -70,11 +77,18 @@ const game = new Game({
   keycards, wallet, ragdolls, cameras,
 });
 
-onDigitKeys((n) => {
+// One way to change weapon, whether it came from a number key or a thumb.
+function selectWeapon(n) {
   if (n >= weapons.count || n === weapons.active) return;
   weapons.select(n);
   shooting.onWeaponChange();
+}
+onDigitKeys(selectWeapon);
+
+touch = createTouchControls({
+  keys, camera, controls: player.controls, weapons, selectWeapon,
 });
+touch?.setWeapon(weapons.active);
 addEventListener('resize', () => weapons.layout());
 
 // Any click after you die starts a new run. The same click is also the gesture
@@ -91,6 +105,7 @@ if (import.meta.env.DEV) {
   window.dev = {
     game, player, enemies, shooting, keys, physics, destruction, extinguishers, doors,
     scene, camera, weapons, renderer, audio, casings, keycards, wallet, ragdolls, cameras,
+    touch,
   };
 }
 

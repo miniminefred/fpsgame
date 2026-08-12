@@ -17,6 +17,16 @@
   --font: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
   /* The office is bright grey-white, so every HUD glyph carries its own shade. */
   --shade: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 14px rgba(0, 0, 0, 0.55);
+
+  /* The canvas reaches under the notch and the home indicator (viewport-fit=
+     cover in the markup); nothing readable is allowed to. Every HUD corner is
+     anchored off these rather than off the raw edge, so the same rules serve a
+     desktop window — where all four resolve to zero — and a phone held
+     sideways, where one of them is 40-odd pixels of camera housing. */
+  --sa-t: env(safe-area-inset-top, 0px);
+  --sa-r: env(safe-area-inset-right, 0px);
+  --sa-b: env(safe-area-inset-bottom, 0px);
+  --sa-l: env(safe-area-inset-left, 0px);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -29,7 +39,19 @@ html, body {
   font-family: var(--font);
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
+  /* Mobile hygiene. The tap highlight is a blue-grey flash over whatever the
+     finger lands on, the callout is the long-press "copy / share" sheet, and
+     overscroll is the pull-to-refresh that otherwise reloads the run whenever
+     a look-swipe starts near the top of the screen. */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+  touch-action: manipulation;
 }
+/* Once the on-screen controls are live the page has no gestures of its own
+   left: every touch is aimed at the game, and a browser that keeps panning or
+   pinching on top of that fights the player for their own thumbs. */
+body.touch { touch-action: none; }
 
 #app { position: fixed; inset: 0; }
 canvas { display: block; }
@@ -183,7 +205,7 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
 
 /* ------------------------------------------------- top left: floor + task */
 #mission {
-  position: absolute; left: 20px; top: 18px;
+  position: absolute; left: calc(20px + var(--sa-l)); top: calc(18px + var(--sa-t));
   padding-left: 10px; border-left: 2px solid var(--accent);
 }
 #floor {
@@ -199,7 +221,7 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
 
 /* ------------------------------------------------ top right: map + score */
 #mapbox {
-  position: absolute; right: 20px; top: 18px;
+  position: absolute; right: calc(20px + var(--sa-r)); top: calc(18px + var(--sa-t));
   display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
 }
 #minimap {
@@ -217,7 +239,7 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
 
 /* ------------------------------------------------------ bottom left: health */
 #health {
-  position: absolute; left: 20px; bottom: 20px;
+  position: absolute; left: calc(20px + var(--sa-l)); bottom: calc(20px + var(--sa-b));
 }
 #health .label {
   font-size: 10px; font-weight: 500; letter-spacing: 3px;
@@ -249,7 +271,7 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
 
 /* ------------------------------------------------- bottom right: gun + ammo */
 #gunbox {
-  position: absolute; right: 20px; bottom: 20px;
+  position: absolute; right: calc(20px + var(--sa-r)); bottom: calc(20px + var(--sa-b));
   display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
   text-shadow: var(--shade);
 }
@@ -414,3 +436,249 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
   transition: opacity 0.25s ease;
 }
 #lock-hint.visible { opacity: 1; }
+
+/* ==========================================================================
+   Touch controls
+   ==========================================================================
+   The layer itself is inert — pointer-events: none on everything, because
+   src/touch.js hit-tests the rectangles by hand off one document-level touch
+   listener. Walking, looking and firing are three fingers down at once, and
+   per-element listeners see three unrelated gesture streams; hit-testing
+   ourselves is also what keeps a button from ever swallowing the tap that
+   starts the run.
+
+   Sizes are vmin-based and clamped at both ends: vmin so a control is the same
+   fraction of the short edge whichever way the phone is held, clamped so a
+   tablet does not end up with a fire button the size of a saucer and a small
+   phone does not get one too small to hit.
+   ========================================================================== */
+#touch {
+  --edge-l: calc(14px + var(--sa-l));
+  --edge-r: calc(14px + var(--sa-r));
+  --edge-b: calc(14px + var(--sa-b));
+  --stick: clamp(92px, 24vmin, 132px);
+  --fire:  clamp(64px, 17vmin, 92px);
+  --sub:   clamp(46px, 12vmin, 62px);
+  --chip:  clamp(27px, 7.4vmin, 36px);
+  --gap:   10px;
+  /* The right-hand stack, measured from the bottom: fire, then the row above
+     it, then the weapon chips, then the ammo readout. Written once here so
+     moving one tier moves everything above it — #gunbox is in the HUD and
+     cannot see these otherwise. */
+  --tier-1: calc(var(--edge-b) + var(--fire) + var(--gap) + var(--sub));
+  --tier-2: calc(var(--tier-1) + 12px);
+  --tier-3: calc(var(--tier-2) + var(--chip) + 12px);
+
+  position: fixed; inset: 0; z-index: 6;
+  display: none;
+  pointer-events: none;
+  user-select: none; -webkit-user-select: none;
+}
+body.touch #touch { display: block; }
+
+/* Nothing but the fullscreen button is usable while the start screen or the
+   death screen is up, and a stick you cannot move reads as a broken one. */
+#overlay:not(.hidden) ~ #touch > :not(.tbtn-full),
+body.dead #touch > :not(.tbtn-full) { opacity: 0; }
+#touch > * { transition: opacity 0.2s ease; }
+
+/* ------------------------------------------------------------------- stick */
+/* Positioned by its centre, because touch.js moves the base to wherever the
+   thumb lands and then clears the inline left/top to send it home — the two
+   positions have to be expressed the same way or it jumps on release. */
+#tstick {
+  position: absolute;
+  left: calc(var(--edge-l) + var(--stick) / 2);
+  top: calc(100% - var(--edge-b) - var(--stick) / 2);
+  width: var(--stick); height: var(--stick);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(16, 20, 24, 0.28);
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
+}
+#tstick.active { opacity: 1; }
+#tstick-nub {
+  position: absolute; left: 50%; top: 50%;
+  width: 42%; height: 42%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1px solid rgba(242, 245, 247, 0.42);
+  background: rgba(242, 245, 247, 0.2);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* ----------------------------------------------------------------- buttons */
+/* The pressed state is colour only, never a transform: .tbtn-full is centred
+   with translateX(-50%) and a scale would have to know that. */
+.tbtn {
+  position: absolute;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(16, 20, 24, 0.42);
+  color: var(--ink-dim);
+  font-weight: 500; letter-spacing: 1.4px; text-transform: uppercase;
+  line-height: 1.05; text-align: center;
+  text-shadow: var(--shade);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+.tbtn[hidden] { display: none; }
+.tbtn.press {
+  background: rgba(127, 216, 232, 0.24);
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.tbtn-fire {
+  right: var(--edge-r); bottom: var(--edge-b);
+  width: var(--fire); height: var(--fire);
+  font-size: clamp(10px, 2.7vmin, 13px);
+  border-color: rgba(255, 77, 77, 0.45);
+  background: rgba(104, 18, 18, 0.36);
+  color: #ffdada;
+}
+.tbtn-fire.press { background: rgba(255, 77, 77, 0.36); border-color: var(--danger); color: #fff; }
+
+.tbtn-sub {
+  width: var(--sub); height: var(--sub);
+  font-size: clamp(8px, 1.9vmin, 10px); letter-spacing: 0.6px;
+}
+[data-btn="jump"]   { right: calc(var(--edge-r) + var(--fire) + var(--gap)); bottom: var(--edge-b); }
+[data-btn="reload"] { right: var(--edge-r); bottom: calc(var(--edge-b) + var(--fire) + var(--gap)); }
+
+/* Top centre: the one strip of screen that is free in both orientations, with
+   the floor readout down the left and the minimap down the right. Above the
+   start screen (z 10) as well, because the moment to go fullscreen is before
+   the run rather than during it. */
+.tbtn-full {
+  left: 50%; top: calc(9px + var(--sa-t));
+  transform: translateX(-50%);
+  width: clamp(34px, 9vmin, 42px); height: clamp(34px, 9vmin, 42px);
+  border-radius: 8px;
+  font-size: clamp(15px, 4vmin, 19px); letter-spacing: 0;
+  z-index: 11;
+}
+
+/* --------------------------------------------------------- weapon chips */
+#tweapons {
+  position: absolute;
+  right: var(--edge-r); bottom: var(--tier-2);
+  display: flex; gap: 6px;
+}
+.twep {
+  width: var(--chip); height: var(--chip);
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); border-radius: 3px;
+  background: rgba(16, 20, 24, 0.42);
+  color: var(--ink-faint);
+  font-size: clamp(11px, 2.8vmin, 13px); font-weight: 500;
+  text-shadow: var(--shade);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+.twep[hidden] { display: none; }
+.twep.on { border-color: var(--accent); color: var(--accent); background: rgba(127, 216, 232, 0.14); }
+.twep.press { background: rgba(127, 216, 232, 0.32); color: var(--ink); }
+
+/* ------------------------------------------- HUD out of the controls' way */
+/* The left column climbs above the stick and the right column above the button
+   stack. Both read the same tier variables the buttons are laid out from. */
+body.touch #health { bottom: calc(var(--edge-b) + var(--stick) + 12px); left: var(--edge-l); }
+body.touch #gunbox { bottom: var(--tier-3); right: var(--edge-r); }
+/* The fallback-look hint is about a mouse the player has not got. */
+body.touch #lock-hint { display: none; }
+
+/* ----------------------------------------------- which legend gets shown */
+.touch-only, #overlay .touch-keys { display: none; }
+body.touch .pc-only { display: none; }
+body.touch .touch-only { display: inline; }
+body.touch #overlay .keys:not(.touch-keys) { display: none; }
+body.touch #overlay .touch-keys { display: flex; }
+
+/* ==========================================================================
+   Small screens
+   ==========================================================================
+   Keyed off the viewport rather than off body.touch, because a narrow desktop
+   window has exactly the same problem and the HUD should not have to wait to
+   be touched before it fits. Two axes, and they compose: narrow is a phone
+   held upright, short is the same phone turned sideways.
+   ========================================================================== */
+@media (max-width: 620px) {
+  #mission { left: calc(12px + var(--sa-l)); top: calc(12px + var(--sa-t)); padding-left: 8px; }
+  #floor { font-size: 15px; letter-spacing: 2.6px; }
+  #objective { font-size: 9.5px; letter-spacing: 1px; margin-top: 3px; }
+
+  #mapbox { right: calc(12px + var(--sa-r)); top: calc(12px + var(--sa-t)); gap: 4px; }
+  #minimap { width: 108px; height: 108px; }
+  #score { font-size: 9px; letter-spacing: 1.1px; }
+
+  #health { left: calc(12px + var(--sa-l)); bottom: calc(14px + var(--sa-b)); }
+  #health .label { font-size: 8.5px; letter-spacing: 2px; margin-bottom: 4px; }
+  #health-row { gap: 8px; }
+  #health-bar { width: 118px; height: 6px; }
+  #health-value { font-size: 17px; }
+
+  #gunbox { right: calc(12px + var(--sa-r)); bottom: calc(14px + var(--sa-b)); }
+  #weapon { font-size: 9.5px; letter-spacing: 1.5px; }
+  #ammo { font-size: 25px; letter-spacing: 1px; }
+  #ammo.reloading { font-size: 14px; letter-spacing: 3.5px; }
+  #keycards { gap: 4px; margin-bottom: 4px; min-height: 11px; }
+  #keycards .card { width: 16px; height: 11px; }
+
+  #toast { font-size: 21px; letter-spacing: 5px; }
+  #toast::after { bottom: -8px; width: 32px; margin-left: -16px; }
+  #watch-bar { width: 116px; }
+  #watch-label { font-size: 10px; letter-spacing: 3.5px; }
+
+  #overlay { gap: 8px; padding: 0 18px; }
+  #overlay h1 { font-size: 30px; letter-spacing: 7px; text-indent: 7px; }
+  #overlay p { font-size: 12px; }
+  #overlay .cta { margin-top: 10px; padding: 10px 22px; font-size: 11px; letter-spacing: 2.4px; }
+  #overlay .keys { margin-top: 12px; font-size: 10px; gap: 7px; }
+  #overlay .keys .row { gap: 5px 11px; }
+
+  #gameover .panel { padding: 24px 20px; }
+  #gameover .go-title { font-size: 28px; letter-spacing: 8px; text-indent: 8px; }
+  #gameover .go-stats { gap: 30px; margin: 20px 0 18px; }
+  #gameover .stat span { font-size: 25px; }
+}
+
+/* A phone on its side: ~380 px of height for everything, and the two thumbs
+   take the bottom corners of it. */
+@media (max-height: 520px) {
+  #mission { top: calc(10px + var(--sa-t)); }
+  #mapbox { top: calc(10px + var(--sa-t)); gap: 3px; }
+  #minimap { width: 88px; height: 88px; }
+  #score { font-size: 8.5px; }
+  #health { bottom: calc(12px + var(--sa-b)); }
+  #gunbox { bottom: calc(12px + var(--sa-b)); }
+  #ammo { font-size: 22px; }
+
+  /* The hit ring is a fixed 150 px radius, which on a short screen is most of
+     the way to the top and bottom edges — the wedges clip, and the two that
+     matter most (dead ahead, dead behind) are the ones that go. */
+  .hitdir {
+    left: -42px; top: -104px;
+    width: 84px; height: 23px;
+    transform-origin: 42px 104px;
+  }
+  #watch { top: calc(50% + 42px); }
+
+  #toast { top: 15%; font-size: 19px; letter-spacing: 4px; }
+
+  #overlay { gap: 5px; }
+  #overlay .tag { font-size: 9px; letter-spacing: 3px; }
+  #overlay h1 { font-size: 26px; letter-spacing: 6px; text-indent: 6px; }
+  #overlay p { font-size: 11.5px; }
+  #overlay .cta { margin-top: 8px; padding: 8px 20px; }
+  #overlay .keys { margin-top: 9px; gap: 5px; }
+
+  #gameover .panel { padding: 18px 20px; }
+  #gameover .go-title { font-size: 24px; letter-spacing: 7px; text-indent: 7px; }
+  #gameover .go-stats { gap: 26px; margin: 14px 0 12px; }
+  #gameover .stat span { font-size: 21px; }
+  #gameover .stat label { font-size: 9px; letter-spacing: 2px; }
+  #gameover .go-cta { font-size: 11px; letter-spacing: 2.6px; }
+}
