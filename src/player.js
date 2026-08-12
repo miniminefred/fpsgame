@@ -239,6 +239,16 @@ export class Player {
     this.velocityY -= GRAVITY * dt;
     pos.y += this.velocityY * dt;
 
+    // A ceiling stops the rise before gravity gets a chance to: nothing else in
+    // this controller collides on the way up, so without this a jump — or just
+    // standing on tall furniture — passes straight through a roof rather than
+    // bumping it.
+    const ceilY = this._headroom(pos, pos.y - EYE);
+    if (pos.y - EYE + BODY_H > ceilY) {
+      pos.y = ceilY - BODY_H + EYE;
+      if (this.velocityY > 0) this.velocityY = 0;
+    }
+
     const groundY = this._supportHeight(pos);
     if (pos.y - EYE <= groundY && this.velocityY <= 0) {
       // Standing still still resolves here every frame, one frame of gravity at
@@ -292,6 +302,15 @@ export class Player {
    * underside: a wall, a desk and a door panel all start at the floor. With `base`
    * absent the test reads `0 >= feet + 1.82`, which is false for any body above
    * ground, so every collider the game had before this behaves exactly as it did.
+   *
+   * `b.ceiling` gets a different resolution, not just a different test: snapping
+   * to the box's OWN far face is right for a wall, which you approach from outside
+   * it and only ever touch near that face. A roof or a storey's deck is a slab you
+   * are already standing well inside the footprint of the moment your climbing (or
+   * a jump) lifts your head into it — "push to the far face" is a same-frame
+   * teleport to the edge of the room, or the floor, whatever the slab spans.
+   * Cancelling the frame's own (small) delta instead just stops you, which is what
+   * bumping your head on a ceiling should feel like.
    */
   _moveHorizontal(pos, dx, dz) {
     const feetY = pos.y - EYE;
@@ -305,6 +324,7 @@ export class Player {
         // Loose furniture gets shoved aside rather than stopping you dead —
         // a chair blocking a corridor you can't move would be miserable.
         if (b.push) { this.onPush?.(b, Math.sign(dx), 0); continue; }
+        if (b.ceiling) { pos.x -= dx; this._vel.x = 0; continue; }
         pos.x = dx > 0 ? b.minX - RADIUS : b.maxX + RADIUS;
         this._vel.x = 0;
       }
@@ -316,10 +336,28 @@ export class Player {
         if (b.top <= feetY + STEP_EPS || overhead(b)) continue;
         if (!this._overlapsXZ(pos, b)) continue;
         if (b.push) { this.onPush?.(b, 0, Math.sign(dz)); continue; }
+        if (b.ceiling) { pos.z -= dz; this._vel.z = 0; continue; }
         pos.z = dz > 0 ? b.minZ - RADIUS : b.maxZ + RADIUS;
         this._vel.z = 0;
       }
     }
+  }
+
+  /**
+   * The lowest ceiling directly overhead — the mirror of `_supportHeight`, and
+   * only ever asked about `b.ceiling` boxes. A wall has an underside too once a
+   * storey stands on it (`base`), but a wall is meant to push you back side-on,
+   * not cap how high you can raise your feet a room away from it; `ceiling` is
+   * what tells the two apart. Infinity means nothing is overhead at all.
+   */
+  _headroom(pos, feetY) {
+    let ceilY = Infinity;
+    for (const b of this._candidates(pos.x, pos.z)) {
+      if (!b.ceiling || b.base <= feetY) continue;
+      if (!this._overlapsXZ(pos, b)) continue;
+      if (b.base < ceilY) ceilY = b.base;
+    }
+    return ceilY;
   }
 
   _overlapsXZ(pos, b) {

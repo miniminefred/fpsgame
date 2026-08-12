@@ -269,7 +269,10 @@ function buildShell(layout, batcher, materials, colliders, cuts) {
   for (const r of maskToRects(masked(tiles, cuts.roof), W, H, isOpen)) {
     const x0 = worldX(layout, r.x0), x1 = worldX(layout, r.x1);
     const z0 = worldZ(layout, r.y0), z1 = worldZ(layout, r.y1);
-    colliders.push({ minX: x0, maxX: x1, minZ: z0, maxZ: z1, base: WALL_H, top: WALL_H + ROOF_T, building: true });
+    colliders.push({
+      minX: x0, maxX: x1, minZ: z0, maxZ: z1,
+      base: WALL_H, top: WALL_H + ROOF_T, building: true, ceiling: true,
+    });
   }
 }
 
@@ -1176,9 +1179,14 @@ function buildStairs(layout, batcher, materials, masks, rng) {
       if (b.part === 'tread') drawStep(batcher, materials, b, plan);
       else drawPart(batcher, materials, b);
 
+      // `roof`, `lid` and `deck` are the slabs a body can be standing anywhere
+      // underneath — furniture inside a storey, or inside the room below an
+      // attic's own floor. `wall` and `tread` are meant to push back side-on,
+      // which is what makes one a wall and the other a step.
       masks.colliders.push({
         minX: b.minX, maxX: b.maxX, minZ: b.minZ, maxZ: b.maxZ,
         base: b.base, top: b.y1, building: true,
+        ceiling: b.part === 'roof' || b.part === 'lid' || b.part === 'deck',
       });
     }
 
