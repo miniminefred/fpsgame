@@ -250,6 +250,7 @@ export class Enemies {
     this._cardOutside(layout, nav, rng, tuning);
     this._janitors(layout, nav, rng, tuning);
     this._manager(layout, nav, rng, tuning);
+    this._generatorRoom(layout, nav, rng, tuning);
     this._dealCards(layout, rng);
   }
 
@@ -562,6 +563,41 @@ export class Enemies {
       // in his pocket is a card behind his own door.
       boss.behindLock = true;
       return;
+    }
+  }
+
+  /**
+   * The generator room's crew (see the `generator` role in gen/rooms.js) —
+   * opportunistic, like the room itself: a floor that didn't roll a room big
+   * enough for one has nothing to place here. 10-15 of them, spaced the same
+   * way the security office spaces its guards, with 2-4 hostile and the rest
+   * standing around doing nothing about you — same shape as the neutral
+   * bystanders elsewhere, just local to this one room instead of wandering
+   * the floor. Both types are `weight: 0` (see enemy-types.js): the mix
+   * belongs here and nowhere else, so a weighted roll must never produce it.
+   */
+  _generatorRoom(layout, nav, rng, tuning) {
+    const room = layout.rooms.find((r) => r.role === 'generator');
+    if (!room) return;
+
+    const want = rng.int(10, 15);
+    const spots = [];
+    for (let tries = 0; tries < 300 && spots.length < want; tries++) {
+      const tx = rng.int(room.x0, room.x1 - 1);
+      const ty = rng.int(room.y0, room.y1 - 1);
+      if (!nav.walkable(tx, ty)) continue;
+      const x = nav.wx(tx), z = nav.wz(ty);
+      if (!nav.clear(x, z, RADIUS)) continue;
+      // The generator and its clutter already took a chunk of this room; the
+      // spacing check is what stops the tries that are left crowding onto the
+      // same free tile instead of spreading through the rest of it.
+      if (spots.some((s) => Math.hypot(s.x - x, s.z - z) < GUARD_GAP)) continue;
+      spots.push({ x, z });
+    }
+
+    const angry = Math.min(rng.int(2, 4), spots.length);
+    for (let i = 0; i < spots.length; i++) {
+      this._add(spots[i].x, spots[i].z, rng, tuning, i < angry ? TYPES.technician : TYPES.worker);
     }
   }
 
