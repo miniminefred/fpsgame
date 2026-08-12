@@ -3,18 +3,19 @@
 74 models, all free to use, sourced from [Poly Pizza](https://poly.pizza) —
 the same library as this project's weapon viewmodels (see `../CREDITS.md`).
 
-License split: **CC-BY** 45, **CC0** 29.
+License split: **CC-BY** 46, **CC0** 28.
 CC-BY models are attributed per row below.
 
 ## Authors
 
-- **Quaternius** — 18 models
+- **Quaternius** — 17 models
 - **J-Toastie** — 13 models
 - **Zsky** — 11 models
 - **CreativeTrio** — 7 models
 - **dook** — 7 models
 - **Kenney** — 4 models
 - **Jarlan Perez** — 2 models
+- **Poly by Google** — 2 models
 - **Danni Bittman** — 1 model
 - **Dilan Shah** — 1 model
 - **involuntary tsetse** — 1 model
@@ -22,7 +23,6 @@ CC-BY models are attributed per row below.
 - **Jonathan Granskog** — 1 model
 - **Luca Regazzi (okon3)** — 1 model
 - **Mikael Ganehag Brorsson** — 1 model
-- **Poly by Google** — 1 model
 - **Ryan Dewalt** — 1 model
 - **Ryan Donaldson** — 1 model
 - **Stephen Faett** — 1 model
@@ -74,12 +74,12 @@ Thank you to all of them.
 | `reception_desk` | `furn_reception_desk.glb` | Kitchen Bar | Kenney | CC0 | https://poly.pizza/m/w00V8SbhYD |
 | `pc_tower` | `tech_pc_tower.glb` | Desktop computer | Luca Regazzi (okon3) | CC-BY | https://poly.pizza/m/dY79tyRnkaM |
 | `copier` | `tech_copier.glb` | Printer | Mikael Ganehag Brorsson | CC-BY | https://poly.pizza/m/6uy3vUnmbCJ |
+| `cow` | `animal_cow.glb` | Cow | Poly by Google | CC-BY | https://poly.pizza/m/0OToIgkcVM7 |
 | `wall_clock` | `store_wall_clock.glb` | Analog Clock | Poly by Google | CC-BY | https://poly.pizza/m/5gAoMR2YHs3 |
 | `armchair` | `furn_armchair.glb` | Couch Small | Quaternius | CC0 | https://poly.pizza/m/ZOPP3KzNIk |
 | `bookshelf` | `store_bookshelf.glb` | Bookcase with Books | Quaternius | CC0 | https://poly.pizza/m/tACDGJ4CGW |
 | `box_stack` | `store_box_stack.glb` | Cardboard Boxes | Quaternius | CC0 | https://poly.pizza/m/V9KbWC8Vd6 |
 | `ceiling_lamp` | `furn_ceiling_lamp.glb` | Ceiling Light | Quaternius | CC0 | https://poly.pizza/m/sRNcgQFbLB |
-| `cow` | `animal_cow.glb` | Cow | Quaternius | CC0 | https://poly.pizza/m/5XSc2Fka3F |
 | `crate` | `store_crate.glb` | Crate | Quaternius | CC0 | https://poly.pizza/m/3VGWnZPXmG |
 | `door` | `furn_door.glb` | Door | Quaternius | CC0 | https://poly.pizza/m/TOMs7NG2FG |
 | `double_door` | `furn_double_door.glb` | Door Double | Quaternius | CC0 | https://poly.pizza/m/blrNJIEdns |
