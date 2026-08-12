@@ -489,6 +489,27 @@ tidiness: the stairwell notch eats one end of one of them, and which one depends
 flight direction. Pinning the row to `u` gave a four-metre wall and a row of exactly one
 desk on every room that took the door-wall flight, which is not a row.
 
+**The bottom tread is a landing, and that is the difference between a staircase and an
+ornament.** The foot of this flight is hard against a wall — it has to be, because the top
+has to arrive at the deck — so there is no floor in front of it to walk in from, and the
+only way on is a step sideways off the room floor. On an ordinary 0.3 m tread that is not
+awkward, it is *impossible*: the body is 0.8 m deep, so standing on it means standing a
+quarter of a metre inside the wall, and every tread past it is a 0.4 m rise that `STEP_EPS`
+refuses. So the first tread is 0.9 m, which is what a real stair against a wall has, and
+from there every step up is an ordinary `RISER`.
+
+This was found by walking, not by reading: a test that stands a body on the floor beside
+the flight and holds `forward` for 400 ticks. Before the landing it gained **no height at
+all** on any floor — the mezzanine had never been reachable. After it, 11 of 12 rolled
+floors built a flight and all 11 climbed to the deck. The twelfth room was too tight for
+either flight direction, which is the guard doing its job.
+
+`GOING` is 0.26 rather than a domestic 0.3 for the same reason the landing costs what it
+does: the riser is fixed by `RISER` and the rise by `DECK_Y`, so the tread is the only free
+number in the flight, and shortening it is the only way to shorten the run. That metre is
+the difference between a mezzanine on two generator rooms in five and one on nearly all of
+them. An industrial access stair is steep anyway.
+
 ### What furniture is never allowed to close (`reserveClearances` in `gen/build.js`)
 A tile mask the furnisher may not place into, stamped before a single prop is put down —
 because a floor should not be furnished into a state it then has to be rescued from. Doorways

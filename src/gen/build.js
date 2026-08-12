@@ -407,22 +407,41 @@ function buildGeneratorMezzanine(layout, batcher, materials, masks, rng) {
   const DECK_T = 0.2;
   const RAIL_H = 1.0;
   const RAIL_T = 0.06;
-  const GOING = 0.3;
-  const STAIR_W = 1.3;
+  // 0.26 rather than a domestic 0.3: this is an industrial access stair, and
+  // the going is the one number in the flight that is free — the riser is fixed
+  // by RISER and the rise by DECK_Y, so shortening the tread is the only way to
+  // shorten the run. It buys about a metre, and a metre of run is the
+  // difference between a mezzanine on two generator rooms in five and one on
+  // nearly all of them.
+  const GOING = 0.26;
+  const STAIR_W = 1.2;
   // The deck stops this far off the generator's wall. It has to clear the
   // machine itself — 3.0 m deep now that its pipework is inside its own
   // footprint (see `generator` in gen/props.js) plus the 0.15 m wall inset —
   // and then leave a slot past it, so the thing is seen whole from up here
   // rather than met at chest height.
-  const GEN_CLEAR = 3.7;
+  const GEN_CLEAR = 3.45;
   const DOOR_CLEAR = 0.8;       // a body's width of daylight beside the doorway
 
   // The flight's rise-per-step matches every other staircase in the building
   // (RISER, from gen/stairs.js — small enough to walk up without jumping), so
   // its run is fixed by that and by DECK_Y rather than chosen independently.
+  //
+  // LAND is the bottom tread, and it is the difference between a staircase and
+  // an ornament. The foot of this flight is hard against a wall — it has to be,
+  // because the top has to arrive at the deck — so there is no floor in front of
+  // it to walk in from, and the only way on is a step sideways off the room
+  // floor. On a 0.3 m tread that is impossible rather than merely awkward: the
+  // body is 0.8 m deep, so standing on it means standing 0.25 m inside the wall,
+  // and every tread past it is a 0.4 m rise the step tolerance refuses. A deep
+  // bottom tread — a quarter landing, which is what a real stair against a wall
+  // has — gives a body somewhere to stand, and from there every following step
+  // is an ordinary RISER. Measured, not assumed: before this the deck could not
+  // be reached at all, and 420 ticks of walking at the flight gained no height.
   const steps = Math.ceil(DECK_Y / RISER);
   const riser = DECK_Y / steps;
-  const RUN = steps * GOING;
+  const LAND = 0.9;
+  const RUN = LAND + (steps - 1) * GOING;
 
   const doorWallSide = doorSide(door, room);
   const x0 = worldX(layout, room.x0), x1 = worldX(layout, room.x1);
@@ -473,11 +492,11 @@ function buildGeneratorMezzanine(layout, batcher, materials, masks, rng) {
     // short side to give and cannot take that flight, and there the run goes
     // the other way, along the door wall from the side wall inward. Between
     // them they cover every room the role predicate lets through.
-    if (depth >= RUN + 1.6 && width >= STAIR_W + 1.8 && doorV > STAIR_W + DOOR_CLEAR) {
+    if (depth >= RUN + 0.9 && width >= STAIR_W + 1.4 && doorV > STAIR_W + DOOR_CLEAR) {
       return { side, alongX, vWall, vSign, uSign, uDoor, depth, width,
         notchU: RUN, notchV: STAIR_W, climbU: true };
     }
-    if (width >= RUN + 1.4 && depth >= STAIR_W + 1.8 && doorV > RUN + DOOR_CLEAR) {
+    if (width >= RUN + 0.9 && depth >= STAIR_W + 1.4 && doorV > RUN + DOOR_CLEAR) {
       return { side, alongX, vWall, vSign, uSign, uDoor, depth, width,
         notchU: STAIR_W, notchV: RUN, climbU: false };
     }
@@ -608,7 +627,8 @@ function buildGeneratorMezzanine(layout, batcher, materials, masks, rng) {
   // layout-level stairwell system.
   for (let i = 0; i < steps; i++) {
     const stepTop = (i + 1) * riser;
-    const lo = i * GOING, hi = (i + 1) * GOING;
+    const lo = i === 0 ? 0 : LAND + (i - 1) * GOING;
+    const hi = i === 0 ? LAND : LAND + i * GOING;
     const b = climbU
       ? piece('trim', lo, hi, 0, STAIR_W, 0, stepTop, { solid: false })
       : piece('trim', 0, STAIR_W, lo, hi, 0, stepTop, { solid: false });
