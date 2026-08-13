@@ -469,56 +469,55 @@ Three things about it are structural rather than decorative:
   wall, and `wallSpanProp` falls back to the catalogue size. Nothing errors: the room just
   quietly gets a cabinet instead of the machine it exists for. Caught by measuring the
   generator's collider against its wall over a sweep of floors, not by looking at it.
-- **Half the room is a mezzanine.** A deck one storey up over the left or right half,
-  overlooking the machine across a glass railing, with a row of workstations — desks,
-  screens, and the partition walls between them — and a flight up beside the door. It is
+- **The mezzanine covers the room.** A deck one storey up reaching three of the four
+  walls — both sides and the door wall — with the fourth side open over the machine
+  behind a glass railing, and a row of workstations along that railing. It is
   colliders-only: pushed straight into `masks.colliders` rather than through
-  `sink.obstacle()`, so the nav grid never learns about it. Nobody up there gets shot at or
-  shoots down, which is a real compromise accepted for a one-room flourish rather than a
-  second attic-and-basement system.
+  `sink.obstacle()`, so the nav grid never learns about it. Nobody up there gets shot at
+  or shoots down, which is a real compromise accepted for a one-room flourish rather than
+  a second attic-and-basement system.
 
 The mezzanine is worked in the room's own two axes — `u` from the door wall inward, `v`
-across from the mezzanine's own wall — and two things in it were learned the hard way:
+along the door wall — and four things in it were learned by walking rather than by
+looking:
 
-- **The flight climbs whichever way fits, and that is a question about the room's shape
-  rather than a preference.** Climbing in +u, away from the door along the side wall, is
-  tried first because it leaves the door wall clear. A room whose one door is in its LONG
-  wall has only the short side to give and cannot take that flight at all, so there the run
-  goes along the door wall from the side wall inward. Pinning it to one direction is a
-  generator room with no way up on about a third of the floors that have one.
-- **The deck is notched round the stairwell, and a flight laid across the doorway is
-  refused.** A slab over a staircase is the same mistake as a ceiling over one (see
-  `ceilingCut` in `gen/stairs.js`) and you find it out head first. The doorway check matters
-  more: the mezzanine is colliders-only, so a flight standing in the room's only door would
-  seal it with the nav grid still insisting the floor under the steps is walkable — a room
-  that reads as reachable while a body stands outside it unable to get in, and `hostileCount`
-  never reaching zero.
+- **The flight stands off the door wall rather than against it, and that one number is
+  what makes the stairs usable.** Against the wall, a flight has to begin clear of the
+  opening and run its whole length to one side of it: on a nine-metre wall with the door
+  in the middle there is not four metres either way, and two rooms in six got no stairs
+  at all. Set back by `SETBACK`, it runs the full width of the room straight past the
+  doorway without blocking it, its foot sits directly in front of the door, and the walk
+  is the one the room wants — in, one pace, turn, straight up. It always climbs *away*
+  from the door; one that started in a corner and climbed back toward it is a flight you
+  have to walk past and turn round in.
+- **The hole in the deck is wider than the flight in it** (`NOTCH_PAD`). Cut to exactly
+  the stair's width, a body climbing has no room to be off-centre — the player is 0.8 m
+  across on a 1.3 m tread, and the moment a shoulder crosses the deck's edge their head
+  meets its 3.0 m soffit, which happens around the sixth step. It reads as the stairs
+  simply stopping half way up. Caught by a test that walks a body up deliberately
+  off-centre; before the pad it climbed to 2.8 m and stopped.
+- **The floor at the foot of the flight is reserved, not just the flight.** The ground
+  under the deck is left furnishable on purpose — there is 3 m of headroom and crates
+  belong there — but the tile you stand on to start climbing is not the stair's own
+  footprint, and a crate on it is a staircase you cannot get onto. Same reservation
+  `approachTiles` makes for the layout-level stairwells, for the same reason, and nothing
+  downstream would have caught it because the deck is off the nav grid.
+- **The desks are real props, not scenery.** They go in through a level sink of their own
+  at deck height — the same machinery `furnishLevels` uses for an attic — so they are
+  ordinary destructible `desk` props with a model, a monitor and a keyboard on them, and
+  they come apart when shot like every other desk in the building. Two differences from a
+  storey's sink: `reserved` is inverted so the only tiles it will place into are the
+  deck's, and `blocked` is a throwaway, because a desk up here must not make the floor
+  underneath it impassable.
 
-The row of desks runs along whichever of the deck's two axes is longer, which is not
-tidiness: the stairwell notch eats one end of one of them, and which one depends on the
-flight direction. Pinning the row to `u` gave a four-metre wall and a row of exactly one
-desk on every room that took the door-wall flight, which is not a row.
+`GOING` is 0.26 rather than a domestic 0.3 for the same reason the setback costs what it
+does: the riser is fixed by `RISER` and the rise by `DECK_Y`, so the tread is the only
+free number in the flight, and shortening it is the only way to shorten the run. An
+industrial access stair is steep anyway.
 
-**The bottom tread is a landing, and that is the difference between a staircase and an
-ornament.** The foot of this flight is hard against a wall — it has to be, because the top
-has to arrive at the deck — so there is no floor in front of it to walk in from, and the
-only way on is a step sideways off the room floor. On an ordinary 0.3 m tread that is not
-awkward, it is *impossible*: the body is 0.8 m deep, so standing on it means standing a
-quarter of a metre inside the wall, and every tread past it is a 0.4 m rise that `STEP_EPS`
-refuses. So the first tread is 0.9 m, which is what a real stair against a wall has, and
-from there every step up is an ordinary `RISER`.
-
-This was found by walking, not by reading: a test that stands a body on the floor beside
-the flight and holds `forward` for 400 ticks. Before the landing it gained **no height at
-all** on any floor — the mezzanine had never been reachable. After it, 11 of 12 rolled
-floors built a flight and all 11 climbed to the deck. The twelfth room was too tight for
-either flight direction, which is the guard doing its job.
-
-`GOING` is 0.26 rather than a domestic 0.3 for the same reason the landing costs what it
-does: the riser is fixed by `RISER` and the rise by `DECK_Y`, so the tread is the only free
-number in the flight, and shortening it is the only way to shorten the run. That metre is
-the difference between a mezzanine on two generator rooms in five and one on nearly all of
-them. An industrial access stair is steep anyway.
+Measured over 14 rolled floors: every one built a deck, every deck reached three walls,
+every flight was climbed to the top with the body walked deliberately off-centre, and
+each deck came out with three to five desks on it.
 
 ### What furniture is never allowed to close (`reserveClearances` in `gen/build.js`)
 A tile mask the furnisher may not place into, stamped before a single prop is put down —
