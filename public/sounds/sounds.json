@@ -548,6 +548,13 @@
       "influence": 0.7
     },
     {
+      "name": "generator-blast",
+      "text": "huge industrial generator exploding, deep sub-bass boom then tearing metal and a long rumbling decay, close mic, dry, no music, no voices",
+      "duration": 3.0,
+      "influence": 0.7,
+      "variants": 3
+    },
+    {
       "name": "glass-break",
       "text": "large glass pane shattering and falling onto a concrete floor, close mic, dry",
       "duration": 1.8,

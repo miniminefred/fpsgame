@@ -100,6 +100,14 @@ const LIBRARY = {
   'extinguisher-jet':   { variants: 2, gain: 0.70, pitch: 0.08 },
   'extinguisher-burst': { variants: 3, gain: 1.10, pitch: 0.06 },
 
+  // The generator going up. Above the extinguisher because it is a bigger
+  // event, and the limiter on the master bus is what stops that being a
+  // problem — see the note about there being no voice cap in sfx.js. Three
+  // takes for something you hear at most once a floor is not about back-to-
+  // back repetition, it is so the tenth floor of a run does not open the same
+  // way the second one did.
+  'generator-blast': { variants: 3, gain: 1.30, pitch: 0.05 },
+
   // What the bullet landed on. Every surface in the building answers back in its
   // own material — see SUBSTANCE below for which prop is made of what.
   'hit-flesh':        { variants: 3, gain: 0.70, pitch: 0.12 },
@@ -498,21 +506,35 @@ export class GameAudio {
 
   // --- the building coming apart ------------------------------------------------
 
-  /** Something came apart. Same arguments as bulletHitMaterial. */
-  breakThing(kind, substance, point) {
+  /**
+   * Something came apart. Same arguments as bulletHitMaterial, plus a `delay`
+   * for a caller that is breaking a great many things on one frame and knows
+   * they should not all arrive together — see `blackoutPanels` in
+   * destruction.js, and IMPACT_SCATTER above for the same idea at 30 ms.
+   */
+  breakThing(kind, substance, point, { delay = 0 } = {}) {
     const spec = substanceOf(kind, substance);
-    this._placed(spec.break, point);
+    this._placed(spec.break, point, { delay });
     // The tail is what makes destruction read as heavy: the thing breaks, and a
     // second later its pieces stop moving. Some substances have no tail — a torn
     // partition does not clatter.
     if (spec.settle) {
-      this._placed(spec.settle, point, { delay: DEBRIS_DELAY + Math.random() * 0.4 });
+      this._placed(spec.settle, point, { delay: delay + DEBRIS_DELAY + Math.random() * 0.4 });
     }
   }
 
   /** An extinguisher holed and venting, and the bang at the end of that. */
   extinguisherJet(point) { this._placed('extinguisher-jet', point); }
   extinguisherBurst(point) { this._placed('extinguisher-burst', point); }
+
+  /**
+   * The generator going up — the loudest single thing on a floor, and the only
+   * one you get once. It plays ON TOP of the prop's own `break-electronic`
+   * rather than instead of it: the crackle is the machine coming apart and the
+   * boom is what it was holding, and the two together are what a floor's worth
+   * of power sounds like leaving at once.
+   */
+  generatorBlast(point) { this._placed('generator-blast', point); }
 
   /** A sliding door, from wherever in the building it is. */
   doorOpen(point) { this._placed('door-open', point); }

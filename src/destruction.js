@@ -45,6 +45,11 @@ const MIN_BODY = 0.03;
 const DENSITY = 300;
 const MAX_FRAGMENT_MASS = 40;
 
+// How long the ceiling keeps coming down after the generator goes — audibly
+// only, see blackoutPanels. Long enough that eighty tubes are eighty tubes
+// rather than one crack, short enough to still be part of the same event.
+const BLACKOUT_RAIN = 1.2;
+
 export class Destruction {
   constructor({ scene, physics, effects, audio, shooting, lighting }) {
     this.scene = scene;
@@ -153,7 +158,7 @@ export class Destruction {
 
   // Static destructible: erase it from the batch it was merged into, hand back
   // the floor it was standing on, and scatter the boxes it was authored from.
-  _shatter(entry, dir, point) {
+  _shatter(entry, dir, point, delay = 0) {
     entry.broken = true;
 
     for (const span of entry.spans) eraseSpan(span);
@@ -179,7 +184,7 @@ export class Destruction {
 
     const glassy = entry.kind !== 'prop';
     this.effects.impact(point, _up.set(0, 1, 0), glassy ? 0xdff0ff : 0xffe4b0);
-    this.audio.breakThing(entry.kind, entry.substance, point);
+    this.audio.breakThing(entry.kind, entry.substance, point, { delay });
 
     // The one destructible that fans its own kill out floor-wide, the same
     // shape as `volatile` above: one flag on the entry, read here, handed to
@@ -193,6 +198,15 @@ export class Destruction {
    * `lighting.removeFixture`. Used by the generator's power cut: dimming the
    * fill lighting (see `lighting.setMood`) reads as "the lights are off", but
    * a floor whose power just died should look like it, not just feel darker.
+   *
+   * The GEOMETRY all goes on this frame — the lights failing is one event and
+   * a tube popping a second late is a tube nobody shot. The SOUND does not:
+   * eighty tubes and eighty falls of glass starting on the same sample is one
+   * white crack, and it lands on top of the only explosion in the game (see
+   * `audio.generatorBlast`) and buries it. Spread over BLACKOUT_RAIN they are
+   * eighty separate breakages, they stop masking the bang, and glass raining
+   * out of a ceiling for a second after it is what the room would do anyway.
+   * Same reasoning as IMPACT_SCATTER in audio.js, two orders of magnitude up.
    */
   blackoutPanels(fraction) {
     if (!this.level) return;
@@ -201,7 +215,8 @@ export class Destruction {
     for (let i = 0; i < n && panels.length; i++) {
       const [entry] = panels.splice(Math.floor(Math.random() * panels.length), 1);
       const f = entry.fixtures[0];
-      this._shatter(entry, _up.set(0, -1, 0), _blast.set(f.x, f.y, f.z));
+      this._shatter(entry, _up.set(0, -1, 0), _blast.set(f.x, f.y, f.z),
+        Math.random() * BLACKOUT_RAIN);
     }
   }
 

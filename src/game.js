@@ -189,6 +189,10 @@ export class Game {
    * it compares to the extinguisher's.
    */
   _onPowerCut(point) {
+    // The bang first, because it is the thing that happened and everything
+    // below is a consequence of it.
+    this.audio.generatorBlast(point);
+
     this.lighting.setMood(BLACKOUT_MOOD);
     this.destruction.blackoutPanels(BLACKOUT_PANEL_FRACTION);
     // And the floor goes quiet, which is the half of this you hear rather than
