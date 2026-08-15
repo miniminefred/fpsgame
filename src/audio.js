@@ -181,6 +181,14 @@ const LIBRARY = {
   'amb-drone':  { gain: 0.22, pitch: 0, bed: true },
 };
 
+// How long the building's own noise takes to go when the generator dies, and
+// to come back on the next floor. Out is the slower of the two on purpose: a
+// hard cut reads as the sound system failing, while a couple of seconds of
+// fans spinning down reads as the building failing, which is the one that
+// happened. Coming back needs no such care — nobody is listening for it.
+const POWER_CUT_FADE = 2.4;
+const POWER_ON_FADE = 1.5;
+
 // Shotgun pellets all land on the same frame, so their impacts would start on
 // the identical sample and sum into one thump instead of nine. Scattering them
 // over a few milliseconds keeps every one of them audible — and is what a spray
@@ -288,6 +296,29 @@ export class GameAudio {
       this.sfx.loop('amb-office');
       this.sfx.loop('amb-drone');
     }
+  }
+
+  /**
+   * The mains just went (see `_onPowerCut` in game.js). The building's own
+   * noise IS the power — the air handling, and the drone under it — so it goes
+   * out with the lights rather than carrying on over a dark floor.
+   *
+   * Only the ambience bus. Everything else stays exactly as loud as it was,
+   * and that is the whole effect: with the air off, a door two rooms away is
+   * suddenly the loudest thing in the building.
+   */
+  powerCut() {
+    this.sfx.setAmbience(0, POWER_CUT_FADE);
+  }
+
+  /**
+   * A new floor has its own mains, so it has its own air. Called from
+   * `_startFloor` unconditionally — on the first floor there is no audio
+   * context yet and this does nothing, which is correct; it matters on the
+   * floor AFTER one you cut the power to, and after a death on one.
+   */
+  powerRestore() {
+    this.sfx.setAmbience(1, POWER_ON_FADE);
   }
 
   /** Keeps the ears on the camera, so placed sounds pan and fall off correctly. */

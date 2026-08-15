@@ -92,6 +92,10 @@ export class Sfx {
     this.library = new Map();
     this.loops = [];
     this._fetched = false;
+    // What the ambience bus is MEANT to be sitting at, which is not the same
+    // question as what its gain reads right now: a bed that has not decoded yet
+    // and a floor whose power has been cut are both silence. See setAmbience.
+    this.ambience = 1;
   }
 
   get ready() { return !!this.ctx; }
@@ -325,8 +329,16 @@ export class Sfx {
     }
   }
 
-  /** Cross-fades the ambience bus. 0 silences it without stopping the loops. */
+  /**
+   * Cross-fades the ambience bus. 0 silences it without stopping the loops,
+   * which is what a power cut wants: a 26-second bed stopped outright is a
+   * click, and restarting it later would open somewhere else in the loop.
+   *
+   * The level is REMEMBERED, because `_flushLoops` fades the bus up when a bed
+   * finally decodes and it must not undo a deliberate silence to do it.
+   */
   setAmbience(level, seconds = 1.5) {
+    this.ambience = level;
     if (!this.ambienceBus) return;
     const now = this.ctx.currentTime;
     this.ambienceBus.gain.cancelScheduledValues(now);
@@ -414,10 +426,15 @@ export class Sfx {
       // same swell of air conditioning.
       src.start(0, Math.random() * buffer.duration);
       handle.source = src;
-      started = true;
+      if (!handle.positional) started = true;
     }
 
-    if (started && this.ambienceBus.gain.value === 0) this.setAmbience(1, 3);
+    // Only a BED can ask for this fade, and only up to the level the game has
+    // asked for. A positional loop is on the effects bus and has nothing to do
+    // with the ambience one — but it still comes through here, so before this
+    // read `handle.positional`, a floor cleaner switching on after a power cut
+    // brought the whole building's air conditioning back with it.
+    if (started && this.ambienceBus.gain.value === 0) this.setAmbience(this.ambience, 3);
   }
 }
 
