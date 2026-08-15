@@ -45,10 +45,14 @@ const MIN_BODY = 0.03;
 const DENSITY = 300;
 const MAX_FRAGMENT_MASS = 40;
 
-// How long the ceiling keeps coming down after the generator goes — audibly
-// only, see blackoutPanels. Long enough that eighty tubes are eighty tubes
-// rather than one crack, short enough to still be part of the same event.
+// How long the ceiling keeps coming down after the generator goes. See
+// blackoutPanels: this is a budget for the WORK, not a delay on the sound, and
+// that is the whole point of it. Long enough that two hundred tubes are two
+// hundred tubes rather than one crack, short enough to still read as one event.
 const BLACKOUT_RAIN = 1.2;
+// And a ceiling on how much of that budget one frame may spend, so a frame that
+// was already long cannot cash in the whole backlog and undo the spreading.
+const BLACKOUT_MAX_PER_FRAME = 8;
 
 export class Destruction {
   constructor({ scene, physics, effects, audio, shooting, lighting }) {
@@ -60,6 +64,9 @@ export class Destruction {
     this.lighting = lighting;
 
     this.level = null;
+    // The ceiling still coming down from a power cut, if one is — see
+    // blackoutPanels. Null the rest of the time, which is almost always.
+    this._blackout = null;
     // Every fragment builds its own geometry, so the pool disposes it on retire.
     this.debris = new BodyPool({
       scene, physics, max: MAX_DEBRIS, life: DEBRIS_LIFETIME, ownGeometry: true,
@@ -71,6 +78,10 @@ export class Destruction {
   // traced back in a binary search rather than a scan.
   setLevel(level) {
     this.level = level;
+    // A floor you left takes its unfinished ceiling with it. Without this, taking
+    // the exit while the glass is still coming down would go on shattering the
+    // OLD floor's panels against the new floor's nav grid and physics world.
+    this._blackout = null;
 
     const touched = new Set();
     for (const entry of level.destructibles ?? []) {
@@ -158,7 +169,7 @@ export class Destruction {
 
   // Static destructible: erase it from the batch it was merged into, hand back
   // the floor it was standing on, and scatter the boxes it was authored from.
-  _shatter(entry, dir, point, delay = 0) {
+  _shatter(entry, dir, point) {
     entry.broken = true;
 
     for (const span of entry.spans) eraseSpan(span);
@@ -184,7 +195,7 @@ export class Destruction {
 
     const glassy = entry.kind !== 'prop';
     this.effects.impact(point, _up.set(0, 1, 0), glassy ? 0xdff0ff : 0xffe4b0);
-    this.audio.breakThing(entry.kind, entry.substance, point, { delay });
+    this.audio.breakThing(entry.kind, entry.substance, point);
 
     // The one destructible that fans its own kill out floor-wide, the same
     // shape as `volatile` above: one flag on the entry, read here, handed to
@@ -199,25 +210,56 @@ export class Destruction {
    * fill lighting (see `lighting.setMood`) reads as "the lights are off", but
    * a floor whose power just died should look like it, not just feel darker.
    *
-   * The GEOMETRY all goes on this frame — the lights failing is one event and
-   * a tube popping a second late is a tube nobody shot. The SOUND does not:
-   * eighty tubes and eighty falls of glass starting on the same sample is one
-   * white crack, and it lands on top of the only explosion in the game (see
-   * `audio.generatorBlast`) and buries it. Spread over BLACKOUT_RAIN they are
-   * eighty separate breakages, they stop masking the bang, and glass raining
-   * out of a ceiling for a second after it is what the room would do anyway.
-   * Same reasoning as IMPACT_SCATTER in audio.js, two orders of magnitude up.
+   * It is QUEUED rather than done, and that is the point of this function.
+   * Breaking every panel in one loop was the single most expensive frame in the
+   * game: two hundred span erasures, two hundred fixtures out of the light pool,
+   * two hundred lots of debris, and then ~400 placed sounds each walking
+   * `nav.soundPath` to find its way round the building — all before the frame
+   * could end. Nothing is dropped, it is spent over BLACKOUT_RAIN instead.
+   *
+   * Which fixes the sound for free, and the two are the same fact: a sound is
+   * placed when its panel breaks, so spreading the work spreads the noise. Two
+   * hundred tubes starting on the identical sample is one white crack that lands
+   * on top of the only explosion in the game (see `audio.generatorBlast`) and
+   * buries it; two hundred tubes over a second is a ceiling coming down, which
+   * is what happened. Same idea as IMPACT_SCATTER in audio.js, at floor scale.
+   *
+   * The lights still go out on the frame you shot it — that is `setMood` in
+   * game.js and it is instant. This is only the glass following them down.
    */
   blackoutPanels(fraction) {
     if (!this.level) return;
     const panels = (this.level.destructibles ?? []).filter((e) => e.kind === 'panel' && !e.broken);
     const n = Math.round(panels.length * fraction);
-    for (let i = 0; i < n && panels.length; i++) {
-      const [entry] = panels.splice(Math.floor(Math.random() * panels.length), 1);
-      const f = entry.fixtures[0];
-      this._shatter(entry, _up.set(0, -1, 0), _blast.set(f.x, f.y, f.z),
-        Math.random() * BLACKOUT_RAIN);
+    if (!n) return;
+
+    // Shuffled, so the ceiling fails all over the floor at once rather than
+    // sweeping across it in whatever order the builder happened to emit it.
+    for (let i = panels.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [panels[i], panels[j]] = [panels[j], panels[i]];
     }
+    this._blackout = { queue: panels.slice(0, n), rate: n / BLACKOUT_RAIN, owed: 0 };
+  }
+
+  // Spends the blackout budget for one frame. `owed` carries the fraction of a
+  // panel between frames, so the rate does not quietly depend on the frame rate.
+  _drainBlackout(dt) {
+    const b = this._blackout;
+    if (!b) return;
+
+    b.owed += b.rate * dt;
+    let take = Math.min(Math.floor(b.owed), BLACKOUT_MAX_PER_FRAME);
+    b.owed -= take;
+
+    while (take-- > 0 && b.queue.length) {
+      const entry = b.queue.pop();
+      // It may have been shot, or caught by the blast, since it was queued.
+      if (entry.broken) continue;
+      const f = entry.fixtures[0];
+      this._shatter(entry, _up.set(0, -1, 0), _blast.set(f.x, f.y, f.z));
+    }
+    if (!b.queue.length) this._blackout = null;
   }
 
   // Loose prop: retire the intact body and re-emit its boxes as independent
@@ -309,12 +351,14 @@ export class Destruction {
   // --- debris lifecycle -------------------------------------------------------
 
   update(dt) {
+    this._drainBlackout(dt);
     this.debris.update(dt);
   }
 
   // Must run while the physics world the handles belong to is still alive.
   clear() {
     this.debris.clear();
+    this._blackout = null;
     this.level = null;
   }
 }

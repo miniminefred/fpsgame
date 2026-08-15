@@ -475,20 +475,15 @@ export class GameAudio {
 
   // --- the building coming apart ------------------------------------------------
 
-  /**
-   * Something came apart. Same arguments as bulletHitMaterial, plus a `delay`
-   * for a caller that is breaking a great many things on one frame and knows
-   * they should not all arrive together — see `blackoutPanels` in
-   * destruction.js, and IMPACT_SCATTER above for the same idea at 30 ms.
-   */
-  breakThing(kind, substance, point, { delay = 0 } = {}) {
+  /** Something came apart. Same arguments as bulletHitMaterial. */
+  breakThing(kind, substance, point) {
     const spec = substanceOf(kind, substance);
-    this._placed(spec.break, point, { delay });
+    this._placed(spec.break, point);
     // The tail is what makes destruction read as heavy: the thing breaks, and a
     // second later its pieces stop moving. Some substances have no tail — a torn
     // partition does not clatter.
     if (spec.settle) {
-      this._placed(spec.settle, point, { delay: delay + DEBRIS_DELAY + Math.random() * 0.4 });
+      this._placed(spec.settle, point, { delay: DEBRIS_DELAY + Math.random() * 0.4 });
     }
   }
 
