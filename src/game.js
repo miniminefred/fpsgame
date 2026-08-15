@@ -3,6 +3,7 @@ import { generateLayout } from './gen/layout.js';
 import { makeRng, randomSeed } from './gen/rng.js';
 import { CARDS } from './keycards.js';
 import { PLAYER_RADIUS } from './metrics.js';
+import { capturePowerCut } from './dev-powercut.js';
 
 // The run: generate a floor, clear it, take the exit down, repeat forever.
 //
@@ -189,6 +190,11 @@ export class Game {
    * it compares to the extinguisher's.
    */
   _onPowerCut(point) {
+    // DEV-ONLY: arms the capture in dev-powercut.js, which is chasing a report
+    // of the floor going silent for a second or two right here. First thing in,
+    // so the frame the bang lands on is inside the window rather than before it.
+    if (import.meta.env.DEV) capturePowerCut(this.audio.sfx);
+
     // The bang first, because it is the thing that happened and everything
     // below is a consequence of it.
     this.audio.generatorBlast(point);
