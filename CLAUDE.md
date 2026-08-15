@@ -1140,6 +1140,34 @@ Three rules earned their place the hard way:
   the sum inside full scale, which is where that job belongs. Deciding a sound *should
   not have been asked for* is the caller's job: continuous contact with a desk is one
   shove, and `game.js` — which understands the collision — is what says so.
+
+  **And that half of the bargain is load-bearing, not a nicety.** The generator's
+  blackout broke ~200 ceiling tubes and asked for a break and a settle for every one:
+  ~400 voices, each with a panner and most with an occlusion lowpass, all started inside
+  a second and each lasting longer than that, so they piled up faster than they retired.
+  The audio thread stopped keeping up and `ctx.currentTime` fell **2.7 seconds** behind
+  the wall clock — which is the floor going silent for a second or two, exactly as a
+  player described it. `blackoutPanels` in `destruction.js` now voices only the panels
+  inside the `AUDIBLE` range that already governs enemy noise, capped at
+  `BLACKOUT_VOICES`; the rest break in silence, with the same geometry, debris and light
+  removal. 388 live voices became 20 and the drift became 8 ms.
+
+  Two things generalise. The tubes out of earshot were **never audible** — the panner's
+  falloff and the lowpass had already taken them to nothing — so this cost nothing to
+  give up; a sound you cannot hear is not a sound you are losing, it is work. And the
+  range test alone was not enough (23 tubes were still in earshot on the test floor) nor
+  was a budget alone (it spends itself on the far side of the building): an event that
+  fans out over a whole floor needs both.
+
+  **The measurement that found it is worth copying**, because three plausible theories
+  died first — the limiter ducking the mix (~5 dB, and it sits on the master so it cannot
+  spare the ambience), sound routing degrading (`soundPath` identical before and after),
+  and the main thread stalling (real, 49 ms, fixed, and not the cause). What settled it
+  was **`ctx.currentTime` against `performance.now()`**: the audio clock is driven by the
+  sound device rather than by the page, so drift between the two is the one number that
+  says the fault is *below* the game rather than in it. Frame times and a count of
+  `sfx.play` calls alongside it partition the rest — a stalled main thread, a game that
+  stopped asking, and sounds that start and are inaudible all look identical from a chair.
 - **Clips are measured and conditioned at decode.** Generated audio arrives at wildly
   inconsistent levels: the first pass drew three pistol takes at 1/50th the loudness of
   the shotgun's, which played as silence and read as the gun randomly misfiring. Takes
