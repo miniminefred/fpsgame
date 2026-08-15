@@ -195,10 +195,6 @@ export class Game {
 
     this.lighting.setMood(BLACKOUT_MOOD);
     this.destruction.blackoutPanels(BLACKOUT_PANEL_FRACTION);
-    // And the floor goes quiet, which is the half of this you hear rather than
-    // see. The building's ambience is the building's power — see
-    // `audio.powerCut`.
-    this.audio.powerCut();
 
     this.physics?.blast(point, POWER_CUT_BLAST_RADIUS, POWER_CUT_BLAST_PUSH);
     this.destruction.blast(point, POWER_CUT_BLAST_RADIUS, POWER_CUT_BLAST_DAMAGE);
@@ -413,9 +409,6 @@ export class Game {
     // Sound has to know where this floor's walls and doorways are, or it comes
     // straight through the plaster.
     this.audio.setNav(level.nav);
-    // Whatever you did to the last floor's mains, this one's are on — the same
-    // reset `setMood` below is doing for its lights.
-    this.audio.powerRestore();
     this.lighting.setFixtures(level.fixtures);
     // How much of this floor's lighting is still on. Read off the theme, which
     // enemies.spawn has already rolled by this point.
