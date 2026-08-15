@@ -615,6 +615,24 @@ export class GameAudio {
     this._placed(`${set}-${event}`, at, { rate: Math.pow(enemy.type.scale, VOICE_EXPONENT) });
   }
 
+  /**
+   * The same rejection `_near` makes for an enemy, for anything else that knows
+   * it is about to ask for a great many sounds at once and wants to drop the
+   * ones nobody could hear. `blackoutPanels` in destruction.js is the caller
+   * this exists for — see AUDIBLE above for what the range means.
+   *
+   * Public because the decision belongs to whoever understands the event. This
+   * module plays what it is asked for; knowing that two hundred ceiling tubes
+   * across a whole building is not two hundred sounds to a player standing in
+   * one room of it is not something it can work out.
+   */
+  audibleAt(x, z, range = AUDIBLE) {
+    if (!this.sfx.ready) return false;
+    const dx = x - this._pos.x;
+    const dz = z - this._pos.z;
+    return dx * dx + dz * dz <= range * range;
+  }
+
   // Where an enemy's noise comes from, or null if they are too far away to be
   // worth placing. The range test is straight-line on purpose: it is a cheap
   // rejection, and _placed does the honest routing for whatever survives it.

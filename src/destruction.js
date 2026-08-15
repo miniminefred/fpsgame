@@ -54,6 +54,22 @@ const BLACKOUT_RAIN = 1.2;
 // was already long cannot cash in the whole backlog and undo the spreading.
 const BLACKOUT_MAX_PER_FRAME = 8;
 
+// How many of those panels are allowed to make a NOISE, and this is the number
+// the whole bug came down to. Two hundred tubes and two hundred falls of glass
+// is ~400 voices, each with a panner and most with a lowpass, all started inside
+// a second and all lasting longer than that — and a measurement taken while
+// somebody was hearing the fault found 388 of them live at once and the audio
+// clock 2.7 SECONDS behind the wall clock. A WebAudio context that far behind
+// real time has stopped being able to render, which is the floor going silent.
+//
+// The engine is right not to have a voice cap (see sfx.js) and this is the other
+// half of that bargain: deciding a sound should not have been ASKED for belongs
+// to whoever understands the event. Two hundred tubes going across a whole
+// building is one ceiling coming down to a player standing in one room of it,
+// and the tubes out of earshot were never audible — the panner's falloff and the
+// occlusion filter had already taken them to nothing. They were pure cost.
+const BLACKOUT_VOICES = 16;
+
 export class Destruction {
   constructor({ scene, physics, effects, audio, shooting, lighting }) {
     this.scene = scene;
@@ -169,7 +185,11 @@ export class Destruction {
 
   // Static destructible: erase it from the batch it was merged into, hand back
   // the floor it was standing on, and scatter the boxes it was authored from.
-  _shatter(entry, dir, point) {
+  // `silent` is for a caller breaking many things at once that has decided this
+  // particular one is not one of the sounds — see blackoutPanels. Everything
+  // else about the destruction is unchanged: it still goes, still throws debris,
+  // still gives back its collider and its light.
+  _shatter(entry, dir, point, silent = false) {
     entry.broken = true;
 
     for (const span of entry.spans) eraseSpan(span);
@@ -195,7 +215,7 @@ export class Destruction {
 
     const glassy = entry.kind !== 'prop';
     this.effects.impact(point, _up.set(0, 1, 0), glassy ? 0xdff0ff : 0xffe4b0);
-    this.audio.breakThing(entry.kind, entry.substance, point);
+    if (!silent) this.audio.breakThing(entry.kind, entry.substance, point);
 
     // The one destructible that fans its own kill out floor-wide, the same
     // shape as `volatile` above: one flag on the entry, read here, handed to
@@ -239,7 +259,9 @@ export class Destruction {
       const j = Math.floor(Math.random() * (i + 1));
       [panels[i], panels[j]] = [panels[j], panels[i]];
     }
-    this._blackout = { queue: panels.slice(0, n), rate: n / BLACKOUT_RAIN, owed: 0 };
+    this._blackout = {
+      queue: panels.slice(0, n), rate: n / BLACKOUT_RAIN, owed: 0, voices: BLACKOUT_VOICES,
+    };
   }
 
   // Spends the blackout budget for one frame. `owed` carries the fraction of a
@@ -257,7 +279,13 @@ export class Destruction {
       // It may have been shot, or caught by the blast, since it was queued.
       if (entry.broken) continue;
       const f = entry.fixtures[0];
-      this._shatter(entry, _up.set(0, -1, 0), _blast.set(f.x, f.y, f.z));
+      // Near enough to hear, and there is still a voice left for it. Both halves
+      // matter: the range test alone still leaves a hundred tubes in earshot on a
+      // big floor, and a budget alone would spend itself on the far side of the
+      // building. Everything else breaks in silence — see BLACKOUT_VOICES.
+      const heard = b.voices > 0 && this.audio.audibleAt(f.x, f.z);
+      if (heard) b.voices--;
+      this._shatter(entry, _up.set(0, -1, 0), _blast.set(f.x, f.y, f.z), !heard);
     }
     if (!b.queue.length) this._blackout = null;
   }
