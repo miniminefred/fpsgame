@@ -481,21 +481,43 @@ The mezzanine is worked in the room's own two axes — `u` from the door wall in
 along the door wall — and four things in it were learned by walking rather than by
 looking:
 
-- **The flight stands off the door wall rather than against it, and that one number is
-  what makes the stairs usable.** Against the wall, a flight has to begin clear of the
-  opening and run its whole length to one side of it: on a nine-metre wall with the door
-  in the middle there is not four metres either way, and two rooms in six got no stairs
-  at all. Set back by `SETBACK`, it runs the full width of the room straight past the
-  doorway without blocking it, its foot sits directly in front of the door, and the walk
-  is the one the room wants — in, one pace, turn, straight up. It always climbs *away*
-  from the door; one that started in a corner and climbed back toward it is a flight you
-  have to walk past and turn round in.
+- **The flight is built into a wall, and which wall is the only choice in it.** A flight
+  standing off in the middle of the room reads as furniture somebody left there rather
+  than as part of the building, so it goes flush — and being flush makes the *run* the
+  constraint, because the opening plus a whole 4.16 m run then has to fit along one wall.
+  Two arrangements, both flush, tried in order:
+  - **The door wall**, bottom step `DOOR_GAP` past the edge of the opening, climbing
+    away. First choice, because the walk is one turn: in, turn left (or right), straight
+    up, with the first tread exactly where the turn leaves you. `DOOR_GAP` is half a
+    metre because that is what clears the door furniture — a room's badge reader beds
+    into the jamb 0.16 m past the opening and is 0.15 m wide along the wall, so it ends
+    at 0.235 — with enough left to stand on to make the step up.
+  - **A side wall**, the one nearer the door, climbing away from the door wall. It costs
+    a 2.5–3 m walk along the door wall to reach the foot, which is why it is second. Its
+    bottom step stands `FOOT_ROOM` off the door wall rather than in the corner: it climbs
+    *into* the room, so the floor you step onto the tread from is the floor between it
+    and the door wall, and jammed into the corner there is none.
+
+  Measured over 198 generator rooms, the door wall takes it 86% of the time and the side
+  wall the other 14% — and every one of those 14% is the same shape, a nine-metre door
+  wall with the door near the middle, which has not four metres either way. Every room
+  still gets a flight and every flight touches a wall. Either way it climbs *away* from
+  where you come in; one that climbed back toward the door is a flight you have to walk
+  past and turn round in.
 - **The hole in the deck is wider than the flight in it** (`NOTCH_PAD`). Cut to exactly
   the stair's width, a body climbing has no room to be off-centre — the player is 0.8 m
   across on a 1.3 m tread, and the moment a shoulder crosses the deck's edge their head
   meets its 3.0 m soffit, which happens around the sixth step. It reads as the stairs
   simply stopping half way up. Caught by a test that walks a body up deliberately
-  off-centre; before the pad it climbed to 2.8 m and stopped.
+  off-centre; before the pad it climbed to 2.8 m and stopped. Only the side *away* from
+  the wall needs it now the flight is flush: on the near side there is no deck edge to
+  meet, because the wall is what the notch stops against, and the wall stops the body a
+  whole step before its head could reach the soffit. The notch is therefore derived from
+  the flight's rectangle — padded across its width on any side that is not a wall, and
+  not padded along the run at all, since the foot end is at floor level and the head end
+  has to meet the deck exactly or there is a gap to step over. The deck is then drawn as
+  whatever of the room that notch is *not*, rather than as named pieces, because the
+  notch sits somewhere different in each arrangement.
 - **The floor at the foot of the flight is reserved, not just the flight.** The ground
   under the deck is left furnishable on purpose — there is 3 m of headroom and crates
   belong there — but the tile you stand on to start climbing is not the stair's own
@@ -510,14 +532,20 @@ looking:
   deck's, and `blocked` is a throwaway, because a desk up here must not make the floor
   underneath it impassable.
 
-`GOING` is 0.26 rather than a domestic 0.3 for the same reason the setback costs what it
-does: the riser is fixed by `RISER` and the rise by `DECK_Y`, so the tread is the only
-free number in the flight, and shortening it is the only way to shorten the run. An
-industrial access stair is steep anyway.
+`GOING` is 0.26 rather than a domestic 0.3 for the same reason the run is what decides
+which wall the flight gets: the riser is fixed by `RISER` and the rise by `DECK_Y`, so
+the tread is the only free number in the flight, and shortening it is the only way to
+shorten the run. An industrial access stair is steep anyway. It is also why the 14% is
+not closed by shaving margins — the door wall is 0.4 m short in those rooms, and buying
+that back means a 41° stair in every generator room on every floor.
 
-Measured over 14 rolled floors: every one built a deck, every deck reached three walls,
-every flight was climbed to the top with the body walked deliberately off-centre, and
-each deck came out with three to five desks on it.
+Measured over 198 rolled generator rooms: every one built a deck, every flight came out
+flush against a wall with its run intact and never across the doorway. Then walked in
+the browser, in both arrangements, at every offset across the tread a 0.4 m-radius body
+can legally occupy plus one deliberately overhanging the open edge: all of them reach
+the deck at 3.2 m, and on the door wall they do it starting from inside the doorway, so
+the one-turn walk is the tested claim and not just the intended one. Each deck comes out
+with three to five desks on it.
 
 ### What furniture is never allowed to close (`reserveClearances` in `gen/build.js`)
 A tile mask the furnisher may not place into, stamped before a single prop is put down —
