@@ -93,7 +93,7 @@ export function buildLevel(scene, layout) {
     tallRoof: genCut,
   });
   colliders.push(...floorPlate(layout));
-  buildDoorFrames(layout, batcher, materials);
+  buildDoorFrames(layout, batcher, materials, colliders);
   buildWindows(layout, batcher, materials, fixtures, destructibles);
   buildCeilingLights(layout, batcher, materials, fixtures, destructibles);
   buildGeneratorLights(layout, batcher, materials, fixtures, destructibles);
@@ -830,7 +830,18 @@ const FRAME_T = 0.06;
 const LINTEL_Y = DOOR_H + FRAME_T * 0.5;
 const JAMB_TOP = DOOR_H + FRAME_T * 0.5;
 
-function buildDoorFrames(layout, batcher, materials) {
+function buildDoorFrames(layout, batcher, materials, colliders) {
+  // The wall over an opening has to reach the top of the wall it is IN, and one
+  // wall in the building is not WALL_H: the generator room's four are a full
+  // storey taller (see generatorWallMask, and the tall roof pass in
+  // buildShell). Hard-coded to WALL_H this left a 3.2 m hole over the one
+  // doorway whose wall goes to 6.4 — a space above the door, looking straight
+  // out of the room over the corridor's roof. The wall TILE is shared and tall
+  // on both faces, so the header over it is tall too; it is the opening that
+  // decides, not which side you are standing on.
+  const gen = layout.rooms.find((r) => r.role === 'generator');
+  const tallHeader = new Set(gen ? doorsOnRoom(layout.doors, gen) : []);
+
   for (const d of layout.doors) {
     const x0 = worldX(layout, d.x0), x1 = worldX(layout, d.x1);
     const z0 = worldZ(layout, d.y0), z1 = worldZ(layout, d.y1);
@@ -839,8 +850,25 @@ function buildDoorFrames(layout, batcher, materials) {
     const frame = (a0, b0, c0, a1, b1, c1) =>
       batcher.add('doorframe', materials.doorframe, boxBetween(a0, b0, c0, a1, b1, c1));
 
+    const headTop = tallHeader.has(d) ? WALL_H * 2 : WALL_H;
     batcher.add('wall', materials.wall,
-      applyWorldUVs(boxBetween(x0, LINTEL_Y, z0, x1, WALL_H, z1)));
+      applyWorldUVs(boxBetween(x0, LINTEL_Y, z0, x1, headTop, z1)));
+
+    // An ordinary header needs no collider: it starts at 2.13 m and nothing in
+    // the building can get its feet up there. A TALL one can be reached, because
+    // the generator room's mezzanine deck is at WALL_H and a prop on the deck
+    // stands higher still — so the part of it above the ordinary wall line is
+    // given one, or the header is opaque and walk-through, which is worse than
+    // the hole it replaced. `base` rather than a plain pillar, so the doorway
+    // itself stays open at floor level: a body only meets this if its feet are
+    // within BODY_H of it.
+    if (headTop > WALL_H) {
+      colliders.push({
+        minX: Math.min(x0, x1), maxX: Math.max(x0, x1),
+        minZ: Math.min(z0, z1), maxZ: Math.max(z0, z1),
+        base: WALL_H, top: headTop, building: true,
+      });
+    }
 
     if (d.vertical) {
       // Wall runs along Z, one tile thick in X; the opening spans z0..z1.

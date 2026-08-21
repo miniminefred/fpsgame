@@ -453,6 +453,25 @@ hole in the building rather than as a tall room. `buildShell` now runs the roof 
 twice, the same way it already ran the wall pass twice and for the same reason, with
 `only()` as the complement of `masked()` handing the second pass the room's own tiles.
 
+**The header over its doorway is the same bug one wall further along, and it lasted
+longer.** `buildDoorFrames` fills the wall above every opening, and it filled it to
+`WALL_H` — a constant, on the assumption every wall in the building is that tall. The
+generator room's four are not, so the one doorway whose wall goes to 6.4 had a 3.2 m hole
+over it, looking straight out of the room across the corridor's roof slab. It now asks the
+opening how tall its wall is. Two things about that:
+
+- **The wall tile is shared and tall on both faces**, so the header over it is tall too —
+  it is the *opening* that decides, not which side you are standing on.
+- **A tall header needs a collider and an ordinary one does not.** An ordinary header
+  starts at 2.13 m and nothing in the building can get its feet up there, so it has never
+  had one. This one is reachable: the mezzanine deck is at `WALL_H` and reaches the door
+  wall directly over the opening, and a prop on the deck stands higher still. Left as
+  geometry alone it would be an opaque wall you can walk through, which is worse than the
+  hole it replaced. It carries `base` rather than being a pillar, so the doorway stays
+  open at floor level — a body only meets it if its feet are within `BODY_H`. Proved both
+  ways: a body walks in through the door at floor level as before, and a body standing on
+  the deck walking straight at the header travels 0.14 m and stops.
+
 Capping it and lighting it are **one** change, not two. The room's original lights are
 on its walls at 2.6 m, from when there was no ceiling to hang anything from; a roof 3.8 m
 above the nearest of them comes out nearly black, which looks exactly like the hole it
