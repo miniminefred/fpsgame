@@ -438,9 +438,32 @@ came out as two pallets and eight fire extinguishers.
 
 ### The generator room (`generatorRoom` in `gen/rooms.js` + `buildGeneratorMezzanine`)
 One big room a floor, when the slab throws up somewhere that fits (area over 110 m², a
-short side of 15 tiles, and exactly one door), becomes the plant room: no suspended
-ceiling and no roof over it, walls a full storey taller than everything else, and a
-machine at the far end you can shoot to cut the power to the whole floor.
+short side of 15 tiles, and exactly one door), becomes the plant room: walls a full
+storey taller than everything else, no suspended ceiling, a roof of its own at `WALL_H *
+2` instead of the ordinary one, and a machine at the far end you can shoot to cut the
+power to the whole floor.
+
+**That roof is the fix to a hole, and it is worth knowing why it was missing.** The walls
+were built at double height so the room would read "walled up two storeys rather than
+roofless" — the wall pass says exactly that — but `generatorRoomCut` took the room out of
+the *roof* pass as well as the ceiling one, and nothing was ever put back on top of them.
+So the one room in the building designed to be looked up in was the one room open to
+nothing: look up and you got the fog clear colour going on for ever, which reads as a
+hole in the building rather than as a tall room. `buildShell` now runs the roof pass
+twice, the same way it already ran the wall pass twice and for the same reason, with
+`only()` as the complement of `masked()` handing the second pass the room's own tiles.
+
+Capping it and lighting it are **one** change, not two. The room's original lights are
+on its walls at 2.6 m, from when there was no ceiling to hang anything from; a roof 3.8 m
+above the nearest of them comes out nearly black, which looks exactly like the hole it
+replaced. So `buildGeneratorLights` now also hangs high bays under the new roof, on the
+same `LIGHT_PITCH` grid an ordinary room's panels use, with a longer `distance` because
+they are twice as far from the floor they have to reach. Measured from the open slot over
+the machine, looking up: before, no roof collider overhead, no fixtures, zero bright
+pixels and a peak luminance of 83; after, a roof at 6.4–6.8 m, six high bays, and a peak
+of 227. Note most of the floor is *under* the mezzanine deck and correctly sees the deck
+rather than the roof — the slot over the machine and the deck itself are the only places
+the roof is visible at all, which is where to look when checking this.
 
 Three things about it are structural rather than decorative:
 
