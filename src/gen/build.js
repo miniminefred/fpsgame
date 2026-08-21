@@ -77,16 +77,20 @@ export function buildLevel(scene, layout) {
   // through it. Both cuts are the same tiles; which surface loses them is which way
   // the stairs go.
   //
-  // The generator room cuts a hole of its own, straight up: no suspended ceiling
-  // and no structural roof over its own footprint, so it reads as double-height —
-  // walls still standing at the ordinary WALL_H all round it, just with nothing
-  // capping them. The floor plate is untouched; only ceiling and roof lose the
-  // tiles.
+  // The generator room loses its suspended ceiling and its ordinary roof, and
+  // gets a roof of its own one storey higher instead. That is what makes it
+  // double-height rather than roofless: its walls already stand at WALL_H * 2
+  // (see generatorWallMask), and for a long time nothing capped them — so
+  // looking up in the one room built to be looked up in showed the fog clear
+  // colour going on for ever, which reads as a hole in the building rather than
+  // as a tall room. The floor plate is untouched; only the two upper surfaces
+  // move.
   const genCut = generatorRoomCut(layout);
   buildShell(layout, batcher, materials, colliders, {
     ceiling: orMask(stairwellCut(layout, 1), genCut),
     floor: stairwellCut(layout, -1),
     roof: orMask(roofCollisionCut(layout), genCut),
+    tallRoof: genCut,
   });
   colliders.push(...floorPlate(layout));
   buildDoorFrames(layout, batcher, materials);
@@ -293,16 +297,32 @@ function buildShell(layout, batcher, materials, colliders, cuts) {
   // its deck (`stairBoxes`) already covers that footprint one storey up, and a
   // room's worth of roof sitting at floor height inside the attic would be the
   // same bug this whole pass exists to fix, just scoped to one room.
-  for (const r of maskToRects(masked(tiles, cuts.roof), W, H, isOpen)) {
-    const x0 = worldX(layout, r.x0), x1 = worldX(layout, r.x1);
-    const z0 = worldZ(layout, r.y0), z1 = worldZ(layout, r.y1);
-    batcher.add('ceiling', materials.ceiling,
-      applyWorldUVs(boxBetween(x0, WALL_H, z0, x1, WALL_H + ROOF_T, z1)), { castShadow: false });
-    colliders.push({
-      minX: x0, maxX: x1, minZ: z0, maxZ: z1,
-      base: WALL_H, top: WALL_H + ROOF_T, building: true, ceiling: true,
-    });
-  }
+  // Two passes, for the same reason the walls take two: the generator room's
+  // roof sits a whole storey higher than everybody else's, on top of the taller
+  // walls that are already standing there. `masked` takes the generator's tiles
+  // OUT of the ordinary pass and `only` is what hands them to the tall one, and
+  // on a floor with no generator room that second mask is empty and the pass
+  // costs a rect-merge over nothing.
+  const drawRoof = (mask, y) => {
+    for (const r of maskToRects(mask, W, H, isOpen)) {
+      const x0 = worldX(layout, r.x0), x1 = worldX(layout, r.x1);
+      const z0 = worldZ(layout, r.y0), z1 = worldZ(layout, r.y1);
+      batcher.add('ceiling', materials.ceiling,
+        applyWorldUVs(boxBetween(x0, y, z0, x1, y + ROOF_T, z1)), { castShadow: false });
+      colliders.push({
+        minX: x0, maxX: x1, minZ: z0, maxZ: z1,
+        base: y, top: y + ROOF_T, building: true, ceiling: true,
+      });
+    }
+  };
+  drawRoof(masked(tiles, cuts.roof), WALL_H);
+  drawRoof(only(tiles, cuts.tallRoof), WALL_H * 2);
+}
+
+// The complement of `masked`: everything OUTSIDE the cut turned SOLID, so a pass
+// runs over the cut alone. Absent cut means nothing to draw, not everything.
+function only(tiles, cut) {
+  return cut ? tiles.map((t, i) => (cut[i] ? t : SOLID)) : tiles.map(() => SOLID);
 }
 
 // Tiles with a stairwell's hole taken out of them, for the surface it passes
@@ -1071,11 +1091,22 @@ function buildCeilingLights(layout, batcher, materials, fixtures, destructibles)
   }
 }
 
-// The generator room's own lights: mounted on its walls rather than its
-// ceiling, because it doesn't have one (see generatorRoomCut). Same
-// fixture/destructible shape as a ceiling panel — kind: 'panel', one light
-// each, shot out or blacked out the same way — just standing proud of a wall
-// instead of set into a suspended tile.
+// The generator room's own lights, in two mounts, because it is the one room
+// with two heights to light. Both are the same fixture/destructible shape as an
+// ordinary ceiling panel — kind: 'panel', one light each, shot out or blacked
+// out the same way — they just hang off different surfaces.
+//
+//   Walls, at head-and-shoulders height: what lights the machine and the floor
+//   you are standing on. These are the room's original lights, from when it had
+//   no ceiling at all to hang anything from.
+//
+//   The roof, at WALL_H * 2: high bays under the double-height deck (see the
+//   tall roof pass in buildShell). Without them the room is sealed but its
+//   ceiling is 3.8 m above the nearest thing lighting it and comes out nearly
+//   black — which looks exactly like the roofless hole it replaced, so capping
+//   the room and lighting the cap are one change, not two. They carry a longer
+//   `distance` than a suspended panel for the obvious reason: they are twice as
+//   far from the floor they have to reach.
 function buildGeneratorLights(layout, batcher, materials, fixtures, destructibles) {
   const room = layout.rooms.find((r) => r.role === 'generator');
   if (!room) return;
@@ -1084,26 +1115,17 @@ function buildGeneratorLights(layout, batcher, materials, fixtures, destructible
   const z0 = worldZ(layout, room.y0), z1 = worldZ(layout, room.y1);
   const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
   const grade = GRADE.generator;
-  const Y = 2.6;          // below WALL_H, well above head height
-  const STANDOFF = 0.14;  // off the wall face, the same idea as edgeProp's
+  const Y = 2.6;              // below WALL_H, well above head height
+  const ROOF_Y = WALL_H * 2;  // the underside of this room's own roof
+  const STANDOFF = 0.14;      // off the wall face, the same idea as edgeProp's
 
-  const walls = [
-    { x: cx, z: z0 + STANDOFF, alongX: true },
-    { x: cx, z: z1 - STANDOFF, alongX: true },
-    { x: x0 + STANDOFF, z: cz, alongX: false },
-    { x: x1 - STANDOFF, z: cz, alongX: false },
-  ];
-
-  for (const w of walls) {
-    const hw = w.alongX ? 0.5 : 0.12;
-    const hd = w.alongX ? 0.12 : 0.5;
-
+  const addPanel = (x, y, z, hw, hd, distance) => {
     const spans = batcher.beginSpans();
     batcher.add(grade.key, materials[grade.key],
-      slab(w.x - hw, w.z - hd, w.x + hw, w.z + hd, Y, false), { castShadow: false, receiveShadow: false });
+      slab(x - hw, z - hd, x + hw, z + hd, y, false), { castShadow: false, receiveShadow: false });
     batcher.endSpans();
 
-    const fixture = { x: w.x, y: Y - 0.05, z: w.z, color: grade.color, intensity: grade.intensity, distance: 12 };
+    const fixture = { x, y: y - 0.05, z, color: grade.color, intensity: grade.intensity, distance };
     fixtures.push(fixture);
 
     destructibles.push({
@@ -1115,10 +1137,32 @@ function buildGeneratorLights(layout, batcher, materials, fixtures, destructible
       fixtures: [fixture],
       parts: [{
         material: materials[grade.key],
-        x0: w.x - hw, y0: Y - 0.03, z0: w.z - hd, x1: w.x + hw, y1: Y, z1: w.z + hd,
+        x0: x - hw, y0: y - 0.03, z0: z - hd, x1: x + hw, y1: y, z1: z + hd,
       }],
       broken: false,
     });
+  };
+
+  for (const w of [
+    { x: cx, z: z0 + STANDOFF, alongX: true },
+    { x: cx, z: z1 - STANDOFF, alongX: true },
+    { x: x0 + STANDOFF, z: cz, alongX: false },
+    { x: x1 - STANDOFF, z: cz, alongX: false },
+  ]) {
+    addPanel(w.x, Y, w.z, w.alongX ? 0.5 : 0.12, w.alongX ? 0.12 : 0.5, 12);
+  }
+
+  // High bays on the same pitch an ordinary room's panels use, so a big plant
+  // room gets several and a small one still gets the fixture at its centre.
+  const nx = Math.max(1, Math.round((x1 - x0) / LIGHT_PITCH));
+  const nz = Math.max(1, Math.round((z1 - z0) / LIGHT_PITCH));
+  const alongX = (x1 - x0) >= (z1 - z0);
+  for (let i = 0; i < nx; i++) {
+    for (let j = 0; j < nz; j++) {
+      addPanel(x0 + (x1 - x0) * ((i + 0.5) / nx), ROOF_Y - 0.015,
+        z0 + (z1 - z0) * ((j + 0.5) / nz),
+        alongX ? 0.62 : 0.16, alongX ? 0.16 : 0.62, 22);
+    }
   }
 }
 
