@@ -392,8 +392,9 @@ function drawWalls(layout, tiles, batcher, materials, colliders, wallH, building
 //   v   along the door wall, 0 at one side wall and vLen at the other.
 //
 // So the deck is u in [0, depth] by the full width of v, and the flight runs
-// along the door wall inside a notch cut out of it. That is the whole shape of
-// the thing: walk in, turn left or right, and walk straight up.
+// inside a notch cut out of it, flush against a wall — the door wall where the
+// run fits beside the opening, a side wall where it does not. That is the whole
+// shape of the thing: walk in, turn left or right, and walk straight up.
 function buildGeneratorMezzanine(layout, batcher, materials, masks, rng) {
   const room = layout.rooms.find((r) => r.role === 'generator');
   if (!room) return;
@@ -411,15 +412,19 @@ function buildGeneratorMezzanine(layout, batcher, materials, masks, rng) {
   const RAIL_T = 0.06;
   const GOING = 0.26;           // an industrial access stair is steep
   const STAIR_W = 1.3;
-  // The flight stands off the door wall by this much instead of against it, and
-  // that one number is what makes the stairs work from the doorway. Against the
-  // wall, the flight has to start clear of the opening and run its whole length
-  // to one side of it — on a nine-metre wall with the door in the middle there
-  // is not four metres either way, so two rooms in six got no stairs at all.
-  // Set back, it runs the full width of the room past the doorway without
-  // blocking it, its foot sits directly in front of the door, and the walk is
-  // the one that was asked for: in, one pace, turn, straight up.
-  const SETBACK = 1.55;
+  // How far past the doorway's edge the bottom tread starts. The flight goes
+  // flush against the door wall and BESIDE the opening, which is what makes the
+  // walk one turn: in, turn left (or right), straight up, with the first tread
+  // where the turn puts you. Half a metre is what clears the door furniture —
+  // a room's badge reader beds into the jamb 0.16 m past the opening and is
+  // 0.15 m wide along the wall, so it ends at 0.235 — with enough left over to
+  // stand on to make the step up.
+  const DOOR_GAP = 0.5;
+  // A body's length of floor. Used twice for the same reason both times: it is
+  // how much room the foot of a flight needs in front of it to be climbable at
+  // all — once when a side-wall flight decides where to start, and again when
+  // the furnisher is told to keep off that floor.
+  const FOOT_ROOM = 1.3;
   // The hole in the deck is wider than the flight in it. A notch cut to exactly
   // the stair's width leaves a body climbing it no room to be off-centre: the
   // player is 0.8 m across on a 1.3 m tread, and the moment their shoulder
@@ -427,6 +432,11 @@ function buildGeneratorMezzanine(layout, batcher, materials, masks, rng) {
   // around the sixth step, where standing height first reaches the 3.0 m soffit.
   // It reads as the stairs simply stopping half way up. Found by walking, not
   // by looking: a body that climbed to 2.8 m and then would not go on.
+  //
+  // Only the side away from the wall needs it once the flight is flush: on the
+  // near side there is no deck edge to meet, because the wall itself is what
+  // the notch stops against, and the wall stops the body a whole step earlier
+  // than its head would ever reach the soffit.
   const NOTCH_PAD = 0.5;
   // The deck stops this far off the generator's wall: the machine's own 3.0 m
   // depth (its pipework is inside its footprint — see `generator` in
@@ -457,42 +467,96 @@ function buildGeneratorMezzanine(layout, batcher, materials, masks, rng) {
   const uLen = alongX ? z1 - z0 : x1 - x0;
 
   const depth = uLen - GEN_CLEAR;
-  const uFlight = SETBACK;                 // near edge of the flight
-  if (depth < uFlight + STAIR_W + NOTCH_PAD + 1.4) return;   // no deck worth standing on
+  // Enough deck left over beside a stairwell to be worth climbing to. This is
+  // the bar for the door-wall arrangement, which is the shallower of the two;
+  // the side-wall one needs a whole RUN of depth and asks for it itself.
+  if (depth < STAIR_W + NOTCH_PAD + 1.4) return;   // no deck worth standing on
 
-  // The doorway's position along that wall: the flight's foot goes in front of
-  // it, so that turning out of the door faces you straight up the stairs.
+  // The doorway's extent along that wall. The flight starts just past one edge
+  // of it, so what has to fit is the whole run between that edge and the far
+  // corner — the opening itself is dead length either way.
   const dA = (alongX ? worldX(layout, door.x0) : worldZ(layout, door.y0)) - vLo;
   const dB = (alongX ? worldX(layout, door.x1) : worldZ(layout, door.y1)) - vLo;
-  const foot = Math.min(Math.max((dA + dB) / 2, 0.3), vLen - 0.3);
+  const dLo = Math.min(dA, dB), dHi = Math.max(dA, dB);
 
-  // Left or right, rolled — and if the near end is too close, the other way.
-  // The flight always climbs AWAY from the door: one that started at a corner
-  // and climbed back toward it would be one you walk past and turn round in.
+  // Where the flight goes, as the rectangle it occupies plus which way it
+  // climbs. There are two arrangements and BOTH are flush against a wall, which
+  // is the whole point of them: a flight standing off in the middle of the room
+  // reads as a piece of furniture somebody left there rather than as part of
+  // the building.
+  //
+  //   'v'  along the door wall, flush at u = 0, its bottom step DOOR_GAP past
+  //        the edge of the opening. First choice, because the walk is one turn:
+  //        in, turn left (or right), straight up, with the first tread exactly
+  //        where the turn leaves you.
+  //   'u'  along a side wall, flush at v = 0 or vLen, climbing away from the
+  //        door wall. Second choice, and what it costs is the walk along the
+  //        door wall to reach the foot. It is needed because being flush makes
+  //        the RUN the constraint: the opening plus a whole run has to fit on
+  //        one wall, so a nine-metre door wall with the door in the middle has
+  //        not four metres either way. Measured over 198 generator rooms, the
+  //        door wall takes it 86% of the time and this takes the other 14%.
+  //
+  // Either way the flight climbs AWAY from where you come in. One that climbed
+  // back toward the door would be one you walk past and turn round in.
   const options = rng.chance(0.5) ? [-1, 1] : [1, -1];
-  let dirV = 0;
+  let plan = null;
   for (const d of options) {
-    const t = foot + d * RUN;
-    if (t >= 0.25 && t <= vLen - 0.25) { dirV = d; break; }
+    const f = d < 0 ? dLo - DOOR_GAP : dHi + DOOR_GAP;
+    const t = f + d * RUN;
+    if (Math.min(f, t) >= 0.25 && Math.max(f, t) <= vLen - 0.25) {
+      plan = { axis: 'v', c0: 0, c1: STAIR_W, foot: f, dir: d };
+      break;
+    }
   }
-  if (!dirV) return;   // the wall is too short to take a flight either way
+  if (!plan && depth >= FOOT_ROOM + RUN + 0.25 && vLen >= STAIR_W + NOTCH_PAD + 1.4) {
+    // The side wall nearer the door, so the walk to the foot is the shorter of
+    // the two. The flight starts FOOT_ROOM off the door wall rather than in the
+    // corner: it climbs into the room, so the floor you step onto the bottom
+    // tread from is the floor between it and the door wall, and jammed into the
+    // corner there is none — you would be stepping onto the flight sideways.
+    const near = (dLo + dHi) / 2 < vLen / 2;
+    const c0 = near ? 0 : vLen - STAIR_W;
+    plan = { axis: 'u', c0, c1: c0 + STAIR_W, foot: FOOT_ROOM, dir: 1 };
+  }
+  if (!plan) return;   // no wall in this room can take the run
 
-  const top = foot + dirV * RUN;
-  const nv0 = Math.min(foot, top), nv1 = Math.max(foot, top);
+  // The hole in the deck: the flight's own rectangle, padded across its width
+  // on any side that is not a wall. Along the run it is not padded at all —
+  // the foot end is at floor level so there is nothing to duck, and the head
+  // end has to meet the deck exactly or there is a gap to step over.
+  const top = plan.foot + plan.dir * RUN;
+  const pad = (lo, hi, limit) => [Math.max(0, lo - NOTCH_PAD), Math.min(limit, hi + NOTCH_PAD)];
+  const [nu0, nu1] = plan.axis === 'v'
+    ? pad(plan.c0, plan.c1, depth)
+    : [Math.min(plan.foot, top), Math.max(plan.foot, top)];
+  const [nv0, nv1] = plan.axis === 'v'
+    ? [Math.min(plan.foot, top), Math.max(plan.foot, top)]
+    : pad(plan.c0, plan.c1, vLen);
+  // Which edge of that hole is the head of the flight, and so has to stay open:
+  // it is the way onto the deck.
+  const head = plan.axis === 'v' ? (plan.dir > 0 ? 'v1' : 'v0') : 'u1';
 
   // One drawing primitive for the whole mezzanine: a u/v rectangle between two
   // heights. u runs either way in world space, so the min/max is taken rather
   // than assumed, and a run that is a line in plan (a railing) is given the
   // thickness it is asked for about that line — a zero-width box draws as
   // nothing and collides with nothing, which is a railing you fall through.
-  const piece = (key, u0, u1, v0, v1, yLo, yHi, opts = {}) => {
-    const { uv = false, solid = true, thin = 0 } = opts;
+  // u/v rectangle to world box. Separate from `piece` because the furnisher
+  // reservation below wants the box without anything being drawn into it.
+  const rect = (u0, u1, v0, v1) => {
     const ua = uWall + uSign * u0, ub = uWall + uSign * u1;
     const va = vLo + v0, vb = vLo + v1;
-    let bx0 = alongX ? Math.min(va, vb) : Math.min(ua, ub);
-    let bx1 = alongX ? Math.max(va, vb) : Math.max(ua, ub);
-    let bz0 = alongX ? Math.min(ua, ub) : Math.min(va, vb);
-    let bz1 = alongX ? Math.max(ua, ub) : Math.max(va, vb);
+    return {
+      bx0: alongX ? Math.min(va, vb) : Math.min(ua, ub),
+      bx1: alongX ? Math.max(va, vb) : Math.max(ua, ub),
+      bz0: alongX ? Math.min(ua, ub) : Math.min(va, vb),
+      bz1: alongX ? Math.max(ua, ub) : Math.max(va, vb),
+    };
+  };
+  const piece = (key, u0, u1, v0, v1, yLo, yHi, opts = {}) => {
+    const { uv = false, solid = true, thin = 0 } = opts;
+    let { bx0, bx1, bz0, bz1 } = rect(u0, u1, v0, v1);
     if (thin) {
       if (bx1 - bx0 < thin * 2) { const m = (bx0 + bx1) / 2; bx0 = m - thin; bx1 = m + thin; }
       if (bz1 - bz0 < thin * 2) { const m = (bz0 + bz1) / 2; bz0 = m - thin; bz1 = m + thin; }
@@ -509,45 +573,57 @@ function buildGeneratorMezzanine(layout, batcher, materials, masks, rng) {
   };
 
   // --- the deck, in four pieces around the stairwell notch ------------------
-  // The notch is the flight's own footprint: u in [SETBACK, SETBACK + STAIR_W]
-  // over its run. A full-width strip runs along the door wall in front of it —
-  // that strip is what makes the deck reach the third wall, and it is also the
-  // headroom you walk in under — and the rest of the deck runs from behind the
-  // flight out to the railing.
-  const uBack = uFlight + STAIR_W;
-  const nu0 = Math.max(0, uFlight - NOTCH_PAD), nu1 = uBack + NOTCH_PAD;
+  // Whatever of [0, depth] x [0, vLen] the notch is not: two strips either side
+  // of it on u, then the two ends of its own u band. Written as the complement
+  // rather than as named pieces because the notch sits in a different place in
+  // each arrangement, and a piece with no width has to drop out rather than be
+  // drawn as a sliver. Flush against a wall, the strip on that side is exactly
+  // the piece that has no width — the deck still reaches the wall, along its
+  // length either side of the run, and the doorway is under one of those ends
+  // because the flight starts beside the opening rather than in front of it.
   if (nu0 > 0.05) piece('trim', 0, nu0, 0, vLen, DECK_Y - DECK_T, DECK_Y, { uv: true });
-  piece('trim', nu1, depth, 0, vLen, DECK_Y - DECK_T, DECK_Y, { uv: true });
+  if (depth - nu1 > 0.05) piece('trim', nu1, depth, 0, vLen, DECK_Y - DECK_T, DECK_Y, { uv: true });
   if (nv0 > 0.05) piece('trim', nu0, nu1, 0, nv0, DECK_Y - DECK_T, DECK_Y, { uv: true });
   if (vLen - nv1 > 0.05) piece('trim', nu0, nu1, nv1, vLen, DECK_Y - DECK_T, DECK_Y, { uv: true });
 
   // --- railings -------------------------------------------------------------
   // Glass with a dark capping rail, so the drop reads as a drop rather than as
   // an edge found with a foot. The long overlook faces the machine; the rest
-  // fence the stairwell. The head of the flight is deliberately left open —
-  // it is the way onto the deck.
+  // fence the stairwell.
   const railing = (u0, u1, v0, v1) => {
     piece('glass', u0, u1, v0, v1, DECK_Y, DECK_Y + RAIL_H, { thin: RAIL_T });
     piece('metalDark', u0, u1, v0, v1,
       DECK_Y + RAIL_H - 0.03, DECK_Y + RAIL_H + 0.03, { solid: false, thin: RAIL_T + 0.02 });
   };
   railing(depth, depth, 0, vLen);              // the overlook, at the generator
-  railing(nu0, nu0, nv0, nv1);                 // both long sides of the stairwell
-  railing(nu1, nu1, nv0, nv1);
-  railing(nu0, nu1, foot, foot);               // its foot end; the head stays open
+  // Every edge of the stairwell except two kinds. The head of the flight stays
+  // open because it is the way onto the deck; an edge with no deck beyond it is
+  // a room wall rather than a drop, and a pane of glass standing in the plaster
+  // is not a railing. Which edges those are is what differs between the two
+  // arrangements, so it is asked of each edge rather than written out per case.
+  if (nu0 > 0.05 && head !== 'u0') railing(nu0, nu0, nv0, nv1);
+  if (depth - nu1 > 0.05 && head !== 'u1') railing(nu1, nu1, nv0, nv1);
+  if (nv0 > 0.05 && head !== 'v0') railing(nu0, nu1, nv0, nv0);
+  if (vLen - nv1 > 0.05 && head !== 'v1') railing(nu0, nu1, nv1, nv1);
 
   // --- the flight -----------------------------------------------------------
-  // A straight run of solid pillars climbing along the door wall, RISER by
+  // A straight run of solid pillars climbing flush along a wall, RISER by
   // RISER — the same climbable rise as every other staircase in the building
   // (see gen/stairs.js), just authored directly rather than through the
-  // layout-level stairwell system. It is walked into head-on, off the floor in
-  // front of the doorway, so it needs no landing tread: the awkward case was
-  // the old flight whose bottom step was jammed against a wall with nothing in
-  // front of it to stand on.
+  // layout-level stairwell system. It needs no landing tread because the floor
+  // it starts off is the floor you arrive on: on the door wall the bottom step
+  // is DOOR_GAP along from the opening, so the turn out of the doorway puts you
+  // square on it, and on a side wall it stands FOOT_ROOM off the door wall for
+  // the same reason. The awkward case this replaced was a flight whose bottom
+  // step was jammed against a wall with nothing in front of it to stand on.
+  //
+  // `along` is the run and `across` is the width, whichever way round u and v
+  // are for this arrangement — a step is the same box either way.
+  const along = (lo, hi) => (plan.axis === 'v' ? [plan.c0, plan.c1, lo, hi] : [lo, hi, plan.c0, plan.c1]);
   for (let i = 0; i < steps; i++) {
     const stepTop = (i + 1) * riser;
-    const a = foot + dirV * i * GOING, b = foot + dirV * (i + 1) * GOING;
-    const p = piece('trim', uFlight, uBack, Math.min(a, b), Math.max(a, b), 0, stepTop,
+    const a = plan.foot + plan.dir * i * GOING, b = plan.foot + plan.dir * (i + 1) * GOING;
+    const p = piece('trim', ...along(Math.min(a, b), Math.max(a, b)), 0, stepTop,
       { solid: false });
     // Shell, not furniture, unconditionally — the same call gen/stairs.js makes
     // for every one of its own treads: a step is structure, and `building:
@@ -576,14 +652,9 @@ function buildGeneratorMezzanine(layout, batcher, materials, masks, rng) {
   // stairwells, and for the same reason: a crate on the tile in front of the
   // first tread is a staircase you cannot get onto, and nothing else would
   // notice, because the deck is off the nav grid.
-  const av0 = Math.min(nv0, foot - dirV * 1.3), av1 = Math.max(nv1, foot - dirV * 1.3);
-  const flight = {
-    x0: Math.min(uWall, uWall + uSign * uBack), x1: Math.max(uWall, uWall + uSign * uBack),
-    v0: vLo + av0, v1: vLo + av1,
-  };
-  stampOccupied(masks.occupied, layout,
-    alongX ? flight.v0 : flight.x0, alongX ? flight.x0 : flight.v0,
-    alongX ? flight.v1 : flight.x1, alongX ? flight.x1 : flight.v1);
+  const back = plan.foot - plan.dir * FOOT_ROOM;
+  const r = rect(...along(Math.min(plan.foot, top, back), Math.max(plan.foot, top, back)));
+  stampOccupied(masks.occupied, layout, r.bx0, r.bz0, r.bx1, r.bz1);
 
   dressMezzanine(layout, batcher, materials, masks, rng, {
     DECK_Y, depth, vLen, vLo, uWall, uSign, alongX, nu0, nu1, nv0, nv1,
