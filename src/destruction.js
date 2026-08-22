@@ -226,9 +226,10 @@ export class Destruction {
   /**
    * A fraction of the floor's ceiling panels, chosen at random, broken the
    * same way a bullet would — same span erasure, same debris, same
-   * `lighting.removeFixture`. Used by the generator's power cut: dimming the
-   * fill lighting (see `lighting.setMood`) reads as "the lights are off", but
-   * a floor whose power just died should look like it, not just feel darker.
+   * `lighting.removeFixture`. Used by the generator's power cut: dropping the
+   * floor to quarter power (see `lighting.setPower`) reads as "the lights are
+   * down", but a floor whose power just died should look like it, not just
+   * feel darker.
    *
    * It is QUEUED rather than done, and that is the point of this function.
    * Breaking every panel in one loop was the single most expensive frame in the
@@ -244,7 +245,7 @@ export class Destruction {
    * buries it; two hundred tubes over a second is a ceiling coming down, which
    * is what happened. Same idea as IMPACT_SCATTER in audio.js, at floor scale.
    *
-   * The lights still go out on the frame you shot it — that is `setMood` in
+   * The lights still drop on the frame you shot it — that is `setPower` in
    * game.js and it is instant. This is only the glass following them down.
    */
   blackoutPanels(fraction) {

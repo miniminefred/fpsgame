@@ -34,13 +34,21 @@ const SHOVE_INTERVAL = 0.4;
 // long between one moo and the next, randomised so it doesn't read as a loop.
 const MOO_INTERVAL = [7, 16];
 
-// The generator (see gen/props.js), on the floor that has one. `BLACKOUT_MOOD`
-// is the engine's own darkest supported level (see lighting.setMood's own
-// floor at 0.15) rather than a new number, so "the power just died" and "the
-// theme is Infestation" bottom out at the same place. The blast is deliberately
-// smaller than the extinguisher's (BLAST_RADIUS/BLAST_DAMAGE in
-// extinguishers.js) — this is a consequence of a fight, not a weapon.
-const BLACKOUT_MOOD = 0.15;
+// The generator (see gen/props.js), on the floor that has one.
+//
+// `POWER_CUT_POWER` is what the building supplies once the machine is dead: a
+// quarter of normal, everywhere. It goes through `lighting.setPower` rather
+// than `setMood` and that is the whole point of there being two — a mood is a
+// statement about the floor (how much of it is lit, how bright the fill
+// between the fixtures is) and deliberately leaves the tubes near full, so
+// spending it here left a floor whose ceiling was still blazing while the
+// rooms went dark. The supply dims the tubes, their pools and the fill
+// together, which is what "quarter power" actually looks like.
+//
+// The blast is deliberately smaller than the extinguisher's
+// (BLAST_RADIUS/BLAST_DAMAGE in extinguishers.js) — this is a consequence of a
+// fight, not a weapon.
+const POWER_CUT_POWER = 0.25;
 const BLACKOUT_PANEL_FRACTION = 0.35;
 const POWER_CUT_BLAST_RADIUS = 5;
 const POWER_CUT_BLAST_DAMAGE = 45;
@@ -181,19 +189,18 @@ export class Game {
    * same way an alarm is: `destruction.js` only knows that ONE flagged prop
    * died and hands the point back here, and this is what a floor actually does
    * about it. Two things sell "the power just died" rather than "the room got
-   * a bit darker": the fill lighting drops to the engine's floor (the same
-   * number a pitch-black theme already uses, so nothing here invents a
-   * darker-than-dark), and a real fraction of the floor's ceiling panels break
-   * outright. The blast on top is a consequence of the room you were just
-   * standing in coming apart, not a weapon — see the constants above for how
-   * it compares to the extinguisher's.
+   * a bit darker": the whole floor drops to quarter power — tubes, the pools
+   * under them and the fill alike — and a real fraction of the floor's ceiling
+   * panels break outright on top of that. The blast is a consequence of the
+   * room you were just standing in coming apart, not a weapon — see the
+   * constants above for how it compares to the extinguisher's.
    */
   _onPowerCut(point) {
     // The bang first, because it is the thing that happened and everything
     // below is a consequence of it.
     this.audio.generatorBlast(point);
 
-    this.lighting.setMood(BLACKOUT_MOOD);
+    this.lighting.setPower(POWER_CUT_POWER);
     this.destruction.blackoutPanels(BLACKOUT_PANEL_FRACTION);
 
     this.physics?.blast(point, POWER_CUT_BLAST_RADIUS, POWER_CUT_BLAST_PUSH);

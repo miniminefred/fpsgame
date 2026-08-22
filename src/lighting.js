@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getAssets } from './textures.js';
 
 // Indoor lighting.
 //
@@ -23,6 +24,24 @@ const MAX_RANGE = 18;          // metres — beyond this a fixture never gets a 
 const BASE_HEMI = 0.82;
 const BASE_AMBIENT = 0.36;
 const BASE_SUN = 0.85;
+
+// The two unlit materials the ceiling tubes are drawn with (see
+// buildCeilingLights in gen/build.js — `panel` front of house, `panelWarm`
+// back). setPower tints them, which is what makes a floor on quarter power
+// read as one: they are the only part of the lighting the player looks
+// straight at, and a tube burning at full while the room under it is dark
+// says the lights are fine and the renderer is broken.
+//
+// They are drawn from getAssets(), which is built once and shared by EVERY
+// floor and never disposed — so a tint is not scoped to the floor that applied
+// it, and the rest level has to be recorded and put back. setFixtures (a new
+// floor) and dispose both do that by way of setPower(1).
+const PANEL_KEYS = ['panel', 'panelWarm'];
+
+// Below this the fill stops being moody and starts being a bug report; it is
+// the darkest the engine supports, whether that darkness came from a theme, a
+// dead generator, or the two of them at once.
+const MIN_FILL = 0.15;
 
 const SUN_DIR = new THREE.Vector3(0.28, 1, 0.2).normalize();
 const SUN_DIST = 30;
@@ -82,12 +101,33 @@ export function createLighting(scene) {
   let visible = null;            // (x, z) => boolean, set per floor
   let sinceRehome = REHOME_INTERVAL;
   let dim = 1;                   // this floor's mood, see setMood
+  let power = 1;                 // what the building is supplying, see setPower
   const best = [];
+
+  // The tubes' rest colour, taken once so a tint can always be undone against
+  // the material as it was authored rather than against whatever it currently
+  // happens to be — scaling in place would compound every call.
+  const panelRest = PANEL_KEYS.map((key) => {
+    const material = getAssets().materials[key];
+    return { material, color: material.color.clone() };
+  });
 
   function setFixtures(list) {
     fixtures = list ?? [];
     sinceRehome = REHOME_INTERVAL;
     for (const l of lights) l.intensity = 0;
+    // A new floor has its own supply, and the materials are shared with the
+    // one that just ended.
+    setPower(1);
+  }
+
+  // The fill is the theme and the supply together, which is why it is not
+  // written from either setter directly.
+  function applyFill() {
+    const k = Math.max(MIN_FILL, dim * power);
+    hemi.intensity = BASE_HEMI * k;
+    ambient.intensity = BASE_AMBIENT * k;
+    sun.intensity = BASE_SUN * (0.45 + k * 0.55);
   }
 
   /**
@@ -101,11 +141,34 @@ export function createLighting(scene) {
    * it costs nothing — no lights are added or removed, so nothing recompiles.
    */
   function setMood(level = 1) {
-    const k = Math.max(0.15, level);
-    hemi.intensity = BASE_HEMI * k;
-    ambient.intensity = BASE_AMBIENT * k;
-    sun.intensity = BASE_SUN * (0.45 + k * 0.55);
-    dim = k;
+    dim = Math.max(MIN_FILL, level);
+    applyFill();
+  }
+
+  /**
+   * How hard the building is driving its own lights, as a fraction of normal —
+   * 1 until this floor's generator is shot, then a quarter of everything (see
+   * POWER_CUT_POWER in game.js).
+   *
+   * This is a different question from setMood above and multiplies with it. A
+   * theme says how much of the floor is lit and how bright the fill between the
+   * fixtures is; the supply says how hard each tube that IS lit burns. So it is
+   * the one thing here that dims the tubes themselves, and it dims all three
+   * halves of a lit floor at once — the emissive panels you look at, the pool
+   * lights they cast, and the fill. Dimming any two of the three reads as a
+   * render fault rather than as a brownout: dark rooms under bright tubes says
+   * the lighting is broken, and bright rooms under dark tubes says the tubes
+   * are.
+   *
+   * Nothing is added or removed, so nothing recompiles — this is a colour write
+   * on two shared materials plus three intensities.
+   */
+  function setPower(level = 1) {
+    power = Math.max(0, level);
+    for (const { material, color } of panelRest) {
+      material.color.copy(color).multiplyScalar(power);
+    }
+    applyFill();
   }
 
   // A shot-out ceiling tube or a broken window. Dropping it from the candidate
@@ -183,19 +246,23 @@ export function createLighting(scene) {
       light.distance = f.distance;
       // Fade the furthest ones out so a fixture swapping in doesn't pop.
       const edge = f.distance * f.distance;
-      // Fixtures dim with the floor too, but only halfway: the tubes are the
-      // last thing to go, and a room with no pools of light in it at all is
-      // not moody, it is broken.
-      light.intensity = f.intensity * (0.5 + dim * 0.5)
+      // Fixtures dim with the floor's MOOD only halfway: the tubes are the last
+      // thing to go, and a room with no pools of light in it at all is not
+      // moody, it is broken. The SUPPLY is not hedged like that — a tube on
+      // quarter power puts out a quarter, and the pool under it has to agree
+      // with the panel overhead or one of them is lying.
+      light.intensity = f.intensity * (0.5 + dim * 0.5) * power
         * Math.max(0, 1 - pick.d2 / (edge * 2.5));
     }
   }
 
   function dispose() {
+    // The tubes' materials outlive this lighting rig — see PANEL_KEYS.
+    setPower(1);
     scene.remove(hemi, ambient, sun, sun.target);
     for (const l of lights) scene.remove(l);
     sun.dispose();
   }
 
-  return { setFixtures, removeFixture, setOcclusion, setMood, update, dispose, sun };
+  return { setFixtures, removeFixture, setOcclusion, setMood, setPower, update, dispose, sun };
 }
