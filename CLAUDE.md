@@ -529,11 +529,32 @@ Three things about it are structural rather than decorative:
     one is aimed by the player.
 
     Both holes are **round, with torn metal round the rim**, and those are two separate
-    tricks. The circle is voxel resolution: a boundary drawn on a grid of cubes is only as
-    circular as the cubes are small, and the grid size is set by the SMALLEST hole rather
-    than by the machine — at 0.42 the corner was fine while the 0.55 m bullet hole came out
-    as a five-cell PLUS, which is what a rasterised circle looks like when you can count the
-    pixels. `BAY` is therefore `HOLE_R / 2`, not a number chosen by eye. The torn look is
+    tricks. The circle is voxel resolution, and getting it needed three things:
+    - **Cut the FACE, never the depth** (`baysOf`'s `depthAxis`). This used to cut "the two
+      longest axes", which is right for a machine's own boxes — a housing is long, tall and
+      shallow — and wrong the moment it is used a second time on a coarse bay of that
+      housing, which is 0.85 x 0.85 x 2: the two longest are then the depth and *one*
+      lateral axis, and the other lateral axis is never cut at all. The hole came out with
+      the grid's resolution across it and a flat 0.85 m band up and down. Naming the depth
+      axis instead made it both round and **cheaper** — 1175 boxes to 528, 42 ms to 26 —
+      because the depth was being subdivided into interior boxes nobody can see.
+    - **Grid per HOLE, not per machine** (`bayFor`): what a circle costs is cells across its
+      *radius*. At one size for everything the 2.3 m corner was smooth while the 0.55 m
+      bullet hole was a five-cell PLUS — a rasterised circle you can count the pixels of —
+      and sizing for the hole then wasted that resolution over the much longer corner
+      boundary. Each blast now takes `r / BAY_PER_RADIUS`.
+    - **Measure to a bay's MIDDLE on the cut axes** (`distToBay`), not to its nearest face.
+      A cube is nearest along its flat side, so face distance takes every bay the sphere
+      grazes, fattening the hole by a bay all round and squaring it off. The depth axis is
+      the exception and measures to the box, or a round that hits the plating is never
+      within a hole-radius of the middle of the two-metre box it hit, and the small hole
+      could only be punched by an explosion standing *inside* the machine.
+
+    The outline is checked by tracing it: for each column across the hole, how far it reaches
+    up and down. A circle domes and a square runs flat, and that test is what caught the
+    `depthAxis` bug — the profile was 0.57 in every single column while every other measure
+    (cell count, aspect ratio, span) looked healthy. It now tracks `sqrt(R² - x²)` to within
+    a tenth of R. The torn look is
     `rimSpikes`: shards sampled ON the blast sphere, so they follow the same curve the bays
     were cut against, rooted only where kept material is within `SPIKE_REACH` (a spike
     hanging in air where the machine never reached is what would give the trick away). They
@@ -545,14 +566,18 @@ Three things about it are structural rather than decorative:
     thing stopping it from being one. The rim is jagged; the hole is round.
 
     **The fine grid is spent only where it is looked at**, and that is a performance fix, not
-    a tidiness one. At 0.26 everywhere the machine came to two thousand boxes and the frame
-    that built it took **181 ms** — a quarter-second freeze on the one frame the game already
-    works hardest to keep cheap, since the generator's death is also a ceiling coming down,
-    four hundred fragments and a floor-wide relight. So the structure is cut coarse
-    (`BAY_COARSE`) first, and a coarse box is only cut fine if a blast boundary actually
-    crosses it: `distToBay` is never smaller than the box's nearest distance nor larger than
-    its farthest, so anything wholly inside or wholly outside can be settled whole in either
-    direction. 2000 boxes became 468 and 181 ms became 32.
+    a tidiness one. At a uniform fine grid the machine came to two thousand boxes and the
+    frame that built it took **181 ms** — a quarter-second freeze on the one frame the game
+    already works hardest to keep cheap, since the generator's death is also a ceiling coming
+    down, four hundred fragments and a floor-wide relight. Two things fixed it. The structure
+    is cut coarse (`BAY_COARSE`) first and a coarse box is only cut fine if a blast boundary
+    actually crosses it — `distToBay` is never smaller than the box's nearest distance nor
+    larger than its farthest, so anything wholly inside or wholly outside is settled whole in
+    either direction. And the boxes that survive that are **stamped from one unit cube into
+    preallocated arrays** (`stampBoxes`) rather than built as a `BoxGeometry` each and handed
+    to `mergeGeometries`, which was 27 ms of allocation and most of the rest in the merge.
+    Stamping reuses three's own winding and normals, which is the half of it that would
+    otherwise be a source of inside-out faces. 181 ms became 18–26.
 
     All of it needs a granularity the machine does not have — it is authored as a few
     enormous boxes, one housing up to 15 m long, and a hole has to be smaller than the thing
