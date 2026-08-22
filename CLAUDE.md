@@ -501,6 +501,32 @@ Three things about it are structural rather than decorative:
   measures, and the whole thing is authored in its own frame and shifted back by one `BACK`
   constant. `10.geo-fit` in `validate-props.mjs` is what says so: a prop whose declared
   footprint stops short of its own geometry is a prop you can put your shoulder through.
+- **Shooting it leaves a wreck, and it is the only prop on the floor that does.** Everything
+  else vanishes when it breaks, which is right for a filing cabinet and wrong for the reason
+  a room exists — the plant room used to end the fight as an empty wall. So the machine
+  declares which of its 88 boxes are *welded structure* (`weld` in `gen/props.js`: plinth,
+  housing, ribs, hazard band, tank bodies — 39 of them) as against everything BOLTED to it,
+  and destroying it throws only the fittings. Three things about how:
+  - **The survivors are re-drawn, not spared.** A batched chunk is one mesh sharing one
+    material with a hundred other props, so there is nothing to scorch that would not scorch
+    every desk on the floor with it. The whole prop is erased from the batch as usual and the
+    structure comes back as a mesh of its own in charred variants of its own materials
+    (`_wreck` in `destruction.js`). `parts` are world-space, so nothing is transformed.
+  - **Those charred materials are shared and must outlive the level**, like everything in
+    `textures.js` — which is exactly why a wreck mesh must *not* carry `ownMaterial`, or
+    teardown disposes a material the next floor is about to use. Its geometry is the level's
+    and goes in `objects`.
+  - **A wreck keeps its collider and its nav tiles**, the one place `_shatter` gives back
+    neither. Nothing had to be re-measured for that: the hulk keeps the full-height housing,
+    so the collider that was over the machine is still the right shape (welded top 4.2 against
+    a collider top of 4.4) and debris lands on the thing you can see.
+
+  The marker reaches the sink through `placer` in `gen/props.js`, and that is the trap: a prop
+  only ever sees the placer, which forwards `box` and `obstacle` and nothing else. `hulk` was
+  added to the sink and to the machine, both correct, and every box came out unmarked. It is
+  called as `p.hulk?.()` because a sink is allowed to be minimal — the catalogue audit in
+  `validate-props.mjs` builds a placer of two methods — and that `?.` is what made the gap
+  silent rather than loud.
 - **The mezzanine is built BEFORE the room is furnished, and that ordering is a trap.**
   `buildGeneratorMezzanine` ends by stamping the deck's footprint into `occupied` so
   nothing is placed under the stairs, and `stampOccupied` rounds outward to whole tiles.
@@ -1265,6 +1291,11 @@ Everything on a floor can be destroyed: all furniture, the window glazing, and t
 tubes. Only the shell — walls, floor, ceiling slab — is permanent, because the generator's
 connectivity and sealing invariants are proved once at generation and nothing re-proves them
 at runtime.
+
+One prop is destroyed and yet still there: the generator leaves a **wreck** (see the plant
+room below). It is the exception that proves the rule rather than a hole in it — a wreck
+keeps its collider and its nav tiles, so the floor it occupies was never given back and
+nothing about connectivity changed.
 
 Loose furniture is the easy half: it is already its own mesh and its own body, so breaking
 it is "re-emit each of its boxes as a body".
