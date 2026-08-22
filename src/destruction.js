@@ -131,9 +131,13 @@ const CORNER_MAX = 3.6;
 //   so a radius chosen off a twelve-metre length alone reaches the plinth and
 //   the machine reads as having lost that whole END rather than its corner.
 const CORNER_RISE = 0.62;
-//   The last round: a hole you could put an arm through, wherever it landed. It
-//   has to stay obviously smaller than the corner or there are just two blasts.
+//   The last round: a crater about an arm across, wherever it landed. It has to
+//   stay obviously smaller than the corner or there are just two blasts.
 const HOLE_R = 0.55;
+// How deep the crater must bite before that spot counts as its floor rather
+// than as the taper at its rim — an arc struck on the taper is an arc on
+// undamaged plating.
+const CRATER_BITE = 0.12;
 // Neither edge may be a perfect arc — but only just. This was 0.3 back when the
 // boundary was a flight of 0.85 m steps and no amount of wobble could have made
 // it look drawn with a compass; now that the bays are small enough to describe a
@@ -590,10 +594,11 @@ export class Destruction {
    *
    * What is left is not the whole structure: it is cut into bays (see bayFor)
    * and
-   * two things take some away — the blast blows out one upper corner, and the
-   * round that finished it leaves a hole where it landed. So the hulk is torn
-   * open rather than merely stripped and blackened, and it is torn open where
-   * something happened rather than all over. The holes are the point twice more
+   * two things damage it — the blast blows one upper corner clean off, and the
+   * round that finished it craters the plating where it landed WITHOUT going
+   * through. So the hulk is torn open rather than merely stripped and
+   * blackened, it is damaged where something happened rather than all over, and
+   * the two kinds of damage do not look like the same event at two sizes. The holes are the point twice more
    * — they are where the arcs are struck from, because electricity crawling out
    * of unbroken plating looks painted on, and the bays they took are handed
    * back to the caller to be thrown, so the plating that left the machine is
@@ -635,17 +640,28 @@ export class Destruction {
       Math.max(CORNER_MIN, Math.min(long * CORNER_SHARE, rise * CORNER_RISE)),
     );
 
-    // One end, tossed for, at the top and through the full depth. Both causes
-    // are the same shape — a sphere with a centre and a radius — which is what
-    // lets one loop cut them and one loop hang torn metal round them.
+    // Both causes are the same shape — a sphere with a centre and a radius —
+    // which is what lets one loop cut them and one loop hang torn metal round
+    // them. They differ in ONE flag, and it is the difference between a corner
+    // that is gone and a machine that has been shot.
+    //
+    //   `through`: the corner takes everything inside it, depth included. That
+    //   end of the machine is not there any more, and you can see the wall.
+    //
+    //   ...and the bullet does not. A round makes a CRATER in the plating it
+    //   hit: the sphere eats into the near face and the metre and a half of
+    //   machine behind it stays. A hole punched clean through a generator by
+    //   one pistol round reads as a tunnel rather than as damage, and it is the
+    //   difference between "something shot this" and "something was removed".
     const atMax = Math.random() < 0.5;
     const blasts = [{
       x: alongX ? (atMax ? maxX : minX) : (minX + maxX) / 2,
       y: maxY,
       z: alongX ? (minZ + maxZ) / 2 : (atMax ? maxZ : minZ),
       r: radius,
+      through: true,
     }];
-    if (point) blasts.push({ x: point.x, y: point.y, z: point.z, r: HOLE_R });
+    if (point) blasts.push({ x: point.x, y: point.y, z: point.z, r: HOLE_R, through: false });
 
     // The nearest and farthest any part of a box is from a blast's centre. True
     // geometry, not distToBay's thin/thick rule — this only decides whether a
@@ -676,13 +692,46 @@ export class Destruction {
       let grid = Infinity;
       for (const bl of blasts) {
         const { near, far } = nearFar(b, bl);
-        if (far <= bl.r * (1 - RAG)) return { verdict: 'gone' };
+        // Only a `through` blast can settle a box as simply gone. A crater
+        // never empties a box outright — it takes a bite out of the face of it
+        // — so anything it reaches has to be cut up and carved individually.
+        if (bl.through && far <= bl.r * (1 - RAG)) return { verdict: 'gone' };
         if (near < bl.r * (1 + RAG)) grid = Math.min(grid, bayFor(bl.r));
       }
       return grid === Infinity ? { verdict: 'keep' } : { verdict: 'cut', grid };
     };
 
-    const gone = [], kept = [];
+    // Eats a crater into the face of one bay: the sphere reaches `cut` deep at
+    // this bay's distance off its axis, so the bay's NEAR face — the side the
+    // round came from — moves in by that much. Returns whether anything is left.
+    //
+    // Which face is near is read off where the blast centre sits rather than
+    // assumed, because a machine can be backed against a wall on either side
+    // and the shot always comes from the room.
+    const lo = `${depthAxis}0`, hi = `${depthAxis}1`;
+    const carve = (bay, bl, edge) => {
+      const dy = (bay.y0 + bay.y1) / 2 - bl.y;
+      const dl = depthAxis === 'x'
+        ? (bay.z0 + bay.z1) / 2 - bl.z
+        : (bay.x0 + bay.x1) / 2 - bl.x;
+      const off = Math.hypot(dy, dl);
+      if (off >= edge) return 'miss';
+
+      const cut = Math.sqrt(edge * edge - off * off);
+      const at = depthAxis === 'x' ? bl.x : bl.z;
+      if (Math.abs(at - bay[lo]) <= Math.abs(at - bay[hi])) {
+        const face = Math.min(bay[hi], at + cut);
+        if (face >= bay[hi] - 1e-3) return 'gone';
+        bay[lo] = face;
+      } else {
+        const face = Math.max(bay[lo], at - cut);
+        if (face <= bay[lo] + 1e-3) return 'gone';
+        bay[hi] = face;
+      }
+      return 'carved';
+    };
+
+    const gone = [], kept = [], craterFloor = [];
     for (const b of coarse) {
       const { verdict, grid } = decide(b);
       if (verdict === 'gone') { b._gone = true; gone.push(b); continue; }
@@ -696,7 +745,23 @@ export class Destruction {
           // A wobble on the radius, small enough that the circle survives it —
           // see RAG. What makes the edge look violent is the rim, not this.
           const edge = bl.r * (1 - RAG + Math.random() * RAG * 2);
-          if (distToBay(fine, bl.x, bl.y, bl.z, depthAxis) < edge) { out = true; break; }
+          if (bl.through) {
+            if (distToBay(fine, bl.x, bl.y, bl.z, depthAxis) < edge) { out = true; break; }
+            continue;
+          }
+          const bit = carve(fine, bl, edge);
+          if (bit === 'gone') { out = true; break; }
+          // The floor of the crater is where the arcs live — see the anchors
+          // below. Only bays it really bit into, or a shallow graze at the rim
+          // puts an arc on undamaged plating.
+          if (bit === 'carved' && edge - Math.hypot(
+            (fine.y0 + fine.y1) / 2 - bl.y,
+            depthAxis === 'x' ? (fine.z0 + fine.z1) / 2 - bl.z : (fine.x0 + fine.x1) / 2 - bl.x,
+          ) > CRATER_BITE) {
+            craterFloor.push({
+              x: (fine.x0 + fine.x1) / 2, y: (fine.y0 + fine.y1) / 2, z: (fine.z0 + fine.z1) / 2,
+            });
+          }
         }
         if (out) { fine._gone = true; gone.push(fine); } else kept.push(fine);
       }
@@ -744,7 +809,18 @@ export class Destruction {
     // blast happened to tear nothing out — a wreck with no arcs at all would be
     // the one that scored unluckily, which is not a thing the player can know.
     this.arcs?.dispose();
-    const anchors = (gone.length ? gone : kept).map((b) => ({
+    // Struck from the damage: the bays the corner took, and the floor of the
+    // crater — which contributes no missing bays at all, because carving one
+    // does not remove it. Falling back to the top of what is left if neither
+    // produced anything, since a wreck with no arcs is the one that scored
+    // unluckily and that is not a thing the player can know.
+    const torn = [
+      ...gone.map((b) => ({
+        x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2, z: (b.z0 + b.z1) / 2,
+      })),
+      ...craterFloor,
+    ];
+    const anchors = torn.length ? torn : kept.map((b) => ({
       x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2, z: (b.z0 + b.z1) / 2,
     }));
     this.arcs = new Arcs(this.scene, anchors, this.lighting?.spark ?? null);
