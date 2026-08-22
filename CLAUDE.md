@@ -528,11 +528,36 @@ Three things about it are structural rather than decorative:
     arm across goes wherever the killing shot landed. Two causes, two sizes, and the small
     one is aimed by the player.
 
-    That needs a granularity the machine does not have — it is authored as a few enormous
-    boxes, one housing up to 15 m long, and a hole has to be smaller than the thing it is a
-    hole in. So the structure is first cut into `BAY`-sized bays on its two longest axes (the
-    shallow one stays whole; a hole you cannot see into is triangles). Four things then
-    decide how it comes out:
+    Both holes are **round, with torn metal round the rim**, and those are two separate
+    tricks. The circle is voxel resolution: a boundary drawn on a grid of cubes is only as
+    circular as the cubes are small, and the grid size is set by the SMALLEST hole rather
+    than by the machine — at 0.42 the corner was fine while the 0.55 m bullet hole came out
+    as a five-cell PLUS, which is what a rasterised circle looks like when you can count the
+    pixels. `BAY` is therefore `HOLE_R / 2`, not a number chosen by eye. The torn look is
+    `rimSpikes`: shards sampled ON the blast sphere, so they follow the same curve the bays
+    were cut against, rooted only where kept material is within `SPIKE_REACH` (a spike
+    hanging in air where the machine never reached is what would give the trick away). They
+    are the only rotated geometry in the wreck — a rim of axis-aligned spikes is a row of
+    little pillars, not metal that was ripped — and `mergeGeometries` does not mind a baked
+    matrix, so they cost nothing but their own triangles. `RAG` came DOWN from 0.3 to 0.1
+    when the grid got fine: a wandering radius was the only thing making a coarse edge look
+    violent, and once the circle could actually be described, that same noise was the only
+    thing stopping it from being one. The rim is jagged; the hole is round.
+
+    **The fine grid is spent only where it is looked at**, and that is a performance fix, not
+    a tidiness one. At 0.26 everywhere the machine came to two thousand boxes and the frame
+    that built it took **181 ms** — a quarter-second freeze on the one frame the game already
+    works hardest to keep cheap, since the generator's death is also a ceiling coming down,
+    four hundred fragments and a floor-wide relight. So the structure is cut coarse
+    (`BAY_COARSE`) first, and a coarse box is only cut fine if a blast boundary actually
+    crosses it: `distToBay` is never smaller than the box's nearest distance nor larger than
+    its farthest, so anything wholly inside or wholly outside can be settled whole in either
+    direction. 2000 boxes became 468 and 181 ms became 32.
+
+    All of it needs a granularity the machine does not have — it is authored as a few
+    enormous boxes, one housing up to 15 m long, and a hole has to be smaller than the thing
+    it is a hole in. Bays are cut on a box's two longest axes (the shallow one stays whole; a
+    hole you cannot see into is triangles). Four things then decide how it comes out:
     - **The corner radius is capped against the machine's HEIGHT as well as its length**
       (`CORNER_RISE`). Off the length alone, a twelve-metre machine gets 3.6 m — which on
       something 4.2 m tall reaches the plinth, and it reads as having lost that whole *end*

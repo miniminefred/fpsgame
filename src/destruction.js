@@ -84,7 +84,29 @@ const CHAR_ROUGHNESS = 0.94;
 // authored as a few enormous boxes — one housing 15 m long — and a hole has to
 // be smaller than the thing it is a hole in. Cut on the two longest axes only:
 // the shallow one stays whole, since a hole you cannot see into is triangles.
-const BAY = 0.85;
+//
+// The size is what a ROUND hole costs, and it is set by the SMALLEST hole, not
+// by the machine. A blast boundary drawn on a grid of cubes is only as circular
+// as the cubes are small: at 0.85 the corner came out as a flight of stairs, and
+// at 0.42 the corner was fine but the bullet hole — 0.55 m of radius, barely
+// two and a half bays across — came out as a five-cell PLUS, which is what a
+// rasterised circle looks like when you can count the pixels. A hole wants
+// roughly four bays across its radius before the eye stops seeing the grid, so
+// this is HOLE_R / 2 and not a number chosen by eye.
+//
+// It is not free — a bay is twelve triangles, and quartering the size quadruples
+// how many of them there are — and at this size the whole machine came to two
+// thousand boxes and the frame that built it took 181 ms. That is a quarter of
+// a second of freeze on the ONE frame the game already works hardest to keep
+// cheap: the generator's own death, which is also a ceiling coming down, four
+// hundred fragments and a floor-wide relight (see BLACKOUT_RAIN).
+//
+// So the fine grid is spent only where it is looked at. A coarse bay that a
+// blast boundary does not cross is either wholly gone or wholly kept, and a
+// 0.85 m box in the middle of a solid machine looks exactly like the nine small
+// ones it would have been cut into. Only the shell around each hole is cut fine.
+const BAY = 0.26;
+const BAY_COARSE = 0.85;
 
 // The machine comes apart in exactly TWO places, and that is the whole design of
 // it. Damage scattered evenly over a wreck is texture — it reads as corrosion,
@@ -106,9 +128,30 @@ const CORNER_RISE = 0.62;
 //   The last round: a hole you could put an arm through, wherever it landed. It
 //   has to stay obviously smaller than the corner or there are just two blasts.
 const HOLE_R = 0.55;
-// Neither edge may be a clean arc, so every bay pulls the boundary in or pushes
-// it out by up to this share of the radius before deciding.
-const RAG = 0.3;
+// Neither edge may be a perfect arc — but only just. This was 0.3 back when the
+// boundary was a flight of 0.85 m steps and no amount of wobble could have made
+// it look drawn with a compass; now that the bays are small enough to describe a
+// circle, that much noise is the only thing stopping it from being one. The
+// TORN metal is what makes an edge look violent (see SPIKES below), not a
+// wandering radius, and the two do different jobs: the rim is jagged, the hole
+// is round.
+const RAG = 0.1;
+
+// Torn plating around the rim of each hole. This is what actually sells a round
+// hole in a world made of boxes: the eye reads the ring of spikes as the circle,
+// and it reads them as metal that was ripped rather than a shape that was
+// subtracted. They are generated ON the blast sphere, so they follow the same
+// curve the bays were removed against, and only where the sphere actually cut
+// material — a spike hanging in the air where the machine never reached is the
+// one thing that would give the trick away.
+const SPIKES_PER_M = 13;        // round the rim, so a big corner gets more than a bullet hole
+const SPIKE_LEN = [0.1, 0.42];
+const SPIKE_LONG_CHANCE = 0.18; // a few are conduit or a bent rod rather than plating
+const SPIKE_LONG = [0.45, 0.95];
+const SPIKE_THICK = [0.025, 0.075];
+const SPIKE_TILT = 0.85;        // radians of wander off dead-radial
+const SPIKE_INWARD = 0.3;       // ...and how many bend back INTO the hole instead
+const SPIKE_REACH = 0.42;       // how close kept material must be for a spike to root
 
 // Bays this close to the bottom of the machine are never taken. A hulk with its
 // feet blown out from under it does not read as damage, it reads as floating —
@@ -122,19 +165,33 @@ const KEEP_BASE = 0.55;
 const _charred = new Map();
 
 /**
- * Distance from a point to the nearest part of a bay, NOT to its centre — and
- * that distinction is the whole of whether a bullet leaves a hole. Bays are not
- * cut across the machine's depth (see baysOf), so a bay centre sits a metre and
- * a bit behind the front face: a round that hits the plating is nowhere near
- * the middle of the box it hit, and measuring to centres meant the small hole
- * could never be punched by an actual shot, only by an explosion standing
- * inside the machine.
+ * How far a blast at (px,py,pz) is from a bay, measured per axis by whether the
+ * bay is THIN or THICK on that axis — and the split is what makes the hole both
+ * round and punched-through.
+ *
+ * On a thin axis, measure to the bay's middle. Those are the axes the bay was
+ * actually cut on, so this is the axis of the hole's face: measuring to the
+ * middle removes exactly the bays inside the radius and the boundary follows
+ * the circle. Measuring to the nearest FACE instead takes every bay the sphere
+ * so much as grazes, which fattens the hole by a bay all round and squares it
+ * off — a cube is nearest along its flat side, so the boundary bulges towards
+ * the diagonals.
+ *
+ * On a thick axis, measure to the box. Bays are not cut across the machine's
+ * depth (see baysOf), so a bay's middle sits a metre and a bit behind the front
+ * face, and a round that hits the plating is nowhere near the middle of the box
+ * it hit. Measuring to middles there meant the small hole could only ever be
+ * punched by an explosion standing INSIDE the machine, never by a shot.
  */
 function distToBay(bay, px, py, pz) {
-  const dx = Math.max(bay.x0 - px, 0, px - bay.x1);
-  const dy = Math.max(bay.y0 - py, 0, py - bay.y1);
-  const dz = Math.max(bay.z0 - pz, 0, pz - bay.z1);
-  return Math.hypot(dx, dy, dz);
+  const axis = (lo, hi, p) => (hi - lo <= BAY
+    ? Math.abs((lo + hi) / 2 - p)
+    : Math.max(lo - p, 0, p - hi));
+  return Math.hypot(
+    axis(bay.x0, bay.x1, px),
+    axis(bay.y0, bay.y1, py),
+    axis(bay.z0, bay.z1, pz),
+  );
 }
 
 /**
@@ -142,12 +199,12 @@ function distToBay(bay, px, py, pz) {
  * something smaller than a whole wall of machine to take away. A box already
  * under a bay across is one bay, which is most of the ribs and every strap.
  */
-function baysOf(box) {
+function baysOf(box, size) {
   const d = { x: box.x1 - box.x0, y: box.y1 - box.y0, z: box.z1 - box.z0 };
   const [a, b] = Object.keys(d).sort((p, q) => d[q] - d[p]);
   const n = { x: 1, y: 1, z: 1 };
-  n[a] = Math.max(1, Math.round(d[a] / BAY));
-  n[b] = Math.max(1, Math.round(d[b] / BAY));
+  n[a] = Math.max(1, Math.round(d[a] / size));
+  n[b] = Math.max(1, Math.round(d[b] / size));
 
   const out = [];
   for (let i = 0; i < n.x; i++) {
@@ -163,6 +220,84 @@ function baysOf(box) {
     }
   }
   return out;
+}
+
+const _spikeFwd = new THREE.Vector3(0, 0, 1);
+const _spikeDir = new THREE.Vector3();
+const _spikeAt = new THREE.Vector3();
+const _spikeQ = new THREE.Quaternion();
+const _spikeM = new THREE.Matrix4();
+const _spikeOne = new THREE.Vector3(1, 1, 1);
+
+/**
+ * A shard of torn plating rooted at `at` and pointing along `dir`.
+ *
+ * Rotated, unlike everything else the wreck is built from — the bays are all
+ * axis-aligned because they are cut out of axis-aligned boxes, and a rim of
+ * axis-aligned spikes would be a row of little pillars rather than metal that
+ * was ripped. `mergeGeometries` does not care that the matrix has been baked in,
+ * so this still costs nothing beyond its own twelve triangles.
+ */
+function spikeGeo(at, dir, length, thick) {
+  const geo = new THREE.BoxGeometry(thick, thick * (0.4 + Math.random()), length);
+  _spikeQ.setFromUnitVectors(_spikeFwd, dir);
+  _spikeM.compose(_spikeAt.copy(at).addScaledVector(dir, length / 2), _spikeQ, _spikeOne);
+  geo.applyMatrix4(_spikeM);
+  return geo;
+}
+
+/**
+ * Builds the ring of torn metal around one blast, as geometry keyed by the
+ * charred material to merge it into.
+ *
+ * Sampled on the sphere the bays were removed against rather than laid out on a
+ * flat circle, because the corner blast is a bite out of a 3-D corner and its
+ * rim runs over the front, the end and the top. Each sample only becomes a
+ * spike if kept material is within `SPIKE_REACH` of it, which is what confines
+ * the rim to where the hole actually has an edge.
+ */
+function rimSpikes(blast, kept, out) {
+  const count = Math.max(6, Math.round(blast.r * SPIKES_PER_M));
+  for (let i = 0; i < count; i++) {
+    // Even in solid angle, so the rim does not bunch at the poles.
+    const u = Math.random() * 2 - 1;
+    const theta = Math.random() * Math.PI * 2;
+    const s = Math.sqrt(Math.max(0, 1 - u * u));
+    _spikeDir.set(s * Math.cos(theta), u, s * Math.sin(theta));
+
+    _spikeAt.copy(_spikeDir).multiplyScalar(blast.r * (0.86 + Math.random() * 0.2))
+      .add(blast);
+
+    // Root it on real metal, or it is a spike floating in the room.
+    let near = null, bestD = SPIKE_REACH;
+    for (const bay of kept) {
+      const d = Math.hypot(
+        Math.max(bay.x0 - _spikeAt.x, 0, _spikeAt.x - bay.x1),
+        Math.max(bay.y0 - _spikeAt.y, 0, _spikeAt.y - bay.y1),
+        Math.max(bay.z0 - _spikeAt.z, 0, _spikeAt.z - bay.z1),
+      );
+      if (d < bestD) { bestD = d; near = bay; }
+    }
+    if (!near) continue;
+
+    // Mostly peeled outward, some bent back through the hole.
+    if (Math.random() < SPIKE_INWARD) _spikeDir.negate();
+    _spikeDir.x += (Math.random() * 2 - 1) * SPIKE_TILT;
+    _spikeDir.y += (Math.random() * 2 - 1) * SPIKE_TILT;
+    _spikeDir.z += (Math.random() * 2 - 1) * SPIKE_TILT;
+    if (_spikeDir.lengthSq() < 1e-6) continue;
+    _spikeDir.normalize();
+
+    const long = Math.random() < SPIKE_LONG_CHANCE;
+    const [lo, hi] = long ? SPIKE_LONG : SPIKE_LEN;
+    const thick = SPIKE_THICK[0] + Math.random() * (SPIKE_THICK[1] - SPIKE_THICK[0]);
+
+    const material = charOf(near.material);
+    let list = out.get(material);
+    if (!list) out.set(material, list = []);
+    list.push(spikeGeo(_spikeAt, _spikeDir, lo + Math.random() * (hi - lo),
+      long ? thick * 0.55 : thick));
+  }
 }
 
 function charOf(material) {
@@ -395,19 +530,19 @@ export class Destruction {
    */
   _wreck(entry, point) {
     // --- cut into bays and decide which the blast took
-    const bays = [];
+    const coarse = [];
     let floorY = Infinity;
     for (const part of entry.parts) {
       if (!part.hulk || !part.material) continue;
       floorY = Math.min(floorY, part.y0);
-      bays.push(...baysOf(part));
+      coarse.push(...baysOf(part, BAY_COARSE));
     }
-    if (!bays.length) return false;
+    if (!coarse.length) return false;
 
     // The machine's own extent, which is what says where its corners are and
     // how big a corner ought to be on a machine this long.
     let minX = Infinity, maxX = -Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
-    for (const b of bays) {
+    for (const b of coarse) {
       minX = Math.min(minX, b.x0); maxX = Math.max(maxX, b.x1);
       maxY = Math.max(maxY, b.y1);
       minZ = Math.min(minZ, b.z0); maxZ = Math.max(maxZ, b.z1);
@@ -426,25 +561,69 @@ export class Destruction {
       Math.max(CORNER_MIN, Math.min(long * CORNER_SHARE, rise * CORNER_RISE)),
     );
 
-    // One end, tossed for, at the top and through the full depth.
+    // One end, tossed for, at the top and through the full depth. Both causes
+    // are the same shape — a sphere with a centre and a radius — which is what
+    // lets one loop cut them and one loop hang torn metal round them.
     const atMax = Math.random() < 0.5;
-    const cornerX = alongX ? (atMax ? maxX : minX) : (minX + maxX) / 2;
-    const cornerZ = alongX ? (minZ + maxZ) / 2 : (atMax ? maxZ : minZ);
+    const blasts = [{
+      x: alongX ? (atMax ? maxX : minX) : (minX + maxX) / 2,
+      y: maxY,
+      z: alongX ? (minZ + maxZ) / 2 : (atMax ? maxZ : minZ),
+      r: radius,
+    }];
+    if (point) blasts.push({ x: point.x, y: point.y, z: point.z, r: HOLE_R });
 
-    for (const b of bays) {
-      // The bottom of the machine is never taken, by either cause: a hulk with
-      // its feet blown out reads as floating rather than as damaged.
-      if (b.y0 < floorY + KEEP_BASE) continue;
-      // Ragged on both, or the corner comes out as a bite from a compass and
-      // the bullet hole as a drilled one.
-      const ragged = (dist, r) => dist < r * (1 - RAG + Math.random() * RAG * 2);
+    // The nearest and farthest any part of a box is from a blast's centre. True
+    // geometry, not distToBay's thin/thick rule — this only decides whether a
+    // coarse box needs cutting up, and it has to be conservative at both ends.
+    const nearFar = (b, bl) => {
+      const near = Math.hypot(
+        Math.max(b.x0 - bl.x, 0, bl.x - b.x1),
+        Math.max(b.y0 - bl.y, 0, bl.y - b.y1),
+        Math.max(b.z0 - bl.z, 0, bl.z - b.z1),
+      );
+      const far = Math.hypot(
+        Math.max(Math.abs(b.x0 - bl.x), Math.abs(b.x1 - bl.x)),
+        Math.max(Math.abs(b.y0 - bl.y), Math.abs(b.y1 - bl.y)),
+        Math.max(Math.abs(b.z0 - bl.z), Math.abs(b.z1 - bl.z)),
+      );
+      return { near, far };
+    };
 
-      if (ragged(distToBay(b, cornerX, maxY, cornerZ), radius)) { b._gone = true; continue; }
-      if (point && ragged(distToBay(b, point.x, point.y, point.z), HOLE_R)) b._gone = true;
+    // distToBay is never smaller than `near` nor larger than `far` — it measures
+    // to a middle on the thin axes, which lies between the two — so a box the
+    // ragged edge cannot possibly cross can be settled whole, in either
+    // direction, without ever cutting it up.
+    const decide = (b) => {
+      if (b.y0 < floorY + KEEP_BASE) return 'keep';
+      let straddles = false;
+      for (const bl of blasts) {
+        const { near, far } = nearFar(b, bl);
+        if (far <= bl.r * (1 - RAG)) return 'gone';
+        if (near < bl.r * (1 + RAG)) straddles = true;
+      }
+      return straddles ? 'cut' : 'keep';
+    };
+
+    const gone = [], kept = [];
+    for (const b of coarse) {
+      const verdict = decide(b);
+      if (verdict === 'gone') { b._gone = true; gone.push(b); continue; }
+      if (verdict === 'keep') { kept.push(b); continue; }
+
+      // Only the shell around a hole is worth the fine grid.
+      for (const fine of baysOf(b, BAY)) {
+        if (fine.y0 < floorY + KEEP_BASE) { kept.push(fine); continue; }
+        let out = false;
+        for (const bl of blasts) {
+          // A wobble on the radius, small enough that the circle survives it —
+          // see RAG. What makes the edge look violent is the rim, not this.
+          const edge = bl.r * (1 - RAG + Math.random() * RAG * 2);
+          if (distToBay(fine, bl.x, bl.y, bl.z) < edge) { out = true; break; }
+        }
+        if (out) { fine._gone = true; gone.push(fine); } else kept.push(fine);
+      }
     }
-
-    const gone = bays.filter((b) => b._gone);
-    const kept = bays.filter((b) => !b._gone);
     // Every bay scoring its way out at once would be a machine that vanished
     // with extra steps; the caller has already erased the batch by this point,
     // so there would be nothing left to stand there.
@@ -457,6 +636,9 @@ export class Destruction {
       if (!geos) byMaterial.set(burnt, geos = []);
       geos.push(boxBetween(bay.x0, bay.y0, bay.z0, bay.x1, bay.y1, bay.z1));
     }
+    // Torn metal round both rims, into the same material buckets, so it merges
+    // into the hulk rather than becoming meshes of its own.
+    for (const blast of blasts) rimSpikes(blast, kept, byMaterial);
     if (!byMaterial.size) return false;
 
     const raised = [];
