@@ -11,6 +11,20 @@ import { hexCss } from './util.js';
 
 const PX = 256;
 
+// A ceiling tube is TWO things that have to agree: the emissive panel you look
+// at (the `panel` / `panelWarm` materials below) and the point light it casts
+// (`color` on the fixtures GRADE builds in gen/build.js). They were authored
+// separately and drifted — the cold tube was drawn #fdfbf2 while throwing
+// 0xfff4de, and the warm one drawn #f6e2b4 while throwing 0xffd89a — so a lamp
+// was a different colour from its own pool of light, which reads as two light
+// sources in a room that has one. The light won: what a tube does to the room
+// is the half you see everywhere, and the panel is a 1.2 m strip of it.
+//
+// Defined here rather than in build.js because the materials are the thing
+// that cannot import a consumer, and one of the two had to hold it.
+export const LAMP_COLD = 0xfff4de;
+export const LAMP_WARM = 0xffd89a;
+
 let assets = null;
 
 // Built once, lazily, and shared by every floor — level teardown disposes
@@ -49,10 +63,11 @@ function build() {
       doorPanel: std(texture(doorPanelFace()), 0xffffff, 0.5, { metalness: 0.2 }),
 
       // --- ceiling light panels and windows (unlit so they stay bright)
-      panel: new THREE.MeshBasicMaterial({ color: 0xfdfbf2 }),
+      // Both take the colour of the light they cast — see LAMP_COLD/LAMP_WARM.
+      panel: new THREE.MeshBasicMaterial({ color: LAMP_COLD }),
       // The tube nobody replaced, in the rooms nobody visits. Warm and a shade
       // down on the cool panels next door, which is the whole point of it.
-      panelWarm: new THREE.MeshBasicMaterial({ color: 0xf6e2b4 }),
+      panelWarm: new THREE.MeshBasicMaterial({ color: LAMP_WARM }),
       window: new THREE.MeshBasicMaterial({ map: texture(skyPane()), color: 0xffffff }),
       // The glazing itself, a few centimetres in front of the sky: nearly
       // invisible until a light catches it, which is the point — you notice the

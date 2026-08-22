@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getAssets } from '../textures.js';
+import { getAssets, LAMP_COLD, LAMP_WARM } from '../textures.js';
 import { maskToRects } from './rects.js';
 import { Batcher, boxBetween, slab, applyWorldUVs } from './geom.js';
 import { footprintOf, tryPlace } from './props.js';
@@ -39,8 +39,13 @@ const GLASS_OFFSET = 0.03;     // metres the glazing sits in front of the sky
 // It is a small difference on any one fixture and a large one across a room, and
 // it does the job three walls of signage would otherwise have to: you can tell
 // from the doorway whether you have walked into somewhere that matters.
-const FRONT_OF_HOUSE = { key: 'panel', color: 0xfff4de, intensity: 16 };
-const BACK_OF_HOUSE = { key: 'panelWarm', color: 0xffd89a, intensity: 12 };
+// A grade is one lamp: the material its panel is drawn with, the colour of the
+// light that panel casts, and how hard it casts it. `key` and `color` are two
+// halves of the same tube and must name the same colour — see LAMP_COLD /
+// LAMP_WARM in textures.js, which is where both are defined so they cannot
+// drift apart again.
+const FRONT_OF_HOUSE = { key: 'panel', color: LAMP_COLD, intensity: 16 };
+const BACK_OF_HOUSE = { key: 'panelWarm', color: LAMP_WARM, intensity: 12 };
 const GRADE = {
   storage: BACK_OF_HOUSE,
   archive: BACK_OF_HOUSE,
@@ -1883,7 +1888,8 @@ function lightLevel(layout, plan, batcher, materials, fixtures) {
       batcher.add('panel', materials.panel,
         slab(x - 0.62, z - 0.16, x + 0.62, z + 0.16, y - 0.02, false),
         { castShadow: false, receiveShadow: false });
-      fixtures.push({ x, y: y - 0.12, z, color: 0xfdfbf2, intensity: 0.85, distance: 10 });
+      // Drawn with materials.panel above, so it throws that panel's own colour.
+      fixtures.push({ x, y: y - 0.12, z, color: LAMP_COLD, intensity: 0.85, distance: 10 });
     }
   }
 }
