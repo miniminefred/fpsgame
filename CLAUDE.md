@@ -521,25 +521,48 @@ Three things about it are structural rather than decorative:
     neither. Nothing had to be re-measured for that: the hulk keeps the full-height housing,
     so the collider that was over the machine is still the right shape (welded top 4.2 against
     a collider top of 4.4) and debris lands on the thing you can see.
-  - **It is torn open in exactly TWO places, and that is the design.** Damage scattered
-    evenly over a wreck is texture — it reads as corrosion, or as a mesh with holes in it.
-    Damage you can point at is an event: *this went up at one end, and that little hole is
-    where the round that finished it went in.* So one upper corner goes, and a crater about
-    an arm across is bitten out wherever the killing shot landed. Two causes, two sizes, and
-    the small one is aimed by the player.
+  - **It is damaged by four causes with four signatures, and that is the design.** Damage
+    scattered evenly over a wreck is texture — it reads as corrosion, or as a mesh with holes
+    in it. Damage you can point at is an event: *this went up at one end, and that little
+    hole is where the round that finished it went in.* So: **the corner**, one upper end
+    blown clean off; **the dish**, the same blast deforming the plating for a way around it;
+    **the shrapnel**, what came off the machine hitting the rest of it, clustered toward the
+    corner because that is where it came from; and **the round**, a crater about an arm
+    across wherever the killing shot landed, the one piece of it the player aims.
 
-    They differ in one flag, `through`, and it is the difference between a corner that is
-    gone and a machine that has been shot. The corner takes everything inside it, depth
-    included — that end is not there any more and you can see the wall through it. The bullet
-    does **not**: it carves the near face and the metre and a half of machine behind it stays
+    Every one is the same sphere, and they differ in one flag, `through`. The corner takes
+    everything inside it, depth included — that end is not there any more and you can see the
+    wall through it. **Nothing else does**, and that is the rule that keeps it reading as a
+    machine rather than a colander: a generator you can see daylight through in six places
+    has been deleted in six places; one you can see through once and that is battered
+    everywhere else has been blown up. The rest carve — the sphere eats into the near face
+    and the metre and a half of machine behind it stays
     (`carve`). A hole punched clean through a generator by one pistol round reads as a tunnel
-    rather than as damage. Which face is near is read off where the blast centre sits rather
-    than assumed, because a machine can be backed against a wall on either side and the shot
-    always comes from the room. The crater is also why the arcs need `craterFloor`: carving a
-    bay does not remove it, so the small hole contributes no missing bays for them to strike
-    from.
+    rather than as damage. Three consequences:
+    - **Which face is near comes from NAV, not from the shot.** The obvious source is the hit
+      point — the player was standing in the room when they fired, so that is the open side —
+      and it is wrong whenever the machine goes up in somebody else's explosion instead: the
+      point is then *inside* it, every carve starts from the middle of the depth, and the
+      shallow dish that should dent the front deletes the whole front half of everything it
+      reaches. The machine is backed against a wall, so the open side is the one a body can
+      stand on, and two `nav.clear` lookups cannot be wrong that way.
+    - **The dish is capped in depth** (`DISH_DEPTH`). Left as a plain sphere, one wide enough
+      to deform the plating around the corner is also deeper than the machine everywhere it
+      reaches, so it just makes the hole bigger — the opposite of the point.
+    - **The arcs need `craterFloor`**, because carving a bay does not remove it, so the
+      craters contribute no missing bays for them to strike from.
 
-    Both holes are **round, with torn metal round the rim**, and those are two separate
+    **The plating near damage is buckled too** — bays nudged along the depth and tilted, which
+    is free because the stamper takes a quaternion per box already, and does more for "this
+    was hit" than any extra hole. Two things keep it from becoming a cloud of shards, and the
+    first version had neither: it falls off over `BUCKLE_REACH` from the edge of the damage,
+    so a panel is wrenched where it was torn and flat where it was not; and the amplitude
+    scales with the size of the piece, since the same 8° on a 9 cm bay opens a gap as wide as
+    the bay itself and reads as detached rather than bent. The **soot** is read off the same
+    distance, so the metal that is burnt is the metal that is bent is the metal that was hit —
+    two material buckets rather than a gradient, because the colour lives on the material.
+
+    The holes are **round, with torn metal round the rim**, and those are two separate
     tricks. The circle is voxel resolution, and getting it needed three things:
     - **Cut the FACE, never the depth** (`baysOf`'s `depthAxis`). This used to cut "the two
       longest axes", which is right for a machine's own boxes — a housing is long, tall and

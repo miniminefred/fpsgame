@@ -114,11 +114,21 @@ const BAY_COARSE = 0.85;
 
 const bayFor = (r) => Math.min(BAY_COARSE, Math.max(BAY_MIN, r / BAY_PER_RADIUS));
 
-// The machine comes apart in exactly TWO places, and that is the whole design of
-// it. Damage scattered evenly over a wreck is texture — it reads as corrosion,
-// or as a mesh with holes in it. Damage you can point at is an EVENT: this went
-// up at one end, and that little hole is where the round that finished it went
-// in. Two causes, two sizes, and the small one is aimed by the player.
+// Damage scattered evenly over a wreck is texture — it reads as corrosion, or as
+// a mesh with holes in it. Damage you can point at is an EVENT. So the machine
+// is damaged by four causes with four signatures, and every one of them is the
+// same sphere with a centre and a radius, which is what lets one loop cut them
+// all and one loop hang torn metal round them:
+//
+//   the corner    one end blown clean off, and the only one that goes THROUGH
+//   the dish      the same blast deforming the plating for a way around it
+//   the shrapnel  what came off the machine, hitting the rest of it
+//   the round     the crater from the shot that finished it, aimed by the player
+//
+// The rule that keeps it reading as a machine rather than as a colander is that
+// only ONE of them goes through. A generator you can see daylight through in six
+// places has been deleted in six places; one you can see through once and that
+// is battered everywhere else has been blown up.
 //
 //   The corner: one upper end of the machine, picked at random, taken out to a
 //   radius set by how long the machine is — a fixed 3 m is most of a five-metre
@@ -138,6 +148,53 @@ const HOLE_R = 0.55;
 // than as the taper at its rim — an arc struck on the taper is an arc on
 // undamaged plating.
 const CRATER_BITE = 0.12;
+
+//   The dish: a blast does not stop at the edge of the hole it makes. The
+//   plating for a good way around the corner is pushed in, and without it the
+//   corner is a shape subtracted from an otherwise mint machine. Its radius is a
+//   multiple of the corner's, and it is CAPPED in depth — left as a plain
+//   sphere it is deeper than the machine everywhere it reaches and simply makes
+//   the hole bigger, which is the opposite of the point.
+const DISH_SCALE = 1.8;
+const DISH_DEPTH = 0.22;
+
+//   The shrapnel: a machine that comes apart throws its own casing through
+//   itself. Small pocks, clustered toward the blast because that is where they
+//   came from, and never through — they are what a fragment does, not what a
+//   charge does.
+const SHRAPNEL = [5, 10];
+const SHRAPNEL_R = [0.09, 0.3];
+const SHRAPNEL_BIAS = 0.6;     // 0 spreads them evenly, 1 piles them on the corner
+// ...and they carry their own grid instead of taking `bayFor`'s, which is the
+// difference between this being affordable and not. bayFor sizes for cells
+// across a radius, and for a 0.2 m pock that bottoms out at BAY_MIN — so every
+// coarse box a pock so much as touches would be cut into eighty-odd pieces, for
+// a dent the size of a fist seen from across a plant room. A pock does not have
+// to survive being counted; it has to be there.
+const SHRAPNEL_GRID = 0.17;
+
+// Plating near a blast is not flat any more: bays are nudged along the machine's
+// depth and tilted, which costs nothing — the stamper takes a quaternion per box
+// already — and does more for "this was hit" than any amount of extra hole.
+//
+// Two things keep it from turning the machine into a cloud of shards, and the
+// first version had neither. It FALLS OFF from the edge of the damage, over
+// BUCKLE_REACH, so a panel is wrenched where it was torn and flat where it was
+// not; applied evenly to every fine bay, a whole end of the machine came out as
+// a mosaic of separately-tilted chips. And the amplitude scales with the size of
+// the piece, because the same 8° on a 9 cm bay opens a gap as wide as the bay
+// itself, which reads as detached rather than as bent.
+const BUCKLE_REACH = 0.7;
+const BUCKLE_SHIFT = 0.05;
+const BUCKLE_TILT = 0.13;      // radians, on a piece big enough to earn it
+const BUCKLE_FULL = 0.35;      // ...the size at which it gets all of that
+
+// Soot. The char is not even either: metal near where it went up is burnt harder
+// than metal at the far end, so bays within reach of a blast take a second,
+// darker variant of their own charred material. Two buckets, not a gradient —
+// the colour lives on the material and there is one material per bucket.
+const SOOT_REACH = 1.5;
+const SOOT = 0.45;             // ...keeping this much of the ordinary charred colour
 // Neither edge may be a perfect arc — but only just. This was 0.3 back when the
 // boundary was a flight of 0.85 m steps and no amount of wobble could have made
 // it look drawn with a compass; now that the bays are small enough to describe a
@@ -331,6 +388,18 @@ function spikeStamp(at, dir, length, thick) {
  * the rim to where the hole actually has an edge.
  */
 function rimSpikes(blast, kept, out) {
+  // Only bays that could possibly root a spike, worked out once for the blast
+  // instead of walked in full for every sample on it. With one hole that was a
+  // nested loop nobody noticed; with a corner, a crater and eight shrapnel pocks
+  // it is eighty-odd samples each scanning a thousand bays.
+  const range = blast.r + SPIKE_REACH + BAY_COARSE;
+  const local = kept.filter((bay) => Math.hypot(
+    Math.max(bay.x0 - blast.x, 0, blast.x - bay.x1),
+    Math.max(bay.y0 - blast.y, 0, blast.y - bay.y1),
+    Math.max(bay.z0 - blast.z, 0, blast.z - bay.z1),
+  ) < range);
+  if (!local.length) return;
+
   const count = Math.max(6, Math.round(blast.r * SPIKES_PER_M));
   for (let i = 0; i < count; i++) {
     // Even in solid angle, so the rim does not bunch at the poles.
@@ -344,7 +413,7 @@ function rimSpikes(blast, kept, out) {
 
     // Root it on real metal, or it is a spike floating in the room.
     let near = null, bestD = SPIKE_REACH;
-    for (const bay of kept) {
+    for (const bay of local) {
       const d = Math.hypot(
         Math.max(bay.x0 - _spikeAt.x, 0, _spikeAt.x - bay.x1),
         Math.max(bay.y0 - _spikeAt.y, 0, _spikeAt.y - bay.y1),
@@ -366,7 +435,10 @@ function rimSpikes(blast, kept, out) {
     const [lo, hi] = long ? SPIKE_LONG : SPIKE_LEN;
     const thick = SPIKE_THICK[0] + Math.random() * (SPIKE_THICK[1] - SPIKE_THICK[0]);
 
-    const material = charOf(near.material);
+    // Always the sooty variant: a shard on the lip of a hole is the most burnt
+    // metal on the machine, and it is seen against the hole rather than against
+    // the plating, so the darker one is also what reads.
+    const material = charOf(near.material, true);
     let list = out.get(material);
     if (!list) out.set(material, list = []);
     list.push(spikeStamp(_spikeAt, _spikeDir, lo + Math.random() * (hi - lo),
@@ -374,18 +446,28 @@ function rimSpikes(blast, kept, out) {
   }
 }
 
-function charOf(material) {
-  let burnt = _charred.get(material);
-  if (!burnt) {
-    burnt = material.clone();
-    burnt.color?.multiplyScalar(CHAR);
-    if (burnt.emissive) burnt.emissive.multiplyScalar(0);
-    if ('roughness' in burnt) burnt.roughness = CHAR_ROUGHNESS;
-    if ('metalness' in burnt) burnt.metalness = 0;
-    burnt.map = null;
-    _charred.set(material, burnt);
+/**
+ * The charred variant of one of the machine's materials — twice over, because
+ * metal near where it went up is burnt harder than metal at the far end and the
+ * colour lives on the material, so "harder" means a second material rather than
+ * a gradient. See SOOT.
+ */
+function charOf(material, sooty = false) {
+  let pair = _charred.get(material);
+  if (!pair) {
+    const burn = (keep) => {
+      const burnt = material.clone();
+      burnt.color?.multiplyScalar(CHAR * keep);
+      if (burnt.emissive) burnt.emissive.multiplyScalar(0);
+      if ('roughness' in burnt) burnt.roughness = CHAR_ROUGHNESS;
+      if ('metalness' in burnt) burnt.metalness = 0;
+      burnt.map = null;
+      return burnt;
+    };
+    pair = { plain: burn(1), sooty: burn(SOOT) };
+    _charred.set(material, pair);
   }
-  return burnt;
+  return sooty ? pair.sooty : pair.plain;
 }
 
 export class Destruction {
@@ -593,16 +675,17 @@ export class Destruction {
    * hittable list so a bullet stops on it like any other part of the building.
    *
    * What is left is not the whole structure: it is cut into bays (see bayFor)
-   * and
-   * two things damage it — the blast blows one upper corner clean off, and the
-   * round that finished it craters the plating where it landed WITHOUT going
-   * through. So the hulk is torn open rather than merely stripped and
-   * blackened, it is damaged where something happened rather than all over, and
-   * the two kinds of damage do not look like the same event at two sizes. The holes are the point twice more
-   * — they are where the arcs are struck from, because electricity crawling out
-   * of unbroken plating looks painted on, and the bays they took are handed
-   * back to the caller to be thrown, so the plating that left the machine is
-   * the plating lying on the carpet.
+   * and then damaged, in the several ways a machine that has actually blown up
+   * is damaged rather than in one: an upper corner blown clean off, the plating
+   * around it dished by the same blast, shrapnel pocks scattered over the rest
+   * of it, and the crater from the round that finished it. Only the corner goes
+   * THROUGH — everything else is a bite out of the near face, because a machine
+   * you can see daylight through in six places is a colander, not a wreck.
+   *
+   * The damage is the point twice more: it is where the arcs are struck from,
+   * because electricity crawling out of unbroken plating looks painted on, and
+   * the bays it took are handed back to the caller to be thrown, so the plating
+   * that left the machine is the plating lying on the carpet.
    */
   _wreck(entry, point) {
     // --- the machine's own extent, which is what says where its corners are,
@@ -640,28 +723,88 @@ export class Destruction {
       Math.max(CORNER_MIN, Math.min(long * CORNER_SHARE, rise * CORNER_RISE)),
     );
 
-    // Both causes are the same shape — a sphere with a centre and a radius —
-    // which is what lets one loop cut them and one loop hang torn metal round
-    // them. They differ in ONE flag, and it is the difference between a corner
-    // that is gone and a machine that has been shot.
-    //
-    //   `through`: the corner takes everything inside it, depth included. That
-    //   end of the machine is not there any more, and you can see the wall.
-    //
-    //   ...and the bullet does not. A round makes a CRATER in the plating it
-    //   hit: the sphere eats into the near face and the metre and a half of
-    //   machine behind it stays. A hole punched clean through a generator by
-    //   one pistol round reads as a tunnel rather than as damage, and it is the
-    //   difference between "something shot this" and "something was removed".
+    // Every cause is the same sphere, and they differ in ONE flag. `through`
+    // takes everything inside it, depth included — that end of the machine is
+    // not there any more and you can see the wall. Everything else CARVES: the
+    // sphere eats into the near face and the machine behind it stays. A hole
+    // punched clean through a generator by one pistol round reads as a tunnel
+    // rather than as damage, and six of them read as a colander.
     const atMax = Math.random() < 0.5;
-    const blasts = [{
-      x: alongX ? (atMax ? maxX : minX) : (minX + maxX) / 2,
-      y: maxY,
-      z: alongX ? (minZ + maxZ) / 2 : (atMax ? maxZ : minZ),
-      r: radius,
-      through: true,
-    }];
-    if (point) blasts.push({ x: point.x, y: point.y, z: point.z, r: HOLE_R, through: false });
+    const cornerAlong = alongX
+      ? { x: atMax ? maxX : minX, z: (minZ + maxZ) / 2 }
+      : { x: (minX + maxX) / 2, z: atMax ? maxZ : minZ };
+
+    // Everything that carves does so from the face the ROOM is on, and the floor
+    // is what says which face that is: the machine is backed against a wall, so
+    // the open side is the one a body can stand on.
+    //
+    // The obvious source is the shot — the player was in the room when they
+    // fired, so the point the round landed on is the near side — and it is
+    // wrong whenever the machine goes up in somebody else's explosion instead.
+    // Then the point is INSIDE it, every carve starts from the middle of the
+    // depth, and the shallow dish that should dent the front instead deletes
+    // the whole front half of everything it reaches. Asking nav costs two
+    // lookups and cannot be wrong that way.
+    const faceLo = alongX ? minZ : minX;
+    const faceHi = alongX ? maxZ : maxX;
+    const nav = this.level?.nav;
+    const openAt = (v) => (alongX
+      ? nav?.clear((minX + maxX) / 2, v, 0.4)
+      : nav?.clear(v, (minZ + maxZ) / 2, 0.4));
+    let nearFace;
+    if (openAt(faceHi + 0.8)) nearFace = faceHi;
+    else if (openAt(faceLo - 0.8)) nearFace = faceLo;
+    else if (point) nearFace = point[depthAxis];
+    else nearFace = (faceLo + faceHi) / 2;
+
+    const blasts = [
+      { ...cornerAlong, y: maxY, r: radius, through: true },
+      // The same blast, wider and shallow, deforming the plating around it.
+      {
+        x: alongX ? cornerAlong.x : nearFace,
+        y: maxY,
+        z: alongX ? nearFace : cornerAlong.z,
+        r: radius * DISH_SCALE,
+        maxCut: DISH_DEPTH,
+      },
+    ];
+    // Where the round landed across the face, but at the face's own depth for
+    // the same reason as the dish: a hit resolved by a raycast already sits on
+    // the plating, and one synthesised by an explosion inside the machine would
+    // otherwise crater it from the inside out.
+    if (point) {
+      blasts.push({
+        x: depthAxis === 'x' ? nearFace : point.x,
+        y: point.y,
+        z: depthAxis === 'z' ? nearFace : point.z,
+        r: HOLE_R,
+      });
+    }
+
+    // Shrapnel, thrown from the corner across the face of the machine. Placed in
+    // the machine's own two face axes and pinned to the near face, so a pock is
+    // always a bite out of the side you are looking at.
+    const spread = Math.random;
+    const shrapnel = SHRAPNEL[0] + Math.floor(spread() * (SHRAPNEL[1] - SHRAPNEL[0] + 1));
+    const cornerAt = alongX ? cornerAlong.x : cornerAlong.z;
+    const farAt = alongX
+      ? (atMax ? minX : maxX)
+      : (atMax ? minZ : maxZ);
+    for (let i = 0; i < shrapnel; i++) {
+      // Biased toward the corner by taking the nearer of two draws, which piles
+      // them up where the casing came from without ever leaving the far end bare.
+      const a = spread(), b = spread();
+      const t = spread() < SHRAPNEL_BIAS ? Math.min(a, b) : a;
+      const at = cornerAt + (farAt - cornerAt) * t;
+      const y = floorY + KEEP_BASE + spread() * Math.max(0.1, maxY - floorY - KEEP_BASE);
+      blasts.push({
+        x: alongX ? at : nearFace,
+        y,
+        z: alongX ? nearFace : at,
+        r: SHRAPNEL_R[0] + spread() * (SHRAPNEL_R[1] - SHRAPNEL_R[0]),
+        grid: SHRAPNEL_GRID,
+      });
+    }
 
     // The nearest and farthest any part of a box is from a blast's centre. True
     // geometry, not distToBay's thin/thick rule — this only decides whether a
@@ -696,7 +839,7 @@ export class Destruction {
         // never empties a box outright — it takes a bite out of the face of it
         // — so anything it reaches has to be cut up and carved individually.
         if (bl.through && far <= bl.r * (1 - RAG)) return { verdict: 'gone' };
-        if (near < bl.r * (1 + RAG)) grid = Math.min(grid, bayFor(bl.r));
+        if (near < bl.r * (1 + RAG)) grid = Math.min(grid, bl.grid ?? bayFor(bl.r));
       }
       return grid === Infinity ? { verdict: 'keep' } : { verdict: 'cut', grid };
     };
@@ -717,7 +860,10 @@ export class Destruction {
       const off = Math.hypot(dy, dl);
       if (off >= edge) return 'miss';
 
-      const cut = Math.sqrt(edge * edge - off * off);
+      // `maxCut` is what makes a DISH a dish. A plain sphere wide enough to
+      // deform the plating around the corner is also deeper than the machine
+      // everywhere it reaches, so it would simply enlarge the hole.
+      const cut = Math.min(bl.maxCut ?? Infinity, Math.sqrt(edge * edge - off * off));
       const at = depthAxis === 'x' ? bl.x : bl.z;
       if (Math.abs(at - bay[lo]) <= Math.abs(at - bay[hi])) {
         const face = Math.min(bay[hi], at + cut);
@@ -753,8 +899,10 @@ export class Destruction {
           if (bit === 'gone') { out = true; break; }
           // The floor of the crater is where the arcs live — see the anchors
           // below. Only bays it really bit into, or a shallow graze at the rim
-          // puts an arc on undamaged plating.
-          if (bit === 'carved' && edge - Math.hypot(
+          // puts an arc on undamaged plating; and never the dish, which barely
+          // bites anywhere and would spray arcs over the whole end of the
+          // machine rather than over the damage.
+          if (bit === 'carved' && !bl.maxCut && edge - Math.hypot(
             (fine.y0 + fine.y1) / 2 - bl.y,
             depthAxis === 'x' ? (fine.z0 + fine.z1) / 2 - bl.z : (fine.x0 + fine.x1) / 2 - bl.x,
           ) > CRATER_BITE) {
@@ -763,7 +911,12 @@ export class Destruction {
             });
           }
         }
-        if (out) { fine._gone = true; gone.push(fine); } else kept.push(fine);
+        if (out) { fine._gone = true; gone.push(fine); continue; }
+        // A fine bay is by construction a bay near damage, so all of them are
+        // knocked out of true — see BUCKLE_SHIFT. Doing this to the coarse bays
+        // as well would buckle plating nothing ever hit.
+        fine._buckle = true;
+        kept.push(fine);
       }
     }
     // Every bay scoring its way out at once would be a machine that vanished
@@ -771,19 +924,60 @@ export class Destruction {
     // so there would be nothing left to stand there.
     if (!kept.length) return false;
 
+    // How far this bay is from the nearest edge of any damage — negative inside
+    // one. Both the soot and the buckling are read off it, so the metal that is
+    // burnt is the metal that is bent, which is the metal that was hit.
+    const offDamage = (bay) => {
+      let near = Infinity;
+      for (const bl of blasts) {
+        near = Math.min(near, Math.hypot(
+          Math.max(bay.x0 - bl.x, 0, bl.x - bay.x1),
+          Math.max(bay.y0 - bl.y, 0, bl.y - bay.y1),
+          Math.max(bay.z0 - bl.z, 0, bl.z - bay.z1),
+        ) - bl.r);
+      }
+      return near;
+    };
+
     const byMaterial = new Map();
     for (const bay of kept) {
-      const burnt = charOf(bay.material);
+      const off = offDamage(bay);
+      const burnt = charOf(bay.material, off < SOOT_REACH);
       let list = byMaterial.get(burnt);
       if (!list) byMaterial.set(burnt, list = []);
-      list.push({
+
+      const item = {
         cx: (bay.x0 + bay.x1) / 2, cy: (bay.y0 + bay.y1) / 2, cz: (bay.z0 + bay.z1) / 2,
         sx: bay.x1 - bay.x0, sy: bay.y1 - bay.y0, sz: bay.z1 - bay.z0,
-      });
+      };
+
+      // Pushed along the depth and tilted. The gaps this opens between
+      // neighbouring bays are the point rather than a defect — that is what a
+      // seam looks like once the panel either side of it has moved — but only
+      // near the damage, and only in proportion to the size of the piece.
+      const wrench = bay._buckle && off < BUCKLE_REACH
+        ? (1 - Math.max(0, off) / BUCKLE_REACH)
+          * Math.min(1, Math.max(item.sx, item.sy, item.sz) / BUCKLE_FULL)
+        : 0;
+      if (wrench > 0.02) {
+        const shift = (Math.random() * 2 - 1) * BUCKLE_SHIFT * wrench;
+        if (depthAxis === 'x') item.cx += shift; else item.cz += shift;
+        const tilt = BUCKLE_TILT * wrench;
+        item.q = new THREE.Quaternion().setFromEuler(new THREE.Euler(
+          (Math.random() * 2 - 1) * tilt,
+          (Math.random() * 2 - 1) * tilt,
+          (Math.random() * 2 - 1) * tilt,
+        ));
+      }
+      list.push(item);
     }
-    // Torn metal round both rims, into the same material buckets, so it merges
-    // into the hulk rather than becoming meshes of its own.
-    for (const blast of blasts) rimSpikes(blast, kept, byMaterial);
+    // Torn metal round every rim, into the same material buckets, so it merges
+    // into the hulk rather than becoming meshes of its own. Not round the dish:
+    // nothing was torn there, the plating was pushed — and at nearly twice the
+    // corner's radius it would hang a hundred shards over undamaged metal.
+    for (const blast of blasts) {
+      if (!blast.maxCut) rimSpikes(blast, kept, byMaterial);
+    }
     if (!byMaterial.size) return false;
 
     const raised = [];
