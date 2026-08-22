@@ -554,6 +554,19 @@ Three things about it are structural rather than decorative:
     corner because that is where it came from; and **the round**, a crater about an arm
     across wherever the killing shot landed, the one piece of it the player aims.
 
+    The shrapnel is deliberately *sparse* — one to three pocks, piled hard against the corner
+    (`SHRAPNEL_BIAS` 0.92). It was five to ten spread more evenly and that reads as spots
+    rather than damage: what makes a pock look thrown is being near the other pocks and near
+    where they came from, so the far end of the machine stays clean because nothing hit it.
+
+    Big tears also hang **severed wiring** (`WIRE_*`), and it is the only colour on the whole
+    wreck — everything else is a shade of burnt, so a few centimetres of red and blue
+    insulation say the thing was wired and that something came apart, and give the eye
+    somewhere to land on an otherwise black mass. They are pointedly not charred: a burnt wire
+    is a black wire on a black machine. Each leaves the rim pointing outward and then droops a
+    joint at a time, which is the whole difference between a cable and another spike, and only
+    blasts over `WIRE_MIN_R` get any — a fist-sized pock has not opened a loom.
+
     Every one is the same sphere, and they differ in one flag, `through`. The corner takes
     everything inside it, depth included — that end is not there any more and you can see the
     wall through it. **Nothing else does**, and that is the rule that keeps it reading as a

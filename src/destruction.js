@@ -163,16 +163,17 @@ const DISH_DEPTH = 0.22;
 //   came from, and never through — they are what a fragment does, not what a
 //   charge does.
 //
-//   Both numbers below were dialled DOWN, and for one reason: a spray of small
-//   round marks spread evenly over a big flat machine stops reading as damage
+//   Both numbers below have been dialled DOWN twice, and for one reason: a spray
+//   of small round marks spread over a big flat machine stops reading as damage
 //   and starts reading as spots. What makes a pock look like it was thrown from
-//   somewhere is that it is near the other pocks and near where they came from —
-//   so there are fewer of them and they sit much harder toward the corner. The
-//   far end of the machine is now mostly clean, which is the point: it is the
-//   end nothing hit.
-const SHRAPNEL = [3, 6];
+//   somewhere is that it is near the other pocks and near where they came from,
+//   so there are now one to three of them and they sit hard against the corner.
+//   That is close to the machine as it was before shrapnel existed — which is
+//   the point. They are seasoning on the corner blast, not a feature of the
+//   whole casing, and the far end of the machine is clean because nothing hit it.
+const SHRAPNEL = [1, 3];
 const SHRAPNEL_R = [0.09, 0.3];
-const SHRAPNEL_BIAS = 0.85;    // 0 spreads them evenly, 1 piles them on the corner
+const SHRAPNEL_BIAS = 0.92;    // 0 spreads them evenly, 1 piles them on the corner
 // ...and they carry their own grid instead of taking `bayFor`'s, which is the
 // difference between this being affordable and not. bayFor sizes for cells
 // across a radius, and for a 0.2 m pock that bottoms out at BAY_MIN — so every
@@ -227,6 +228,24 @@ const SPIKE_THICK = [0.025, 0.075];
 const SPIKE_TILT = 0.85;        // radians of wander off dead-radial
 const SPIKE_INWARD = 0.3;       // ...and how many bend back INTO the hole instead
 const SPIKE_REACH = 0.42;       // how close kept material must be for a spike to root
+
+// Severed wiring hanging out of the tear. Everything else on a wreck is a shade
+// of burnt, so these few centimetres of insulation are the only colour on it and
+// they carry a lot: they say the thing was WIRED, that something came apart
+// rather than a shape being subtracted, and they give the eye somewhere to land
+// on an otherwise black mass. They are deliberately NOT charred — a burnt wire
+// is a black wire, and a black wire on a black machine is nothing.
+//
+// Only the big tears get them; a fist-sized shrapnel pock has not opened a loom.
+const WIRE_MIN_R = 0.4;         // blasts smaller than this have not cut anything
+const WIRES = [1, 3];
+const WIRE_SEGMENTS = 4;
+const WIRE_LEN = [0.28, 0.85];
+const WIRE_THICK = [0.014, 0.026];
+// Each joint bends further down than the last, so a wire hangs instead of
+// pointing — which is the whole difference between a cable and another spike.
+const WIRE_DROOP = 0.55;
+const WIRE_COLORS = [0xc8352b, 0x2f6fd0, 0xd8b12a, 0x2f9e4f, 0xe8e4dc];
 
 // Bays this close to the bottom of the machine are never taken. A hulk with its
 // feet blown out from under it does not read as damage, it reads as floating —
@@ -362,38 +381,46 @@ function stampBoxes(items) {
 const _spikeFwd = new THREE.Vector3(0, 0, 1);
 const _spikeDir = new THREE.Vector3();
 const _spikeAt = new THREE.Vector3();
+const _barMid = new THREE.Vector3();
+const _wireDir = new THREE.Vector3();
+const _wireAt = new THREE.Vector3();
 const _spikeQ = new THREE.Quaternion();
 const _spikeM = new THREE.Matrix4();
 const _spikeOne = new THREE.Vector3(1, 1, 1);
 
 /**
- * A shard of torn plating rooted at `at` and pointing along `dir`, as a stamp
- * for stampBoxes.
+ * A small bar rooted at `at` and pointing along `dir`, as a stamp for
+ * stampBoxes: a shard of torn plating, or one straight run of a hanging wire.
  *
  * Rotated, unlike everything else the wreck is built from — the bays are all
  * axis-aligned because they are cut out of axis-aligned boxes, and a rim of
  * axis-aligned spikes would be a row of little pillars rather than metal that
  * was ripped.
+ *
+ * `thickY` defaults to a random squash, which is what makes a shard read as
+ * peeled sheet rather than as a rod; a wire passes its own thickness to get a
+ * square section back.
  */
-function spikeStamp(at, dir, length, thick) {
+function barStamp(at, dir, length, thick, thickY = thick * (0.4 + Math.random())) {
   const q = new THREE.Quaternion().setFromUnitVectors(_spikeFwd, dir);
-  const mid = _spikeAt.copy(at).addScaledVector(dir, length / 2);
+  const mid = _barMid.copy(at).addScaledVector(dir, length / 2);
   return {
     cx: mid.x, cy: mid.y, cz: mid.z,
-    sx: thick, sy: thick * (0.4 + Math.random()), sz: length,
+    sx: thick, sy: thickY, sz: length,
     q,
   };
 }
 
 /**
- * Builds the ring of torn metal around one blast, as geometry keyed by the
- * charred material to merge it into.
+ * Builds what hangs off the rim of one blast — torn plating, and the severed
+ * wiring where the tear is big enough to have cut a loom — as geometry keyed by
+ * the material to merge it into.
  *
  * Sampled on the sphere the bays were removed against rather than laid out on a
  * flat circle, because the corner blast is a bite out of a 3-D corner and its
- * rim runs over the front, the end and the top. Each sample only becomes a
- * spike if kept material is within `SPIKE_REACH` of it, which is what confines
- * the rim to where the hole actually has an edge.
+ * rim runs over the front, the end and the top. A sample only becomes anything
+ * if kept material is within `SPIKE_REACH` of it, which is what confines all of
+ * this to where the hole actually has an edge.
  */
 function rimSpikes(blast, kept, out) {
   // Only bays that could possibly root a spike, worked out once for the blast
@@ -408,27 +435,34 @@ function rimSpikes(blast, kept, out) {
   ) < range);
   if (!local.length) return;
 
-  const count = Math.max(6, Math.round(blast.r * SPIKES_PER_M));
-  for (let i = 0; i < count; i++) {
+  // A point on the blast sphere with kept metal within reach, written into the
+  // vectors handed in; returns the bay it is rooted on, or null for a sample
+  // that came down over open air. Shared by the shards and the wiring, which
+  // grow off the same rim and would otherwise each have a copy of this.
+  const rimPoint = (dirOut, atOut) => {
     // Even in solid angle, so the rim does not bunch at the poles.
     const u = Math.random() * 2 - 1;
     const theta = Math.random() * Math.PI * 2;
     const s = Math.sqrt(Math.max(0, 1 - u * u));
-    _spikeDir.set(s * Math.cos(theta), u, s * Math.sin(theta));
+    dirOut.set(s * Math.cos(theta), u, s * Math.sin(theta));
+    atOut.copy(dirOut).multiplyScalar(blast.r * (0.86 + Math.random() * 0.2)).add(blast);
 
-    _spikeAt.copy(_spikeDir).multiplyScalar(blast.r * (0.86 + Math.random() * 0.2))
-      .add(blast);
-
-    // Root it on real metal, or it is a spike floating in the room.
     let near = null, bestD = SPIKE_REACH;
     for (const bay of local) {
       const d = Math.hypot(
-        Math.max(bay.x0 - _spikeAt.x, 0, _spikeAt.x - bay.x1),
-        Math.max(bay.y0 - _spikeAt.y, 0, _spikeAt.y - bay.y1),
-        Math.max(bay.z0 - _spikeAt.z, 0, _spikeAt.z - bay.z1),
+        Math.max(bay.x0 - atOut.x, 0, atOut.x - bay.x1),
+        Math.max(bay.y0 - atOut.y, 0, atOut.y - bay.y1),
+        Math.max(bay.z0 - atOut.z, 0, atOut.z - bay.z1),
       );
       if (d < bestD) { bestD = d; near = bay; }
     }
+    return near;
+  };
+
+  const count = Math.max(6, Math.round(blast.r * SPIKES_PER_M));
+  for (let i = 0; i < count; i++) {
+    // Root it on real metal, or it is a spike floating in the room.
+    const near = rimPoint(_spikeDir, _spikeAt);
     if (!near) continue;
 
     // Mostly peeled outward, some bent back through the hole.
@@ -449,8 +483,38 @@ function rimSpikes(blast, kept, out) {
     const material = charOf(near.material, true);
     let list = out.get(material);
     if (!list) out.set(material, list = []);
-    list.push(spikeStamp(_spikeAt, _spikeDir, lo + Math.random() * (hi - lo),
+    list.push(barStamp(_spikeAt, _spikeDir, lo + Math.random() * (hi - lo),
       long ? thick * 0.55 : thick));
+  }
+
+  // --- severed wiring ---------------------------------------------------------
+  // A fist-sized pock has not opened a loom; only a real tear has. Each wire
+  // leaves the rim pointing outward and then hangs, one joint at a time, which
+  // is what stops it being another spike in a different colour.
+  if (blast.r < WIRE_MIN_R) return;
+  const wires = WIRES[0] + Math.floor(Math.random() * (WIRES[1] - WIRES[0] + 1));
+  for (let i = 0; i < wires; i++) {
+    if (!rimPoint(_wireDir, _wireAt)) continue;
+
+    // Out of the tear rather than along it, and never starting upward — a cut
+    // cable end that rises out of the hole is a cable under tension, which this
+    // one is conspicuously not.
+    _wireDir.y = -Math.abs(_wireDir.y) * 0.35;
+    if (_wireDir.lengthSq() < 1e-6) continue;
+    _wireDir.normalize();
+
+    const material = wireOf(WIRE_COLORS[(Math.random() * WIRE_COLORS.length) | 0]);
+    let list = out.get(material);
+    if (!list) out.set(material, list = []);
+
+    const thick = WIRE_THICK[0] + Math.random() * (WIRE_THICK[1] - WIRE_THICK[0]);
+    const seg = (WIRE_LEN[0] + Math.random() * (WIRE_LEN[1] - WIRE_LEN[0])) / WIRE_SEGMENTS;
+    for (let s = 0; s < WIRE_SEGMENTS; s++) {
+      list.push(barStamp(_wireAt, _wireDir, seg, thick, thick));
+      _wireAt.addScaledVector(_wireDir, seg);
+      _wireDir.y -= WIRE_DROOP;
+      _wireDir.normalize();
+    }
   }
 }
 
@@ -460,6 +524,20 @@ function rimSpikes(blast, kept, out) {
  * colour lives on the material, so "harder" means a second material rather than
  * a gradient. See SOOT.
  */
+// One material per insulation colour, made once and shared by every wreck on
+// every floor — the same bargain `_charred` makes, and the same reason a wreck
+// mesh must not be marked `ownMaterial`.
+const _wires = new Map();
+
+function wireOf(color) {
+  let material = _wires.get(color);
+  if (!material) {
+    material = new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0 });
+    _wires.set(color, material);
+  }
+  return material;
+}
+
 function charOf(material, sooty = false) {
   let pair = _charred.get(material);
   if (!pair) {
