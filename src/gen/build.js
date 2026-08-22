@@ -1154,14 +1154,10 @@ function buildCeilingLights(layout, batcher, materials, fixtures, destructibles)
   }
 }
 
-// The generator room's own lights, in THREE mounts, because it is the one room
-// with three heights to light. All three are the same fixture/destructible shape
-// as an ordinary ceiling panel — kind: 'panel', one light each, shot out or
-// blacked out the same way — they just hang off different surfaces.
-//
-//   Walls, at head-and-shoulders height: what lights the machine and the floor
-//   you are standing on. These are the room's original lights, from when it had
-//   no ceiling at all to hang anything from.
+// The generator room's lights, and it is the one room in the building lit from
+// more than one height. Both mounts are the same fixture/destructible shape as
+// an ordinary ceiling panel — kind: 'panel', one light each, shot out or blacked
+// out the same way — they just hang off different surfaces.
 //
 //   The roof, at WALL_H * 2: high bays under the double-height deck (see the
 //   tall roof pass in buildShell). Without them the room is sealed but its
@@ -1172,9 +1168,15 @@ function buildCeilingLights(layout, batcher, materials, fixtures, destructibles)
 //   far from the floor they have to reach.
 //
 //   And the underside of the mezzanine, which is built later and lights itself —
-//   see the soffit pass in buildGeneratorMezzanine. Those two above are both
-//   above the deck, and the deck covers most of the room: everything under it
-//   was being lit by the wall panels alone.
+//   see the soffit pass in buildGeneratorMezzanine. It is what lights the half of
+//   the room the deck shades, which the high bays above it cannot reach.
+//
+// There used to be a third: four panels bracketed off the walls at 2.6 m, from
+// when this room had no ceiling at all to hang anything from. Once it had a roof
+// AND a lit soffit they were lighting rooms that were already lit, from a mount
+// nothing else in the building uses — a plant room reads as a plant room because
+// its lights are overhead industrial fittings, not because it has picture lights
+// round the walls.
 /**
  * One downward-facing panel in the generator room, wherever it is mounted: the
  * emissive slab, the fixture the light pool homes onto, and the destructible
@@ -1215,22 +1217,7 @@ function buildGeneratorLights(layout, batcher, materials, fixtures, destructible
 
   const x0 = worldX(layout, room.x0), x1 = worldX(layout, room.x1);
   const z0 = worldZ(layout, room.y0), z1 = worldZ(layout, room.y1);
-  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-  const Y = 2.6;              // below WALL_H, well above head height
   const ROOF_Y = WALL_H * 2;  // the underside of this room's own roof
-  const STANDOFF = 0.14;      // off the wall face, the same idea as edgeProp's
-
-  const addPanel = (x, y, z, hw, hd, distance) =>
-    generatorPanel(batcher, materials, fixtures, destructibles, x, y, z, hw, hd, distance);
-
-  for (const w of [
-    { x: cx, z: z0 + STANDOFF, alongX: true },
-    { x: cx, z: z1 - STANDOFF, alongX: true },
-    { x: x0 + STANDOFF, z: cz, alongX: false },
-    { x: x1 - STANDOFF, z: cz, alongX: false },
-  ]) {
-    addPanel(w.x, Y, w.z, w.alongX ? 0.5 : 0.12, w.alongX ? 0.12 : 0.5, 12);
-  }
 
   // High bays on the same pitch an ordinary room's panels use, so a big plant
   // room gets several and a small one still gets the fixture at its centre.
@@ -1239,7 +1226,8 @@ function buildGeneratorLights(layout, batcher, materials, fixtures, destructible
   const alongX = (x1 - x0) >= (z1 - z0);
   for (let i = 0; i < nx; i++) {
     for (let j = 0; j < nz; j++) {
-      addPanel(x0 + (x1 - x0) * ((i + 0.5) / nx), ROOF_Y - 0.015,
+      generatorPanel(batcher, materials, fixtures, destructibles,
+        x0 + (x1 - x0) * ((i + 0.5) / nx), ROOF_Y - 0.015,
         z0 + (z1 - z0) * ((j + 0.5) / nz),
         alongX ? 0.62 : 0.16, alongX ? 0.16 : 0.62, 22);
     }
