@@ -473,6 +473,19 @@ opening how tall its wall is. Two things about that:
   ways: a body walks in through the door at floor level as before, and a body standing on
   the deck walking straight at the header travels 0.14 m and stops.
 
+**The room is lit from three heights, and the third is the mezzanine's own underside.**
+The wall panels and the high bays are both *above* the deck — and the deck covers most of the
+room — so everything under it was being lit by four wall panels at 2.6 m and nothing else.
+The overhang now lights what it shades, on the same `LIGHT_PITCH` grid as any other ceiling
+and at an ordinary ceiling's `distance`, because it is at an ordinary ceiling's height above
+the floor; that is the whole difference between these and the high bays. Measured standing
+under the deck, mean frame luminance 91 → 119. They are built by `buildGeneratorMezzanine`
+rather than `buildGeneratorLights` because that pass runs long before the deck exists and
+cannot know where it ended up, or whether the room got one at all — every early return in the
+mezzanine planner is a room with no overhang to light. Panels over the stairwell are skipped:
+there is nothing overhead to hang them from. All three mounts go through one `generatorPanel`,
+so a panel cannot stop being destructible in one place and not another.
+
 Capping it and lighting it are **one** change, not two. The room's original lights are
 on its walls at 2.6 m, from when there was no ceiling to hang anything from; a roof 3.8 m
 above the nearest of them comes out nearly black, which looks exactly like the hole it

@@ -119,7 +119,7 @@ export function buildLevel(scene, layout) {
   // anything on the room floor can be shoved against it.
   buildStairs(layout, batcher, materials, { colliders, blocked, occupied, fixtures }, rng);
   buildGeneratorMezzanine(layout, batcher, materials,
-    { colliders, occupied, dynamics, destructibles }, rng);
+    { colliders, occupied, dynamics, destructibles, fixtures }, rng);
   furnishRooms(layout, sink, rng);
   furnishCorridors(layout, sink, rng);
   const cow = placeCow(layout, sink, rng);
@@ -610,6 +610,36 @@ function buildGeneratorMezzanine(layout, batcher, materials, masks, rng) {
   if (depth - nu1 > 0.05) piece('trim', nu1, depth, 0, vLen, DECK_Y - DECK_T, DECK_Y, { uv: true });
   if (nv0 > 0.05) piece('trim', nu0, nu1, 0, nv0, DECK_Y - DECK_T, DECK_Y, { uv: true });
   if (vLen - nv1 > 0.05) piece('trim', nu0, nu1, nv1, vLen, DECK_Y - DECK_T, DECK_Y, { uv: true });
+
+  // --- lights under the deck --------------------------------------------------
+  // Most of the room's floor is UNDER this thing, and both of the room's other
+  // mounts are above it: the wall panels at 2.6 m are below the deck but only
+  // four of them round the edge of a room up to fifteen metres across, and the
+  // high bays are lighting the top of the deck rather than the three metres of
+  // headroom beneath it. So the overhang lights what it shades, on the same
+  // LIGHT_PITCH grid any other ceiling uses and at an ordinary ceiling's
+  // `distance` — it is at an ordinary ceiling's height above the floor, which is
+  // the whole difference between these and the high bays.
+  //
+  // Built here rather than in buildGeneratorLights because that pass runs long
+  // before this one and cannot know where the deck ended up, or whether the room
+  // got one at all — every early return above is a room with no overhang to
+  // light.
+  const SOFFIT_DROP = 0.015;
+  const nuLights = Math.max(1, Math.round(depth / LIGHT_PITCH));
+  const nvLights = Math.max(1, Math.round(vLen / LIGHT_PITCH));
+  for (let i = 0; i < nuLights; i++) {
+    for (let j = 0; j < nvLights; j++) {
+      const u = depth * ((i + 0.5) / nuLights);
+      const v = vLen * ((j + 0.5) / nvLights);
+      // Nothing overhead to hang it from: that is the stairwell, not deck.
+      if (u > nu0 && u < nu1 && v > nv0 && v < nv1) continue;
+      const { bx0, bz0 } = rect(u, u, v, v);
+      generatorPanel(batcher, materials, masks.fixtures, masks.destructibles,
+        bx0, DECK_Y - DECK_T - SOFFIT_DROP, bz0,
+        alongX ? 0.62 : 0.16, alongX ? 0.16 : 0.62, 11);
+    }
+  }
 
   // --- railings -------------------------------------------------------------
   // Glass with a dark capping rail, so the drop reads as a drop rather than as
@@ -1124,10 +1154,10 @@ function buildCeilingLights(layout, batcher, materials, fixtures, destructibles)
   }
 }
 
-// The generator room's own lights, in two mounts, because it is the one room
-// with two heights to light. Both are the same fixture/destructible shape as an
-// ordinary ceiling panel — kind: 'panel', one light each, shot out or blacked
-// out the same way — they just hang off different surfaces.
+// The generator room's own lights, in THREE mounts, because it is the one room
+// with three heights to light. All three are the same fixture/destructible shape
+// as an ordinary ceiling panel — kind: 'panel', one light each, shot out or
+// blacked out the same way — they just hang off different surfaces.
 //
 //   Walls, at head-and-shoulders height: what lights the machine and the floor
 //   you are standing on. These are the room's original lights, from when it had
@@ -1140,6 +1170,45 @@ function buildCeilingLights(layout, batcher, materials, fixtures, destructibles)
 //   the room and lighting the cap are one change, not two. They carry a longer
 //   `distance` than a suspended panel for the obvious reason: they are twice as
 //   far from the floor they have to reach.
+//
+//   And the underside of the mezzanine, which is built later and lights itself —
+//   see the soffit pass in buildGeneratorMezzanine. Those two above are both
+//   above the deck, and the deck covers most of the room: everything under it
+//   was being lit by the wall panels alone.
+/**
+ * One downward-facing panel in the generator room, wherever it is mounted: the
+ * emissive slab, the fixture the light pool homes onto, and the destructible
+ * record that ties the two together so shooting it kills both halves.
+ *
+ * Shared rather than local to buildGeneratorLights because the mezzanine lights
+ * its own underside (see the soffit pass in buildGeneratorMezzanine) and a
+ * second copy of this is a second place for a panel to stop being destructible.
+ */
+function generatorPanel(batcher, materials, fixtures, destructibles, x, y, z, hw, hd, distance) {
+  const grade = GRADE.generator;
+  const spans = batcher.beginSpans();
+  batcher.add(grade.key, materials[grade.key],
+    slab(x - hw, z - hd, x + hw, z + hd, y, false), { castShadow: false, receiveShadow: false });
+  batcher.endSpans();
+
+  const fixture = { x, y: y - 0.05, z, color: grade.color, intensity: grade.intensity, distance };
+  fixtures.push(fixture);
+
+  destructibles.push({
+    kind: 'panel',
+    hp: PANEL_HP,
+    spans,
+    colliders: [],
+    navTiles: [],
+    fixtures: [fixture],
+    parts: [{
+      material: materials[grade.key],
+      x0: x - hw, y0: y - 0.03, z0: z - hd, x1: x + hw, y1: y, z1: z + hd,
+    }],
+    broken: false,
+  });
+}
+
 function buildGeneratorLights(layout, batcher, materials, fixtures, destructibles) {
   const room = layout.rooms.find((r) => r.role === 'generator');
   if (!room) return;
@@ -1147,34 +1216,12 @@ function buildGeneratorLights(layout, batcher, materials, fixtures, destructible
   const x0 = worldX(layout, room.x0), x1 = worldX(layout, room.x1);
   const z0 = worldZ(layout, room.y0), z1 = worldZ(layout, room.y1);
   const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-  const grade = GRADE.generator;
   const Y = 2.6;              // below WALL_H, well above head height
   const ROOF_Y = WALL_H * 2;  // the underside of this room's own roof
   const STANDOFF = 0.14;      // off the wall face, the same idea as edgeProp's
 
-  const addPanel = (x, y, z, hw, hd, distance) => {
-    const spans = batcher.beginSpans();
-    batcher.add(grade.key, materials[grade.key],
-      slab(x - hw, z - hd, x + hw, z + hd, y, false), { castShadow: false, receiveShadow: false });
-    batcher.endSpans();
-
-    const fixture = { x, y: y - 0.05, z, color: grade.color, intensity: grade.intensity, distance };
-    fixtures.push(fixture);
-
-    destructibles.push({
-      kind: 'panel',
-      hp: PANEL_HP,
-      spans,
-      colliders: [],
-      navTiles: [],
-      fixtures: [fixture],
-      parts: [{
-        material: materials[grade.key],
-        x0: x - hw, y0: y - 0.03, z0: z - hd, x1: x + hw, y1: y, z1: z + hd,
-      }],
-      broken: false,
-    });
-  };
+  const addPanel = (x, y, z, hw, hd, distance) =>
+    generatorPanel(batcher, materials, fixtures, destructibles, x, y, z, hw, hd, distance);
 
   for (const w of [
     { x: cx, z: z0 + STANDOFF, alongX: true },
