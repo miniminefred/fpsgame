@@ -162,9 +162,17 @@ const DISH_DEPTH = 0.22;
 //   itself. Small pocks, clustered toward the blast because that is where they
 //   came from, and never through — they are what a fragment does, not what a
 //   charge does.
-const SHRAPNEL = [5, 10];
+//
+//   Both numbers below were dialled DOWN, and for one reason: a spray of small
+//   round marks spread evenly over a big flat machine stops reading as damage
+//   and starts reading as spots. What makes a pock look like it was thrown from
+//   somewhere is that it is near the other pocks and near where they came from —
+//   so there are fewer of them and they sit much harder toward the corner. The
+//   far end of the machine is now mostly clean, which is the point: it is the
+//   end nothing hit.
+const SHRAPNEL = [3, 6];
 const SHRAPNEL_R = [0.09, 0.3];
-const SHRAPNEL_BIAS = 0.6;     // 0 spreads them evenly, 1 piles them on the corner
+const SHRAPNEL_BIAS = 0.85;    // 0 spreads them evenly, 1 piles them on the corner
 // ...and they carry their own grid instead of taking `bayFor`'s, which is the
 // difference between this being affordable and not. bayFor sizes for cells
 // across a radius, and for a 0.2 m pock that bottoms out at BAY_MIN — so every
