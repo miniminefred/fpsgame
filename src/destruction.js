@@ -86,14 +86,29 @@ const CHAR_ROUGHNESS = 0.94;
 // the shallow one stays whole, since a hole you cannot see into is triangles.
 const BAY = 0.85;
 
-// How many of the eligible bays the blast takes with it, and how tightly they
-// cluster. Chosen by SCORE rather than by a coin per bay: a fixed count cannot
-// come out as either an untouched machine or a cloud of confetti, and scoring
-// on distance from the killing hit puts a real hole where the thing went up
-// instead of speckling gaps evenly over it.
-const TORN_FRACTION = 0.3;
-const TORN_SPREAD = 5;      // metres over which being near the blast stops mattering
-const TORN_JITTER = 0.55;   // ...and how much pure luck is allowed to override that
+// The machine comes apart in exactly TWO places, and that is the whole design of
+// it. Damage scattered evenly over a wreck is texture — it reads as corrosion,
+// or as a mesh with holes in it. Damage you can point at is an EVENT: this went
+// up at one end, and that little hole is where the round that finished it went
+// in. Two causes, two sizes, and the small one is aimed by the player.
+//
+//   The corner: one upper end of the machine, picked at random, taken out to a
+//   radius set by how long the machine is — a fixed 3 m is most of a five-metre
+//   machine and a dent in a fifteen-metre one.
+const CORNER_SHARE = 0.3;
+const CORNER_MIN = 1.8;
+const CORNER_MAX = 3.6;
+//   ...and capped again against how TALL it is, which is what keeps it an upper
+//   corner. A generator is 4.2 m to the cap and only 0.55 of that is protected,
+//   so a radius chosen off a twelve-metre length alone reaches the plinth and
+//   the machine reads as having lost that whole END rather than its corner.
+const CORNER_RISE = 0.62;
+//   The last round: a hole you could put an arm through, wherever it landed. It
+//   has to stay obviously smaller than the corner or there are just two blasts.
+const HOLE_R = 0.55;
+// Neither edge may be a clean arc, so every bay pulls the boundary in or pushes
+// it out by up to this share of the radius before deciding.
+const RAG = 0.3;
 
 // Bays this close to the bottom of the machine are never taken. A hulk with its
 // feet blown out from under it does not read as damage, it reads as floating —
@@ -105,6 +120,22 @@ const KEEP_BASE = 0.55;
 // and the reason a wreck mesh must NOT be marked `ownMaterial`: level teardown
 // would dispose a material the next floor is about to use.
 const _charred = new Map();
+
+/**
+ * Distance from a point to the nearest part of a bay, NOT to its centre — and
+ * that distinction is the whole of whether a bullet leaves a hole. Bays are not
+ * cut across the machine's depth (see baysOf), so a bay centre sits a metre and
+ * a bit behind the front face: a round that hits the plating is nowhere near
+ * the middle of the box it hit, and measuring to centres meant the small hole
+ * could never be punched by an actual shot, only by an explosion standing
+ * inside the machine.
+ */
+function distToBay(bay, px, py, pz) {
+  const dx = Math.max(bay.x0 - px, 0, px - bay.x1);
+  const dy = Math.max(bay.y0 - py, 0, py - bay.y1);
+  const dz = Math.max(bay.z0 - pz, 0, pz - bay.z1);
+  return Math.hypot(dx, dy, dz);
+}
 
 /**
  * Cuts one box into a grid of bays on its two longest axes, so the blast has
@@ -352,12 +383,15 @@ export class Destruction {
    * must outlive the level), its `meshes` so decals clip against it, and the
    * hittable list so a bullet stops on it like any other part of the building.
    *
-   * What is left is not the whole structure: it is cut into bays and the blast
-   * takes a share of them (see BAY and TORN_FRACTION), so the hulk is torn open
-   * rather than merely stripped and blackened. The holes are the point twice
-   * over — they are what makes it read as blown up, and they are where the arcs
-   * are struck from, because electricity crawling out of unbroken plating looks
-   * painted on. The bays it took are returned to the caller to be thrown.
+   * What is left is not the whole structure: it is cut into bays (see BAY) and
+   * two things take some away — the blast blows out one upper corner, and the
+   * round that finished it leaves a hole where it landed. So the hulk is torn
+   * open rather than merely stripped and blackened, and it is torn open where
+   * something happened rather than all over. The holes are the point twice more
+   * — they are where the arcs are struck from, because electricity crawling out
+   * of unbroken plating looks painted on, and the bays they took are handed
+   * back to the caller to be thrown, so the plating that left the machine is
+   * the plating lying on the carpet.
    */
   _wreck(entry, point) {
     // --- cut into bays and decide which the blast took
@@ -370,18 +404,43 @@ export class Destruction {
     }
     if (!bays.length) return false;
 
-    const eligible = bays.filter((b) => b.y0 >= floorY + KEEP_BASE);
-    const wanted = Math.floor(eligible.length * TORN_FRACTION);
-    if (wanted > 0 && point) {
-      for (const b of eligible) {
-        const dx = (b.x0 + b.x1) / 2 - point.x;
-        const dy = (b.y0 + b.y1) / 2 - point.y;
-        const dz = (b.z0 + b.z1) / 2 - point.z;
-        const near = 1 - Math.min(1, Math.hypot(dx, dy, dz) / TORN_SPREAD);
-        b._score = near * (1 - TORN_JITTER) + Math.random() * TORN_JITTER;
-      }
-      eligible.sort((a, b) => b._score - a._score);
-      for (let i = 0; i < wanted; i++) eligible[i]._gone = true;
+    // The machine's own extent, which is what says where its corners are and
+    // how big a corner ought to be on a machine this long.
+    let minX = Infinity, maxX = -Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (const b of bays) {
+      minX = Math.min(minX, b.x0); maxX = Math.max(maxX, b.x1);
+      maxY = Math.max(maxY, b.y1);
+      minZ = Math.min(minZ, b.z0); maxZ = Math.max(maxZ, b.z1);
+    }
+
+    // Which way the machine runs. It is backed against a wall, so one axis is
+    // its length and the other its depth, and the corners worth blowing out are
+    // at the ends of the LONG one — a "corner" across a 2.4 m depth is a dent.
+    const alongX = (maxX - minX) >= (maxZ - minZ);
+    const long = alongX ? maxX - minX : maxZ - minZ;
+    // Measured against the height that can actually be taken, not the machine's
+    // full height, since the bottom KEEP_BASE of it is never going anywhere.
+    const rise = maxY - (floorY + KEEP_BASE);
+    const radius = Math.min(
+      CORNER_MAX,
+      Math.max(CORNER_MIN, Math.min(long * CORNER_SHARE, rise * CORNER_RISE)),
+    );
+
+    // One end, tossed for, at the top and through the full depth.
+    const atMax = Math.random() < 0.5;
+    const cornerX = alongX ? (atMax ? maxX : minX) : (minX + maxX) / 2;
+    const cornerZ = alongX ? (minZ + maxZ) / 2 : (atMax ? maxZ : minZ);
+
+    for (const b of bays) {
+      // The bottom of the machine is never taken, by either cause: a hulk with
+      // its feet blown out reads as floating rather than as damaged.
+      if (b.y0 < floorY + KEEP_BASE) continue;
+      // Ragged on both, or the corner comes out as a bite from a compass and
+      // the bullet hole as a drilled one.
+      const ragged = (dist, r) => dist < r * (1 - RAG + Math.random() * RAG * 2);
+
+      if (ragged(distToBay(b, cornerX, maxY, cornerZ), radius)) { b._gone = true; continue; }
+      if (point && ragged(distToBay(b, point.x, point.y, point.z), HOLE_R)) b._gone = true;
     }
 
     const gone = bays.filter((b) => b._gone);

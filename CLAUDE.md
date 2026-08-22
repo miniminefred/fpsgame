@@ -521,17 +521,35 @@ Three things about it are structural rather than decorative:
     neither. Nothing had to be re-measured for that: the hulk keeps the full-height housing,
     so the collider that was over the machine is still the right shape (welded top 4.2 against
     a collider top of 4.4) and debris lands on the thing you can see.
-  - **It is torn open, not merely stripped**, and that needs a granularity the machine does
-    not have: it is authored as a few enormous boxes — one housing up to 15 m long — and a
-    hole has to be smaller than the thing it is a hole in. So the structure is first cut into
-    `BAY`-sized bays on its two longest axes (the shallow one stays whole; a hole you cannot
-    see into is triangles), and `TORN_FRACTION` of them go, chosen by SCORE rather than by a
-    coin per bay — a fixed count can come out as neither an untouched machine nor a cloud of
-    confetti, and scoring on distance from the killing hit puts a real hole where it went up
-    instead of speckling gaps evenly. Bays within `KEEP_BASE` of the floor are never taken:
-    a hulk with its feet blown out reads as floating rather than as damaged. The bays that
-    went are handed back to `_shatter` to be thrown, so the plating that left the machine is
-    the plating now lying on the carpet.
+  - **It is torn open in exactly TWO places, and that is the design.** Damage scattered
+    evenly over a wreck is texture — it reads as corrosion, or as a mesh with holes in it.
+    Damage you can point at is an event: *this went up at one end, and that little hole is
+    where the round that finished it went in.* So one upper corner goes, and a hole about an
+    arm across goes wherever the killing shot landed. Two causes, two sizes, and the small
+    one is aimed by the player.
+
+    That needs a granularity the machine does not have — it is authored as a few enormous
+    boxes, one housing up to 15 m long, and a hole has to be smaller than the thing it is a
+    hole in. So the structure is first cut into `BAY`-sized bays on its two longest axes (the
+    shallow one stays whole; a hole you cannot see into is triangles). Four things then
+    decide how it comes out:
+    - **The corner radius is capped against the machine's HEIGHT as well as its length**
+      (`CORNER_RISE`). Off the length alone, a twelve-metre machine gets 3.6 m — which on
+      something 4.2 m tall reaches the plinth, and it reads as having lost that whole *end*
+      rather than its corner.
+    - **Bays within `KEEP_BASE` of the floor are never taken**, by either cause. A hulk with
+      its feet blown out reads as floating rather than as damaged.
+    - **Both edges are ragged** (`RAG`), or the corner is a bite taken with a compass and the
+      bullet hole is a drilled one.
+    - **Distance is measured to the nearest part of a bay, not to its centre** (`distToBay`),
+      and that is the whole of whether a bullet ever leaves a hole. Bays are not cut across
+      the depth, so a bay centre sits a metre and a bit behind the front face — a round that
+      hits the plating is nowhere near the middle of the box it hit. Measuring to centres
+      meant the small hole could only ever be punched by an explosion standing *inside* the
+      machine, never by a shot.
+
+    The bays that went are handed back to `_shatter` to be thrown, so the plating that left
+    the machine is the plating now lying on the carpet.
 
   **And it arcs** (`arcs.js`), struck from the holes — electricity crawling out of unbroken
   plating looks painted on, so the anchors ARE the bays the blast took. Three slots, each a
