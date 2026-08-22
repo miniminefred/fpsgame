@@ -204,6 +204,7 @@ src/
   weapons.js      Five GLB viewmodels, recoil/reload animation, per-gun combat stats
   extinguishers.js  The secondary: a thrown cylinder, its gas, and what it sets off
   effects.js      Pooled tracers, impact flashes, bullet decals
+  arcs.js         Electricity coming off a wrecked machine
   physics.js      cannon-es rigid bodies for loose furniture
   audio.js        Sound library + every game event that makes a noise
   sfx.js          WebAudio sample engine: decode, pitch-vary, place, overlap
@@ -506,7 +507,7 @@ Three things about it are structural rather than decorative:
   a room exists — the plant room used to end the fight as an empty wall. So the machine
   declares which of its 88 boxes are *welded structure* (`weld` in `gen/props.js`: plinth,
   housing, ribs, hazard band, tank bodies — 39 of them) as against everything BOLTED to it,
-  and destroying it throws only the fittings. Three things about how:
+  and destroying it throws only the fittings. Four things about how:
   - **The survivors are re-drawn, not spared.** A batched chunk is one mesh sharing one
     material with a hundred other props, so there is nothing to scorch that would not scorch
     every desk on the floor with it. The whole prop is erased from the batch as usual and the
@@ -520,6 +521,28 @@ Three things about it are structural rather than decorative:
     neither. Nothing had to be re-measured for that: the hulk keeps the full-height housing,
     so the collider that was over the machine is still the right shape (welded top 4.2 against
     a collider top of 4.4) and debris lands on the thing you can see.
+  - **It is torn open, not merely stripped**, and that needs a granularity the machine does
+    not have: it is authored as a few enormous boxes — one housing up to 15 m long — and a
+    hole has to be smaller than the thing it is a hole in. So the structure is first cut into
+    `BAY`-sized bays on its two longest axes (the shallow one stays whole; a hole you cannot
+    see into is triangles), and `TORN_FRACTION` of them go, chosen by SCORE rather than by a
+    coin per bay — a fixed count can come out as neither an untouched machine nor a cloud of
+    confetti, and scoring on distance from the killing hit puts a real hole where it went up
+    instead of speckling gaps evenly. Bays within `KEEP_BASE` of the floor are never taken:
+    a hulk with its feet blown out reads as floating rather than as damaged. The bays that
+    went are handed back to `_shatter` to be thrown, so the plating that left the machine is
+    the plating now lying on the carpet.
+
+  **And it arcs** (`arcs.js`), struck from the holes — electricity crawling out of unbroken
+  plating looks painted on, so the anchors ARE the bays the blast took. Three slots, each a
+  jagged run of thin cylinders aimed exactly the way `effects.js` aims a tracer, struck for a
+  flicker and then dark for up to 1.7 s; nothing is created or destroyed while it runs, which
+  matters here and not for a tracer because this runs for as long as the player is on the
+  floor. The light it throws is **`lighting.spark`, allocated with the pool and dark**, not a
+  light of its own: three recompiles every material when the light count changes, and the
+  frame the generator blows is already a ceiling coming down, four hundred fragments and a
+  floor-wide relight. It is the last frame in the game that can afford to rebuild every
+  shader. The arcs have no sound yet.
 
   The marker reaches the sink through `placer` in `gen/props.js`, and that is the trap: a prop
   only ever sees the placer, which forwards `box` and `obstacle` and nothing else. `hulk` was
