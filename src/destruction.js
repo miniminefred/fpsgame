@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { eraseSpan } from './gen/geom.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { eraseSpan, boxBetween } from './gen/geom.js';
 import { BodyPool } from './body-pool.js';
 
 // Everything on the floor coming apart.
@@ -69,6 +70,34 @@ const BLACKOUT_MAX_PER_FRAME = 8;
 // and the tubes out of earshot were never audible — the panner's falloff and the
 // occlusion filter had already taken them to nothing. They were pure cost.
 const BLACKOUT_VOICES = 16;
+
+// How much of its own colour a burnt surface keeps (see `_wreck`). Scorched
+// rather than black: derived from each surface's own material instead of one
+// flat soot colour, so a wreck still reads as the several materials it was
+// welded out of and not as an untextured slab. Roughness goes near matte and
+// metalness to nothing, because what is left is oxide, not steel.
+const CHAR = 0.24;
+const CHAR_ROUGHNESS = 0.94;
+
+// One charred variant per source material, made once and shared by every wreck
+// on every floor — the same bargain the cached materials in textures.js make,
+// and the reason a wreck mesh must NOT be marked `ownMaterial`: level teardown
+// would dispose a material the next floor is about to use.
+const _charred = new Map();
+
+function charOf(material) {
+  let burnt = _charred.get(material);
+  if (!burnt) {
+    burnt = material.clone();
+    burnt.color?.multiplyScalar(CHAR);
+    if (burnt.emissive) burnt.emissive.multiplyScalar(0);
+    if ('roughness' in burnt) burnt.roughness = CHAR_ROUGHNESS;
+    if ('metalness' in burnt) burnt.metalness = 0;
+    burnt.map = null;
+    _charred.set(material, burnt);
+  }
+  return burnt;
+}
 
 export class Destruction {
   constructor({ scene, physics, effects, audio, shooting, lighting }) {
@@ -194,24 +223,44 @@ export class Destruction {
 
     for (const span of entry.spans) eraseSpan(span);
 
+    // A prop that declared welded structure does not vanish — it is redrawn as
+    // a burnt-out hulk standing where it stood. The spans are erased either way
+    // and the survivors are RE-DRAWN rather than left in the batch, because a
+    // batched chunk is one shared material and there is no way to scorch part
+    // of it in place; see `_wreck`.
+    const wrecked = entry.hulkSpans ? this._wreck(entry) : false;
+
     // A retired collider is left in the array rather than spliced out of it:
     // the player is holding that array, and `top` below the floor is already
     // how a collider says "walk through me" (see player.js). The solver keeps
     // its own static body per collider, and that has to go too or the debris
     // lands on the shape of the thing it just came out of.
-    for (const collider of entry.colliders) {
-      collider.top = -1;
-      this.physics?.removeStatic(collider);
+    //
+    // A wreck gives back NEITHER, and that is the whole difference between it
+    // and everything else here: it is still standing, so it still blocks, and
+    // the nav grid must go on routing round it. Which is also why nothing has
+    // to be re-measured — the hulk keeps the machine's own full-height housing,
+    // so the collider that was over it is still the right shape and the debris
+    // that lands on it lands on the thing you can see.
+    if (!wrecked) {
+      for (const collider of entry.colliders) {
+        collider.top = -1;
+        this.physics?.removeStatic(collider);
+      }
+      this.level?.nav?.openTiles(entry.navTiles);
     }
 
-    this.level?.nav?.openTiles(entry.navTiles);
     for (const fixture of entry.fixtures) this.lighting?.removeFixture(fixture);
 
     // A volatile prop does not break where it stands. It takes its own boxes
     // with it and comes apart somewhere else, loudly — see extinguishers.js.
     if (entry.volatile && this.extinguishers?.launch(entry, dir, point)) return;
 
-    this._scatter(entry.parts, null, dir, point);
+    // Only what came OFF is thrown. Scattering the welded structure as well
+    // would have the hulk stand there while a copy of it tumbles across the
+    // room — and `_scatter` keeps the biggest fragments, which is exactly the
+    // housing and the plinth, so it would have been the whole machine twice.
+    this._scatter(wrecked ? entry.parts.filter((p) => !p.hulk) : entry.parts, null, dir, point);
 
     const glassy = entry.kind !== 'prop';
     this.effects.impact(point, _up.set(0, 1, 0), glassy ? 0xdff0ff : 0xffe4b0);
@@ -221,6 +270,59 @@ export class Destruction {
     // shape as `volatile` above: one flag on the entry, read here, handed to
     // whoever wants to do something about it — see game.js's `_onPowerCut`.
     if (entry.powerCore) this.onPowerCut?.(entry, point);
+  }
+
+  /**
+   * Redraws a destroyed prop's welded structure as a burnt-out hulk, and
+   * returns whether one was actually raised.
+   *
+   * The survivors cannot simply be left in the batch. A batched chunk is one
+   * mesh sharing one material with a hundred other props, so there is nothing
+   * to scorch that would not scorch every desk on the floor with it — and a
+   * machine that loses its pipework and its lights but keeps its factory finish
+   * reads as unfinished rather than as burnt. So the whole prop is erased as
+   * usual and the structure comes back as a mesh of its own, in charred
+   * variants of its own materials, at exactly the coordinates it already had:
+   * `parts` are world-space, so nothing has to be transformed.
+   *
+   * One mesh per material, merged, so a wreck is two or three draw calls rather
+   * than the twenty-odd boxes it is made of. It joins the floor's `objects` for
+   * teardown (geometry only — see `charOf` on why the materials are shared and
+   * must outlive the level), its `meshes` so decals clip against it, and the
+   * hittable list so a bullet stops on it like any other part of the building.
+   */
+  _wreck(entry) {
+    const byMaterial = new Map();
+    for (const part of entry.parts) {
+      if (!part.hulk || !part.material) continue;
+      const burnt = charOf(part.material);
+      let geos = byMaterial.get(burnt);
+      if (!geos) byMaterial.set(burnt, geos = []);
+      geos.push(boxBetween(part.x0, part.y0, part.z0, part.x1, part.y1, part.z1));
+    }
+    if (!byMaterial.size) return false;
+
+    const raised = [];
+    for (const [material, geos] of byMaterial) {
+      const merged = mergeGeometries(geos, false);
+      for (const g of geos) g.dispose();
+      if (!merged) continue;
+      const mesh = new THREE.Mesh(merged, material);
+      mesh.name = 'wreck';
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      this.scene.add(mesh);
+      raised.push(mesh);
+    }
+    // Every merge failing leaves nothing standing, and the caller has to hear
+    // about it or the floor keeps a collider around a machine that is not there.
+    if (!raised.length) return false;
+
+    this.level?.objects?.push(...raised);
+    this.level?.meshes?.push(...raised);
+    this.shooting?.addHittables(raised);
+    if (this.level?.meshes) this.effects?.setSurfaces(this.level.meshes);
+    return true;
   }
 
   /**

@@ -1511,6 +1511,9 @@ function makeSink(layout, batcher, materials, masks) {
   let record = null;
   // A dry run of a prop's `build`, collecting the boxes without drawing them.
   let capture = null;
+  // Whether the boxes being drawn right now are a prop's welded structure —
+  // the part that stays standing when it is destroyed. See `hulk` below.
+  let hulkOn = false;
 
   // Tile range covering a world-space AABB.
   const range = (x0, z0, x1, z1) => ({
@@ -1563,11 +1566,22 @@ function makeSink(layout, batcher, materials, masks) {
 
     box(key, x0, y0, z0, x1, y1, z1) {
       const b = { key, x0, y0: y0 + level, z0, x1, y1: y1 + level, z1 };
+      if (hulkOn) b.hulk = true;
       if (capture) { capture.push(b); return; }
       if (pending) { pending.boxes.push(b); return; }
       batcher.add(key, materials[key], boxBetween(b.x0, b.y0, b.z0, b.x1, b.y1, b.z1));
+      // One add() and one box, on the same call and in the same order — which
+      // is what lets endStatic hand destruction.js a mask over `spans`.
       record?.boxes.push(b);
     },
+
+    /**
+     * Marks what follows as WELDED STRUCTURE rather than bolted-on fittings: the
+     * part of a prop that is still standing, burnt, after the prop is destroyed.
+     * Only the generator uses it (see `weld` in gen/props.js); leave it off and a
+     * prop is destroyed exactly as it always was, geometry and all.
+     */
+    hulk(on) { hulkOn = !!on; },
 
     obstacle(x0, z0, x1, z1, top, building) {
       // A dynamic prop's footprint moves, so it can't become a static collider
@@ -1627,6 +1641,7 @@ function makeSink(layout, batcher, materials, masks) {
     // --- static props ------------------------------------------------------
 
     beginStatic(hp, substance, volatile = false, powerCore = false) {
+      hulkOn = false;
       record = hp > 0
         ? {
           hp, substance, volatile, powerCore,
@@ -1644,6 +1659,7 @@ function makeSink(layout, batcher, materials, masks) {
     endStatic(debris) {
       const r = record;
       record = null;
+      hulkOn = false;
       if (!r) return;
       batcher.endSpans();
       if (!r.spans.length) return;
@@ -1660,6 +1676,11 @@ function makeSink(layout, batcher, materials, masks) {
         // destruction.js's _shatter and game.js's _onPowerCut.
         powerCore: r.powerCore,
         spans: r.spans,
+        // Which of those spans are welded structure, aligned one-for-one
+        // because box() records a span and a box on the same call. Null unless
+        // the prop actually declared a hulk, so `_shatter` can tell "leaves a
+        // wreck" from "goes, like everything else on the floor" by its presence.
+        hulkSpans: r.boxes.some((b) => b.hulk) ? r.boxes.map((b) => !!b.hulk) : null,
         colliders: r.colliders,
         navTiles: r.navTiles,
         fixtures: [],

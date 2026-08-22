@@ -36,6 +36,14 @@ function placer(sink, cx, cz, rot) {
         cx + Math.min(ax, bx), cz + Math.min(az, bz),
         cx + Math.max(ax, bx), cz + Math.max(az, bz), top, building);
     },
+    // Welded structure, marked for the wreck it leaves — see `weld` in the
+    // generator and `hulk` on the sink. Nothing about a coordinate changes, but
+    // a prop only ever sees this placer, so anything the sink offers has to be
+    // offered through here or it silently reaches nothing. Which is exactly
+    // what happened: the marker was added to the sink and to the machine, both
+    // correct, and every box came out unmarked because the two are not
+    // introduced anywhere but here.
+    hulk(on) { sink.hulk(on); },
   };
 }
 
@@ -669,30 +677,45 @@ export const PROPS = {
       const BACK = 0.2;
       const box = (key, x0, y0, z0, x1, y1, z1) =>
         p.box(key, x0, y0, z0 + BACK, x1, y1, z1 + BACK);
+      // The welded structure, as against everything BOLTED to it. Blowing the
+      // machine up takes the fittings — pipework, gantry, stacks, the lit
+      // control face — and leaves this standing as a burnt-out hulk, because a
+      // room whose whole reason to exist vanishes when you shoot it reads as a
+      // prop despawning rather than as a machine that blew up. See `hulkSpans`
+      // in gen/build.js and `_wreck` in destruction.js.
+      //
+      // `?.` because a sink is allowed to be minimal: the catalogue audit in
+      // tools/validate-props.mjs builds a placer of `box` and `obstacle` alone,
+      // and a machine that cannot record a wreck should still draw itself.
+      const weld = (key, x0, y0, z0, x1, y1, z1) => {
+        p.hulk?.(true);
+        box(key, x0, y0, z0, x1, y1, z1);
+        p.hulk?.(false);
+      };
       // Everything below is authored as a fraction of the half-width or as a
       // fixed metre offset from an end, never as a hard-coded x — that is what
       // lets one machine be 7 m on one floor and 15 m on the next without
       // stretching its details into a different machine.
       const inset = (m) => Math.max(0, hw - m);
 
-      box('metal', -hw, 0, -1.2, hw, 0.15, 1.2);                     // base plinth
-      box('metalDark', -inset(0.1), 0.15, -1.0, inset(0.1), H, 1.0); // main housing
-      box('metal', -inset(0.2), H, -0.9, inset(0.2), H + 0.2, 0.9);  // top cap
+      weld('metal', -hw, 0, -1.2, hw, 0.15, 1.2);                     // base plinth
+      weld('metalDark', -inset(0.1), 0.15, -1.0, inset(0.1), H, 1.0); // main housing
+      box('metal', -inset(0.2), H, -0.9, inset(0.2), H + 0.2, 0.9);   // top cap
 
       // Vertical ribs down the front and back faces, one every ~0.75 m so the
       // rhythm is the same on any width.
       const ribs = Math.max(4, Math.round(w / 0.75));
       for (let i = 0; i <= ribs; i++) {
         const sx = -inset(0.3) + (i / ribs) * 2 * inset(0.3);
-        box('metal', sx - 0.08, 0.15, -1.02, sx + 0.08, H, -0.9);
-        box('metal', sx - 0.08, 0.15, 0.9, sx + 0.08, H, 1.02);
+        weld('metal', sx - 0.08, 0.15, -1.02, sx + 0.08, H, -0.9);
+        weld('metal', sx - 0.08, 0.15, 0.9, sx + 0.08, H, 1.02);
       }
 
       // Hazard band round the base, and a tall control face with rows of live
       // LEDs — both on the front (-Z), so they read from wherever the wall
       // put it. The control face stays 1.8 m wide whatever the machine does:
       // it is a thing a person stands at, and a person is one size.
-      box('hazard', -inset(0.09), 0.7, -1.01, inset(0.09), 0.92, 1.01);
+      weld('hazard', -inset(0.09), 0.7, -1.01, inset(0.09), 0.92, 1.01);
       box('metalDark', -0.9, 0.9, -1.06, 0.9, 3.4, -1.0);
       for (let row = 0; row < 8; row++) {
         const y = 1.1 + row * 0.28;
@@ -707,7 +730,7 @@ export const PROPS = {
 
       // Coolant tanks standing at each end, capped and strapped.
       for (const sx of [-inset(0.85), inset(0.85)]) {
-        box('metal', sx - 0.62, 0.15, -1.05, sx + 0.62, 2.5, 0.2);
+        weld('metal', sx - 0.62, 0.15, -1.05, sx + 0.62, 2.5, 0.2);
         box('metalDark', sx - 0.66, 2.5, -1.09, sx + 0.66, 2.66, 0.24);
         box('hazard', sx - 0.64, 1.5, -1.07, sx + 0.64, 1.68, 0.22);
       }
