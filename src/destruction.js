@@ -150,13 +150,22 @@ const HOLE_R = 0.55;
 const CRATER_BITE = 0.12;
 
 //   The dish: a blast does not stop at the edge of the hole it makes. The
-//   plating for a good way around the corner is pushed in, and without it the
-//   corner is a shape subtracted from an otherwise mint machine. Its radius is a
+//   plating for a way around the corner is pushed in, and without it the corner
+//   is a shape subtracted from an otherwise mint machine. Its radius is a
 //   multiple of the corner's, and it is CAPPED in depth — left as a plain
 //   sphere it is deeper than the machine everywhere it reaches and simply makes
 //   the hole bigger, which is the opposite of the point.
-const DISH_SCALE = 1.8;
-const DISH_DEPTH = 0.22;
+//
+//   The cap has to stay under the RIBS' depth (0.12 — see the generator's own
+//   build in gen/props.js), and that is the one number here that is a threshold
+//   rather than a taste. A rib is 12 cm proud of the housing, so a dish deeper
+//   than that does not dent it, it deletes it: at 0.22 every rib within the
+//   dish's radius vanished, which stripped the machine's whole vertical rhythm
+//   over a four-metre span and was most of what made the wreck read as a chewed
+//   mess rather than as a machine with a hole in it. Under 0.12 the ribs stay
+//   and only the skin behind them is pushed back.
+const DISH_SCALE = 1.4;
+const DISH_DEPTH = 0.09;
 
 //   The shrapnel: a machine that comes apart throws its own casing through
 //   itself. Small pocks, clustered toward the blast because that is where they
@@ -193,10 +202,16 @@ const SHRAPNEL_GRID = 0.17;
 // a mosaic of separately-tilted chips. And the amplitude scales with the size of
 // the piece, because the same 8° on a 9 cm bay opens a gap as wide as the bay
 // itself, which reads as detached rather than as bent.
-const BUCKLE_REACH = 0.7;
-const BUCKLE_SHIFT = 0.05;
-const BUCKLE_TILT = 0.13;      // radians, on a piece big enough to earn it
-const BUCKLE_FULL = 0.35;      // ...the size at which it gets all of that
+// All three were dialled back hard after the first pass: at 0.7 / 0.05 / 0.13
+// the metal around a hole came out as a cloud of separately-tilted chips, and
+// the clean round crater the hole is supposed to be was lost inside it. The job
+// here is to stop the edge being suspiciously flat, not to shatter it — the rim
+// spikes are what make it violent. Small enough that you notice it only by
+// noticing the plating is no longer true.
+const BUCKLE_REACH = 0.45;
+const BUCKLE_SHIFT = 0.02;
+const BUCKLE_TILT = 0.05;      // radians, on a piece big enough to earn it
+const BUCKLE_FULL = 0.3;       // ...the FACE size at which it gets all of that
 
 // Soot. The char is not even either: metal near where it went up is burnt harder
 // than metal at the far end, so bays within reach of a blast take a second,
@@ -1041,9 +1056,17 @@ export class Destruction {
       // neighbouring bays are the point rather than a defect — that is what a
       // seam looks like once the panel either side of it has moved — but only
       // near the damage, and only in proportion to the size of the piece.
+      // Sized off the bay's FACE — the two axes it was cut on — and not off its
+      // largest dimension, which is always the machine's full depth because bays
+      // are never cut across it. Measuring the max meant every bay scored 1 and
+      // the scaling did nothing at all: a 9 cm chip was thrown as hard as a
+      // panel, which is exactly the cloud of separately-tilted chips this term
+      // exists to prevent.
+      const face = depthAxis === 'x'
+        ? Math.min(item.sy, item.sz)
+        : Math.min(item.sx, item.sy);
       const wrench = bay._buckle && off < BUCKLE_REACH
-        ? (1 - Math.max(0, off) / BUCKLE_REACH)
-          * Math.min(1, Math.max(item.sx, item.sy, item.sz) / BUCKLE_FULL)
+        ? (1 - Math.max(0, off) / BUCKLE_REACH) * Math.min(1, face / BUCKLE_FULL)
         : 0;
       if (wrench > 0.02) {
         const shift = (Math.random() * 2 - 1) * BUCKLE_SHIFT * wrench;

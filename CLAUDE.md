@@ -585,17 +585,32 @@ Three things about it are structural rather than decorative:
       stand on, and two `nav.clear` lookups cannot be wrong that way.
     - **The dish is capped in depth** (`DISH_DEPTH`). Left as a plain sphere, one wide enough
       to deform the plating around the corner is also deeper than the machine everywhere it
-      reaches, so it just makes the hole bigger — the opposite of the point.
+      reaches, so it just makes the hole bigger — the opposite of the point. The cap must also
+      stay **under the ribs' 0.12 m depth**, and that is a threshold rather than a taste: a
+      rib stands 12 cm proud of the housing, so a deeper dish does not dent it, it deletes it.
+      At 0.22 every rib within the dish vanished, stripping the machine's vertical rhythm over
+      a four-metre span — most of what made a wreck read as a chewed mess rather than as a
+      machine with a hole in it.
     - **The arcs need `craterFloor`**, because carving a bay does not remove it, so the
       craters contribute no missing bays for them to strike from.
 
     **The plating near damage is buckled too** — bays nudged along the depth and tilted, which
-    is free because the stamper takes a quaternion per box already, and does more for "this
-    was hit" than any extra hole. Two things keep it from becoming a cloud of shards, and the
-    first version had neither: it falls off over `BUCKLE_REACH` from the edge of the damage,
-    so a panel is wrenched where it was torn and flat where it was not; and the amplitude
-    scales with the size of the piece, since the same 8° on a 9 cm bay opens a gap as wide as
-    the bay itself and reads as detached rather than bent. The **soot** is read off the same
+    is free because the stamper takes a quaternion per box already. Its whole job is to stop
+    the edge of a hole being suspiciously flat; the rim spikes are what make it violent, and
+    every time this has been turned up it has eaten the clean round crater underneath. Two
+    things keep it from becoming a cloud of shards, and the first version had neither: it
+    falls off over `BUCKLE_REACH` from the edge of the damage, so a panel is wrenched where it
+    was torn and flat where it was not; and the amplitude scales with the size of the piece,
+    since the same 8° on a 9 cm bay opens a gap as wide as the bay itself and reads as
+    detached rather than bent.
+
+    That second term was **silently doing nothing** for its first two revisions, and it is
+    worth knowing why: it sized off `max(sx, sy, sz)`, and a bay's largest dimension is always
+    the machine's full 2 m depth, because bays are never cut across it. Every bay scored a
+    full 1 — a 9 cm chip thrown exactly as hard as a panel, which is precisely the cloud the
+    term exists to prevent. It measures the bay's **face** now, the two axes it was actually
+    cut on. Anything sizing a bay must ask what it is asking about: a bay is small in plan and
+    always long through. The **soot** is read off the same
     distance, so the metal that is burnt is the metal that is bent is the metal that was hit —
     two material buckets rather than a gradient, because the colour lives on the material.
 
