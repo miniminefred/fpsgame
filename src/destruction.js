@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { eraseSpan, boxBetween } from './gen/geom.js';
 import { BodyPool } from './body-pool.js';
+import { Arcs } from './arcs.js';
 
 // Everything on the floor coming apart.
 //
@@ -79,11 +80,59 @@ const BLACKOUT_VOICES = 16;
 const CHAR = 0.24;
 const CHAR_ROUGHNESS = 0.94;
 
+// A wreck is cut into BAYS before any of it is kept, because the machine is
+// authored as a few enormous boxes — one housing 15 m long — and a hole has to
+// be smaller than the thing it is a hole in. Cut on the two longest axes only:
+// the shallow one stays whole, since a hole you cannot see into is triangles.
+const BAY = 0.85;
+
+// How many of the eligible bays the blast takes with it, and how tightly they
+// cluster. Chosen by SCORE rather than by a coin per bay: a fixed count cannot
+// come out as either an untouched machine or a cloud of confetti, and scoring
+// on distance from the killing hit puts a real hole where the thing went up
+// instead of speckling gaps evenly over it.
+const TORN_FRACTION = 0.3;
+const TORN_SPREAD = 5;      // metres over which being near the blast stops mattering
+const TORN_JITTER = 0.55;   // ...and how much pure luck is allowed to override that
+
+// Bays this close to the bottom of the machine are never taken. A hulk with its
+// feet blown out from under it does not read as damage, it reads as floating —
+// and the plinth is what sells the rest of it as still bolted down.
+const KEEP_BASE = 0.55;
+
 // One charred variant per source material, made once and shared by every wreck
 // on every floor — the same bargain the cached materials in textures.js make,
 // and the reason a wreck mesh must NOT be marked `ownMaterial`: level teardown
 // would dispose a material the next floor is about to use.
 const _charred = new Map();
+
+/**
+ * Cuts one box into a grid of bays on its two longest axes, so the blast has
+ * something smaller than a whole wall of machine to take away. A box already
+ * under a bay across is one bay, which is most of the ribs and every strap.
+ */
+function baysOf(box) {
+  const d = { x: box.x1 - box.x0, y: box.y1 - box.y0, z: box.z1 - box.z0 };
+  const [a, b] = Object.keys(d).sort((p, q) => d[q] - d[p]);
+  const n = { x: 1, y: 1, z: 1 };
+  n[a] = Math.max(1, Math.round(d[a] / BAY));
+  n[b] = Math.max(1, Math.round(d[b] / BAY));
+
+  const out = [];
+  for (let i = 0; i < n.x; i++) {
+    for (let j = 0; j < n.y; j++) {
+      for (let k = 0; k < n.z; k++) {
+        out.push({
+          x0: box.x0 + (d.x * i) / n.x, x1: box.x0 + (d.x * (i + 1)) / n.x,
+          y0: box.y0 + (d.y * j) / n.y, y1: box.y0 + (d.y * (j + 1)) / n.y,
+          z0: box.z0 + (d.z * k) / n.z, z1: box.z0 + (d.z * (k + 1)) / n.z,
+          key: box.key, material: box.material,
+        });
+      }
+    }
+  }
+  return out;
+}
 
 function charOf(material) {
   let burnt = _charred.get(material);
@@ -112,6 +161,8 @@ export class Destruction {
     // The ceiling still coming down from a power cut, if one is — see
     // blackoutPanels. Null the rest of the time, which is almost always.
     this._blackout = null;
+    // Electricity crawling over a wreck, once there is one on this floor.
+    this.arcs = null;
     // Every fragment builds its own geometry, so the pool disposes it on retire.
     this.debris = new BodyPool({
       scene, physics, max: MAX_DEBRIS, life: DEBRIS_LIFETIME, ownGeometry: true,
@@ -127,6 +178,11 @@ export class Destruction {
     // the exit while the glass is still coming down would go on shattering the
     // OLD floor's panels against the new floor's nav grid and physics world.
     this._blackout = null;
+    // And its wreck, which the level teardown has already taken out of the
+    // scene — leaving the arcs behind would go on flickering a light over an
+    // empty patch of the floor you just walked onto.
+    this.arcs?.dispose();
+    this.arcs = null;
 
     const touched = new Set();
     for (const entry of level.destructibles ?? []) {
@@ -228,7 +284,7 @@ export class Destruction {
     // and the survivors are RE-DRAWN rather than left in the batch, because a
     // batched chunk is one shared material and there is no way to scorch part
     // of it in place; see `_wreck`.
-    const wrecked = entry.hulkSpans ? this._wreck(entry) : false;
+    const wrecked = entry.hulkSpans ? this._wreck(entry, point) : false;
 
     // A retired collider is left in the array rather than spliced out of it:
     // the player is holding that array, and `top` below the floor is already
@@ -256,11 +312,16 @@ export class Destruction {
     // with it and comes apart somewhere else, loudly — see extinguishers.js.
     if (entry.volatile && this.extinguishers?.launch(entry, dir, point)) return;
 
-    // Only what came OFF is thrown. Scattering the welded structure as well
-    // would have the hulk stand there while a copy of it tumbles across the
-    // room — and `_scatter` keeps the biggest fragments, which is exactly the
-    // housing and the plinth, so it would have been the whole machine twice.
-    this._scatter(wrecked ? entry.parts.filter((p) => !p.hulk) : entry.parts, null, dir, point);
+    // Only what came OFF is thrown: the fittings, plus the bays the blast tore
+    // out of the structure, which `_wreck` hands back for exactly this. Throwing
+    // the welded structure as well would have the hulk stand there while a copy
+    // of it tumbles across the room — and `_scatter` keeps the biggest
+    // fragments, which is the housing and the plinth, so it would have been the
+    // whole machine twice.
+    this._scatter(
+      wrecked ? [...entry.parts.filter((p) => !p.hulk), ...wrecked] : entry.parts,
+      null, dir, point,
+    );
 
     const glassy = entry.kind !== 'prop';
     this.effects.impact(point, _up.set(0, 1, 0), glassy ? 0xdff0ff : 0xffe4b0);
@@ -290,15 +351,52 @@ export class Destruction {
    * teardown (geometry only — see `charOf` on why the materials are shared and
    * must outlive the level), its `meshes` so decals clip against it, and the
    * hittable list so a bullet stops on it like any other part of the building.
+   *
+   * What is left is not the whole structure: it is cut into bays and the blast
+   * takes a share of them (see BAY and TORN_FRACTION), so the hulk is torn open
+   * rather than merely stripped and blackened. The holes are the point twice
+   * over — they are what makes it read as blown up, and they are where the arcs
+   * are struck from, because electricity crawling out of unbroken plating looks
+   * painted on. The bays it took are returned to the caller to be thrown.
    */
-  _wreck(entry) {
-    const byMaterial = new Map();
+  _wreck(entry, point) {
+    // --- cut into bays and decide which the blast took
+    const bays = [];
+    let floorY = Infinity;
     for (const part of entry.parts) {
       if (!part.hulk || !part.material) continue;
-      const burnt = charOf(part.material);
+      floorY = Math.min(floorY, part.y0);
+      bays.push(...baysOf(part));
+    }
+    if (!bays.length) return false;
+
+    const eligible = bays.filter((b) => b.y0 >= floorY + KEEP_BASE);
+    const wanted = Math.floor(eligible.length * TORN_FRACTION);
+    if (wanted > 0 && point) {
+      for (const b of eligible) {
+        const dx = (b.x0 + b.x1) / 2 - point.x;
+        const dy = (b.y0 + b.y1) / 2 - point.y;
+        const dz = (b.z0 + b.z1) / 2 - point.z;
+        const near = 1 - Math.min(1, Math.hypot(dx, dy, dz) / TORN_SPREAD);
+        b._score = near * (1 - TORN_JITTER) + Math.random() * TORN_JITTER;
+      }
+      eligible.sort((a, b) => b._score - a._score);
+      for (let i = 0; i < wanted; i++) eligible[i]._gone = true;
+    }
+
+    const gone = bays.filter((b) => b._gone);
+    const kept = bays.filter((b) => !b._gone);
+    // Every bay scoring its way out at once would be a machine that vanished
+    // with extra steps; the caller has already erased the batch by this point,
+    // so there would be nothing left to stand there.
+    if (!kept.length) return false;
+
+    const byMaterial = new Map();
+    for (const bay of kept) {
+      const burnt = charOf(bay.material);
       let geos = byMaterial.get(burnt);
       if (!geos) byMaterial.set(burnt, geos = []);
-      geos.push(boxBetween(part.x0, part.y0, part.z0, part.x1, part.y1, part.z1));
+      geos.push(boxBetween(bay.x0, bay.y0, bay.z0, bay.x1, bay.y1, bay.z1));
     }
     if (!byMaterial.size) return false;
 
@@ -322,7 +420,17 @@ export class Destruction {
     this.level?.meshes?.push(...raised);
     this.shooting?.addHittables(raised);
     if (this.level?.meshes) this.effects?.setSurfaces(this.level.meshes);
-    return true;
+
+    // Struck from the holes, falling back to the top of what is left if the
+    // blast happened to tear nothing out — a wreck with no arcs at all would be
+    // the one that scored unluckily, which is not a thing the player can know.
+    this.arcs?.dispose();
+    const anchors = (gone.length ? gone : kept).map((b) => ({
+      x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2, z: (b.z0 + b.z1) / 2,
+    }));
+    this.arcs = new Arcs(this.scene, anchors, this.lighting?.spark ?? null);
+
+    return gone;
   }
 
   /**
@@ -484,12 +592,15 @@ export class Destruction {
   update(dt) {
     this._drainBlackout(dt);
     this.debris.update(dt);
+    this.arcs?.update(dt);
   }
 
   // Must run while the physics world the handles belong to is still alive.
   clear() {
     this.debris.clear();
     this._blackout = null;
+    this.arcs?.dispose();
+    this.arcs = null;
     this.level = null;
   }
 }

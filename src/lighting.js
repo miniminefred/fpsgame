@@ -91,6 +91,17 @@ export function createLighting(scene) {
     lights.push(light);
   }
 
+  // One more, outside the pool and never re-homed: whatever on the floor is
+  // making its own light for a moment (arcs.js is the only claimant so far).
+  // Allocated HERE, with the pool and dark, rather than by the thing that wants
+  // it — three recompiles every material when the light count changes, and the
+  // frame the generator blows is a ceiling coming down, four hundred fragments
+  // and a floor-wide relight. It is the last frame in the game that can afford
+  // to also rebuild every shader. A light at zero intensity costs a uniform.
+  const spark = new THREE.PointLight(0x8fd0ff, 0, 7, 2);
+  spark.castShadow = false;
+  scene.add(spark);
+
   // Texel-snapping basis, so shadow edges don't crawl as the player walks.
   const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), SUN_DIR).normalize();
   const up = new THREE.Vector3().crossVectors(SUN_DIR, right).normalize();
@@ -116,6 +127,7 @@ export function createLighting(scene) {
     fixtures = list ?? [];
     sinceRehome = REHOME_INTERVAL;
     for (const l of lights) l.intensity = 0;
+    spark.intensity = 0;
     // A new floor has its own supply, and the materials are shared with the
     // one that just ended.
     setPower(1);
@@ -259,10 +271,12 @@ export function createLighting(scene) {
   function dispose() {
     // The tubes' materials outlive this lighting rig — see PANEL_KEYS.
     setPower(1);
-    scene.remove(hemi, ambient, sun, sun.target);
+    scene.remove(hemi, ambient, sun, sun.target, spark);
     for (const l of lights) scene.remove(l);
     sun.dispose();
   }
 
-  return { setFixtures, removeFixture, setOcclusion, setMood, setPower, update, dispose, sun };
+  return {
+    setFixtures, removeFixture, setOcclusion, setMood, setPower, update, dispose, sun, spark,
+  };
 }
