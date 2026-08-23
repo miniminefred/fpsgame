@@ -21,7 +21,10 @@ export function createInput() {
     firePressed: false, // trigger edge — semi-auto weapons consume this
   };
 
-  addEventListener('keydown', (e) => setKey(keys, e.code, true));
+  addEventListener('keydown', (e) => { if (!typing(e)) setKey(keys, e.code, true); });
+  // No `typing` guard on the way up, deliberately: a key pressed on the game
+  // and released after focus moved into a text box has to come back up, or the
+  // player walks into a wall for ever holding a code they were about to type.
   addEventListener('keyup', (e) => setKey(keys, e.code, false));
 
   addEventListener('mousedown', (e) => {
@@ -45,9 +48,23 @@ export function createInput() {
 // Fires cb(n) for number keys 1..9 (n is zero-based: '1' -> 0). For weapon slots.
 export function onDigitKeys(cb) {
   addEventListener('keydown', (e) => {
+    if (typing(e)) return;
     const m = /^(?:Digit|Numpad)([1-9])$/.exec(e.code);
     if (m) cb(Number(m[1]) - 1);
   });
+}
+
+// Whether this keystroke belongs to a text field rather than to the game.
+//
+// There is exactly one text field in the whole game — the co-op code box on the
+// start screen — and it is enough to need this: the codes are drawn from A-Z
+// and 2-9, so typing one walks the player forward, sideways, reloads and swaps
+// weapon four times. The keyboard listeners here are on the window rather than
+// on the canvas, which is what makes a focused input invisible to them without
+// this.
+function typing(event) {
+  const el = event.target;
+  return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
 }
 
 function setKey(keys, code, down) {

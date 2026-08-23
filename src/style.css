@@ -432,6 +432,103 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
   color: var(--ink-dim); font-family: inherit; font-size: 11px;
 }
 
+/* ------------------------------------------------------------- co-op menu
+   The only interactive controls outside the game itself. Everything in here
+   is a real element with real pointer events, which is the exact opposite of
+   the rule the HUD and the touch layer live under — so mp-menu.js stops every
+   click inside this block from bubbling out to the overlay, which would grab
+   pointer lock and start the run under the panel. */
+#overlay .menu-btn,
+#mp .mp-btn {
+  font-family: inherit; background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line); color: var(--ink-dim);
+  text-transform: uppercase; cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+#overlay .menu-btn:hover,
+#mp .mp-btn:hover { border-color: var(--accent); color: var(--accent); }
+#overlay .menu-btn:disabled,
+#mp .mp-btn:disabled { opacity: 0.35; cursor: default; border-color: var(--line); color: var(--ink-faint); }
+
+#overlay .menu-btn {
+  margin-top: 4px; padding: 9px 24px;
+  font-size: 10.5px; font-weight: 400; letter-spacing: 3px;
+}
+
+#mp {
+  margin-top: 6px; width: min(360px, calc(100vw - 36px));
+  display: flex; flex-direction: column; align-items: stretch; gap: 10px;
+  padding: 16px 18px 14px;
+  border: 1px solid var(--line); background: var(--panel);
+  backdrop-filter: blur(6px);
+  text-align: left;
+}
+#mp.hidden { display: none; }
+#mp .mp-title {
+  font-size: 10px; letter-spacing: 4px; text-transform: uppercase;
+  color: var(--accent); text-align: center;
+}
+#mp .mp-block { display: flex; flex-direction: column; gap: 6px; }
+#mp .mp-label {
+  font-size: 9.5px; letter-spacing: 2.4px; text-transform: uppercase;
+  color: var(--ink-faint);
+}
+/* The code and the input sit in the same row shape on purpose: the thing you
+   read out and the thing you type in are the same six characters, and lining
+   them up is what makes that obvious without a sentence explaining it. */
+#mp .mp-coderow { display: flex; gap: 8px; align-items: stretch; }
+#mp #mp-code,
+#mp #mp-input {
+  flex: 1; min-width: 0; padding: 8px 10px;
+  border: 1px solid var(--line); background: rgba(0, 0, 0, 0.3);
+  /* Monospace and wide tracking because these characters get read off one
+     screen and typed into another, often out loud. The alphabet already has
+     the ambiguous glyphs taken out of it (see net.js); this is the other half
+     of the same job. */
+  font-family: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
+  font-size: 19px; letter-spacing: 5px; text-indent: 5px;
+  color: var(--ink); text-transform: uppercase;
+}
+#mp #mp-code { color: var(--accent); user-select: all; }
+#mp #mp-input::placeholder { color: var(--ink-faint); letter-spacing: 5px; }
+#mp #mp-input:focus { outline: none; border-color: var(--accent); }
+#mp .mp-btn { padding: 8px 14px; font-size: 10px; letter-spacing: 2.2px; white-space: nowrap; }
+
+#mp .mp-or {
+  font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--ink-faint); text-align: center;
+  display: flex; align-items: center; gap: 10px;
+}
+#mp .mp-or::before, #mp .mp-or::after {
+  content: ""; flex: 1; height: 1px; background: var(--line);
+}
+
+#mp #mp-status {
+  font-size: 11px; font-weight: 300; line-height: 1.45;
+  color: var(--ink-dim); min-height: 2.9em;
+}
+#mp #mp-status.bad { color: var(--danger); }
+#mp #mp-status.good { color: var(--accent); }
+
+#mp .mp-actions { display: flex; gap: 8px; }
+#mp .mp-actions .mp-btn { flex: 1; }
+
+/* Whichever machine you are on, the game says which end of the wire you are.
+   It matters for one reason the player can feel: the host's browser is the one
+   simulating the staff, so a host with a bad connection is everybody's problem
+   and a joiner with one is only their own. */
+#netrole {
+  position: fixed; z-index: 6;
+  top: calc(var(--sa-t) + 10px); left: 50%; transform: translateX(-50%);
+  padding: 3px 10px;
+  border: 1px solid var(--accent-dim); background: var(--panel);
+  font-size: 9px; letter-spacing: 2.6px; text-transform: uppercase;
+  color: var(--accent); text-shadow: var(--shade);
+  opacity: 0; transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+#netrole.visible { opacity: 1; }
+
 /* Shown only when the browser refused mouse capture and we fell back to
    position-delta look, so the player knows why the cursor is still visible. */
 #lock-hint {

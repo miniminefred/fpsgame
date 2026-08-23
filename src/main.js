@@ -19,6 +19,8 @@ import { Casings } from './casings.js';
 import { Keycards, Wallet } from './keycards.js';
 import { Ragdolls } from './ragdolls.js';
 import { Cameras } from './cameras.js';
+import { Net } from './net.js';
+import { createCoopMenu } from './mp-menu.js';
 import { loadModels } from './gen/models.js';
 import { modelKeysUsed } from './gen/props.js';
 import { Game } from './game.js';
@@ -77,6 +79,11 @@ const game = new Game({
   keycards, wallet, ragdolls, cameras,
 });
 
+// Co-op. The wire and the menu that drives it are both live from load, and
+// neither of them touches the game until a channel is actually up.
+const net = new Net();
+const coop = createCoopMenu({ net });
+
 // One way to change weapon, whether it came from a number key or a thumb.
 function selectWeapon(n) {
   if (n >= weapons.count || n === weapons.active) return;
@@ -105,7 +112,7 @@ if (import.meta.env.DEV) {
   window.dev = {
     game, player, enemies, shooting, keys, physics, destruction, extinguishers, doors,
     scene, camera, weapons, renderer, audio, casings, keycards, wallet, ragdolls, cameras,
-    touch,
+    touch, net, coop,
   };
 }
 
@@ -140,7 +147,13 @@ function animate() {
   weapons.update(dt);
   audio.update(dt, camera);   // before anything plays, so this frame pans right
 
-  if (game.state === 'playing') shooting.update(dt);
+  // Not while the start screen is up. That used to be unreachable — the only
+  // way back to the menu was Esc and the only way out of it was a click that
+  // re-locked — but the co-op panel is a screenful of real buttons sitting on
+  // that screen, and every press on one is a mousedown the trigger would
+  // otherwise take. `engaged` is the flag that already means "the player has
+  // asked to play", refused lock or not, so it is the right thing to ask.
+  if (game.state === 'playing' && player.controls.engaged) shooting.update(dt);
   else keys.firePressed = false;   // don't bank a trigger press through death
 
   game.update(dt);

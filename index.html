@@ -24,6 +24,46 @@
     <h1>OFFICE DESCENT</h1>
     <p>Clear the floor. Find the exit. Descend. There is no ground floor.</p>
     <div class="cta"><span class="pc-only">Click to play</span><span class="touch-only">Tap to play</span></div>
+
+    <!-- The one button on this screen that is a button rather than a hint.
+         Everything else here is decoration over one giant click target: the
+         whole overlay grabs pointer lock, so anything you can press has to
+         stop its own click from reaching it. mp-menu.js does that; nothing
+         about it is in the markup. -->
+    <button id="mp-open" class="menu-btn" type="button">Multiplayer</button>
+
+    <!-- Co-op panel. Hidden until the button above is pressed, and hosting
+         starts the moment it opens — the code below is live from then on, so
+         "wait for someone to join you" is simply not pressing anything else. -->
+    <div id="mp" class="hidden" aria-hidden="true">
+      <div class="mp-title">Co-op</div>
+
+      <div class="mp-block">
+        <div class="mp-label">Your code — read it out</div>
+        <div class="mp-coderow">
+          <div id="mp-code">······</div>
+          <button id="mp-copy" class="mp-btn" type="button">Copy</button>
+        </div>
+      </div>
+
+      <div class="mp-or">or join a game</div>
+
+      <div class="mp-block">
+        <div class="mp-coderow">
+          <input id="mp-input" type="text" maxlength="6" spellcheck="false"
+                 autocomplete="off" autocapitalize="characters"
+                 placeholder="CODE" aria-label="Game code to join" />
+          <button id="mp-join" class="mp-btn" type="button">Join</button>
+        </div>
+      </div>
+
+      <div id="mp-status">Publishing your code&hellip;</div>
+
+      <div class="mp-actions">
+        <button id="mp-leave" class="mp-btn" type="button">Disconnect</button>
+        <button id="mp-close" class="mp-btn" type="button">Back</button>
+      </div>
+    </div>
     <!-- Two flex rows rather than one wrapped block: the <kbd>s are bordered
          boxes taller than their own line box, so relying on line-height to keep
          the rows apart makes them collide. -->
@@ -121,6 +161,12 @@
       <div class="go-cta"><span class="pc-only">Click to restart</span><span class="touch-only">Tap to restart</span></div>
     </div>
   </div>
+
+  <!-- Which end of the wire this browser is, once a co-op session is up.
+       Outside #hud on purpose: the HUD fades behind the menu and vanishes on
+       the death screen, and both are exactly when you want to be told you are
+       still connected. -->
+  <div id="netrole"></div>
 
   <!-- ============================================================
        Touch controls. In the markup on every device and shown only
