@@ -268,6 +268,31 @@ export class Keycards {
     this.scene.remove(item.group);
     this.audio?.keycardPickup(item.group.position);
     this.wallet.add(item.tier);
+    this.onCollect?.(item.tier);
+  }
+
+  /**
+   * The other player picked one up. Co-op only.
+   *
+   * Cards are the TEAM's in a co-op run — one of you badging a door and the other
+   * standing in front of it refusing to open is not a lock, it is a bug — so the
+   * tier goes into this wallet too and every reader it fits turns green on both
+   * screens at once.
+   *
+   * Identified by tier rather than by any kind of id, and that is deliberate: only
+   * one card of a tier is ever on the floor at a time (see `pending`, which is
+   * what stops six grey cards accumulating), so the tier names it unambiguously.
+   * It also makes the whole thing self-healing — a tier that is not on this floor
+   * banks the card and removes nothing, a card the wallet already holds is a
+   * no-op, and neither is an error worth reporting.
+   */
+  remoteCollect(tier) {
+    const i = this.items.findIndex((item) => item.tier === tier);
+    if (i >= 0) {
+      this.scene.remove(this.items[i].group);
+      this.items.splice(i, 1);
+    }
+    this.wallet.add(tier);
   }
 
   /** Everything on the floor goes with the floor. */

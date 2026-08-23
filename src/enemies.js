@@ -207,6 +207,12 @@ export class Enemies {
     // (enemy, damage, hit) — a shot landed and we are NOT the authority, so it
     // goes on the wire instead of into anybody's health.
     this.onReport = null;
+    // (enemy, outcome, hit) — we ARE the authority and have just decided that
+    // somebody is hurt or dead, so the other end has to be told. Deliberately
+    // fired from `_damage` and not from `_die`: `_die` is also how the joiner
+    // applies a death it was TOLD about, and announcing that back would be a
+    // death bouncing between two browsers for ever.
+    this.onDamaged = null;
     // Where `snapshot` got to last time, so the roster is covered round-robin
     // rather than the first SNAP_CAP bodies being the only ones ever sent.
     this._snapCursor = 0;
@@ -1090,8 +1096,12 @@ export class Enemies {
       e.timer = 0.15;
     }
 
-    if (e.health > 0) return 'hit';
+    if (e.health > 0) {
+      this.onDamaged?.(e, 'hit', hit);
+      return 'hit';
+    }
     this._die(e, hit);
+    this.onDamaged?.(e, 'kill', hit);
     return 'kill';
   }
 
@@ -1143,12 +1153,19 @@ export class Enemies {
     return e;
   }
 
-  /** The host says index `i` was hit but is still up. Joiner side only. */
-  netHurt(i, health) {
+  /**
+   * The host says index `i` was hit but is still up. Joiner side only.
+   *
+   * Returns the body, so the caller can give it a voice — this is only ever sent
+   * for damage the JOINER did not cause, because a shot fired at this keyboard
+   * has already flashed and grunted on its way out through `hit`.
+   */
+  netHurt(i, health = null) {
     const e = this.items[i];
-    if (!e?.alive) return;
-    e.health = health;
+    if (!e?.alive) return null;
+    if (health !== null) e.health = health;
     e.hitFlash = HIT_FLASH;
+    return e;
   }
 
   /**
@@ -1161,13 +1178,18 @@ export class Enemies {
    * they are on belongs to the next room.
    */
   splash(x, z, radius, damage, audio) {
-    // Same rule as a bullet: on a joiner an explosion is a request, not a
-    // verdict. The blast, the debris and the noise are all local and immediate;
-    // who it killed comes back from the host. See `hit`.
-    if (!this.authority) {
-      this.onReport?.(null, damage, { splash: { x, z, radius } });
-      return 0;
-    }
+    // On a joiner an explosion damages nobody, and it deliberately is not
+    // reported either — unlike a bullet, which is.
+    //
+    // The difference is where an explosion comes from. Every one of them is a
+    // volatile prop coming apart (`launch` in extinguishers.js) or the generator
+    // going up, and BOTH of those are shatters that already cross the wire — so
+    // the host is running its own copy of the same cylinder, on the same
+    // trajectory, and its blast is what the staff are hurt by. Reporting this one
+    // as well would apply the same explosion twice, once per browser. The blast,
+    // the gas, the debris and the noise are all still here; only the arithmetic
+    // is the host's.
+    if (!this.authority) return 0;
 
     let kills = 0;
     for (const e of this.items) {

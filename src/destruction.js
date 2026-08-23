@@ -583,8 +583,25 @@ function charOf(material, sooty = false) {
   return sooty ? pair.sooty : pair.plain;
 }
 
+// The net path's own two scratch vectors. Not borrowed from the ones above:
+// this file carries a comment about a real bug caused by two call sites sharing
+// one Vector3, and a message arriving mid-frame is exactly a second call site.
+const _netDir = new THREE.Vector3();
+const _netAt = new THREE.Vector3();
+
 export class Destruction {
+  /**
+   * `onShatter` and `onBreakProp` are co-op's, and they are fired from the two
+   * places a PLAYER destroyed something rather than from `_shatter` itself. That
+   * distinction is the whole point of them: a blackout breaks two hundred ceiling
+   * panels and a blast takes the furniture around it, and both of those are
+   * consequences the other browser is already deriving from the one event it was
+   * told about. Announcing every knock-on as well would be two hundred messages
+   * saying what the first one implied.
+   */
   constructor({ scene, physics, effects, audio, shooting, lighting }) {
+    this.onShatter = null;
+    this.onBreakProp = null;
     this.scene = scene;
     this.physics = physics;
     this.effects = effects;
@@ -619,8 +636,18 @@ export class Destruction {
     this.arcs?.dispose();
     this.arcs = null;
 
+    // Numbered, because a thing that can be destroyed needs a name a second
+    // browser can use. Both lists come out of the generator in one order from one
+    // seed, so static entry 412 is the same filing cabinet in both browsers and
+    // loose prop 33 is the same chair — which is the whole of how a shattered
+    // prop crosses the wire. See netplay.js.
+    let loose = 0;
+    for (const dyn of level.dynamics ?? []) dyn.index = loose++;
+
     const touched = new Set();
+    let index = 0;
     for (const entry of level.destructibles ?? []) {
+      entry.index = index++;
       for (const span of entry.spans) {
         if (!span.mesh) continue;
         const runs = span.mesh.userData.runs ??= [];
@@ -629,6 +656,34 @@ export class Destruction {
       }
     }
     for (const mesh of touched) mesh.userData.runs.sort((a, b) => a.start - b.start);
+  }
+
+  // --- co-op ------------------------------------------------------------------
+
+  /**
+   * The other player shot something apart. Both of these are the replay half of
+   * `onShatter` / `onBreakProp`, and both are idempotent: a thing already broken
+   * is left alone, which is what makes a duplicated or out-of-order message
+   * harmless rather than a second explosion.
+   *
+   * The direction and the point come off the wire because they are what the
+   * pieces are thrown by and where the wreck is carved from — a prop that comes
+   * apart symmetrically on one screen and away from the shooter on the other is
+   * two different events. Everything downstream then follows on its own: a
+   * volatile prop launches its cylinder, the generator cuts the power, and the
+   * nav grid and the collider list are given back their tiles — on both
+   * browsers, from one message.
+   */
+  netShatter(i, dir, point) {
+    const entry = this.level?.destructibles?.[i];
+    if (!entry || entry.broken) return;
+    this._shatter(entry, _netDir.set(dir.x, dir.y, dir.z), _netAt.set(point.x, point.y, point.z));
+  }
+
+  netBreakProp(i, dir, point) {
+    const dyn = this.level?.dynamics?.[i];
+    if (!dyn || dyn.broken) return;
+    this._breakProp(dyn, _netDir.set(dir.x, dir.y, dir.z), _netAt.set(point.x, point.y, point.z));
   }
 
   // --- damage -----------------------------------------------------------------
@@ -649,7 +704,10 @@ export class Destruction {
     this.audio.bulletHitMaterial(entry.kind, entry.substance, hit.point);
 
     entry.hp -= damage;
-    if (entry.hp <= 0) this._shatter(entry, dir, hit.point);
+    if (entry.hp <= 0) {
+      this._shatter(entry, dir, hit.point);
+      this.onShatter?.(entry, dir, hit.point);
+    }
     return true;
   }
 
@@ -660,7 +718,10 @@ export class Destruction {
     this.audio.bulletHitMaterial('prop', dyn.substance, point);
     if (!dyn.hp) return;
     dyn.hp -= damage;
-    if (dyn.hp <= 0) this._breakProp(dyn, dir, point);
+    if (dyn.hp <= 0) {
+      this._breakProp(dyn, dir, point);
+      this.onBreakProp?.(dyn, dir, point);
+    }
   }
 
   // --- breaking ---------------------------------------------------------------
