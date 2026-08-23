@@ -324,6 +324,57 @@ the same five operations written twice, down to the identical comment above both
 `Vector3`, and a module-level `UP` that anything might `.set()` is that bug waiting to be
 reintroduced.
 
+### You cannot get out of the building (`player.js`, `barrier` + `bounds`)
+A player reported climbing on the furniture and ending up outside in the void, and it
+turned out to be three separate holes rather than one. All three are closed at the point
+they happen, and there is a fourth thing behind them that does not care how you got there.
+
+- **A wall is a wall at every height** (`barrier`). `_moveHorizontal`'s step tolerance
+  treats any box whose top is within `STEP_EPS` of your feet as a kerb, which is right for
+  a tread and a desk and turns every 3.2 m wall in the building into a knee-high ledge the
+  moment your feet are over 2.95 m. A staircase, an attic deck and the generator room's
+  mezzanine all put them there legitimately — so you stepped off the top of a flight onto
+  the top of a wall, and the walls are a connected network reaching the perimeter. `barrier`
+  is set on the shell's walls (both heights) and on a storey's own `wall` parts, and it
+  means never a kerb and never a floor. A `tread` and a `deck` must not have it, for
+  opposite reasons.
+- **A roof is never a floor** either, and this is the other half of the same fix. `ROOF_T`
+  is already derived as `STEP_EPS + 0.15` so a roof cannot be stepped onto *from below* —
+  but nothing said it could not be stood on by a body that had got above it another way,
+  and the top of the building is the one surface with no walls on it and nothing overhead.
+  Dropped onto now, a body falls straight through it back inside.
+- **A body ejects along the axis of least penetration, to the nearer face** (`_eject`).
+  Both used to be read off the direction of travel, which is right for the only way a body
+  is supposed to meet a box and catastrophic otherwise: these are merged tile runs, so a
+  wall is routinely thirty metres long and half a metre thick, and the far face of the
+  wrong axis is the far end of the building. A body gets *inside* a box in the first place
+  because the head clamp lowers the feet with no regard for what is horizontally in the
+  way — step off a deck into a room with an ordinary ceiling and it drops from 3.2 m to
+  1.38 m, which can be inside the wall the deck was against. Measured against the old rule
+  over 1,097 m of walking, 17,125 resolutions: of the 16,128 that were fresh contact 25
+  differ (a body pushed by one box into a second in the same pass), and of the 997 where
+  the body was already inside a box **732** differ, the old rule moving it by up to 40.9 m.
+  That last number is the bug, not a regression. Ejecting on one axis or the other *always*
+  is what makes it safe to call from both passes: leaving an overlap for "the other pass"
+  is a hole when the body is moving along one axis only, because the other pass never runs.
+- **And then the backstop, which is the part that makes it impossible rather than fixed**
+  (`_contain`). Everything above is a resolution — a negotiation with a list of boxes that
+  can be got wrong, and has been three times. The slab's own rectangle is a fact about the
+  floor rather than about a box, so no ordering, no tolerance and no resolution order can
+  argue with it: four comparisons a frame against `bounds` (`gen/build.js`), which is the
+  slab inset by the one tile of perimeter wall plus a body's radius — exactly where a body
+  standing against the inside of that wall has its centre, so it is the tightest bound that
+  can never move a legal position. `player.contained` counts how often it has fired and is
+  meant to stay at zero for a whole run; anything else is a collision bug not yet found.
+
+Proved rather than hoped for, in the browser against the real `Player`: 22,800 frames and
+1,301 m of sprinting-and-jumping across eight floors, started from the spawn and from every
+reachable deck — zero escapes and the backstop never fired once. Then 270 deliberately
+illegal starts per three floors — teleported inside walls, up to 10 m beyond the slab, and
+up to 12 m above the roof — all of which recovered: none escaped, none ended outside, none
+stayed above the roof. Ordinary collision is untouched: walking into a wall stops exactly at
+`minZ - RADIUS` and sliding 16.44 m along it has zero jitter.
+
 ### Three things that used to scan the whole floor (`doors.js`, `enemies.js`, `player.js`)
 Everything on a floor grows with the floor number, and the game has no last floor. Three
 per-frame loops were written against an early floor and quietly became quadratic or linear
