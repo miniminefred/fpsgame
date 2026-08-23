@@ -118,6 +118,10 @@ if (import.meta.env.DEV) {
     game, player, enemies, shooting, keys, physics, destruction, extinguishers, doors,
     scene, camera, weapons, renderer, audio, casings, keycards, wallet, ragdolls, cameras,
     touch, net, netplay, coopMenu,
+    // One frame of the world by hand, for measuring something without the
+    // render loop moving underneath it — and for driving a tab that is not
+    // being looked at, which is how the co-op protocol is tested.
+    step: (render = true) => tick(render),
   };
 }
 
@@ -142,8 +146,29 @@ async function boot() {
 
 const timer = new Timer();
 
-function animate() {
-  requestAnimationFrame(animate);
+// --- how often the world moves -------------------------------------------------
+//
+// requestAnimationFrame is tied to the compositor, so a tab nobody is looking at
+// does not get one — the game simply stops. Alone that is correct and even
+// desirable: there is nothing to see and nobody to see it.
+//
+// In a co-op session it is neither. The host's browser is the one thinking for
+// two hundred people, so a host who alt-tabs to paste their code into a chat
+// window freezes their friend's floor solid. So while a session is up and this
+// tab is hidden, the simulation is driven off a timer instead and the render is
+// skipped — there is no point drawing a frame nobody is looking at, and it is by
+// far the most expensive part.
+//
+// Two things make that work better than it sounds. The dt clamp below means a
+// throttled tick slows the world down rather than letting anything tunnel
+// through a wall. And Chrome exempts a tab that is making a noise from its
+// harshest background throttling, which this one is — the ambience is running —
+// so the interval keeps something like its asked-for rate rather than dropping
+// to once a second.
+const HIDDEN_HZ = 30;
+let hiddenTimer = 0;
+
+function tick(render) {
   timer.update();
   const dt = Math.min(timer.getDelta(), 0.05); // clamp so a lag spike can't tunnel
 
@@ -165,8 +190,23 @@ function animate() {
   effects.update(dt);
   hud.update(dt);
 
-  renderer.render(scene, camera);
+  if (render) renderer.render(scene, camera);
 }
+
+function animate() {
+  requestAnimationFrame(animate);
+  tick(true);
+}
+
+// Only while hidden, so the two drivers can never both be stepping the world.
+addEventListener('visibilitychange', () => {
+  clearInterval(hiddenTimer);
+  hiddenTimer = 0;
+  if (!document.hidden) return;
+  hiddenTimer = setInterval(() => {
+    if (document.hidden && netplay.online) tick(false);
+  }, 1000 / HIDDEN_HZ);
+});
 
 // The render loop starts straight away and tolerates having no floor yet, so
 // pointer lock and the HUD are live from the first frame rather than after the
