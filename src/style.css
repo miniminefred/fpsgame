@@ -18,21 +18,21 @@
   /* The office is bright grey-white, so every HUD glyph carries its own shade. */
   --shade: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 14px rgba(0, 0, 0, 0.55);
 
+  /* The fullscreen button's size and where its top edge sits. Here rather than
+     inline on .tbtn-full because #netrole is pinned to the same place — top
+     centre is the one strip of screen edge with nothing else on it — and has to
+     clear it. Two things in one corner is exactly the case --tier-* below
+     already exists for: the number lives in one place and whatever has to avoid
+     it derives from it, so resizing the button moves what is under it instead of
+     quietly sliding underneath. */
+  --full-btn: clamp(34px, 9vmin, 42px);
+  --full-top: 9px;
+
   /* The canvas reaches under the notch and the home indicator (viewport-fit=
      cover in the markup); nothing readable is allowed to. Every HUD corner is
      anchored off these rather than off the raw edge, so the same rules serve a
      desktop window — where all four resolve to zero — and a phone held
      sideways, where one of them is 40-odd pixels of camera housing. */
-  /* The fullscreen button's size and where its top edge sits. Here rather than
-     inline on .tbtn-full because #netrole is pinned to the same place — top
-     centre is the one edge of the screen with nothing else on it — and has to
-     clear it. Two elements in one corner is exactly the case --tier-* below
-     already exists for: the number lives in one place and the thing that has to
-     avoid it derives from it, so resizing the button moves what is under it
-     instead of quietly sliding underneath. */
-  --full-btn: clamp(34px, 9vmin, 42px);
-  --full-top: 9px;
-
   --sa-t: env(safe-area-inset-top, 0px);
   --sa-r: env(safe-area-inset-right, 0px);
   --sa-b: env(safe-area-inset-bottom, 0px);
@@ -539,7 +539,10 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
   pointer-events: none;
 }
 #netrole.visible { opacity: 1; }
-#netrole-code { margin-left: 0.55em; color: var(--ink-dim); }
+#netrole-code { margin-left: 0.5em; color: var(--ink-dim); }
+/* The separator belongs to the code, not between the two, so that hiding the
+   code on a narrow screen does not leave a dot hanging off the role. */
+#netrole-code::before { content: "· "; }
 /* On a touch device the fullscreen button already owns top centre, so the chip
    drops below it — derived from the button's own size and offset rather than
    from a number that looks about right, so the two cannot drift apart. */

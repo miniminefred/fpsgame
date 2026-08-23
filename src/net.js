@@ -278,6 +278,12 @@ export class Net {
 
   _fail(message) {
     clearTimeout(this._timer);
+    // Whether this is a session ending or a connection attempt that never
+    // became one. It matters: `onClose` is what hands the joiner its own
+    // authority back, and without it a channel that ERRORS rather than closing
+    // cleanly leaves that browser a puppet for ever — two hundred people
+    // standing still, and nothing it shoots ever dies.
+    const wasOnline = this.state === 'connected';
     this.error = message;
     // The peer goes but the code stays readable, so an error while hosting can
     // still say which code failed.
@@ -287,6 +293,7 @@ export class Net {
     this._destroyPeer();
     this._closing = false;
     this._set('error', message);
+    if (wasOnline) this.onClose?.();
   }
 
   _set(state, detail = null) {

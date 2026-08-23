@@ -170,8 +170,6 @@ export function createCoopMenu({ net }) {
     close() { if (!panel.classList.contains('hidden')) show(false); },
     /** Repaint after something outside the menu changed the session. */
     refresh: paint,
-    /** Say something in the panel's own voice, from netplay.js. */
-    note: (text, tone = '') => flashSay(text, tone),
   };
 }
 

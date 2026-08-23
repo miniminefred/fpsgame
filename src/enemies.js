@@ -1253,15 +1253,23 @@ export class Enemies {
     const live = targets.filter((t) => !t.dead);
     this.playerLayer = live[0]?.layer ?? 0;
 
-    if (this.puppet) { this._poseAll(dt, audio); return; }
-
     // Bodies move during the loop below, so this is a snapshot taken at the top
     // of the frame rather than an index kept live — which is what the old
     // whole-roster scan effectively was too. It also counts the badge holders,
     // which is why it comes before the flood that depends on there being any.
-    this._rebuildNeighbours();
+    if (!this.puppet) this._rebuildNeighbours();
 
-    if (this.nav && live.length) this.nav.updateField(dt, live, this.keyedAlive > 0);
+    // Flooded on BOTH ends of a co-op session, above the puppet check, even
+    // though a posed roster does no routing with it. `soundPath` in nav.js reads
+    // the same field to bend a noise round a doorway instead of through the
+    // plaster, and with it never flooded it gives up and every gunshot on the
+    // floor arrives through the walls. The badge field is genuinely host-only:
+    // nothing but a route wants it.
+    if (this.nav && live.length) {
+      this.nav.updateField(dt, live, !this.puppet && this.keyedAlive > 0);
+    }
+
+    if (this.puppet) { this._poseAll(dt, audio); return; }
     if (this.shoutTimer > 0) this.shoutTimer -= dt;
 
     for (const e of this.items) {
