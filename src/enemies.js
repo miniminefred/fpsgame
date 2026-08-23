@@ -5,6 +5,7 @@ import { buildRig } from './rigs.js';
 import { TYPES, BYSTANDERS, pickType, pickTheme } from './enemy-types.js';
 import { DEATH_TIME, HIT_FLASH, SWING_TIME, animate, die } from './enemy-anim.js';
 import { angleLerp, smoothTo } from './util.js';
+import { makeRng } from './gen/rng.js';
 import { EYE } from './metrics.js';
 
 // How far off the ground the player's feet have to be to be on another level of the
@@ -12,6 +13,42 @@ import { EYE } from './metrics.js';
 // gen/stairs.js) and the tallest thing anybody can climb onto down here is a 2.1 m
 // locker, so past this you are on another level and nothing else puts you there.
 const STOREY_GAP = 2.4;
+
+// --- what crosses the wire in a co-op session --------------------------------
+//
+// The joiner's roster is not a second simulation, it is the SAME roster: same
+// seed, same floor, so the same two hundred people in the same rooms, indexed
+// the same way. All the host has to send is where each of them now is, which is
+// why the message is a flat run of numbers rather than a list of objects — six
+// slots a body, in this order, written by `snapshot` and read by
+// `applySnapshot` and by nothing else.
+const SNAP_STRIDE = 6;
+// Positions go over as hundredths of a metre in whole numbers: a centimetre is
+// far below what anybody can see on a walking body, and it keeps every value in
+// the packet a short integer.
+const SNAP_UNIT = 100;
+// The state machine, as an index. Order is the wire format and must not be
+// rearranged — `animate` reads the name back off it to decide whether a body is
+// walking, and getting that wrong is a floor of people sliding about with still
+// legs.
+const SNAP_STATES = ['idle', 'alert', 'chase', 'fight', 'wander'];
+
+// How far from either player a body has to be before it is worth sending. Well
+// beyond SIGHT, because the joiner can watch somebody walk up a corridor long
+// before that body could see them back, and a body that pops into motion at 22 m
+// reads as the floor being drawn in front of you.
+const SYNC_RANGE = 34;
+// Bodies per packet. A deep floor has two hundred people on it and a firefight
+// can legitimately have forty of them moving, so the cap is not a limit on how
+// many can be synced — `snapshot` walks the roster round-robin, so everything in
+// range is covered within a few packets. It is a bound on what one packet costs.
+const SNAP_CAP = 48;
+// How hard a posed body is pulled toward the position the last packet gave it,
+// and how far out of date it has to be before it is moved there outright rather
+// than walked there. The snap threshold is what stops a body that has been out
+// of range for ten seconds sprinting across the building to catch up.
+const POSE_RATE = 14;
+const POSE_SNAP = 3;
 
 // The people still working here.
 //
@@ -156,6 +193,23 @@ export class Enemies {
     this.keyedAlive = 0;    // badge holders still on their feet — see _keyed
     this.onDeath = null;    // set by game.js — see _damage
     this.ragdolls = null;   // likewise; what happens to a body after _damage
+
+    // --- co-op, all four unused in a single-player run --------------------
+    // Whether this end of the wire is allowed to decide that somebody is hurt.
+    // The host is; the joiner reports its shots instead and waits to be told,
+    // because two browsers each deciding when a man dies is two different men.
+    this.authority = true;
+    // Whether this roster is posed from the host's snapshots rather than thought
+    // for. Set on the joiner; see `update` and `_poseAll`.
+    this.puppet = false;
+    // (enemy, muzzle, aim) — somebody fired, so the other end can draw it.
+    this.onFire = null;
+    // (enemy, damage, hit) — a shot landed and we are NOT the authority, so it
+    // goes on the wire instead of into anybody's health.
+    this.onReport = null;
+    // Where `snapshot` got to last time, so the roster is covered round-robin
+    // rather than the first SNAP_CAP bodies being the only ones ever sent.
+    this._snapCursor = 0;
     this._v = new THREE.Vector3();
     this._muzzle = new THREE.Vector3();
     this._aim = new THREE.Vector3();
@@ -375,13 +429,24 @@ export class Enemies {
     const spawned = [];
     const meshes = [];
     for (const spot of this._responseSpots(px, pz, wanted)) {
-      const e = this._add(spot.x, spot.z, this.rng, this.tuning, this._guardType(this.rng));
+      const baton = this.rng.chance(GUARD_BATON);
+      // A seed of this body's own, drawn from the floor's stream so the host's
+      // dice roll on exactly as they did before. It exists so a co-op joiner can
+      // build the SAME man: these four are not in the seeded roster — they were
+      // sent up after the floor was generated — so the only way both browsers
+      // get one person rather than two is to share what he was rolled from.
+      const seed = this.rng.int(0, 0x7fffffff);
+      const type = baton ? TYPES.guardBaton : TYPES.security;
+      const e = this._add(spot.x, spot.z, makeRng(seed), this.tuning, type);
       // Security carries blue and nobody else does, and that stays true for the
       // ones who arrive late — otherwise an alarm on a floor whose only blue
       // holder you already shot would be four men carrying the wrong card.
       e.card = this.layout?.locks?.some((l) => l.tier === 'blue') ? 'blue' : 'white';
       this._keyed(e);
       this._rouse(e, px, pz);
+      // What the other end needs to build him. Held on the body rather than
+      // returned separately so it cannot get out of step with who was spawned.
+      e.netSpawn = { x: spot.x, z: spot.z, baton, seed, card: e.card };
       spawned.push(e);
       meshes.push(...e.hitboxes);
     }
@@ -879,6 +944,16 @@ export class Enemies {
       rig: rig.rig, legs: rig.legs ?? null, tail: rig.tail ?? null,
       brush: rig.brush ?? null, motor: null,
       type,
+      // Position in `items`, which is this body's name on the wire. It is stable
+      // because the roster is generated from the floor's seed and appended to in
+      // one order, so index 57 is the same person in both browsers.
+      index: this.items.length,
+      // Where the last snapshot said this body was, on a joiner. Seeded to the
+      // spawn so the first frame does not lerp in from the origin.
+      netX: x, netZ: z, netY: 0, netYaw: 0,
+      // Whether this body can see its target, left here by `_pick` because
+      // working it out is the expensive half of choosing one.
+      sees: false,
       // Flat, because the minimap reads it every frame alongside `alive` and has
       // no business knowing what a type is.
       neutral: !!type.neutral,
@@ -981,8 +1056,21 @@ export class Enemies {
   hit(mesh, damage, dir = null, point = null, punch = 1) {
     const e = mesh.userData?.enemy;
     if (!e || !e.alive) return null;
-    return this._damage(e, damage * (mesh.userData.hitScale ?? 1),
-      dir ? { dir, point, mesh, punch } : null);
+    const dealt = damage * (mesh.userData.hitScale ?? 1);
+    const shot = dir ? { dir, point, mesh, punch } : null;
+
+    // Not our call. The shot is real and the feedback is immediate — the flash,
+    // the flesh impact, a hitmarker — but the health is the host's, and the kill
+    // comes back as a message. Predicting the death here instead would show the
+    // joiner bodies dropping that the host has not agreed are dead, and then
+    // standing back up.
+    if (!this.authority) {
+      this.onReport?.(e, dealt, shot);
+      e.hitFlash = HIT_FLASH;
+      return 'hit';
+    }
+
+    return this._damage(e, dealt, shot);
   }
 
   // Damage from any source, once it is known who took it and how much.
@@ -1003,7 +1091,19 @@ export class Enemies {
     }
 
     if (e.health > 0) return 'hit';
+    this._die(e, hit);
+    return 'kill';
+  }
 
+  /**
+   * Everything that happens once somebody is out of health.
+   *
+   * Split from `_damage` because in a co-op session the joiner never takes the
+   * arithmetic path at all: it is told that index 57 is dead and has to do
+   * exactly this to it — the same corpse, the same ragdoll, the same card on the
+   * carpet. Two copies of this would be two different deaths.
+   */
+  _die(e, hit = null) {
     e.alive = false;
     e.deathTime = DEATH_TIME;
     // A dead machine stops making machine noise. Nothing else clears this, and
@@ -1026,7 +1126,29 @@ export class Enemies {
     // keycard, the black card off the last one standing — is game.js's, because
     // it is about the floor and this file is about the person.
     this.onDeath?.(e);
-    return 'kill';
+  }
+
+  /**
+   * The host says index `i` is dead. Joiner side only.
+   *
+   * `hit` is synthesised from what the wire carried rather than being the real
+   * shot, because what it is for is throwing the ragdoll — and a body thrown the
+   * wrong way is a worse lie than one thrown approximately the right way.
+   */
+  netDie(i, hit = null) {
+    const e = this.items[i];
+    if (!e?.alive) return null;
+    e.health = 0;
+    this._die(e, hit);
+    return e;
+  }
+
+  /** The host says index `i` was hit but is still up. Joiner side only. */
+  netHurt(i, health) {
+    const e = this.items[i];
+    if (!e?.alive) return;
+    e.health = health;
+    e.hitFlash = HIT_FLASH;
   }
 
   /**
@@ -1039,6 +1161,14 @@ export class Enemies {
    * they are on belongs to the next room.
    */
   splash(x, z, radius, damage, audio) {
+    // Same rule as a bullet: on a joiner an explosion is a request, not a
+    // verdict. The blast, the debris and the noise are all local and immediate;
+    // who it killed comes back from the host. See `hit`.
+    if (!this.authority) {
+      this.onReport?.(null, damage, { splash: { x, z, radius } });
+      return 0;
+    }
+
     let kills = 0;
     for (const e of this.items) {
       if (!e.alive) continue;
@@ -1068,14 +1198,40 @@ export class Enemies {
     return kills;
   }
 
+  /**
+   * One frame of the whole roster.
+   *
+   * `ctx.targets` is who the staff are working against: one object per player,
+   * `{ x, y, z, layer, dead, hurt(amount, sx, sz) }`. Single player hands over a
+   * list of one and nothing below notices; co-op hands over two, and everything
+   * that used to be "the player" becomes "whichever of them this body is dealing
+   * with" — see `_pick`.
+   *
+   * In a co-op session only the HOST runs any of this. The joiner's roster is the
+   * same roster, generated from the same seed, and it is posed from the host's
+   * snapshots instead — see `puppet` and `applySnapshot`. That is what makes two
+   * players fight the same staff rather than two private copies of them.
+   */
   update(dt, ctx) {
-    const { player, effects, audio, hud } = ctx;
+    const { targets, effects, audio } = ctx;
     // Held so the paths that are not the update loop can reach it — a machine
     // shot dead has to stop running, and the bullet arrives from shooting.js.
     this.audio = audio;
-    const px = player.object.position.x;
-    const pz = player.object.position.z;
-    const py = player.object.position.y;
+
+    // Which layer of the nav grid each player is standing on. The grid has two —
+    // the ground floor, and every attic and basement — joined at the stairwells,
+    // so the field is flooded from wherever they actually are and the route to
+    // them goes up or down the stairs like any other route. See the note at the
+    // top of nav.js. Off the ground floor it is the level's own layer; a metre up
+    // a flight it is still whichever layer the field last had them on, and the
+    // height comes from the ramp either way.
+    for (const t of targets) t.layer = Math.abs(t.y - EYE) > STOREY_GAP ? 1 : 0;
+    // A corpse is not chased. If everybody is down there is nothing to flood
+    // from, and the bodies below simply lose contact and stand down.
+    const live = targets.filter((t) => !t.dead);
+    this.playerLayer = live[0]?.layer ?? 0;
+
+    if (this.puppet) { this._poseAll(dt, audio); return; }
 
     // Bodies move during the loop below, so this is a snapshot taken at the top
     // of the frame rather than an index kept live — which is what the old
@@ -1083,52 +1239,49 @@ export class Enemies {
     // which is why it comes before the flood that depends on there being any.
     this._rebuildNeighbours();
 
-    // Which layer of the nav grid the player is standing on. The grid has two — the
-    // ground floor, and every attic and basement — joined at the stairwells, so the
-    // field is flooded from wherever the player actually is and the route to them
-    // goes up or down the stairs like any other route. See the note at the top of
-    // nav.js. Off the ground floor it is the level's own layer; a metre up a flight
-    // it is still whichever layer the field last had them on, and the height comes
-    // from the ramp either way.
-    const pLayer = Math.abs(py - EYE) > STOREY_GAP ? 1 : 0;
-    this.playerLayer = pLayer;
-    if (this.nav) this.nav.updateField(dt, px, pz, pLayer, this.keyedAlive > 0);
+    if (this.nav && live.length) this.nav.updateField(dt, live, this.keyedAlive > 0);
     if (this.shoutTimer > 0) this.shoutTimer -= dt;
-
-    // Where a fleeing neutral is running away from — _repick needs it and is
-    // called from places that have no player to hand.
-    this.playerX = px;
-    this.playerZ = pz;
 
     for (const e of this.items) {
       if (!e.alive) { die(e, dt); continue; }
 
-      const dx = px - e.x;
-      const dz = pz - e.z;
+      // Who this one is dealing with. Everything that follows is measured against
+      // them, and a body with nobody left to deal with simply loses contact and
+      // stands down where it is.
+      const target = this._pick(e, live);
+      if (!target) {
+        e.contact += dt;
+        if (e.neutral) { this._wander(e, dt, audio); animate(e, dt, audio); continue; }
+        this._think(e, dt, Infinity, false, false, null);
+        this._move(e, dt, 0, 0, 1, false);
+        animate(e, dt, audio);
+        this._mutter(e, dt, audio);
+        continue;
+      }
+
+      const dx = target.x - e.x;
+      const dz = target.z - e.z;
       const dist = Math.hypot(dx, dz) || 0.001;
-      // Sight is per layer, and across layers there is a floor slab in the way — the
-      // one exception being two bodies in the same stairwell, who are looking
-      // straight at each other up a flight of stairs. losClear knows; this used to be
-      // a flat "nobody sees you off the ground floor", which was right about the slab
-      // and wrong about the staircase.
-      const sees = dist < SIGHT && this.nav.losClear(e.x, e.z, px, pz, e.layer, pLayer);
+      const sees = e.sees;
       // Hearing only matters when they cannot see you — if they can, sight has
       // already told them everything, and at a longer range. The distance is the
-      // walked one: the field is flooded from the player (or from the foot of their
-      // stairs, if they are off the ground floor), so it is already paid for, and a
-      // negative value means there is no route at all.
+      // walked one: the field is flooded from the players (or from the foot of
+      // their stairs, if they are off the ground floor), so it is already paid
+      // for, and a negative value means there is no route at all. With two
+      // players it is the walk to the NEARER of them, because the flood has both
+      // of them in it at zero.
       const along = this.nav.pathDistance(e.x, e.z, e.layer);
       const hears = !sees && ctx.noise > 0 && along >= 0 && along < HEARING;
 
       if (sees) {
         e.contact = 0;
-        e.lastSeen = { x: px, z: pz };
+        e.lastSeen = { x: target.x, z: target.z };
       } else if (hears) {
         // Not a sighting, so they still do not know exactly where you are — but
         // it counts as contact, which is what keeps them walking your way
         // instead of losing interest halfway down the corridor.
         e.contact = Math.min(e.contact, HEARD_MEMORY);
-        e.lastSeen = { x: px, z: pz };
+        e.lastSeen = { x: target.x, z: target.z };
       } else {
         e.contact += dt;
       }
@@ -1137,17 +1290,57 @@ export class Enemies {
       // weapon. Seeing you and hearing you change nothing — the only thing that
       // does is being shot, and that makes them run rather than fight.
       if (e.neutral) {
+        // Where this one is running away FROM. `_repick` needs it and is called
+        // from places with no target to hand, so it is set per body rather than
+        // once per frame: with two players on the floor, "away" has to be away
+        // from the one who actually shot at them.
+        this.playerX = target.x;
+        this.playerZ = target.z;
         this._wander(e, dt, audio);
         animate(e, dt, audio);
         continue;
       }
 
-      this._think(e, dt, dist, sees, hears, ctx);
+      this._think(e, dt, dist, sees, hears, target);
       this._move(e, dt, dx, dz, dist, sees);
-      this._shoot(e, dt, dist, sees, px, py, pz, player, effects, audio, hud);
+      this._shoot(e, dt, dist, sees, target, effects, audio);
       animate(e, dt, audio);
       this._mutter(e, dt, audio);
     }
+  }
+
+  /**
+   * Which player this body is dealing with this frame, leaving whether it can
+   * see them on `e.sees` — because working that out is the expensive half and
+   * the caller needs both answers.
+   *
+   * Sight beats distance: somebody who can see you at twenty metres is fighting
+   * you, not the man eight metres away behind a wall. Between two it can both
+   * see, or two it can see neither of, the nearer takes it.
+   *
+   * Sight is per layer, and across layers there is a floor slab in the way — the
+   * one exception being two bodies in the same stairwell, who are looking
+   * straight at each other up a flight of stairs. losClear knows; this used to be
+   * a flat "nobody sees you off the ground floor", which was right about the slab
+   * and wrong about the staircase.
+   */
+  _pick(e, live) {
+    let best = null;
+    let bestDist = Infinity;
+    let bestSees = false;
+
+    for (const t of live) {
+      const d = Math.hypot(t.x - e.x, t.z - e.z) || 0.001;
+      const sees = d < SIGHT && this.nav.losClear(e.x, e.z, t.x, t.z, e.layer, t.layer);
+      if (best) {
+        if (bestSees && !sees) continue;
+        if (sees === bestSees && d >= bestDist) continue;
+      }
+      best = t; bestDist = d; bestSees = sees;
+    }
+
+    e.sees = bestSees;
+    return best;
   }
 
   // Walks somewhere, says something about it, walks somewhere else. Deliberately
@@ -1296,7 +1489,7 @@ export class Enemies {
     if (e.state === 'idle') audio.enemyIdle(e);
   }
 
-  _think(e, dt, dist, sees, hears, ctx) {
+  _think(e, dt, dist, sees, hears, target) {
     e.timer -= dt;
 
     switch (e.state) {
@@ -1305,12 +1498,12 @@ export class Enemies {
         if (sees || hears) {
           e.state = 'alert';
           e.timer = this.tuning.reaction;
-          e.lastSeen = { x: ctx.player.object.position.x, z: ctx.player.object.position.z };
+          e.lastSeen = { x: target.x, z: target.z };
           // Whoever spots you first does the shouting. The rest of the room has
           // heard him and does not need to say it again.
           if (this.shoutTimer <= 0) {
             this.shoutTimer = SHOUT_GAP;
-            ctx.audio.enemyAlert(e);
+            this.audio.enemyAlert(e);
           }
         }
         break;
@@ -1499,7 +1692,8 @@ export class Enemies {
     }
   }
 
-  _shoot(e, dt, dist, sees, px, py, pz, player, effects, audio, hud) {
+  _shoot(e, dt, dist, sees, target, effects, audio) {
+    const px = target.x, py = target.y, pz = target.z;
     e.fireCooldown -= dt;
 
     // A swing already in flight connects part-way through, and only if you're
@@ -1507,9 +1701,11 @@ export class Enemies {
     if (e.swing > 0 && !e.swingLanded && e.swing <= SWING_TIME * 0.45) {
       e.swingLanded = true;
       if (dist < e.type.range + e.bluntReach) {
-        const damage = this.tuning.damage * e.type.damage;
-        player.takeDamage(damage);
-        hud.damage(Math.min(1, damage / 22), e.x, e.z);
+        // The target owns what being hurt means. For the player at this keyboard
+        // that is health, a red rim and a chevron pointing at whoever did it; for
+        // the other player in a co-op session it is a message on the wire, and
+        // nothing in this file has to know which of the two it is talking to.
+        target.hurt(this.tuning.damage * e.type.damage, e.x, e.z);
         audio.meleeHit();
       }
     }
@@ -1552,12 +1748,147 @@ export class Enemies {
     effects.muzzle(this._muzzle, type.scale);
     // Heavier types fire lower, so you can hear what's shooting you.
     audio.enemyShot(e);
+    // The other end of a co-op session cannot see this happen — its roster is
+    // posed from snapshots and never runs `_shoot` at all — so a shot fired here
+    // has to be told, or the staff over there kill the joiner in silence with
+    // their arms by their sides.
+    this.onFire?.(e, this._muzzle, this._aim);
 
-    if (hit) {
-      const damage = this.tuning.damage * type.damage;
-      player.takeDamage(damage);
-      hud.damage(Math.min(1, damage / 25), e.x, e.z);
+    if (hit) target.hurt(this.tuning.damage * type.damage, e.x, e.z);
+  }
+
+  // --- co-op: the roster over the wire ---------------------------------------
+
+  /**
+   * Fills `out` with a snapshot of whoever is worth sending, and returns how
+   * many numbers it wrote. Host side only.
+   *
+   * Two things bound the cost, and both are needed. The RANGE test is what makes
+   * this affordable at all — a deep floor holds two hundred people and all but a
+   * handful of them are sitting in offices nobody is anywhere near, and a body
+   * neither player can see does not need a position. The CAP is what bounds one
+   * packet, because a real firefight can legitimately have forty bodies moving
+   * inside that range. Together with the round-robin cursor they mean everything
+   * in range is covered within a few packets rather than the same first forty
+   * being sent for ever.
+   *
+   * A dead body is never sent. Death is its own message — it has to carry which
+   * shot did it, and it has to arrive exactly once.
+   */
+  snapshot(out, targets) {
+    const n = this.items.length;
+    if (!n) return 0;
+
+    let written = 0;
+    let scanned = 0;
+    let i = this._snapCursor % n;
+
+    while (scanned < n && written < SNAP_CAP * SNAP_STRIDE) {
+      const e = this.items[i];
+      scanned++;
+      i = (i + 1) % n;
+      if (!e.alive) continue;
+
+      let near = false;
+      for (const t of targets) {
+        if (Math.hypot(t.x - e.x, t.z - e.z) < SYNC_RANGE) { near = true; break; }
+      }
+      if (!near) continue;
+
+      out[written++] = e.index;
+      out[written++] = Math.round(e.x * SNAP_UNIT);
+      out[written++] = Math.round(e.z * SNAP_UNIT);
+      out[written++] = Math.round(e.y * SNAP_UNIT);
+      out[written++] = Math.round(e.yaw * SNAP_UNIT);
+      // One slot for everything that is not a coordinate: which state, and
+      // whether they are still in a chair. Both change how `animate` poses them,
+      // and neither is worth a number of its own.
+      out[written++] = SNAP_STATES.indexOf(e.state) + (e.seated ? 8 : 0);
     }
+
+    this._snapCursor = i;
+    return written;
+  }
+
+  /** Takes one of those. Joiner side only. */
+  applySnapshot(a) {
+    for (let k = 0; k + SNAP_STRIDE <= a.length; k += SNAP_STRIDE) {
+      const e = this.items[a[k]];
+      // A packet from a floor we have already left, or from one we have not
+      // built yet. Dropping it is right: `netplay.js` stamps every snapshot with
+      // its floor and only hands over the ones that match, so anything that gets
+      // this far is a body that has since been cleared away.
+      if (!e || !e.alive) continue;
+
+      e.netX = a[k + 1] / SNAP_UNIT;
+      e.netZ = a[k + 2] / SNAP_UNIT;
+      e.netY = a[k + 3] / SNAP_UNIT;
+      e.netYaw = a[k + 4] / SNAP_UNIT;
+      const packed = a[k + 5];
+      e.seated = (packed & 8) !== 0;
+      e.state = SNAP_STATES[packed & 7] ?? 'idle';
+    }
+  }
+
+  /**
+   * A frame of a posed roster: walk everybody toward where the last packet put
+   * them, and animate them there. Joiner side only.
+   *
+   * The lerp is the whole reason this looks like a game rather than like a
+   * network trace. Packets arrive a dozen times a second and frames happen sixty
+   * times a second, so a body written straight to its last reported position
+   * steps five times a second and stands still in between. Pulled toward it
+   * instead, it walks — and `animate` is already reading `state` to decide
+   * whether the legs should be moving, so a body that is chasing you looks like
+   * it is chasing you even between packets.
+   */
+  _poseAll(dt, audio) {
+    const k = smoothTo(POSE_RATE, dt);
+
+    for (const e of this.items) {
+      if (!e.alive) { die(e, dt); continue; }
+
+      // Somebody who has been out of range and is now back is not somebody who
+      // ran here — put them where they are.
+      if (Math.hypot(e.netX - e.x, e.netZ - e.z) > POSE_SNAP) {
+        e.x = e.netX; e.z = e.netZ; e.y = e.netY; e.yaw = e.netYaw;
+      } else {
+        e.x += (e.netX - e.x) * k;
+        e.z += (e.netZ - e.z) * k;
+        e.y += (e.netY - e.y) * k;
+        e.yaw = angleLerp(e.yaw, e.netYaw, k);
+      }
+
+      e.group.position.set(e.x, e.y, e.z);
+      e.group.rotation.y = e.yaw;
+      animate(e, dt, audio);
+      if (!e.neutral) this._mutter(e, dt, audio);
+    }
+  }
+
+  /**
+   * The four the host sent up after an alarm, rebuilt here. Joiner side only.
+   *
+   * They are the one part of the roster the seed cannot produce, because they
+   * did not exist when the floor was generated — so the host shares what each of
+   * them was rolled from and this builds the same man from it. Returns their
+   * hitboxes, which the caller has to hand to `shooting`: an enemy that arrived
+   * after the floor did is not in the raycast list, and bullets go straight
+   * through him.
+   */
+  addResponders(list) {
+    const meshes = [];
+    for (const d of list ?? []) {
+      const type = d.baton ? TYPES.guardBaton : TYPES.security;
+      const e = this._add(d.x, d.z, makeRng(d.seed), this.tuning, type);
+      e.card = d.card ?? null;
+      this._keyed(e);
+      e.state = 'chase';
+      e.contact = 0;
+      e.lastSeen = { x: d.x, z: d.z };
+      meshes.push(...e.hitboxes);
+    }
+    return meshes;
   }
 
   // Called on every new floor. Materials are per-enemy (so a hit flash on one

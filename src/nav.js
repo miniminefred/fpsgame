@@ -85,7 +85,13 @@ export class NavGrid {
     this.field = new Int32Array(WH * 2);
     this.queue = new Int32Array(WH * 2);
     this.fieldAge = Infinity;
+    // One hash of every origin the field was last flooded from, so the staleness
+    // test is a single comparison however many players there are. See updateField.
     this.fieldOrigin = -1;
+    // Scratch for updateField's flat origin lists, reused rather than allocated:
+    // this runs several times a second for the whole length of a floor.
+    this._origins = [];
+    this._ground = [];
 
     // The second grid, for whoever is carrying a badge — nothing until
     // setBadgeTiles says otherwise. See it for why it exists at all.
@@ -355,33 +361,65 @@ export class NavGrid {
     return this.inBounds(tx, ty) && this.rampAt[ty * this.W + tx] >= 0;
   }
 
-  // Refreshes the distance field if it has gone stale or the target has moved
-  // to a different tile. Cheap enough to call every frame.
-  //
-  // `badge` asks for the second field as well (see setBadgeTiles). It is a whole
-  // extra flood of the floor, so it is paid for only while somebody who can walk
-  // it is alive — which on most floors, for most of their length, is nobody.
-  updateField(dt, targetX, targetZ, targetLayer = 0, badge = false) {
+  /**
+   * Refreshes the distance field if it has gone stale or a target has moved to a
+   * different tile. Cheap enough to call every frame.
+   *
+   * `targets` is a list of `{x, z, layer}` and is almost always one long — the
+   * player. In co-op it is two, and the flood is multi-source: both players are
+   * at distance zero and every tile ends up holding its walk to the NEARER of
+   * them. That is the whole of "the staff chase whoever is closest", and it is
+   * free rather than a second field, because a BFS does not care how many
+   * origins it starts from. Everything downstream inherits it without knowing:
+   * `descend` walks downhill and arrives at whichever of you is nearer, and
+   * `pathDistance` — which is how hearing is measured — answers about the
+   * nearest player instead of about the only one.
+   *
+   * `badge` asks for the second field as well (see setBadgeTiles). It is a whole
+   * extra flood of the floor, so it is paid for only while somebody who can walk
+   * it is alive — which on most floors, for most of their length, is nobody.
+   */
+  updateField(dt, targets, badge = false) {
     this.fieldAge += dt;
     this.badgeAge += dt;
-    const tx = this.tx(targetX);
-    const ty = this.ty(targetZ);
-    if (!this.inBounds(tx, ty)) return;
 
-    const origin = targetLayer * this.WH + ty * this.W + tx;
-    if (this.fieldAge >= REPATH_INTERVAL || origin !== this.fieldOrigin) {
+    // Collected into tiles first, because the staleness test is "has anybody
+    // changed tile" and the flood wants tiles anyway.
+    const origins = this._origins;
+    origins.length = 0;
+    for (const t of targets) {
+      const tx = this.tx(t.x), ty = this.ty(t.z);
+      if (!this.inBounds(tx, ty)) continue;
+      origins.push(tx, ty, t.layer ?? 0);
+    }
+    if (!origins.length) return;
+
+    // One number standing for the whole set, so a two-player field is re-flooded
+    // when EITHER of them steps off their tile. Order-sensitive, which costs a
+    // redundant flood on the frame two players swap places in the list and is
+    // not worth a sort to avoid.
+    let key = origins.length;
+    for (let i = 0; i < origins.length; i += 3) {
+      key = (key * 31 + origins[i + 2] * this.WH + origins[i + 1] * this.W + origins[i]) | 0;
+    }
+
+    if (this.fieldAge >= REPATH_INTERVAL || key !== this.fieldOrigin) {
       this.fieldAge = 0;
-      this.fieldOrigin = origin;
-      this._flood(tx, ty, targetLayer, this.field);
+      this.fieldOrigin = key;
+      this._flood(origins, this.field);
     }
 
     if (!badge || !this.badgeField) return;
-    if (this.badgeAge < REPATH_INTERVAL && origin === this.badgeOrigin) return;
+    if (this.badgeAge < REPATH_INTERVAL && key === this.badgeOrigin) return;
     this.badgeAge = 0;
-    this.badgeOrigin = origin;
+    this.badgeOrigin = key;
     // The response walks the ground floor, so their field is flooded on it — if you
     // are up an attic staircase they come to the foot of it like everybody else.
-    this._flood(tx, ty, 0, this.badgeField, this.badgeFits);
+    // Flattened onto layer 0 for exactly that reason.
+    const ground = this._ground;
+    ground.length = 0;
+    for (let i = 0; i < origins.length; i += 3) ground.push(origins[i], origins[i + 1], 0);
+    this._flood(ground, this.badgeField, this.badgeFits);
   }
 
   /**
@@ -400,7 +438,7 @@ export class NavGrid {
   floodTo(field, x, z) {
     const tx = this.tx(x), ty = this.ty(z);
     if (!this.inBounds(tx, ty)) return false;
-    this._flood(tx, ty, 0, field);
+    this._flood([tx, ty, 0], field);
     return field[ty * this.W + tx] >= 0 || this.fitsAt(tx, ty);
   }
 
@@ -409,7 +447,16 @@ export class NavGrid {
     return new Int32Array(this.WH * 2);
   }
 
-  _flood(sx, sy, sLayer, field, fits = this.fits) {
+  /**
+   * Breadth-first distance field, in tiles, from one or more origins.
+   *
+   * `origins` is a flat `[tx, ty, layer, tx, ty, layer, ...]` — flat because
+   * this is called every REPATH_INTERVAL on a floor with two hundred people on
+   * it, and the caller can then reuse one array instead of allocating a list of
+   * objects per flood. Every origin goes in at distance zero, so with more than
+   * one the field holds the walk to the nearest of them.
+   */
+  _flood(origins, field, fits = this.fits) {
     const { W, H, WH, queue, cross, surfaceY } = this;
     field.fill(-1);
     // A step is a step, not a cliff — the same rule the player's collision has, and
@@ -420,25 +467,35 @@ export class NavGrid {
     // staircase is still walking and only walking ACROSS one is refused.
     const near = (a, b) => Math.abs(surfaceY[a] - surfaceY[b]) <= MAX_TILE_RISE + 1e-6;
 
-    // The origin is often somewhere no body fits (on a desk, in a corner, a
-    // metre inside a wall) — start from the nearest tile where one does, on the
-    // origin's own layer.
-    if (!this.fitsAt(sx, sy, fits, sLayer)) {
-      let found = false;
-      for (let r = 1; r <= 8 && !found; r++) {
-        for (let dy = -r; dy <= r && !found; dy++) {
-          for (let dx = -r; dx <= r && !found; dx++) {
-            if (this.fitsAt(sx + dx, sy + dy, fits, sLayer)) { sx += dx; sy += dy; found = true; }
+    let head = 0, tail = 0;
+
+    for (let o = 0; o < origins.length; o += 3) {
+      let sx = origins[o], sy = origins[o + 1];
+      const sLayer = origins[o + 2];
+
+      // An origin is often somewhere no body fits (on a desk, in a corner, a
+      // metre inside a wall) — start from the nearest tile where one does, on
+      // the origin's own layer.
+      if (!this.fitsAt(sx, sy, fits, sLayer)) {
+        let found = false;
+        for (let r = 1; r <= 8 && !found; r++) {
+          for (let dy = -r; dy <= r && !found; dy++) {
+            for (let dx = -r; dx <= r && !found; dx++) {
+              if (this.fitsAt(sx + dx, sy + dy, fits, sLayer)) { sx += dx; sy += dy; found = true; }
+            }
           }
         }
+        // One unreachable origin is skipped rather than abandoning the flood:
+        // the other player is still standing somewhere real.
+        if (!found) continue;
       }
-      if (!found) return;
-    }
 
-    let head = 0, tail = 0;
-    const start = sLayer * WH + sy * W + sx;
-    field[start] = 0;
-    queue[tail++] = start;
+      const start = sLayer * WH + sy * W + sx;
+      if (field[start] === 0) continue;   // both players on one tile
+      field[start] = 0;
+      queue[tail++] = start;
+    }
+    if (!tail) return;
 
     while (head < tail) {
       const i = queue[head++];

@@ -271,7 +271,7 @@ function validate(seed, floorNumber) {
     // ---- 2. a route in both directions ----------------------------------
     // Flooded from the level: can anybody standing in the room below get up?
     nav.fieldAge = Infinity;
-    nav.updateField(1, floor.x, floor.z, 1, false);
+    nav.updateField(1, [{ x: floor.x, z: floor.z, layer: 1 }], false);
     const upDist = nav.pathDistance(ground.x, ground.z, 0);
     if (upDist < 0) {
       check('2.reach-up').fail(id, `no route from the ${plan.room.role} floor up to its level`);
@@ -296,7 +296,7 @@ function validate(seed, floorNumber) {
     // ...and the other way, which is not the same question: the field is a
     // different flood and the crossing is taken in the other direction.
     nav.fieldAge = Infinity;
-    nav.updateField(1, ground.x, ground.z, 0, false);
+    nav.updateField(1, [{ x: ground.x, z: ground.z, layer: 0 }], false);
     if (nav.pathDistance(floor.x, floor.z, 1) < 0) {
       check('2.reach-down').fail(id, `no route from a ${plan.room.role} level back down`);
     } else {
