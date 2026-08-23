@@ -1546,8 +1546,10 @@ function makeSink(layout, batcher, materials, masks) {
   let record = null;
   // A dry run of a prop's `build`, collecting the boxes without drawing them.
   let capture = null;
-  // Whether the boxes being drawn right now are a prop's welded structure —
-  // the part that stays standing when it is destroyed. See `hulk` below.
+  // What grade of hulk the boxes being drawn right now are, if any: `true` for
+  // welded structure, `'trim'` for a fitting bolted to it. Both stay standing
+  // when the prop is destroyed; only the first says how big the machine is.
+  // See `hulk` below.
   let hulkOn = false;
 
   // Tile range covering a world-space AABB.
@@ -1601,7 +1603,7 @@ function makeSink(layout, batcher, materials, masks) {
 
     box(key, x0, y0, z0, x1, y1, z1) {
       const b = { key, x0, y0: y0 + level, z0, x1, y1: y1 + level, z1 };
-      if (hulkOn) b.hulk = true;
+      if (hulkOn) b.hulk = hulkOn;
       if (capture) { capture.push(b); return; }
       if (pending) { pending.boxes.push(b); return; }
       batcher.add(key, materials[key], boxBetween(b.x0, b.y0, b.z0, b.x1, b.y1, b.z1));
@@ -1611,12 +1613,18 @@ function makeSink(layout, batcher, materials, masks) {
     },
 
     /**
-     * Marks what follows as WELDED STRUCTURE rather than bolted-on fittings: the
-     * part of a prop that is still standing, burnt, after the prop is destroyed.
-     * Only the generator uses it (see `weld` in gen/props.js); leave it off and a
-     * prop is destroyed exactly as it always was, geometry and all.
+     * Marks what follows as part of the HULK: the geometry that is still
+     * standing, burnt, after the prop is destroyed. Only the generator uses it
+     * (see `weld` in gen/props.js); leave it off and a prop is destroyed
+     * exactly as it always was, geometry and all.
+     *
+     * `true` is welded structure — the machine's own mass, whose extent is what
+     * `_wreck` sites its blasts against. `'trim'` is a fitting bolted to that:
+     * it survives and is carved identically, but it must not be allowed to
+     * stretch the machine's measured corners out to the tip of an exhaust
+     * stack. Anything falsy ends the run.
      */
-    hulk(on) { hulkOn = !!on; },
+    hulk(grade) { hulkOn = grade || false; },
 
     obstacle(x0, z0, x1, z1, top, building) {
       // A dynamic prop's footprint moves, so it can't become a static collider
@@ -1711,10 +1719,11 @@ function makeSink(layout, batcher, materials, masks) {
         // destruction.js's _shatter and game.js's _onPowerCut.
         powerCore: r.powerCore,
         spans: r.spans,
-        // Which of those spans are welded structure, aligned one-for-one
-        // because box() records a span and a box on the same call. Null unless
-        // the prop actually declared a hulk, so `_shatter` can tell "leaves a
-        // wreck" from "goes, like everything else on the floor" by its presence.
+        // Which of those spans belong to the hulk, aligned one-for-one because
+        // box() records a span and a box on the same call. Only its PRESENCE is
+        // read, and that is the point of it: it is how `_shatter` tells "leaves
+        // a wreck" from "goes, like everything else on the floor". The grades
+        // themselves travel on `parts`, which is what `_wreck` reads.
         hulkSpans: r.boxes.some((b) => b.hulk) ? r.boxes.map((b) => !!b.hulk) : null,
         colliders: r.colliders,
         navTiles: r.navTiles,

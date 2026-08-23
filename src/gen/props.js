@@ -677,20 +677,34 @@ export const PROPS = {
       const BACK = 0.2;
       const box = (key, x0, y0, z0, x1, y1, z1) =>
         p.box(key, x0, y0, z0 + BACK, x1, y1, z1 + BACK);
-      // The welded structure, as against everything BOLTED to it. Blowing the
-      // machine up takes the fittings — pipework, gantry, stacks, the lit
-      // control face — and leaves this standing as a burnt-out hulk, because a
-      // room whose whole reason to exist vanishes when you shoot it reads as a
-      // prop despawning rather than as a machine that blew up. See `hulkSpans`
-      // in gen/build.js and `_wreck` in destruction.js.
+      // ALL of it stays standing when the machine is destroyed — the pipework,
+      // the tanks, the gantry, the stacks and the dead control face along with
+      // the plating they are bolted to — because a room whose whole reason to
+      // exist vanishes when you shoot it reads as a prop despawning rather than
+      // as a machine that blew up, and a machine that keeps its casing while
+      // every fitting on it disappears reads as a plainer machine swapped in
+      // for the one that was there. What should be missing is what the blast
+      // took, and nothing else. See `hulkSpans` in gen/build.js and `_wreck` in
+      // destruction.js.
+      //
+      // Two grades, and the difference is NOT whether a box survives — both do.
+      // `weld` is the machine's own MASS: plinth, housing, ribs, hazard band,
+      // tank bodies. That is the extent `_wreck` sites its damage against, so
+      // it has to be the machine rather than the machine plus its aerials: an
+      // exhaust stack standing 1.7 m clear of the housing would otherwise drag
+      // the corner blast up into the air above it, and "an upper corner blown
+      // clean off" would come out as a missing stack tip. Everything drawn
+      // through plain `box` is trim — carved by the same blasts and burnt with
+      // the rest, but silent about where the machine's corners are.
       //
       // `?.` because a sink is allowed to be minimal: the catalogue audit in
       // tools/validate-props.mjs builds a placer of `box` and `obstacle` alone,
       // and a machine that cannot record a wreck should still draw itself.
+      p.hulk?.('trim');
       const weld = (key, x0, y0, z0, x1, y1, z1) => {
         p.hulk?.(true);
         box(key, x0, y0, z0, x1, y1, z1);
-        p.hulk?.(false);
+        p.hulk?.('trim');
       };
       // Everything below is authored as a fraction of the half-width or as a
       // fixed metre offset from an end, never as a hard-coded x — that is what
@@ -773,6 +787,7 @@ export const PROPS = {
         box('metal', sx - 0.5, H + 1.5, -0.5, sx + 0.5, H + 1.7, 0.5);
       }
 
+      p.hulk?.(false);
       p.obstacle(-hw, -1.5, hw, 1.5, H + 0.2, true);
     },
   },

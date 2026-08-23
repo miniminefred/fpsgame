@@ -557,7 +557,19 @@ function charOf(material, sooty = false) {
   let pair = _charred.get(material);
   if (!pair) {
     const burn = (keep) => {
-      const burnt = material.clone();
+      // A lens and a screen are drawn UNLIT (MeshBasicMaterial) — being immune
+      // to the room's lighting is exactly what makes them read as lit. Charring
+      // one by darkening its colour is therefore not enough: it goes on
+      // ignoring the blackout it just caused, and a dead indicator ends up the
+      // brightest thing left in a black room, on the machine that switched the
+      // lights off. A burnt-out lens is a piece of dark plastic, so it becomes
+      // an ordinary lit material like the rest of the hulk.
+      const burnt = material.isMeshBasicMaterial
+        ? new THREE.MeshStandardMaterial({
+          color: material.color?.clone() ?? 0xffffff,
+          side: material.side,
+        })
+        : material.clone();
       burnt.color?.multiplyScalar(CHAR * keep);
       if (burnt.emissive) burnt.emissive.multiplyScalar(0);
       if ('roughness' in burnt) burnt.roughness = CHAR_ROUGHNESS;
@@ -735,10 +747,10 @@ export class Destruction {
     // with it and comes apart somewhere else, loudly — see extinguishers.js.
     if (entry.volatile && this.extinguishers?.launch(entry, dir, point)) return;
 
-    // Only what came OFF is thrown: the fittings, plus the bays the blast tore
-    // out of the structure, which `_wreck` hands back for exactly this. Throwing
-    // the welded structure as well would have the hulk stand there while a copy
-    // of it tumbles across the room — and `_scatter` keeps the biggest
+    // Only what came OFF is thrown, which for a wreck is the bays the blast tore
+    // out of it and nothing else — `_wreck` hands them back for exactly this.
+    // Throwing anything still standing would have the hulk stand there while a
+    // copy of it tumbles across the room, and `_scatter` keeps the biggest
     // fragments, which is the housing and the plinth, so it would have been the
     // whole machine twice.
     this._scatter(
@@ -794,9 +806,20 @@ export class Destruction {
     // facing. All three have to be known BEFORE anything is cut up.
     const welded = entry.parts.filter((part) => part.hulk && part.material);
     if (!welded.length) return false;
+    // Measured off the WELDED STRUCTURE alone, never the trim bolted to it (see
+    // `hulk` in gen/build.js). Every one of these numbers is an answer about the
+    // machine — where its corners are, how big a corner is worth blowing off one
+    // this long, which of its faces the room is on — and a fitting that stands
+    // clear of the plating answers all three wrongly: exhaust stacks reaching
+    // 1.7 m over the housing would put the corner blast in the air above it, and
+    // a gantry 0.3 m proud of the front would call the front of the machine a
+    // third of a metre further out than the plating a round actually lands on.
+    // Trim is cut and carved with the rest; it just does not get a vote here.
+    const frame = welded.filter((part) => part.hulk === true);
+    if (!frame.length) return false;
     let floorY = Infinity;
     let minX = Infinity, maxX = -Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
-    for (const b of welded) {
+    for (const b of frame) {
       floorY = Math.min(floorY, b.y0);
       minX = Math.min(minX, b.x0); maxX = Math.max(maxX, b.x1);
       maxY = Math.max(maxY, b.y1);
@@ -966,12 +989,18 @@ export class Destruction {
       // everywhere it reaches, so it would simply enlarge the hole.
       const cut = Math.min(bl.maxCut ?? Infinity, Math.sqrt(edge * edge - off * off));
       const at = depthAxis === 'x' ? bl.x : bl.z;
+      // Clamped to the bay at BOTH ends, not just the far one. `at` sits on the
+      // structure's near face, and trim stands proud of it — a handrail is a
+      // 6 cm bar 0.3 m in front of the plating — so a shallow cut can land in
+      // front of a bay entirely, and the unclamped face would then move the
+      // bay's back wall BACKWARD and stretch the bar into a slab. Nothing in
+      // front of a blast is ever added to by it.
       if (Math.abs(at - bay[lo]) <= Math.abs(at - bay[hi])) {
-        const face = Math.min(bay[hi], at + cut);
+        const face = Math.min(bay[hi], Math.max(bay[lo], at + cut));
         if (face >= bay[hi] - 1e-3) return 'gone';
         bay[lo] = face;
       } else {
-        const face = Math.max(bay[lo], at - cut);
+        const face = Math.max(bay[lo], Math.min(bay[hi], at - cut));
         if (face <= bay[lo] + 1e-3) return 'gone';
         bay[hi] = face;
       }

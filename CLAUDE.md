@@ -528,15 +528,42 @@ Three things about it are structural rather than decorative:
   footprint stops short of its own geometry is a prop you can put your shoulder through.
 - **Shooting it leaves a wreck, and it is the only prop on the floor that does.** Everything
   else vanishes when it breaks, which is right for a filing cabinet and wrong for the reason
-  a room exists — the plant room used to end the fight as an empty wall. So the machine
-  declares which of its 88 boxes are *welded structure* (`weld` in `gen/props.js`: plinth,
-  housing, ribs, hazard band, tank bodies — 39 of them) as against everything BOLTED to it,
-  and destroying it throws only the fittings. Four things about how:
+  a room exists — the plant room used to end the fight as an empty wall. **All of the machine
+  stays**: the pipework, the coolant tanks, the service gantry, the exhaust stacks and the
+  dead control face along with the plating they are bolted to. Only the fittings survived at
+  first, which is the same mistake one step smaller — a machine that keeps its casing while
+  every fitting on it disappears reads as a plainer machine having been swapped in for the one
+  that was standing there. What should be missing is what the blast took, and nothing else.
+  Six things about how:
+  - **`weld` is still a distinction, and it is no longer about surviving.** Everything the
+    machine draws is on the hulk; `weld` (`gen/props.js`) names the 31 boxes that are its own
+    *mass* — plinth, housing, ribs, hazard band, tank bodies — as against the 40 of trim
+    bolted to them, and the difference is only that `_wreck` measures the machine off the
+    first set. Every number it takes there is an answer about the machine: where its corners
+    are, how big a corner is worth blowing off one this long, which of its faces the room is
+    on. A fitting standing clear of the plating answers all three wrongly — exhaust stacks
+    reaching 1.7 m over the housing put the corner blast in the air above it, so "an upper
+    corner blown clean off" comes out as a missing stack tip, and a gantry 0.3 m proud of the
+    front calls the front of the machine a third of a metre out from the plating a round
+    actually lands on. Trim is cut and carved with the rest; it just does not get a vote.
+  - **Carving is clamped at both ends, because trim stands in FRONT of the near face.** A
+    handrail is a 6 cm bar 0.3 m off the plating, so a shallow cut can land in front of a bay
+    entirely — and unclamped, the new face then moves the bay's *back* wall backward and
+    stretches the bar into a slab. Nothing in front of a blast is ever added to by it. The old
+    code could not hit this: every box it knew about lay inside the depth the near face was
+    measured from.
   - **The survivors are re-drawn, not spared.** A batched chunk is one mesh sharing one
     material with a hundred other props, so there is nothing to scorch that would not scorch
     every desk on the floor with it. The whole prop is erased from the batch as usual and the
     structure comes back as a mesh of its own in charred variants of its own materials
     (`_wreck` in `destruction.js`). `parts` are world-space, so nothing is transformed.
+  - **Charring an UNLIT material has to make it lit** (`charOf`). A lens and a screen are
+    `MeshBasicMaterial` — being immune to the room's lighting is exactly what makes them read
+    as lit — so darkening the colour is not enough: they go on ignoring the blackout they
+    just caused. Keeping the control face on the hulk without this left eight rows of green
+    indicators as the brightest thing in a pitch-dark room, on the machine that had just
+    switched the lights off. A burnt-out lens is dark plastic, so it becomes an ordinary lit
+    material like the rest of the hulk.
   - **Those charred materials are shared and must outlive the level**, like everything in
     `textures.js` — which is exactly why a wreck mesh must *not* carry `ownMaterial`, or
     teardown disposes a material the next floor is about to use. Its geometry is the level's
@@ -545,6 +572,13 @@ Three things about it are structural rather than decorative:
     neither. Nothing had to be re-measured for that: the hulk keeps the full-height housing,
     so the collider that was over the machine is still the right shape (welded top 4.2 against
     a collider top of 4.4) and debris lands on the thing you can see.
+
+  Keeping the trim costs 2.3x the boxes to cut up, and it is affordable for the same reason
+  the fine grid is: `_wreck` measures 15 ms against 9 warm, both inside the 18–26 ms band the
+  stamper bought, and on the cold first kill of a session the two are indistinguishable
+  (24.8 ms weld-only, 22.6 ms with trim) because the JIT dominates. What comes off the machine
+  is now *only* the bays the blasts took, ~230 rather than 40 fittings plus ~65 bays, and
+  `_scatter`'s per-prop and global caps bound that as they always did.
   - **It is damaged by four causes with four signatures, and that is the design.** Damage
     scattered evenly over a wreck is texture — it reads as corrosion, or as a mesh with holes
     in it. Damage you can point at is an event: *this went up at one end, and that little
