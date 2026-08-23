@@ -195,7 +195,14 @@ export class Doors {
    * `bodies` is everything that can trip a sensor: the player, and everyone
    * still on their feet. Nothing here cares which is which.
    */
-  update(dt, player, enemies) {
+  /**
+   * `others` is anybody else the sensors should answer to — in practice the one
+   * other player in a co-op session. A panel that only opens for the browser it
+   * is running in is a door the joiner walks into, and worse, one that opens in
+   * front of the host and stays shut in front of their friend standing in the
+   * same doorway.
+   */
+  update(dt, player, enemies, others = null) {
     if (!this.items.length) return;
 
     const px = player.object.position.x;
@@ -234,6 +241,11 @@ export class Doors {
       if (door.refuseTimer > 0) door.refuseTimer -= dt;
 
       let near = Math.hypot(px - door.x, pz - door.z) < SENSE;
+      if (!near && others) {
+        for (const o of others) {
+          if (Math.hypot(o.x - door.x, o.z - door.z) < SENSE) { near = true; break; }
+        }
+      }
 
       if (door.lock) {
         // Still badged, so its sensor is off for you. All it does is say so,
