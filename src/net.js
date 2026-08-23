@@ -196,12 +196,19 @@ export class Net {
       if (err?.type === 'unavailable-id' && onIdTaken?.()) return;
       this._fail(describe(err));
     });
-    // A broker that drops us AFTER the channel is up costs nothing — the data
-    // channel is direct from there on. So this is only a failure while we are
-    // still waiting to be introduced.
+    // The broker drops idle sockets, and a tab waiting to be joined is idle by
+    // definition — worse, a BACKGROUNDED tab has its timers throttled to about
+    // one a minute, so the keepalive that would have held the socket open never
+    // fires. Somebody who opens the panel, reads their code out and switches to
+    // a chat window to send it is therefore the ordinary case, not an edge one.
+    //
+    // So this reconnects rather than failing. It is safe after the channel is up
+    // too, and pointless: the data channel is browser-to-browser from there on
+    // and the broker is not in it any more.
     this.peer.on('disconnected', () => {
       if (this._closing || this.state === 'connected') return;
-      this._fail('Lost the broker before anyone connected');
+      try { this.peer?.reconnect(); }
+      catch { this._fail('Lost the broker before anyone connected'); }
     });
   }
 
