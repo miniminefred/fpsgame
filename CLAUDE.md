@@ -171,6 +171,9 @@ floor of a grey corporate building, clear the staff still working there, find th
 hatch, and descend. The next floor is generated on the fly, usually a little bigger and
 always a little nastier. There is no ground floor.
 
+Two people can do it together, over the internet, off a six-character code read out loud.
+See **Co-op** below.
+
 ## Project layout
 
 ```
@@ -212,6 +215,10 @@ src/
   keycards.js     Card catalogue, the wallet, and the cards on the carpet
   doors.js        Sliding panels, proximity sensors, and the badged ones
   cameras.js      Wall cameras and laser tripwires, and the alarm they raise
+  net.js          Co-op's wire: a code, a peer-to-peer channel, a message pump
+  netplay.js      ...and its protocol: who decides what, and what crosses
+  remote-player.js  The other player as a body, posed from their packets
+  mp-menu.js      The co-op panel on the start screen — the only UI with buttons
   hud.js          Health, ammo, floor, objective, keycards, hit direction, toasts, death
   minimap.js      Per-floor floorplan raster + live player/enemy markers
   textures.js     Procedural canvas textures and the shared material cache
@@ -257,6 +264,9 @@ leave the build green and the harness silently broken.
 - **Physics:** `cannon-es` for loose props only. The player and enemies stay hand-rolled
   and kinematic — putting a first-person player on a rigid body feels bad and is not worth
   the fight.
+- **Networking:** WebRTC data channels via npm `peerjs`, introduced by PeerJS's free
+  public broker. No server of ours, which is what lets co-op work off the static Pages
+  build — and the one third party in the whole project. See Co-op below.
 - **Assets:** weapon viewmodels and office props are CC0/CC-BY GLBs under `public/models`
   (see the CREDITS files). Everything else — walls, floors, furniture, enemies, textures —
   is generated procedurally in code.
@@ -1436,6 +1446,106 @@ what damage with no direction (standing inside a blast) does. The pool is six we
 markup and the HUD never creates DOM; two hits within `HITDIR_MERGE` of each other refresh
 one wedge instead of stacking, because an SMG burst is one attacker and should look like
 one. `game.js` feeds position and yaw in every frame via `setFacing`.
+
+### Co-op (`net.js`, `netplay.js`, `remote-player.js`, `mp-menu.js`)
+MULTIPLAYER on the start screen opens a panel with a six-character code in it, a box to
+type somebody else's into, and one line saying what the wire is doing. Opening the panel
+publishes the code, so "wait for someone to join you" is simply not pressing anything
+else. Connecting starts a fresh run at floor 1 on both machines.
+
+**The floor is not sent, it is REBUILT.** Every floor is a pure function of one integer
+seed (`gen/rng.js`), so the host rolls one, sends four bytes, and the other browser
+generates the same building down to which filing cabinet is in which corner and which of
+two hundred people is standing in it. Everything on the wire after that is a correction to
+a simulation the other end is already running, which is the only reason any of this fits
+down a data channel. Four things follow, and they are the whole design:
+
+- **The staff are the host's.** Both rosters are the same roster in the same order, so a
+  body's index in `enemies.items` is its name on the wire. The host thinks for all of them
+  and streams positions at 12 Hz; the joiner poses its copies (`enemies.puppet`,
+  `_poseAll`) and never runs the AI. Two browsers each running it would not be one floor,
+  it would be two — a shot fired at somebody who, over there, is in the next room.
+- **Damage is the host's.** The joiner's shots are real and immediate on its own screen —
+  tracer, flash, flesh impact — but the health is the host's and the kill comes back as a
+  message (`hit` in `enemies.js`). It deliberately does not predict the death: predicting
+  it shows bodies dropping that the host has not agreed are dead, and then standing back
+  up. The death message carries whose kill it was, because a joiner's shots come back as
+  `'hit'` whatever they did and that is the only place it can be told.
+- **Destruction is symmetric.** Either browser may shoot a desk apart, because `_shatter`
+  is idempotent. Worth syncing rather than leaving local because destroying a prop hands
+  its tiles back to the nav grid — leave it out and the joiner watches the staff walk
+  through a cabinet that is still standing.
+- **Cards are the team's.** One of you badging a door while the other stands in front of it
+  refusing to open is not a lock, it is a bug. Identified on the wire by TIER rather than
+  by any id, which works because only one card of a tier is ever on the floor at once
+  (`pending`) and makes the whole thing self-healing.
+
+The pieces that had to change to allow two players at all:
+
+- **`enemies.update` works against a LIST of targets**, `{x, y, z, layer, dead, hurt()}`.
+  Single player hands over a list of one and nothing notices. `_pick` chooses which one
+  each body is dealing with — sight beats distance, then nearest — and `hurt` is what
+  makes the two interchangeable: for the player at this keyboard it is health and a
+  chevron, for the other it is a message, and `enemies.js` never learns which.
+- **The flow field floods from BOTH players** (`_flood` takes a list of origins). A
+  multi-source BFS costs nothing extra and every tile then holds the walk to the NEARER of
+  you, so "the staff chase whoever is closest" and hearing measured on `pathDistance` both
+  fall out for free rather than needing a second field.
+- **Door sensors answer to both.** A panel that only opens for the browser it is running in
+  is one your friend walks into, and worse, one that opens in front of you and stays shut
+  in front of them in the same doorway.
+- **An alarm is host-only, and this is the sharp edge.** `enemies.alarm` APPENDS four
+  bodies to `items`, so a joiner raising its own would leave the two rosters different
+  lengths and every index after that landing on the wrong person. The joiner's cameras
+  report instead, and the host sends back a seed per responder so both browsers build the
+  same man.
+- **The joiner still floods the field** even though it routes nothing with it, because
+  `soundPath` reads it: without it every gunshot on the floor arrives through the plaster
+  instead of round the doorway. Measured — 206 flooded tiles before the first card, 11,048
+  after it, matching the host exactly at both.
+- **A hidden tab keeps simulating** while a session is up (`main.js`). `requestAnimationFrame`
+  stops for a tab nobody is looking at, which is correct alone and catastrophic here: the
+  host is thinking for two hundred people, so a host who alt-tabs to paste their code into
+  a chat window freezes their friend's floor solid. The render is skipped and the
+  simulation runs off a timer — and Chrome exempts a tab making a noise from its harshest
+  throttling, which this one is.
+
+**Not synced, on purpose:** ragdoll poses, spent brass, decals, debris, extinguisher gas
+and the generator's arcs. All cosmetic, all hundreds of bodies a floor, none of it changes
+what either player can do. Nor is joining mid-floor: a floor half fought through is two
+hundred healths, a scattering of wreckage and a wallet, and that is a lot of protocol for
+the one moment in a session it would ever be used.
+
+**The menu is the only interactive UI in the game**, and that makes it the one hazard.
+Every other element is `pointer-events: none` so nothing can swallow the click that grabs
+pointer lock, and the start screen is one enormous click target built on exactly that rule.
+So `mp-menu.js` holds the opposite line: every press inside the panel is stopped where it
+lands, across the whole family of pointer events, because three separate listeners are
+waiting on the way out — the overlay's click grabs the lock, `main.js`'s mousedown restarts
+a dead run, and `input.js`'s mousedown pulls the trigger. For the same reason `input.js`
+now ignores keystrokes aimed at a text field: codes are drawn from A–Z and 2–9, so typing
+one otherwise walks the player forward, sideways, reloads, and swaps weapon four times.
+
+The code's alphabet has no I, O, 0, 1 or 5 in it, which is a legibility decision rather
+than an entropy one — these get read out loud. `normaliseCode` is forgiving about
+presentation (case, spaces, dashes) and strict about content: it will not guess at a
+character we never issue, because inventing a code the player did not give us either dials
+a stranger or reports "nobody is waiting" for one that was merely mistyped.
+
+**The broker is the weak link and there is no fallback.** WebRTC cannot introduce two
+browsers to each other without a server both can already reach, we cannot host one from a
+static Pages site, and so this uses PeerJS's public one. Only the code and the WebRTC
+handshake ever go there; once the channel is up every byte is browser to browser. It is
+rate-limited and occasionally down, which is why `net.js` reports failures as English
+rather than leaving a menu that quietly does nothing — and why a dropped broker socket
+reconnects rather than failing, since a tab waiting to be joined is idle by definition and
+a backgrounded one has its keepalive throttled to about once a minute.
+
+`#netrole` is the chip that says which end of the wire you are, and it earned a note in
+`/dev-layout.html`: top centre is the one strip of screen edge with nothing on it, except
+that the touch fullscreen button is already there, and on a phone the floor readout and the
+minimap leave no room between them either. Both collisions were found by measuring, not by
+looking, and the harness now watches the chip so the next one is too.
 
 ### Touch controls (`touch.js` + `#touch` in `index.html`)
 The game is playable on a phone, and none of it is on a PC — the on-screen controls do
