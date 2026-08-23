@@ -370,6 +370,9 @@ export class Game {
     // Split rather than concatenated: the building holds still and gets indexed,
     // the loose furniture moves every frame and cannot be. See setColliders.
     this.player.setColliders(level.colliders, this.pushColliders);
+    // ...and the slab it may not leave, which is the one containment guarantee
+    // that does not depend on any of them resolving correctly. See _contain.
+    this.player.setBounds(level.bounds);
     // The doors own colliders that are already in that list; all they do at
     // runtime is drop them below the floor when the panel is out of the way.
     this.doors.setDoors(level.doors, level.nav);

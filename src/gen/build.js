@@ -10,6 +10,7 @@ import {
   SOLID, ROOM, CORRIDOR, DOOR, isOpen, worldX, worldZ, slidePocketSide, doorSide, doorsOnRoom,
 } from './layout.js';
 import { CARDS, READER_LIT, READER_OPEN } from '../keycards.js';
+import { PLAYER_RADIUS } from '../metrics.js';
 import {
   UPPER_Y, UPPER_CEIL, LOWER_Y, PLATE_T, ROOF_T, RISER, approachTiles, levelFloor, levelY, punchRects,
   stairBoxes, stairwellCut, roofCollisionCut, stripTiles, rampSpec, approachRect,
@@ -164,6 +165,18 @@ export function buildLevel(scene, layout) {
 
   return {
     layout,
+    // The rectangle a body may never leave, and the last line of defence against
+    // ending up outside the building — see `setBounds` in player.js. It is the
+    // slab inset by the one tile of perimeter wall that rings every floor, plus
+    // the body's own radius, which is exactly where a body standing against the
+    // inside of that wall has its centre: the tightest bound that can never move
+    // a legal position.
+    bounds: {
+      minX: layout.ox + TILE + PLAYER_RADIUS,
+      maxX: layout.ox + (layout.W - 1) * TILE - PLAYER_RADIUS,
+      minZ: layout.oz + TILE + PLAYER_RADIUS,
+      maxZ: layout.oz + (layout.H - 1) * TILE - PLAYER_RADIUS,
+    },
     meshes,          // raycast targets for bullets
     objects,         // everything added to the scene, for teardown
     colliders,
@@ -315,8 +328,13 @@ function buildShell(layout, batcher, materials, colliders, cuts) {
       batcher.add('ceiling', materials.ceiling,
         applyWorldUVs(boxBetween(x0, y, z0, x1, y + ROOF_T, z1)), { castShadow: false });
       colliders.push({
+        // `barrier` for the same reason a wall has one, and it is the other half
+        // of that fix: ROOF_T is kept clear of STEP_EPS so a roof cannot be
+        // stepped onto FROM BELOW, but nothing said it could not be stood on by
+        // a body that had got above it some other way — and the top of the
+        // building is the one surface with nothing above it and no walls on it.
         minX: x0, maxX: x1, minZ: z0, maxZ: z1,
-        base: y, top: y + ROOF_T, building: true, ceiling: true,
+        base: y, top: y + ROOF_T, building: true, ceiling: true, barrier: true,
       });
     }
   };
@@ -390,7 +408,12 @@ function drawWalls(layout, tiles, batcher, materials, colliders, wallH, building
     batcher.add('trim', materials.trim,
       boxBetween(x0 - 0.015, 0, z0 - 0.015, x1 + 0.015, BASEBOARD_H, z1 + 0.015));
 
-    const collider = { minX: x0, maxX: x1, minZ: z0, maxZ: z1, top: wallH };
+    // `barrier`: a wall is a wall at every height a body can reach, never a kerb
+    // to step onto and never a floor to stand on. Without it the step tolerance
+    // turns every 3.2 m wall in the building into a knee-high ledge the moment a
+    // body's feet are within STEP_EPS of its top — which a staircase, an attic
+    // deck and the mezzanine all put them, legitimately. See _moveHorizontal.
+    const collider = { minX: x0, maxX: x1, minZ: z0, maxZ: z1, top: wallH, barrier: true };
     if (building) collider.building = true;
     colliders.push(collider);
   }
@@ -1889,6 +1912,12 @@ function buildStairs(layout, batcher, materials, masks, rng) {
         minX: b.minX, maxX: b.maxX, minZ: b.minZ, maxZ: b.maxZ,
         base: b.base, top: b.y1, building: true,
         ceiling: b.part === 'roof' || b.part === 'lid' || b.part === 'deck',
+        // A storey's walls and its roof are the shell one floor up, and take the
+        // shell's rule (see `barrier` in drawWalls). The other three cannot have
+        // it: a `tread` is the one thing here that MUST be a step, a `deck` is a
+        // storey's own floor and is stood on top of, and a `lid` is the underside
+        // of the plate a basement is roofed with.
+        barrier: b.part === 'wall' || b.part === 'roof',
       });
     }
 

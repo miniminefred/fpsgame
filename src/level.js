@@ -30,6 +30,9 @@ export class Level {
       meshes: built.meshes,
       objects: built.objects,
       colliders: built.colliders,
+      // The rectangle the player may not leave. It travels with the colliders
+      // because it is what stands behind them — see _contain in player.js.
+      bounds: built.bounds,
       dynamics: built.dynamics,
       destructibles: built.destructibles,
       doors: built.doors,

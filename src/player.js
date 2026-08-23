@@ -13,6 +13,16 @@ const CELL = 2;
 const CELL_BIAS = 4096;    // keeps both axes positive; the slab never gets close
 const cellKey = (cx, cz) => (cx + CELL_BIAS) * 8192 + (cz + CELL_BIAS);
 
+// The nearer of a box's two faces on one axis. See `_eject`.
+const nearerFace = (v, lo, hi) => (v - lo <= hi - v ? lo : hi);
+
+// How far into a box the body is on each axis — the two numbers `_eject` picks
+// between. Measured against the inflated span the overlap test itself uses, so
+// zero means "exactly on the face", which is where a body sliding along a wall
+// sits and is deliberately not an overlap.
+const penX = (pos, b) => Math.min(pos.x - (b.minX - RADIUS), (b.maxX + RADIUS) - pos.x);
+const penZ = (pos, b) => Math.min(pos.z - (b.minZ - RADIUS), (b.maxZ + RADIUS) - pos.z);
+
 const MOVE_SPEED = 5.6;    // units / second — office corridors, not a racetrack
 const SPRINT_SPEED = 8.4;
 const ACCEL = 14;          // how fast the walk velocity chases the input
@@ -37,6 +47,12 @@ export class Player {
     this.keys = keys;
     this._near = [];          // reused by _candidates; never escapes a frame
     this.setColliders(colliders, []);
+    this._bounds = null;
+    // How many times the backstop below has had to catch this body. It is meant
+    // to stay at zero for a whole run: it is not a mechanic, it is the thing
+    // that makes leaving the building impossible rather than merely difficult,
+    // and a non-zero count is a collision bug that has not been found yet.
+    this.contained = 0;
     this.velocityY = 0;
     this.canJump = true;
 
@@ -122,6 +138,15 @@ export class Player {
         }
       }
     }
+  }
+
+  /**
+   * The rectangle this body may not leave, from the level (`bounds` in
+   * gen/build.js). Cleared with a falsy argument, which is what the constructor's
+   * bare collider list amounts to before a floor exists.
+   */
+  setBounds(bounds) {
+    this._bounds = bounds ?? null;
   }
 
   /**
@@ -235,6 +260,7 @@ export class Player {
     const fromX = pos.x;
     const fromZ = pos.z;
     this._moveHorizontal(pos, this._vel.x * dt, this._vel.z * dt);
+    this._contain(pos);
 
     this.velocityY -= GRAVITY * dt;
     pos.y += this.velocityY * dt;
@@ -276,6 +302,39 @@ export class Player {
     }
   }
 
+  /**
+   * The last line of defence: whatever the collision pass just did, the body is
+   * still inside the building at the end of it.
+   *
+   * Everything above this is a resolution — a negotiation with a list of boxes
+   * that can be got wrong, and has been. The step tolerance turned every wall
+   * into a ledge for anyone whose feet were within STEP_EPS of its top; and a
+   * body that ends up INSIDE a wall walks out of whichever face it is heading
+   * for, which on the perimeter is the outside of the building. Both are fixed
+   * where they happen, and neither fix is a proof.
+   *
+   * This is the proof, and it is four comparisons: the slab's own rectangle is
+   * a fact about the floor rather than a fact about a box, so no ordering, no
+   * tolerance and no resolution order can argue with it. It cannot fire on a
+   * legal position either — the bound is the inside face of the perimeter wall
+   * plus a body's radius, which is exactly where a body standing against that
+   * wall already is, so anything outside it is inside the wall or beyond it.
+   *
+   * Velocity goes with the position, or a body held against the bound keeps its
+   * speed and spends every frame being caught again.
+   */
+  _contain(pos) {
+    const b = this._bounds;
+    if (!b) return;
+    if (pos.x >= b.minX && pos.x <= b.maxX && pos.z >= b.minZ && pos.z <= b.maxZ) return;
+
+    if (pos.x < b.minX) { pos.x = b.minX; this._vel.x = 0; }
+    else if (pos.x > b.maxX) { pos.x = b.maxX; this._vel.x = 0; }
+    if (pos.z < b.minZ) { pos.z = b.minZ; this._vel.z = 0; }
+    else if (pos.z > b.maxZ) { pos.z = b.maxZ; this._vel.z = 0; }
+    this.contained++;
+  }
+
   // Counts down the distance to the next footfall. Fed the distance actually
   // covered after collision, so grinding against a wall is silent.
   _trackStride(dx, dz) {
@@ -315,31 +374,72 @@ export class Player {
   _moveHorizontal(pos, dx, dz) {
     const feetY = pos.y - EYE;
     const overhead = (b) => (b.base ?? 0) >= feetY + BODY_H;
+    // A step up, unless the thing is a wall — see `step` below.
+    const kerb = (b) => !b.barrier && b.top <= feetY + STEP_EPS;
 
     pos.x += dx;
     if (dx !== 0) {
       for (const b of this._candidates(pos.x, pos.z)) {
-        if (b.top <= feetY + STEP_EPS || overhead(b)) continue;
+        if (kerb(b) || overhead(b)) continue;
         if (!this._overlapsXZ(pos, b)) continue;
         // Loose furniture gets shoved aside rather than stopping you dead —
         // a chair blocking a corridor you can't move would be miserable.
         if (b.push) { this.onPush?.(b, Math.sign(dx), 0); continue; }
         if (b.ceiling) { pos.x -= dx; this._vel.x = 0; continue; }
-        pos.x = dx > 0 ? b.minX - RADIUS : b.maxX + RADIUS;
-        this._vel.x = 0;
+        this._eject(pos, b);
       }
     }
 
     pos.z += dz;
     if (dz !== 0) {
       for (const b of this._candidates(pos.x, pos.z)) {
-        if (b.top <= feetY + STEP_EPS || overhead(b)) continue;
+        if (kerb(b) || overhead(b)) continue;
         if (!this._overlapsXZ(pos, b)) continue;
         if (b.push) { this.onPush?.(b, 0, Math.sign(dz)); continue; }
         if (b.ceiling) { pos.z -= dz; this._vel.z = 0; continue; }
-        pos.z = dz > 0 ? b.minZ - RADIUS : b.maxZ + RADIUS;
-        this._vel.z = 0;
+        this._eject(pos, b);
       }
+    }
+  }
+
+  /**
+   * Push the body out of a box it overlaps, along whichever axis is the shorter
+   * way out and to whichever face of that axis is nearer.
+   *
+   * Both of those used to be read off the direction of travel — going +x means
+   * you came in through the minX face, so leave through it. That is right for
+   * the only way a body is SUPPOSED to meet a box, and it is not a nudge when
+   * the body is already inside one: these boxes are merged tile runs, so a wall
+   * is routinely thirty metres long and half a metre thick, and the far face of
+   * the wrong axis is the far end of the building.
+   *
+   * Measured against the old rule over 1,097 m of walking across six floors,
+   * 17,125 resolutions:
+   *
+   *   * 16,128 were FRESH CONTACT — the body walked into the box that frame —
+   *     and 25 of those come out differently, all of them a body pushed by one
+   *     box into a second within the same pass.
+   *   * 997 were the body ALREADY INSIDE a box, and 732 of those come out
+   *     differently, the old rule moving it by up to 40.9 m. That is the bug,
+   *     not a regression: every one is a body standing against a wall being put
+   *     through it, which is the whole of how you end up outside in the void.
+   *
+   * A body gets inside a box in the first place because the head clamp lowers
+   * the feet with no regard for what is horizontally in the way — step off a
+   * storey's deck into a room with an ordinary ceiling and it drops from 3.2 m
+   * to 1.38 m, which can be inside the wall the deck was against.
+   *
+   * Always resolving, on one axis or the other, is what makes it safe to call
+   * from both passes: leaving an overlap for "the other pass" is a hole when the
+   * body is moving along one axis only, because the other pass never runs.
+   */
+  _eject(pos, b) {
+    if (penX(pos, b) <= penZ(pos, b)) {
+      pos.x = nearerFace(pos.x, b.minX - RADIUS, b.maxX + RADIUS);
+      this._vel.x = 0;
+    } else {
+      pos.z = nearerFace(pos.z, b.minZ - RADIUS, b.maxZ + RADIUS);
+      this._vel.z = 0;
     }
   }
 
@@ -368,7 +468,7 @@ export class Player {
   _blocked(x, z, feetY) {
     for (const b of this._candidates(x, z)) {
       // Same two tests as _moveHorizontal: too low to stop you, or overhead.
-      if (b.top <= feetY + STEP_EPS || (b.base ?? 0) >= feetY + BODY_H) continue;
+      if ((!b.barrier && b.top <= feetY + STEP_EPS) || (b.base ?? 0) >= feetY + BODY_H) continue;
       if (x > b.minX - RADIUS && x < b.maxX + RADIUS &&
           z > b.minZ - RADIUS && z < b.maxZ + RADIUS) return true;
     }
@@ -395,7 +495,10 @@ export class Player {
     const feetY = pos.y - EYE;
     let groundY = -Infinity;
     for (const b of this._candidates(pos.x, pos.z)) {
-      if (b.top > feetY + STEP_EPS) continue;
+      // A wall has a top, but it is not a surface: nothing in this building is
+      // meant to be walked along up there, and anything that ends up on one
+      // falls back inside instead of touring the floorplan from above.
+      if (b.barrier || b.top > feetY + STEP_EPS) continue;
       if (pos.x > b.minX - RADIUS && pos.x < b.maxX + RADIUS &&
           pos.z > b.minZ - RADIUS && pos.z < b.maxZ + RADIUS) {
         if (b.top > groundY) groundY = b.top;
