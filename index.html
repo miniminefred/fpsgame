@@ -165,8 +165,15 @@
   <!-- Which end of the wire this browser is, once a co-op session is up.
        Outside #hud on purpose: the HUD fades behind the menu and vanishes on
        the death screen, and both are exactly when you want to be told you are
-       still connected. -->
-  <div id="netrole"></div>
+       still connected.
+
+       Two spans rather than one string because the two halves are worth
+       different amounts. The role is the fact you want mid-fight — a host with a
+       bad connection is everybody's problem and a joiner with one is only their
+       own. The code only matters before somebody has joined you, and on a phone
+       there is not room for both between the floor readout and the minimap, so
+       the CSS drops the code there. -->
+  <div id="netrole"><span id="netrole-role"></span><span id="netrole-code"></span></div>
 
   <!-- ============================================================
        Touch controls. In the markup on every device and shown only

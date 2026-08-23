@@ -23,6 +23,16 @@
      anchored off these rather than off the raw edge, so the same rules serve a
      desktop window — where all four resolve to zero — and a phone held
      sideways, where one of them is 40-odd pixels of camera housing. */
+  /* The fullscreen button's size and where its top edge sits. Here rather than
+     inline on .tbtn-full because #netrole is pinned to the same place — top
+     centre is the one edge of the screen with nothing else on it — and has to
+     clear it. Two elements in one corner is exactly the case --tier-* below
+     already exists for: the number lives in one place and the thing that has to
+     avoid it derives from it, so resizing the button moves what is under it
+     instead of quietly sliding underneath. */
+  --full-btn: clamp(34px, 9vmin, 42px);
+  --full-top: 9px;
+
   --sa-t: env(safe-area-inset-top, 0px);
   --sa-r: env(safe-area-inset-right, 0px);
   --sa-b: env(safe-area-inset-bottom, 0px);
@@ -520,6 +530,7 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
 #netrole {
   position: fixed; z-index: 6;
   top: calc(var(--sa-t) + 10px); left: 50%; transform: translateX(-50%);
+  white-space: nowrap;
   padding: 3px 10px;
   border: 1px solid var(--accent-dim); background: var(--panel);
   font-size: 9px; letter-spacing: 2.6px; text-transform: uppercase;
@@ -528,6 +539,36 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
   pointer-events: none;
 }
 #netrole.visible { opacity: 1; }
+#netrole-code { margin-left: 0.55em; color: var(--ink-dim); }
+/* On a touch device the fullscreen button already owns top centre, so the chip
+   drops below it — derived from the button's own size and offset rather than
+   from a number that looks about right, so the two cannot drift apart. */
+body.touch #netrole {
+  top: calc(var(--sa-t) + var(--full-top) + var(--full-btn) + 8px);
+}
+/* Narrower than this and the floor readout and the minimap leave no room for a
+   centred chip between them at all. Both halves of the answer were measured in
+   /dev-layout.html rather than judged, and both were real overlaps:
+
+     * The CODE goes. The role is the half worth reading mid-fight — a host with
+       a bad connection is everybody's problem — and the code has already done
+       its job by the time anybody is on a floor. Dropping it took the overlap
+       with #mission from 453 px² to 130.
+     * What is left drops BELOW the mission block, because 130 px² is still two
+       things written on top of each other. The 86 px is #mission's own bottom
+       edge at this width (59) plus room for the objective line to wrap once more
+       than it currently does.
+
+   It only ever has to clear #mission. #mapbox is right-aligned from x=240 and a
+   chip this narrow never reaches it, however tall the minimap grows.
+
+   Both selectors, and this block has to come AFTER the touch rule above: a media
+   query does not add specificity, so `body.touch #netrole` in here only wins by
+   being written later. */
+@media (max-width: 430px) {
+  #netrole-code { display: none; }
+  #netrole, body.touch #netrole { top: calc(var(--sa-t) + 86px); }
+}
 
 /* Shown only when the browser refused mouse capture and we fell back to
    position-delta look, so the player knows why the cursor is still visible. */
@@ -674,9 +715,9 @@ body.dead #touch > :not(.tbtn-full) { opacity: 0; }
    start screen (z 10) as well, because the moment to go fullscreen is before
    the run rather than during it. */
 .tbtn-full {
-  left: 50%; top: calc(9px + var(--sa-t));
+  left: 50%; top: calc(var(--full-top) + var(--sa-t));
   transform: translateX(-50%);
-  width: clamp(34px, 9vmin, 42px); height: clamp(34px, 9vmin, 42px);
+  width: var(--full-btn); height: var(--full-btn);
   border-radius: 8px;
   font-size: clamp(15px, 4vmin, 19px); letter-spacing: 0;
   z-index: 11;

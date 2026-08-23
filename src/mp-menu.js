@@ -46,6 +46,8 @@ export function createCoopMenu({ net }) {
   const leaveBtn = document.getElementById('mp-leave');
   const closeBtn = document.getElementById('mp-close');
   const role = document.getElementById('netrole');
+  const roleName = document.getElementById('netrole-role');
+  const roleCode = document.getElementById('netrole-code');
 
   // Set while a copy or a bad-code complaint is on screen, so the next status
   // repaint does not wipe a message the player has not read yet.
@@ -91,13 +93,14 @@ export function createCoopMenu({ net }) {
     copyBtn.disabled = !net.code || state === 'joining';
     leaveBtn.disabled = state === 'off';
 
-    if (role) {
-      const label = state === 'connected'
-        ? (net.isHost ? `Host · ${net.code}` : `Joined · ${net.code}`)
-        : state === 'hosting' ? `Waiting · ${net.code}`
+    if (roleName && roleCode) {
+      const name = state === 'connected' ? (net.isHost ? 'Host' : 'Joined')
+        : state === 'hosting' ? 'Waiting'
         : '';
-      role.textContent = label;
-      role.classList.toggle('visible', !!label);
+      roleName.textContent = name;
+      // Its own span, because a narrow screen drops it — see #netrole-code.
+      roleCode.textContent = name && net.code ? net.code : '';
+      role.classList.toggle('visible', !!name);
     }
   };
 

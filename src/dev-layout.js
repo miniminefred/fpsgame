@@ -44,6 +44,9 @@ const PERSISTENT = [
   '#mission', '#mapbox', '#health', '#gunbox',
   '#tstick', '[data-btn="fire"]', '[data-btn="jump"]', '[data-btn="reload"]',
   '#tweapons', '.tbtn-full',
+  // Pinned to the same top-centre strip as the fullscreen button, which is the
+  // only reason it is in this list: the two collided the day it was added.
+  '#netrole',
 ];
 const TRANSIENT = ['#toast', '#watch'];
 
@@ -76,16 +79,35 @@ function frameDoc() {
 // If a longer message is ever added, it belongs here.
 const LONGEST_TOAST = 'BLACK KEYCARD DROPPED — ONE LEFT, AND YOU KNOW WHERE';
 
-// The toast and the camera meter are driven by game events, so the harness
-// shows them by hand — measuring a hidden element measures nothing.
-function forceTransient(doc, on) {
+// The widest the co-op chip ever gets: the longest of its three prefixes plus a
+// six-character code. Same reasoning as LONGEST_TOAST — it is centred and its
+// width is the whole question, so probing with a short string proves nothing.
+const LONGEST_ROLE = { role: 'Waiting', code: 'WWWWWW' };
+
+// The toast, the camera meter and the co-op chip only exist once the game has
+// something to say, so the harness turns all three on by hand — measuring a
+// hidden element measures nothing, and an empty one has no width at all. Two of
+// them are transient and the chip is not; what they share is that none of them
+// is on screen until an event puts it there, which is the thing that has to be
+// worked around here.
+function forceEventDriven(doc, on) {
   const toast = doc.getElementById('toast');
   const watch = doc.getElementById('watch');
+  const role = doc.getElementById('netrole');
   if (toast) {
     toast.classList.toggle('show', on);
     if (on) toast.textContent = LONGEST_TOAST;
   }
   watch?.classList.toggle('show', on);
+  if (role) {
+    role.classList.toggle('visible', on);
+    // Filled through the same two spans the game uses, so the narrow-screen rule
+    // that hides the code is measured rather than reasoned about.
+    const name = doc.getElementById('netrole-role');
+    const code = doc.getElementById('netrole-code');
+    if (name) name.textContent = on ? LONGEST_ROLE.role : '';
+    if (code) code.textContent = on ? LONGEST_ROLE.code : '';
+  }
 }
 
 function rectsFor(doc, selectors) {
@@ -112,7 +134,7 @@ function shared(a, b) {
 function check(doc, w, h) {
   const fails = [];
 
-  forceTransient(doc, true);
+  forceEventDriven(doc, true);
   const persistent = rectsFor(doc, PERSISTENT);
   const transient = rectsFor(doc, TRANSIENT);
 
@@ -148,7 +170,7 @@ function check(doc, w, h) {
     if (out.length) fails.push(`offscreen ${sel} — ${out.join(', ')}`);
   }
 
-  forceTransient(doc, false);
+  forceEventDriven(doc, false);
   return { fails, measured: persistent.length + transient.length };
 }
 
