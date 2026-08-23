@@ -43,6 +43,12 @@ export class Shooting {
     this.onSurfaceHit = null;
     // (cam, damage, point, normal) => boolean — true if that shot destroyed it.
     this.onCameraHit = null;
+    // (muzzle, end) => void — co-op's. One call per trigger pull, so the other
+    // browser can draw the tracer and hear the gun. Its END is where this shot
+    // actually stopped rather than a fixed range down the barrel, which is the
+    // difference between a teammate's tracer ending on the wall they hit and one
+    // running through it into the next room. Written by _trace below.
+    this.onShot = null;
     // Gunfire is loud: enemies out of sight use this to come looking.
     this.noise = 0;
 
@@ -55,6 +61,7 @@ export class Shooting {
     // refill() below, which is also what every new floor calls.
     this.mags = new Array(weapons.count).fill(0);
 
+    this._netEnd = new THREE.Vector3();   // see onShot
     this._aim = new THREE.Vector3();
     this._dir = new THREE.Vector3();
     this._origin = new THREE.Vector3();
@@ -205,6 +212,11 @@ export class Shooting {
       else if (result === 'hit') hitAny = true;
     }
 
+    // One message a trigger pull, not one a pellet: a shotgun over there is a
+    // muzzle flash and a bang, and eight tracers to describe it is eight times
+    // the packet for a detail nobody can count.
+    this.onShot?.(this._muzzle, this._netEnd);
+
     // View kick, applied on the camera's local X so it's independent of yaw.
     this.viewKick += this._pitch(stats.kick * (0.8 + Math.random() * 0.4));
 
@@ -238,6 +250,7 @@ export class Shooting {
       }
 
       this.effects.tracer(this._muzzle, hit.point);
+      this._netEnd.copy(hit.point);
 
       // What is left of the round at this range. Only the shotgun declares a
       // falloff: a pellet is a ball of soft lead with no ballistic profile
@@ -295,6 +308,7 @@ export class Shooting {
     // Nothing hit — run the tracer out to the weapon's max range.
     this._end.copy(origin).addScaledVector(dir, stats.range);
     this.effects.tracer(this._muzzle, this._end);
+    this._netEnd.copy(this._end);
     return null;
   }
 

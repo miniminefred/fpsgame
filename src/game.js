@@ -86,6 +86,14 @@ export class Game {
     this.ragdolls = ragdolls;
     this.cameras = cameras;
 
+    // Co-op. Wired after construction by main.js, because NetPlay needs a Game
+    // and a Game would then need a NetPlay — and it is the third genuinely
+    // optional collaborator alongside `physics`: the dev harnesses build a Game
+    // with no wire at all, and `?.` here means an absent one is a single-player
+    // run rather than a crash. A PRESENT one is not a session: it answers
+    // `online` false until somebody actually connects.
+    this.netplay = null;
+
     this.level = new Level(scene);
     // Player-facing colliders for this floor's loose props, refreshed from the
     // physics bodies every frame.
@@ -163,10 +171,35 @@ export class Game {
    * themselves, so they join the count of hostiles you can actually reach.
    */
   _onAlarm() {
+    // In a co-op session the roster belongs to the host, and an alarm APPENDS to
+    // it — so a joiner raising its own would leave the two browsers holding
+    // rosters of different lengths, and every index after that landing on the
+    // wrong person. It asks instead, and the host's response comes back as a
+    // message. See `alarmFrom` in netplay.js.
+    if (this.netplay?.alarmFrom(
+      this.player.object.position.x, this.player.object.position.z)) return;
+
     const response = this.enemies.alarm(
       this.player.object.position.x, this.player.object.position.z);
+    this.applyAlarm(response);
+    this.netplay?.announceAlarm(response);
+  }
 
+  /** What a floor does about an alarm, whichever browser raised it. */
+  applyAlarm(response) {
     this.shooting.addHittables(response.meshes);
+    this.alarmSignal(response.spawned.length + response.roused + response.heard);
+  }
+
+  /**
+   * The klaxon, the wash and the two lines — the part of an alarm that is about
+   * being told rather than about who is coming.
+   *
+   * Separate from `applyAlarm` because a co-op joiner gets exactly this and not
+   * the rest: the men were placed on the host and arrive as a list to rebuild,
+   * but the noise and the red rim happen in both browsers.
+   */
+  alarmSignal(coming = 0) {
     this.audio.alarm();
     this.hud.alarm();
     // The building says it first, in the building's own words, because that is
@@ -178,7 +211,6 @@ export class Game {
     // walking this way. Three separate counts is three things to read in the
     // half second before the first of them arrives, and only their sum changes
     // what the player does about it.
-    const coming = response.spawned.length + response.roused + response.heard;
     this.hud.message('ALARM ALARM — INTRUDER', 1700,
       coming ? { text: `${coming} COMING FOR YOU`, ms: 2300 } : null);
     this._syncObjective();
@@ -320,20 +352,53 @@ export class Game {
     }
   }
 
-  // Fresh run from floor 1.
-  start() {
+  // Fresh run from floor 1. `seed`, when given, is the floor to build rather
+  // than one rolled here — a co-op joiner takes the host's.
+  start(seed = null) {
     this.floor = 0;
     this.kills = 0;
     this.floorsCleared = 0;
     this.state = 'playing';
     this.player.reset();
     this.hud.gameOver(false, {});
-    this.nextFloor();
+    this.nextFloor(seed);
   }
 
-  nextFloor() {
+  /**
+   * A fresh co-op run, on both machines.
+   *
+   * The host calls this with nothing, rolls floor 1 like any other run, and then
+   * announces the seed it landed on; the joiner calls it with what arrived. That
+   * asymmetry is the whole of how two browsers end up in one building — see
+   * netplay.js, and note that the seed goes out AFTER the floor is built, because
+   * a dev build rerolls it looking for a generator room and the number that
+   * matters is the one that was actually used.
+   */
+  startCoop(seed = null) {
+    this.start(seed);
+    this.netplay?.announceFloor(this.floor, this.level.current.seed, true);
+  }
+
+  /** The host has moved the team to a floor. Joiner side. */
+  goToFloor(floor, seed) {
+    this.floor = floor - 1;
+    this.nextFloor(seed);
+  }
+
+  /**
+   * Take the exit. Host side in a co-op session, and either player standing on
+   * the pad is what gets us here — see `requestDescend`.
+   */
+  descend() {
+    this.player.heal(HEAL_ON_DESCEND);
+    this.audio.descend();
+    this.nextFloor();
+    this.netplay?.announceFloor(this.floor, this.level.current.seed, false);
+  }
+
+  nextFloor(given = null) {
     this.floor++;
-    let seed = randomSeed();
+    let seed = given ?? randomSeed();
 
     // DEV-ONLY: the generator room is opportunistic (see the `generator`
     // fits predicate in gen/layout.js) — most floors don't roll one at all,
@@ -341,7 +406,10 @@ export class Game {
     // Rerolling the seed here, cheaply, with just the layout rather than the
     // full geometry build, means a dev build always lands on a floor that
     // has one; a production build takes its first roll exactly as before.
-    if (import.meta.env.DEV) {
+    // ...and never when the seed was handed to us: a co-op joiner has to build
+    // the host's floor and not a different one that happens to have a generator
+    // room in it.
+    if (import.meta.env.DEV && given === null) {
       for (let tries = 0; tries < 300; tries++) {
         if (generateLayout(seed, this.floor).rooms.some((r) => r.role === 'generator')) break;
         seed = randomSeed();
@@ -511,20 +579,29 @@ export class Game {
     // pickable — a floor you could not leave, from a guard meant to be harmless.
     this.destruction.update(dt);
     this.extinguishers.update(dt);
-    this.doors.update(dt, this.player, this.enemies.items);
+    // The other player opens doors too. A panel that only answers to the browser
+    // it is running in is one your friend walks into — and worse, one that opens
+    // in front of you and stays shut in front of them in the same doorway.
+    this.doors.update(dt, this.player, this.enemies.items, this.netplay?.others());
     this.casings.update(dt);
     this.keycards.update(dt, this.player);
     this.ragdolls.update(dt);
 
-    if (this.state === 'playing') {
+    // The roster keeps thinking past this player's death when somebody else is
+    // still on the floor: in a co-op session the host's browser is the one
+    // simulating the staff, so a dead host used to leave the joiner in a building
+    // full of statues. Everything BELOW this is about the player at this
+    // keyboard, and stays behind the ordinary check.
+    if (this.state === 'playing' || this.netplay?.simulating) {
       this.enemies.update(dt, {
-        player: this.player,
+        targets: this.netplay ? this.netplay.targets() : [this._soloTarget()],
         effects: this.effects,
         audio: this.audio,
-        hud: this.hud,
         noise: this.shooting.noise,
       });
+    }
 
+    if (this.state === 'playing') {
       // After the enemies, because that is what floods the distance field this
       // frame — and an alarm raised here places its response by walked distance
       // from the player, off exactly that field.
@@ -535,6 +612,8 @@ export class Game {
       this._vitals(dt);
       this._cowMoo(dt);
     }
+
+    this.netplay?.update(dt);
 
     // Before setHealth, because the hit wedges are aimed off this and a hit
     // arriving this frame should be aimed from where the player is now.
@@ -547,6 +626,27 @@ export class Game {
       { x: this.player.object.position.x, z: this.player.object.position.z, yaw: this.player.yaw },
       this.enemies.items
     );
+  }
+
+  /**
+   * The player at this keyboard, in the shape enemies.js wants a target in.
+   *
+   * Only used when there is no wire at all — the dev harnesses. With one,
+   * netplay.js owns the list, because it is the thing that knows whether there is
+   * a second player to put in it.
+   */
+  _soloTarget() {
+    const p = this.player.object.position;
+    const t = this._solo ??= {
+      x: 0, y: 0, z: 0, layer: 0, dead: false,
+      hurt: (amount, sx, sz) => {
+        this.player.takeDamage(amount);
+        this.hud.damage(Math.min(1, amount / 25), sx, sz);
+      },
+    };
+    t.x = p.x; t.y = p.y; t.z = p.z;
+    t.dead = this.player.dead;
+    return t;
   }
 
   _checkFloorState(dt, level) {
@@ -568,9 +668,16 @@ export class Game {
     if (!this.cleared || this.descendLock > 0) return;
 
     if (distanceToExit(level, this.player.object.position) < EXIT_RADIUS) {
-      this.player.heal(HEAL_ON_DESCEND);
-      this.audio.descend();
-      this.nextFloor();
+      // Either player on the pad takes both of you down — standing on it waiting
+      // for somebody still going through the drawers on the far side of the floor
+      // is not a co-op objective. The host does it; the joiner asks, and the
+      // descent arrives as the next floor's seed.
+      if (this.netplay?.requestDescend()) {
+        // Asked. Hold off asking again every frame until the answer arrives.
+        this.descendLock = 1;
+        return;
+      }
+      this.descend();
     }
   }
 
@@ -633,6 +740,12 @@ export class Game {
   // Called when the player clicks after dying.
   restartIfDead() {
     if (this.state !== 'dead') return false;
+    // The run is the team's, so the restart is too: whichever of you clicks, both
+    // of you start again from floor 1. The joiner asks and the host does it, which
+    // is the same shape as the descent and for the same reason — one browser rolls
+    // the seeds.
+    if (this.netplay?.requestRestart()) return true;
+    if (this.netplay?.online) { this.startCoop(); return true; }
     this.start();
     return true;
   }

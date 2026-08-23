@@ -21,6 +21,7 @@ import { Ragdolls } from './ragdolls.js';
 import { Cameras } from './cameras.js';
 import { Net } from './net.js';
 import { createCoopMenu } from './mp-menu.js';
+import { NetPlay } from './netplay.js';
 import { loadModels } from './gen/models.js';
 import { modelKeysUsed } from './gen/props.js';
 import { Game } from './game.js';
@@ -79,10 +80,14 @@ const game = new Game({
   keycards, wallet, ragdolls, cameras,
 });
 
-// Co-op. The wire and the menu that drives it are both live from load, and
-// neither of them touches the game until a channel is actually up.
+// Co-op. All three are live from load and none of them touches the game until a
+// channel is actually up: the wire, the panel that drives it, and the play layer
+// that carries game state over it. NetPlay is built last and wired back into the
+// game, because it needs a Game and a Game would then need it.
 const net = new Net();
-const coop = createCoopMenu({ net });
+const coopMenu = createCoopMenu({ net });
+const netplay = new NetPlay({ net, game, scene, menu: coopMenu });
+game.netplay = netplay;
 
 // One way to change weapon, whether it came from a number key or a thumb.
 function selectWeapon(n) {
@@ -112,7 +117,7 @@ if (import.meta.env.DEV) {
   window.dev = {
     game, player, enemies, shooting, keys, physics, destruction, extinguishers, doors,
     scene, camera, weapons, renderer, audio, casings, keycards, wallet, ragdolls, cameras,
-    touch, net, coop,
+    touch, net, netplay, coopMenu,
   };
 }
 
