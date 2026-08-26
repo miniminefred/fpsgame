@@ -625,6 +625,20 @@ Three things about it are structural rather than decorative:
     indicators as the brightest thing in a pitch-dark room, on the machine that had just
     switched the lights off. A burnt-out lens is dark plastic, so it becomes an ordinary lit
     material like the rest of the hulk.
+
+    **And it loses its COLOUR, which is the other half of that and was missing.** Making the
+    lens lit fixed how it responds to the room; scaling its colour by `CHAR` like every other
+    surface left it *green*, just a third as bright — so the rows still read as indicators
+    that are on, dimly, on a machine that had blacked out the floor. Scaling is the right
+    model for scorching, because dark grey plating and a dark yellow hazard band are both
+    still recognisably what they were painted. A lamp's colour is not what it is painted, it
+    is the fact that it is on. So an unlit material's saturation is cut almost out
+    (`DEAD_LENS_SAT`) and its lightness is **capped, not scaled** (`DEAD_LENS_MAX_L`) —
+    because two different things wear that material type: a bright lens has to come down to
+    dead plastic, while a screen that was already dark slate must stay exactly as dark and
+    merely stop being blue. A cap does both; a scale would brighten nothing and a fixed
+    value would lift the screen. The bright green `7dff9a` now chars to `374139`, a neutral
+    dark grey with a hint of its old hue, against `295c34` before.
   - **Those charred materials are shared and must outlive the level**, like everything in
     `textures.js` — which is exactly why a wreck mesh must *not* carry `ownMaterial`, or
     teardown disposes a material the next floor is about to use. Its geometry is the level's

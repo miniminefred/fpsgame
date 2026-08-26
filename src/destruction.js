@@ -78,6 +78,22 @@ const BLACKOUT_VOICES = 16;
 // metalness to nothing, because what is left is oxide, not steel.
 const CHAR = 0.24;
 const CHAR_ROUGHNESS = 0.94;
+// ...and what a burnt LAMP keeps, which is a different question. Everything
+// above is about a surface being scorched, and scaling a colour is the right
+// model for that: dark grey plating and a dark yellow hazard band are both
+// still recognisably what they were. A lit indicator is not. Its colour is not
+// what it is painted, it is the fact that it is ON — so scaling it leaves a
+// dimmer green light, and a machine that has just blacked out the floor sits
+// there in the dark with eight rows of green still showing. The colour has to
+// go, not just the brightness: a lamp that is out is a piece of dark plastic.
+//
+// Saturation is therefore cut almost out, and lightness is CAPPED rather than
+// scaled, because these are two different things wearing one material type. A
+// bright lens is pulled down to dead plastic; a screen that was already a dark
+// slate stays exactly as dark as it was and merely stops being blue. A cap does
+// both; a scale would brighten nothing and a fixed value would lift the screen.
+const DEAD_LENS_SAT = 0.15;
+const DEAD_LENS_MAX_L = 0.42;
 
 // A wreck is cut into BAYS before any of it is kept, because the machine is
 // authored as a few enormous boxes — one housing 15 m long — and a hole has to
@@ -428,6 +444,7 @@ const _barMid = new THREE.Vector3();
 const _wireDir = new THREE.Vector3();
 const _wireAt = new THREE.Vector3();
 const _rootIn = new THREE.Vector3();
+const _deadHsl = { h: 0, s: 0, l: 0 };
 const _spikeQ = new THREE.Quaternion();
 const _spikeM = new THREE.Matrix4();
 const _spikeOne = new THREE.Vector3(1, 1, 1);
@@ -655,6 +672,19 @@ function charOf(material, sooty = false) {
           side: material.side,
         })
         : material.clone();
+      // Being unlit is the same evidence twice: it is what made this read as a
+      // lamp, so it is also what says the COLOUR was the lamp being on rather
+      // than paint. See DEAD_LENS_SAT — without this the indicators come
+      // through as dimmer green and go on being the brightest thing in a room
+      // the machine itself has just put in the dark.
+      if (material.isMeshBasicMaterial && burnt.color) {
+        burnt.color.getHSL(_deadHsl);
+        burnt.color.setHSL(
+          _deadHsl.h,
+          _deadHsl.s * DEAD_LENS_SAT,
+          Math.min(_deadHsl.l, DEAD_LENS_MAX_L),
+        );
+      }
       burnt.color?.multiplyScalar(CHAR * keep);
       if (burnt.emissive) burnt.emissive.multiplyScalar(0);
       if ('roughness' in burnt) burnt.roughness = CHAR_ROUGHNESS;
