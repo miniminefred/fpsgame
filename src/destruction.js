@@ -255,6 +255,22 @@ const SPIKE_THICK = [0.025, 0.075];
 const SPIKE_TILT = 0.85;        // radians of wander off dead-radial
 const SPIKE_INWARD = 0.3;       // ...and how many bend back INTO the hole instead
 const SPIKE_REACH = 0.42;       // how close kept material must be for a spike to root
+// ...and how far INTO that metal the root is then buried, as a fraction of the
+// bar's own thickness. Landing a bar's end face exactly on the surface is
+// touching, and touching is enough from most angles: at a grazing one the
+// rectangular section pokes through the plating on one side and opens a wedge
+// of daylight under the other. A bite closes it.
+//
+// It goes along the surface normal rather than back down the bar, which looks
+// like the long way round and is the only one that works. Back down the bar is
+// into the metal for the 30% that bend inward through the hole, and into the
+// HOLE for the 70% that peel outward — the same offset lands on opposite sides
+// of the plating depending on which way the shard went. The normal is into the
+// metal by construction. Scaled by thickness because it is a fixed distance
+// that must not exceed what it is burying: half of a shard's own section is
+// always enough to close the wedge, and always leaves the other half proud even
+// where a shard has been laid flat against the plating.
+const ROOT_BITE = 0.5;
 
 // Severed wiring hanging out of the tear. Everything else on a wreck is a shade
 // of burnt, so these few centimetres of insulation are the only colour on it and
@@ -411,6 +427,7 @@ const _spikeAt = new THREE.Vector3();
 const _barMid = new THREE.Vector3();
 const _wireDir = new THREE.Vector3();
 const _wireAt = new THREE.Vector3();
+const _rootIn = new THREE.Vector3();
 const _spikeQ = new THREE.Quaternion();
 const _spikeM = new THREE.Matrix4();
 const _spikeOne = new THREE.Vector3(1, 1, 1);
@@ -436,6 +453,29 @@ function barStamp(at, dir, length, thick, thickY = thick * (0.4 + Math.random())
     sx: thick, sy: thickY, sz: length,
     q,
   };
+}
+
+/**
+ * Buries a root `dist` into the bay it was pulled onto, along the inward normal
+ * `rimPoint` left in `_rootIn` — and never THROUGH it, which is the whole
+ * reason this is a function and not a line.
+ *
+ * A bay is not always plating. The rim of a hole is where the buckling is
+ * worst, so the nearest kept metal to a sample is regularly a 4 mm sliver of
+ * trim rather than the 9 cm block next to it, and a bite sized off the bar goes
+ * clean out of the far side — the root pops out of the back of the very piece
+ * it is anchored in, which is the fault it was added to fix, one step smaller.
+ * Clamping the offset back into the box caps the bite at the far face: a sliver
+ * anchors flush, anything thicker anchors properly buried. It was 9 roots in
+ * 374 before the clamp.
+ */
+function biteInto(at, bay, dist) {
+  at.addScaledVector(_rootIn, dist);
+  return at.set(
+    Math.min(Math.max(at.x, bay.x0), bay.x1),
+    Math.min(Math.max(at.y, bay.y0), bay.y1),
+    Math.min(Math.max(at.z, bay.z0), bay.z1),
+  );
 }
 
 /**
@@ -483,6 +523,33 @@ function rimSpikes(blast, kept, out) {
       );
       if (d < bestD) { bestD = d; near = bay; }
     }
+    if (!near) return null;
+
+    // ...and then PULLED ONTO IT, which is the difference between a shard that
+    // was torn off the machine and one hanging in the room beside it. The
+    // sample is a point on the blast sphere: that is where the rim runs, but
+    // the rim is ragged and the metal under it is boxes, so `SPIKE_REACH`
+    // admits a sample up to 0.42 m clear of the nearest bay — and a shard drawn
+    // from there begins in mid-air with nothing behind it. Measured over ten
+    // machines before this, the median root stood 8 cm off the metal, a third
+    // of them over 15 cm, and one in eleven over 30 cm.
+    //
+    // The nearest point on the bay is the honest place for it, and it does not
+    // move the rim: the nearest kept metal to a point on the rim IS the rim.
+    // Clamping per axis is the whole of it, and a sample that landed inside
+    // kept metal is already its own nearest point, so it is left alone.
+    _rootIn.copy(atOut);
+    atOut.set(
+      Math.min(Math.max(atOut.x, near.x0), near.x1),
+      Math.min(Math.max(atOut.y, near.y0), near.y1),
+      Math.min(Math.max(atOut.z, near.z0), near.z1),
+    );
+    // Which way is INTO the metal, kept as a unit normal for the bite at the
+    // call sites. A sample that was already inside kept metal is its own
+    // nearest point, so there is no direction and nothing to bite.
+    _rootIn.subVectors(atOut, _rootIn);
+    if (_rootIn.lengthSq() > 1e-8) _rootIn.normalize();
+    else _rootIn.set(0, 0, 0);
     return near;
   };
 
@@ -510,8 +577,10 @@ function rimSpikes(blast, kept, out) {
     const material = charOf(near.material, true);
     let list = out.get(material);
     if (!list) out.set(material, list = []);
-    list.push(barStamp(_spikeAt, _spikeDir, lo + Math.random() * (hi - lo),
-      long ? thick * 0.55 : thick));
+    // Bitten into the metal rather than stood against it. See ROOT_BITE.
+    const section = long ? thick * 0.55 : thick;
+    list.push(barStamp(biteInto(_spikeAt, near, section * ROOT_BITE),
+      _spikeDir, lo + Math.random() * (hi - lo), section));
   }
 
   // --- severed wiring ---------------------------------------------------------
@@ -521,7 +590,8 @@ function rimSpikes(blast, kept, out) {
   if (blast.r < WIRE_MIN_R) return;
   const wires = WIRES[0] + Math.floor(Math.random() * (WIRES[1] - WIRES[0] + 1));
   for (let i = 0; i < wires; i++) {
-    if (!rimPoint(_wireDir, _wireAt)) continue;
+    const rooted = rimPoint(_wireDir, _wireAt);
+    if (!rooted) continue;
 
     // Out of the tear rather than along it, and never starting upward — a cut
     // cable end that rises out of the hole is a cable under tension, which this
@@ -536,6 +606,9 @@ function rimSpikes(blast, kept, out) {
 
     const thick = WIRE_THICK[0] + Math.random() * (WIRE_THICK[1] - WIRE_THICK[0]);
     const seg = (WIRE_LEN[0] + Math.random() * (WIRE_LEN[1] - WIRE_LEN[0])) / WIRE_SEGMENTS;
+    // The first joint is bitten in like a shard's root: a cable that begins at
+    // the surface reads as laid across the hole rather than as coming out of it.
+    biteInto(_wireAt, rooted, thick * ROOT_BITE);
     for (let s = 0; s < WIRE_SEGMENTS; s++) {
       list.push(barStamp(_wireAt, _wireDir, seg, thick, thick));
       _wireAt.addScaledVector(_wireDir, seg);

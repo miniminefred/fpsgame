@@ -745,8 +745,23 @@ Three things about it are structural rather than decorative:
     (cell count, aspect ratio, span) looked healthy. It now tracks `sqrt(R² - x²)` to within
     a tenth of R. The torn look is
     `rimSpikes`: shards sampled ON the blast sphere, so they follow the same curve the bays
-    were cut against, rooted only where kept material is within `SPIKE_REACH` (a spike
-    hanging in air where the machine never reached is what would give the trick away). They
+    were cut against, admitted only where kept material is within `SPIKE_REACH` (a spike
+    hanging in air where the machine never reached is what would give the trick away) — and
+    then **pulled onto that metal and bitten into it**, which is the other half of the same
+    sentence and was missing for a long time. Passing the reach test is not the same as
+    touching: a sample is a point on the blast sphere and the metal under it is boxes, so
+    `SPIKE_REACH` admits a root up to 0.42 m clear of the nearest bay. Measured over ten
+    machines, the median shard or wire began 8 cm off any metal, a third of them over 15 cm
+    and one in eleven over 30 cm — torn plating with a hand's width of daylight behind it.
+    Clamping the sample to the nearest point on the bay fixes it and does not move the rim,
+    because the nearest kept metal to a point on the rim IS the rim; all 391 roots then
+    measure exactly zero. The `ROOT_BITE` on top of that goes along the surface NORMAL and
+    not back down the bar, which looks like the long way round and is the only one that
+    works: back down the bar is into the metal for the 30% of shards that bend inward
+    through the hole and into the HOLE for the 70% that peel outward. It is capped at the
+    bay it is biting (`biteInto`), because the rim is where the buckling is worst and the
+    nearest metal is regularly a 4 mm sliver of trim — 5 roots in 358 had a bite that went
+    clean out of the far side of the very piece anchoring them. They
     are the only rotated geometry in the wreck — a rim of axis-aligned spikes is a row of
     little pillars, not metal that was ripped — and `mergeGeometries` does not mind a baked
     matrix, so they cost nothing but their own triangles. `RAG` came DOWN from 0.3 to 0.1
