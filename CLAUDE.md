@@ -640,14 +640,22 @@ Three things about it are structural rather than decorative:
   (24.8 ms weld-only, 22.6 ms with trim) because the JIT dominates. What comes off the machine
   is now *only* the bays the blasts took, ~230 rather than 40 fittings plus ~65 bays, and
   `_scatter`'s per-prop and global caps bound that as they always did.
-  - **It is damaged by four causes with four signatures, and that is the design.** Damage
+  - **It is damaged by five causes with five signatures, and that is the design.** Damage
     scattered evenly over a wreck is texture — it reads as corrosion, or as a mesh with holes
     in it. Damage you can point at is an event: *this went up at one end, and that little
     hole is where the round that finished it went in.* So: **the corner**, one upper end
     blown clean off; **the dish**, the same blast deforming the plating for a way around it;
     **the shrapnel**, what came off the machine hitting the rest of it, clustered toward the
-    corner because that is where it came from; and **the round**, a crater about an arm
-    across wherever the killing shot landed, the one piece of it the player aims.
+    corner because that is where it came from; **the round**, a crater about an arm
+    across wherever the killing shot landed, the one piece of it the player aims; and
+    **the extras**, two more that are always there — one the size of the round's crater
+    and one small — because something inside a generator goes up with it. They are what
+    stops a wreck being the corner plus a single hole, and they are the only damage on the
+    machine that does not depend on how it died: a generator caught in somebody else's
+    explosion leaves no round at all, and without them it comes out with a bite taken out
+    of one end and mint everywhere else. They stand at least a quarter of the machine's
+    length from the corner (`EXTRA_FROM_CORNER`) — any nearer and they read as two
+    unusually large pieces of shrapnel, which is ground the shrapnel already covers.
 
     The shrapnel is deliberately *sparse* — one to three pocks, piled hard against the corner
     (`SHRAPNEL_BIAS` 0.92). It was five to ten spread more evenly and that reads as spots

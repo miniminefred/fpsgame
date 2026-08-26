@@ -116,7 +116,7 @@ const bayFor = (r) => Math.min(BAY_COARSE, Math.max(BAY_MIN, r / BAY_PER_RADIUS)
 
 // Damage scattered evenly over a wreck is texture — it reads as corrosion, or as
 // a mesh with holes in it. Damage you can point at is an EVENT. So the machine
-// is damaged by four causes with four signatures, and every one of them is the
+// is damaged by five causes with five signatures, and every one of them is the
 // same sphere with a centre and a radius, which is what lets one loop cut them
 // all and one loop hang torn metal round them:
 //
@@ -124,6 +124,7 @@ const bayFor = (r) => Math.min(BAY_COARSE, Math.max(BAY_MIN, r / BAY_PER_RADIUS)
 //   the dish      the same blast deforming the plating for a way around it
 //   the shrapnel  what came off the machine, hitting the rest of it
 //   the round     the crater from the shot that finished it, aimed by the player
+//   the extras    two more, always: something inside it went up as it died
 //
 // The rule that keeps it reading as a machine rather than as a colander is that
 // only ONE of them goes through. A generator you can see daylight through in six
@@ -190,6 +191,17 @@ const SHRAPNEL_BIAS = 0.92;    // 0 spreads them evenly, 1 piles them on the cor
 // a dent the size of a fist seen from across a plant room. A pock does not have
 // to survive being counted; it has to be there.
 const SHRAPNEL_GRID = 0.17;
+
+//   Two more, always: whatever finished the machine, something inside it went
+//   up with it. One crater the size of the round's and one small one, so a
+//   wreck is never the corner plus a single hole however it died — and so a
+//   machine taken out by somebody else's explosion, which leaves no round at
+//   all, is still a machine that came apart rather than one with a bite out of
+//   its end. They sit at least EXTRA_FROM_CORNER along the machine from the
+//   corner: any nearer and they read as two large pieces of shrapnel instead
+//   of as their own events, which is ground the shrapnel already covers.
+const EXTRA_TINY_R = 0.26;
+const EXTRA_FROM_CORNER = 0.25;
 
 // Plating near a blast is not flat any more: bays are nudged along the machine's
 // depth and tilted, which costs nothing — the stamper takes a quaternion per box
@@ -988,6 +1000,45 @@ export class Destruction {
         z: alongX ? nearFace : at,
         r: SHRAPNEL_R[0] + spread() * (SHRAPNEL_R[1] - SHRAPNEL_R[0]),
         grid: SHRAPNEL_GRID,
+      });
+    }
+
+    // ...and the two that are always there: something inside the machine let go
+    // as it died. Cratered like the round — never `through`, so they are bites
+    // out of the near face like everything but the corner — placed along the
+    // machine away from the corner, at any height clear of the plinth.
+    //
+    // Both take `bayFor`'s grid, which for the small one is the BAY_MIN floor,
+    // and that is the opposite of what SHRAPNEL_GRID decided one blast up. It
+    // is the same trade read the other way round: a pock is a mark and does not
+    // have to survive being looked at, so it is not worth cutting a coarse box
+    // into eighty pieces for. A hole is a hole, and a hole with the grid's
+    // resolution across it is a rasterised circle you can count the pixels of.
+    // Measured over the same ten machines, the small one costs 18 ms of _wreck
+    // at BAY_MIN against 3 ms at SHRAPNEL_GRID; the full-size one costs 30 ms
+    // whatever it is given, and the pair together take _wreck from 55 ms to
+    // 95 ms. Those are one machine's numbers at about 3x the reference the
+    // 18-26 ms band was measured on, so the honest reading is high twenties
+    // rather than mid teens: this frame got dearer, and it is still a long way
+    // from the 181 ms the stamper was written to fix (see BAY_PER_RADIUS).
+    for (const r of [HOLE_R, EXTRA_TINY_R]) {
+      const t = EXTRA_FROM_CORNER + spread() * (1 - EXTRA_FROM_CORNER);
+      const at = cornerAt + (farAt - cornerAt) * t;
+      // Whole, which is why the height is inset by the radius at both ends
+      // rather than drawn over the machine's own rise the way the shrapnel's
+      // is. The bottom KEEP_BASE is protected, so a crater centred just above
+      // it comes out with its lower half simply missing — which reads as a bite
+      // out of the plinth line rather than as a hole, and reads worse the
+      // smaller the hole is. A pock can be clipped and still be a pock; a hole
+      // the size of the round's cannot.
+      const yLo = floorY + KEEP_BASE + r;
+      const yHi = Math.max(yLo, maxY - r);
+      const y = yLo + spread() * (yHi - yLo);
+      blasts.push({
+        x: alongX ? at : nearFace,
+        y,
+        z: alongX ? nearFace : at,
+        r,
       });
     }
 
