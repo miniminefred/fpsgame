@@ -147,6 +147,24 @@ const OUTSIDE_MIN = 5;
 // number here is how that guarantee quietly stopped being about the same thing.
 const MIN_SPAWN_GAP = FIRST_CONTACT_GAP;
 
+// How much of an office is at its desk when you walk in.
+//
+// Not all of it, and that is the whole reason it is a die rather than "sit down
+// wherever there is a chair". A room where every single body is seated facing a
+// monitor reads as a diorama; one where four of five are working and the fifth
+// is standing over somebody's shoulder reads as an office. The rest of the
+// roster is unchanged — anybody who does not get a desk stands where they always
+// stood, which is also what happens in a storeroom, a corridor or a room whose
+// desks were all taken.
+const AT_DESK = 0.8;
+// ...and how big a shift one room may be dealt. A room is staffed to the desks
+// it HAS rather than to the flat 0-3 a storeroom draws — an open-plan farm with
+// two people in it and ten empty pods is not a half-staffed office, it is a room
+// somebody forgot to fill. The cap is what keeps the biggest farm on the floor
+// from swallowing the roster, and it wants to stay under the 1-3 a team is (see
+// spawn) times a couple, or the rest of the building empties out to fill it.
+const DESK_TEAM = 5;
+
 // The cleaning staff. Doing rounds in the corridors, plus the two on their
 // break in the broom closet. See _janitors.
 const JANITORS = [1, 3];
@@ -221,6 +239,9 @@ export class Enemies {
     this._aim = new THREE.Vector3();
     // Cell -> the living bodies in it, rebuilt each frame. See _rebuildNeighbours.
     this._cells = new Map();
+    // Room -> the desks in it nobody has been sat at yet. Refilled per floor by
+    // `spawn`, emptied as the roster is placed. See deskPool and _takeDesk.
+    this.desks = new Map();
   }
 
   // What the floor objective counts. The neutrals are alive and on the floor and
@@ -247,7 +268,7 @@ export class Enemies {
   }
 
   // Populates a floor. `tuning` scales with depth — see game.js.
-  spawn(layout, nav, rng, tuning) {
+  spawn(layout, nav, rng, tuning, workstations = []) {
     this.clear();
     this.nav = nav;
     this.tuning = tuning;
@@ -259,6 +280,7 @@ export class Enemies {
     this.shoutTimer = 0;
     this.theme = pickTheme(layout.floorNumber, rng);
     this.corridors = collectCorridors(layout, nav);
+    this.desks = deskPool(workstations, nav, rng);
 
     const spots = this._spawnPoints(layout, nav, rng, tuning.count);
     // A room holds a team, not a headcount. Whoever is in a room is in it
@@ -274,7 +296,12 @@ export class Enemies {
         left = rng.chance(0.45) ? 1 : (rng.chance(0.72) ? 2 : 3);
       }
       left--;
-      this._add(spot.x, spot.z, rng, tuning, team.type);
+      const e = this._add(spot.x, spot.z, rng, tuning, team.type);
+      // Whoever drew a desk is found at it, working. Not everybody can be: a
+      // Sentry Unit is a machine on patrol and has no more business at a
+      // keyboard than the floor cleaner does, so it stands at the station it
+      // was given instead. See `standing` in enemy-types.js.
+      if (spot.desk && !team.type.standing) this._seat(e, spot.desk);
     }
 
     this._security(layout, nav, rng, tuning);
@@ -363,6 +390,21 @@ export class Enemies {
     const room = office.room;
     let posted = 0;
     const want = rng.int(OFFICE_GUARDS[0], OFFICE_GUARDS[1]);
+
+    // One of them is on the cameras, which is the only reason this room is here.
+    // The camera desk goes in first and unconditionally when the room is
+    // furnished (securityOffice in gen/rooms.js), so the chair in front of the
+    // wall of screens is the one desk on the floor that is certain to exist —
+    // and a bank of monitors with nobody watching it is a worse room than one
+    // with five men standing around in it.
+    const cams = this._takeDesk(room, (x, z) => nav.clear(x, z, RADIUS));
+    if (cams) {
+      const watcher = this._add(cams.x, cams.z, rng, tuning, this._guardType(rng));
+      watcher.behindLock = true;
+      this._seat(watcher, cams);
+      posted++;
+    }
+
     for (let tries = 0; tries < 120 && posted < want; tries++) {
       const tx = rng.int(room.x0, room.x1 - 1);
       const ty = rng.int(room.y0, room.y1 - 1);
@@ -588,14 +630,15 @@ export class Enemies {
       if (!nav.walkable(tx, ty)) continue;
       const x = nav.wx(tx), z = nav.wz(ty);
       if (!nav.clear(x, z, RADIUS)) continue;
-      if (this.items.some((e) => e.seated && Math.hypot(e.x - x, e.z - z) < 0.9)) continue;
+      if (this.items.some((e) => e.seat && Math.hypot(e.x - x, e.z - z) < 0.9)) continue;
 
       const e = this._add(x, z, rng, tuning, TYPES.janitor);
       e.behindLock = true;
       // They get up the moment anything happens — see _animate. Until then they
       // are on the floor with their backs to a shelf, which is what a broom
-      // closet is for.
-      e.seated = true;
+      // closet is for. Not in a chair: there is no desk in a broom closet, and
+      // the two poses are as different as the two rooms (see animateSeated).
+      e.seat = 'floor';
       seated++;
     }
   }
@@ -622,6 +665,19 @@ export class Enemies {
     if (!lock) return;
 
     const room = lock.room;
+    // At his desk, which is the one in this building that faces a wall with a
+    // bookcase behind it (see managerOffice in gen/rooms.js). No distance rule
+    // on it: his office is wherever the black lock landed, and the man works
+    // where he works. Nobody else can have taken it — the room is staff-only, so
+    // `_spawnPoints` never staffed it.
+    const desk = this._takeDesk(room, (x, z) => nav.clear(x, z, RADIUS));
+    if (desk) {
+      const boss = this._add(desk.x, desk.z, rng, tuning, TYPES.manager);
+      boss.behindLock = true;
+      this._seat(boss, desk);
+      return;
+    }
+
     for (let tries = 0; tries < 40; tries++) {
       const tx = rng.int(room.x0, room.x1 - 1);
       const ty = rng.int(room.y0, room.y1 - 1);
@@ -898,33 +954,72 @@ export class Enemies {
     const rooms = rng.shuffle(layout.rooms.filter((r) => r.role !== 'lobby' && !r.staffOnly));
     if (!rooms.length) return spots;
 
+    // The same rooms, workplaces first. The roster is spread over a hundred-odd
+    // rooms and runs out long before all of them have had a turn, so which rooms
+    // get served BEFORE it runs out is the whole of where a floor's staff are —
+    // and left to the shuffle that came out as six people at a desk on a floor
+    // of a hundred and six, with two thirds of the building's desks empty and
+    // the same headcount standing about in storerooms. A floor is staffed from
+    // the rooms with desks in them outward, and the archive gets whoever is
+    // left.
+    //
+    // First pass only. Held for every pass it would fill five rooms and empty
+    // the rest of a floor that has few enough rooms to come round again.
+    const deskless = (r) => (this.desks.get(r)?.length ? 0 : 1);
+    const workFirst = [...rooms].sort((a, b) => deskless(a) - deskless(b));
+
     const minDist = 14;
+    // Where a body may be put down at all. A single walkable tile is not enough:
+    // movement tests a whole body radius, so a tile wedged against furniture is
+    // one an enemy can stand on but never leave, and spawning there makes it a
+    // statue. Every spot on the floor is held to this, a desk included — a body
+    // at one is going to want to stand up out of it. `spots` is read live, which
+    // is what keeps two bodies from being put down on top of each other.
+    const ok = (x, z) => nav.clear(x, z, RADIUS)
+      && Math.hypot(x - layout.spawn.x, z - layout.spawn.z) >= minDist
+      && !spots.some((s) => Math.hypot(s.x - x, s.z - z) < 1.6);
+
     // One group per room per pass, so the passes have to outnumber the enemies
     // per room — at seventy-plus on a twenty-room floor, eight passes ran out
     // long before the roster did and every floor quietly shipped half of it.
     const passes = Math.max(8, Math.ceil(count / Math.max(1, rooms.length)) + 4);
 
     for (let pass = 0; spots.length < count && pass < passes; pass++) {
-      for (const room of rooms) {
+      for (const room of pass === 0 ? workFirst : rooms) {
         if (spots.length >= count) break;
         // How many this room takes this time round. Most of the floor's empty
         // rooms come from here rather than from being skipped outright: a room
         // that draws nobody on every pass simply never gets anybody.
-        const want = rng.chance(0.28) ? 0 : rng.int(1, 3);
+        //
+        // Except a room with desks in it, which is dealt a shift instead: as
+        // many as it has stations, capped, and never nobody. That is the other
+        // half of staffing the workplaces first — order alone got the desks
+        // visited, and then handed a twelve-pod farm the same one or two bodies
+        // it handed the stationery cupboard next door.
+        const desks = this.desks.get(room)?.length ?? 0;
+        const want = desks
+          ? rng.int(1, Math.min(desks, DESK_TEAM))
+          : (rng.chance(0.28) ? 0 : rng.int(1, 3));
 
         for (let placed = 0; placed < want && spots.length < count; placed++) {
+          // A desk in this room before a patch of its carpet. This is the whole
+          // of "the staff are at work": the furnisher already decided where the
+          // desks are and which way the chairs face (see `seatFacing` in
+          // gen/rooms.js), so being found working is a question of standing
+          // people where the work is rather than of animating anything new.
+          const desk = rng.chance(AT_DESK) ? this._takeDesk(room, ok) : null;
+          if (desk) {
+            spots.push({ x: desk.x, z: desk.z, room, desk });
+            continue;
+          }
+
           for (let tries = 0; tries < 14; tries++) {
             const tx = rng.int(room.x0, room.x1 - 1);
             const ty = rng.int(room.y0, room.y1 - 1);
             if (!nav.walkable(tx, ty)) continue;
 
             const x = nav.wx(tx), z = nav.wz(ty);
-            // A single walkable tile is not enough: movement tests a whole body
-            // radius, so a tile wedged against furniture is one an enemy can
-            // stand on but never leave. Spawning there makes it a statue.
-            if (!nav.clear(x, z, RADIUS)) continue;
-            if (Math.hypot(x - layout.spawn.x, z - layout.spawn.z) < minDist) continue;
-            if (spots.some((s) => Math.hypot(s.x - x, s.z - z) < 1.6)) continue;
+            if (!ok(x, z)) continue;
 
             spots.push({ x, z, room });
             break;
@@ -933,6 +1028,48 @@ export class Enemies {
       }
     }
     return spots;
+  }
+
+  /**
+   * The next free desk in a room that the caller is willing to stand somebody
+   * at, or null.
+   *
+   * `ok(x, z)` is the caller's own test, because who may sit where is not one
+   * rule: a body found working has to pass everything an ordinary spawn spot
+   * passes, while the manager sits at his own desk however close to the lifts
+   * his office happens to be.
+   *
+   * Taking one REMOVES it, so two bodies can never be dealt the same chair —
+   * which would be one body inside another, both of them facing the same
+   * monitor. A desk the test refuses is left in the pool: the next caller asks a
+   * different question of it.
+   */
+  _takeDesk(room, ok) {
+    const free = this.desks.get(room);
+    if (!free) return null;
+    for (let i = 0; i < free.length; i++) {
+      if (ok(free[i].x, free[i].z)) return free.splice(i, 1)[0];
+    }
+    return null;
+  }
+
+  /**
+   * Puts a body in a chair, at work, facing what it is working on.
+   *
+   * Being at a desk is a state of the BODY and not of the AI — the state machine
+   * is untouched, `idle` still means idle, and the pose is stood down the frame
+   * anything happens (see `animate` in enemy-anim.js). So nothing downstream of
+   * here — hearing, sight, pathing, the card in their pocket, the ragdoll —
+   * needs to know this was ever a thing.
+   */
+  _seat(e, station) {
+    e.seat = 'desk';
+    // The chair's quarter turn, converted the one way it can be: a prop's turns
+    // rotate the front from -Z toward +X, which is a negative rotation about Y.
+    // Same line as tryPlace's, because a body and the chair under it face the
+    // same way for the same reason.
+    e.yaw = -station.rot * Math.PI / 2;
+    e.group.rotation.y = e.yaw;
   }
 
   _add(x, z, rng, tuning, type) {
@@ -1010,8 +1147,10 @@ export class Enemies {
       // Carrying a badge that opens doors: the security response to an alarm,
       // and nobody else on the floor. See `alarm`.
       keyed: false,
-      // Sitting it out until something happens. See _animateSeated.
-      seated: false,
+      // Sitting it out until something happens, and on what: 'desk' for somebody
+      // found working, 'floor' for the two janitors on their break. Null is
+      // standing up, which is everybody else. See animateSeated in enemy-anim.js.
+      seat: null,
       // The materials a hit whitens: whatever this one is actually wearing.
       flash: rig.flash ?? [],
     };
@@ -1833,7 +1972,7 @@ export class Enemies {
       // One slot for everything that is not a coordinate: which state, and
       // whether they are still in a chair. Both change how `animate` poses them,
       // and neither is worth a number of its own.
-      out[written++] = SNAP_STATES.indexOf(e.state) + (e.seated ? 8 : 0);
+      out[written++] = SNAP_STATES.indexOf(e.state) + (e.seat ? 8 : 0);
     }
 
     this._snapCursor = i;
@@ -1855,7 +1994,12 @@ export class Enemies {
       e.netY = a[k + 3] / SNAP_UNIT;
       e.netYaw = a[k + 4] / SNAP_UNIT;
       const packed = a[k + 5];
-      e.seated = (packed & 8) !== 0;
+      // Whether they are still sitting is the host's; WHICH seat it is is a fact
+      // about the floor, and both browsers generated the same one from the same
+      // seed. So the bit only ever stands somebody up — the fallback is there
+      // for form, since a body that has left its chair never gets back into it.
+      if (!(packed & 8)) e.seat = null;
+      else e.seat ??= 'floor';
       e.state = SNAP_STATES[packed & 7] ?? 'idle';
     }
   }
@@ -1936,9 +2080,47 @@ export class Enemies {
     }
     this.items.length = 0;
     this.meshes.length = 0;
+    // The desks belong to the floor being torn down, and every one of them holds
+    // a reference to one of its rooms.
+    this.desks.clear();
   }
 
   dispose() { this.clear(); }
+}
+
+/**
+ * The floor's desks, bucketed by the room each one is in.
+ *
+ * Shuffled inside each bucket, because the furnisher lays a cubicle farm out row
+ * by row: taken in order, the three people in a twelve-pod room are the three
+ * pods nearest one corner every single time, and a room reads as a queue rather
+ * than as an office. Shuffling is also what makes the pods that are EMPTY
+ * scattered, which is most of what says the room is half-staffed tonight.
+ *
+ * Keyed on the room object itself. Both browsers in a co-op session generated
+ * the same floor from the same seed, so these are the same desks in the same
+ * order on both ends and everybody sits down in the same chair.
+ */
+function deskPool(workstations, nav, rng) {
+  const by = new Map();
+  for (const w of workstations) {
+    // A desk the furnisher could not attribute to a room — nothing in the
+    // catalogue places one outside a room today, and a corridor full of unowned
+    // workstations would be dealt to whoever asked first.
+    if (!w.room) continue;
+    // A chair a whole body does not fit in front of, which is a third of the
+    // pods in a cubicle farm: the pitch is tight, and the nav grid holds a body
+    // to whole tiles. Dropped here rather than refused at the door, because how
+    // many desks a room has is what decides how big a shift it is dealt (see
+    // _spawnPoints) — counting stations nobody can sit at deals a farm five
+    // people and then stands all five of them up.
+    if (!nav.clear(w.x, w.z, RADIUS)) continue;
+    const list = by.get(w.room);
+    if (list) list.push(w);
+    else by.set(w.room, [w]);
+  }
+  for (const list of by.values()) rng.shuffle(list);
+  return by;
 }
 
 // Corridor waypoints for the panicking staffer. Sampled rather than exhaustive:

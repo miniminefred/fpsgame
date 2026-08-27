@@ -16,6 +16,70 @@ import { lerp, smoothTo } from './util.js';
 const SIT_DROP = 0.42;
 const SIT_LEGS = -1.5;         // radians — straight out in front
 
+// And somebody in a chair at a desk. The drop puts the hip joint a few
+// centimetres over the chair's seat, which is at 0.5 (see `chair` in
+// gen/props.js), and the limbs then swing about a real joint — see `hinge`.
+//
+// A leg is one box with no knee in it, so it goes down and forward in one
+// straight line to the carpet, and what makes that read as sitting rather than
+// as lying down is where it ENDS: knees under the desk, which is where legs go.
+// The arms are the angle that lands the hands at 0.74 — the height of the desk
+// they are supposed to be resting on — and dropped into the lap on the beats
+// they are not.
+const DESK_DROP = 0.29;
+const DESK_LEGS = 1.22;
+const DESK_ARMS = 0.87;
+const DESK_IDLE_ARMS = 0.4;
+// Taps per radian of the body's own phase. Fast enough to be typing and small
+// enough (TAP_THROW) to be wrists rather than arms.
+const TAP_RATE = 13;
+const TAP_THROW = 0.05;
+// How much of the time a body at a desk is actually typing, as the fraction of a
+// slow cycle spent above the threshold — the rest is spent looking at whatever
+// it did. Off the same phase as everything else, so no body needs a clock of its
+// own and no two of them are on the same beat.
+const WORK_BEAT = 0.41;
+const WORK_DUTY = -0.35;
+
+// Where a limb hangs from and how long it is, in rig space. Same numbers
+// rigs.js builds the body from — this file already restates the gun's and the
+// mop's rest positions the same way, and unlike those two these have a check on
+// them: a joint that has drifted shows up as a leg detached from its own hip.
+const HIP_X = 0.12, LEG_Y = 0.43, LEG_HALF = 0.43;
+const ARM_X = 0.32, ARM_Y = 1.15, ARM_HALF = 0.27;
+
+/**
+ * Swings a limb about its JOINT rather than about its own middle.
+ *
+ * Every part of a rig is a bare mesh (`part` in rigs.js), so `rotation.x` alone
+ * turns a leg about the point half way down it. The walk cycle gets away with
+ * that because the swing is a few degrees either side of standing; a sitting
+ * pose does not — at 57 degrees a leg leaves a hand's width of daylight at the
+ * hip and puts its foot through the floor, which is what the first version of
+ * this did. Two lines of trigonometry buy a hip and a shoulder that stay where
+ * the body's are: the limb is placed so its top end lands on the joint it hangs
+ * off, which is its standing centre plus half its length.
+ *
+ * `angle` is positive toward -Z, the way the body faces, because everything in
+ * a seated pose is out in front of them.
+ */
+function hinge(limb, x, y, half, angle) {
+  limb.rotation.x = angle;
+  limb.position.set(x, y + half * (1 - Math.cos(angle)), -half * Math.sin(angle));
+}
+
+// Back to how rigs.js left them. The walk cycle writes every limb ROTATION
+// every frame and so recovers on its own, but nothing else in here ever moves a
+// limb, so a body that stood up out of a chair would carry the chair's hips and
+// shoulders around the floor with it for the rest of the run.
+function stand(e) {
+  e.torso.rotation.x = 0;
+  hinge(e.legL, -HIP_X, LEG_Y, LEG_HALF, 0);
+  hinge(e.legR, HIP_X, LEG_Y, LEG_HALF, 0);
+  hinge(e.armL, -ARM_X, ARM_Y, ARM_HALF, 0);
+  hinge(e.armR, ARM_X, ARM_Y, ARM_HALF, 0);
+}
+
 export const DEATH_TIME = 2.2;
 export const HIT_FLASH = 0.1;
 export const SWING_TIME = 0.5;    // wind-up plus follow-through on a melee swing
@@ -38,14 +102,11 @@ export function animate(e, dt, audio) {
   // idle they are standing up, and from then on they animate like anybody
   // else. Which means nothing downstream — pathing, swinging, ragdolling —
   // ever has to know this was a thing.
-  if (e.seated && e.state !== 'idle') {
-    e.seated = false;
-    // Everything else the seated pose touched is written every frame by the
-    // walk cycle below and recovers on its own; the torso lean is not, so it
-    // is the one thing that has to be put back by hand.
-    e.torso.rotation.x = 0;
+  if (e.seat && e.state !== 'idle') {
+    e.seat = null;
+    stand(e);
   }
-  if (e.seated) return animateSeated(e, dt);
+  if (e.seat) return animateSeated(e, dt);
 
   const moving = e.state === 'chase' || e.state === 'fight' || e.state === 'wander';
   e.walkPhase += dt * (moving ? 9 : 1.4);
@@ -96,6 +157,64 @@ export function animate(e, dt, audio) {
 }
 
 /**
+ * Whichever way this one is sitting it out. See `_seat` and the janitors in
+ * enemies.js for who gets which.
+ */
+export function animateSeated(e, dt) {
+  return e.seat === 'desk' ? animateWorking(e, dt) : animateFloor(e, dt);
+}
+
+/**
+ * At a desk, doing the job. The one pose in the game that is meant to be seen
+ * from behind: a floor of offices with somebody at a monitor in three of them is
+ * a building at work, and the same floor with everybody standing in the middle of
+ * their own carpet facing nothing is a shooting gallery waiting to start.
+ *
+ * What sells it is not the pose, it is that the pose MOVES — and that no two
+ * bodies move together. Both beats run off `walkPhase`, which every body is
+ * seeded with a different value of (see _add in enemies.js), so a farm of forty
+ * cubicles is forty people at forty different moments of typing, pausing and
+ * breathing without a single extra number being stored.
+ *
+ * The gun goes to the hip rather than being hidden. `animate` rewrites its
+ * position every frame for anybody on their feet and never gets the chance here,
+ * so left alone it hangs in the air where a standing body's hand would be; put
+ * at the hip it reads as the holster it should have been in all along, and there
+ * is nothing to restore when they stand up.
+ */
+export function animateWorking(e, dt) {
+  e.walkPhase += dt;
+  const typing = Math.sin(e.walkPhase * WORK_BEAT) > WORK_DUTY;
+  const tap = typing ? Math.sin(e.walkPhase * TAP_RATE) * TAP_THROW : 0;
+  const breath = Math.sin(e.walkPhase) * 0.025;
+  const arms = typing ? DESK_ARMS : DESK_IDLE_ARMS;
+
+  e.group.position.y = e.y - DESK_DROP;
+  hinge(e.legL, -HIP_X, LEG_Y, LEG_HALF, DESK_LEGS);
+  hinge(e.legR, HIP_X, LEG_Y, LEG_HALF, DESK_LEGS - 0.08);
+  // The two hands never land together: one wrist up while the other is down is
+  // typing, and both at once is applause.
+  hinge(e.armL, -ARM_X, ARM_Y, ARM_HALF, arms + tap);
+  hinge(e.armR, ARM_X, ARM_Y, ARM_HALF, arms - tap);
+  // Forward over the keyboard while they are working, back in the chair while
+  // they are not. Small either way: the torso is one box and the collar strip in
+  // front of it is a separate one, so a real lean opens a gap at the neck.
+  e.torso.rotation.x = (typing ? 0.16 : 0.02) + breath;
+
+  if (e.blunt) {
+    // Whatever they will swing at you is on the desk in front of them, which for
+    // an intern holding a keyboard is exactly where it lives anyway.
+    e.blunt.rotation.x = -0.1;
+    e.blunt.position.y = 1.04;
+  } else {
+    e.gun.position.set(0.3, 1.0, -0.08);
+    e.gun.rotation.x = 1.25;
+  }
+
+  tickFlash(e, dt);
+}
+
+/**
  * On the floor with their legs out in front of them, mop across the knees.
  *
  * Done by dropping the whole rig and folding the legs forward rather than by
@@ -106,7 +225,7 @@ export function animate(e, dt, audio) {
  * The lean is a slow breath rather than a pose held rigid — two men waiting out
  * a shift should not read as two mannequins somebody left in a cupboard.
  */
-export function animateSeated(e, dt) {
+export function animateFloor(e, dt) {
   e.walkPhase += dt * 0.9;
   const breath = Math.sin(e.walkPhase) * 0.03;
 

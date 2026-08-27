@@ -468,7 +468,7 @@ export class Game {
     // come out anywhere from two-thirds to half again the usual size, so the
     // curve is per typical floor and the slab that turned up scales it.
     this.enemies.spawn(level.layout, level.nav, rng,
-      tuningFor(this.floor, level.layout.areaRatio));
+      tuningFor(this.floor, level.layout.areaRatio), level.workstations);
     // After the staff, because the cameras are watching the floor rather than
     // watching them — nothing about where one goes depends on who is standing
     // where, and taking the roster's dice first keeps enemy placement reading

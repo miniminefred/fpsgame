@@ -200,6 +200,11 @@ export const TYPES = {
     // means the thing looking at you is not going to wander off.
     name: 'Sentry Unit', hp: 3.2, speed: 0.78, damage: 1.45, rate: 1.35, spread: 0.7,
     range: 17, melee: false, scale: 1.18,
+    // The one type that is never found sitting at a desk (see AT_DESK in
+    // enemies.js). Everybody else in the building works here; this was bought to
+    // walk the floor, and a machine on patrol typing at a keyboard is a joke the
+    // room is not making.
+    standing: true,
     suit: 0x474d55, shirt: 0x9aa3ab, visor: 0x3a4048, voice: 'robot',
     unlockFloor: 2, weight: 3,
   },

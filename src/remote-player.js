@@ -80,7 +80,7 @@ export class RemotePlayer {
       x: 0, y: 0, z: 0, yaw: 0,
       state: 'idle',
       alive: true,
-      seated: false,
+      seat: null,          // never: the other player is not one of the staff
       walkPhase: 0,
       lastStep: 0,
       hitFlash: 0,

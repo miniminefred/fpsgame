@@ -38,6 +38,9 @@ export class Level {
       doors: built.doors,
       fixtures: built.fixtures,
       exitObject: built.exitObject,
+      // Where the staff are found working, handed to enemies.spawn — see
+      // `workstation` in gen/build.js.
+      workstations: built.workstations,
       spawn: layout.spawn,
       exit: layout.exit,
       // What the minimap needs, in one flat object.
