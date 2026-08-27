@@ -548,6 +548,13 @@
       "influence": 0.7
     },
     {
+      "name": "generator-arc",
+      "text": "electrical arc snapping out of broken high-voltage machinery, sharp crackling zap with a brief fizzing tail, close mic, dry, no music, no voices",
+      "duration": 0.8,
+      "influence": 0.75,
+      "variants": 4
+    },
+    {
       "name": "generator-blast",
       "text": "huge industrial generator exploding, deep sub-bass boom then tearing metal and a long rumbling decay, close mic, dry, no music, no voices",
       "duration": 3.0,
