@@ -109,18 +109,12 @@ const LIBRARY = {
   'generator-blast': { variants: 3, gain: 1.30, pitch: 0.05 },
 
   // ...and the wreck it leaves, arcing for as long as the player is on the
-  // floor. Mixed well down and given the widest pitch jitter of anything in the
-  // set: this is the one clip that plays a few times a SECOND for minutes on
-  // end, so the thing that would give it away is not level, it is hearing the
-  // same crack twice.
-  //
-  // The takes are a low transformer buzz rather than a bright spark, and that is
-  // a mix decision as much as a taste one: a sharp snap two or three times a
-  // second sits on top of the gunfire and reads as a fault in the sound engine,
-  // where something heavy and mains-frequency sits UNDER it and reads as a room
-  // that has lost its power. Measured against the first pass, nine times the
-  // energy below 400 Hz relative to above 2 kHz, and a quarter the zero-crossing
-  // rate.
+  // floor. A low transformer buzz rather than a bright spark, which is a mix
+  // decision as much as a taste one: a snap two or three times a second sits on
+  // top of the gunfire and reads as a fault in the sound engine, where something
+  // mains-frequency sits UNDER it and reads as a room that has lost its power.
+  // Widest pitch jitter in the set, because what would give this one away is not
+  // its level, it is hearing the same take twice.
   'generator-arc': { variants: 4, gain: 0.45, pitch: 0.16 },
 
   // What the bullet landed on. Every surface in the building answers back in its
@@ -255,12 +249,12 @@ const AUDIBLE_STEP = 15;
 // He carries further than anything else on the floor, which is the point: you
 // are meant to hear him two rooms away and go and find out what that is.
 const PANIC_AUDIBLE = 44;
-// The wrecked generator's arcs, and the shortest range of the three on purpose.
-// Everything else here is an event: it happens, it is over, and hearing one from
-// the far end of the floor tells you something. An arc is not — it goes on for as
-// long as you are on this floor, so a range that carries would put a crackle
-// under the whole rest of the fight. This is about the room it is standing in and
-// the corridor outside it.
+// The wrecked generator's arcs, and the shortest range here on purpose. Every
+// other sound in the building is an event: it happens, it is over, and hearing
+// one from the far end of the floor tells you something. An arc is not — nothing
+// ever stops asking for it while the player is on this floor, so a range that
+// carried would put a buzz under the whole rest of the fight. This is the room it
+// is standing in and the corridor outside it.
 const ARC_AUDIBLE = 18;
 
 // Roughly where a voice leaves a body, so a shout does not come from their shoes.
@@ -523,13 +517,11 @@ export class GameAudio {
   generatorBlast(point) { this._placed('generator-blast', point); }
 
   /**
-   * One arc jumping out of the wreck's torn plating (`arcs.js`) — the noise the
-   * machine goes on making after it has stopped being a machine.
-   *
-   * The range rejection is here rather than in the caller for the same reason
-   * `_near`'s is: an arc knows where it struck and nothing about where the player
-   * is standing, and distance is this module's business. It matters more than for
-   * a one-shot, because nothing ever stops asking — see ARC_AUDIBLE.
+   * One arc out of the wreck's torn plating (`arcs.js`) — the noise the machine
+   * goes on making after it has stopped being a machine. Rejected by range here
+   * rather than by the caller for the same reason `_near`'s is: an arc knows
+   * where it struck and nothing about where the player is standing. See
+   * ARC_AUDIBLE for why it is the shortest range in the file.
    */
   generatorArc(point) {
     if (!this.audibleAt(point.x, point.z, ARC_AUDIBLE)) return;

@@ -1370,7 +1370,7 @@ export class Destruction {
     const anchors = torn.length ? torn : kept.map((b) => ({
       x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2, z: (b.z0 + b.z1) / 2,
     }));
-    this.arcs = new Arcs(this.scene, anchors, this.lighting?.spark ?? null, this.audio);
+    this.arcs = new Arcs(this.scene, anchors, { light: this.lighting?.spark, audio: this.audio });
 
     return gone;
   }
