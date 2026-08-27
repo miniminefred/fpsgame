@@ -549,8 +549,8 @@
     },
     {
       "name": "generator-arc",
-      "text": "electrical arc snapping out of broken high-voltage machinery, sharp crackling zap with a brief fizzing tail, close mic, dry, no music, no voices",
-      "duration": 0.8,
+      "text": "low heavy electrical arcing from a broken transformer, deep mains-frequency buzz with gritty crackle, dull thud rather than sharp snap, close mic, dry, no music, no voices",
+      "duration": 1.0,
       "influence": 0.75,
       "variants": 4
     },
