@@ -98,11 +98,20 @@ export function animate(e, dt, audio) {
   if (e.rig === 'rat') return animateRat(e, dt, audio);
   if (e.rig === 'roomba') return animateRoomba(e, dt, audio);
 
-  // Sitting is a state of the body, not of the AI: the moment they stop being
-  // idle they are standing up, and from then on they animate like anybody
-  // else. Which means nothing downstream — pathing, swinging, ragdolling —
-  // ever has to know this was a thing.
-  if (e.seat && e.state !== 'idle') {
+  // Sitting is a state of the body, not of the AI: once they are up they animate
+  // like anybody else, which means nothing downstream — pathing, swinging,
+  // ragdolling — ever has to know this was a thing.
+  //
+  // They hold the pose through `alert` as well as `idle`, and that is the whole
+  // reason a floor at work is visible in play at all. A shut door is what stops
+  // them seeing you (`nav.losClear` in nav.js), so the frame the panel opens is
+  // the frame the room notices — get up on the sight of you and the pose exists
+  // for one frame of a floor you will never see it on again. `alert` is already
+  // the reaction delay before the chase and a body in it can neither move nor
+  // shoot (see _move and _shoot in enemies.js), so spending it in the chair
+  // costs the fight nothing and buys the beat: three people working, three
+  // people turning round, then the fight.
+  if (e.seat && e.state !== 'idle' && e.state !== 'alert') {
     e.seat = null;
     stand(e);
   }
