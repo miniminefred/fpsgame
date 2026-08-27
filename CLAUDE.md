@@ -828,7 +828,21 @@ Three things about it are structural rather than decorative:
   light of its own: three recompiles every material when the light count changes, and the
   frame the generator blows is already a ceiling coming down, four hundred fragments and a
   floor-wide relight. It is the last frame in the game that can afford to rebuild every
-  shader. The arcs have no sound yet.
+  shader.
+
+  **And each strike cracks** (`audio.generatorArc`), at the hole it came out of rather than
+  at the machine: the housing runs up to fifteen metres, so three arcs out of three holes in
+  it are three cracks in three places, and that is a direction. Four takes at the widest pitch
+  jitter in the set, because this is the one clip in the game that plays two or three times a
+  second for as long as the player is on the floor — what would give it away is not level, it
+  is hearing the same crack twice. Two things follow from its never being finished being
+  asked for, and both are the `blackoutPanels` lesson one step earlier: it is mixed well down
+  (0.45), and it has the shortest audible range of anything placed (`ARC_AUDIBLE`, 18 m
+  against the usual 26) — every other sound in the building is an *event*, so hearing one from
+  the far end of the floor tells you something, while a crackle that carries would sit under
+  the whole rest of the fight. Measured at 2.5 voices a second with the audio clock 6 ms off
+  the wall clock, so nothing is piling up: full rate at 12 and 17 m, tapering at 19 (the near
+  END of a long machine is what the range is measured to), silent at 30.
 
   The marker reaches the sink through `placer` in `gen/props.js`, and that is the trap: a prop
   only ever sees the placer, which forwards `box` and `obstacle` and nothing else. `hulk` was
