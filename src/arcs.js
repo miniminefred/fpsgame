@@ -47,12 +47,14 @@ export class Arcs {
   /**
    * `anchors` are world points to strike from — the centres of the bays the
    * blast took out. `light` is lighting.js's spark, or null on a rig that has
-   * none (the arcs then simply do not light anything).
+   * none (the arcs then simply do not light anything), and `audio` is the game's
+   * voice, likewise optional: an arc is a thing you can watch in silence.
    */
-  constructor(scene, anchors, light = null) {
+  constructor(scene, anchors, light = null, audio = null) {
     this.scene = scene;
     this.anchors = anchors.map((a) => new THREE.Vector3(a.x, a.y, a.z));
     this.light = light;
+    this.audio = audio;
 
     // One geometry and one material for every segment of every arc: this is a
     // dozen meshes that differ only by transform.
@@ -116,6 +118,14 @@ export class Arcs {
     }
 
     arc.lit = between(LIT);
+
+    // Heard from where it struck, which is the point of doing it here rather
+    // than once a frame off the brightest slot: three arcs crawling out of three
+    // different holes in a fifteen-metre machine are three cracks in three
+    // places, and the machine is long enough for that to be a direction. The
+    // range rejection is audio.js's — see generatorArc — because this is the one
+    // sound in the game that is never finished being asked for.
+    this.audio?.generatorArc(arc.root);
   }
 
   _hide(arc) {
