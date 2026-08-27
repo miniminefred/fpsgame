@@ -113,6 +113,14 @@ const LIBRARY = {
   // set: this is the one clip that plays a few times a SECOND for minutes on
   // end, so the thing that would give it away is not level, it is hearing the
   // same crack twice.
+  //
+  // The takes are a low transformer buzz rather than a bright spark, and that is
+  // a mix decision as much as a taste one: a sharp snap two or three times a
+  // second sits on top of the gunfire and reads as a fault in the sound engine,
+  // where something heavy and mains-frequency sits UNDER it and reads as a room
+  // that has lost its power. Measured against the first pass, nine times the
+  // energy below 400 Hz relative to above 2 kHz, and a quarter the zero-crossing
+  // rate.
   'generator-arc': { variants: 4, gain: 0.45, pitch: 0.16 },
 
   // What the bullet landed on. Every surface in the building answers back in its

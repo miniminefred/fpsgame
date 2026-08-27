@@ -830,7 +830,7 @@ Three things about it are structural rather than decorative:
   floor-wide relight. It is the last frame in the game that can afford to rebuild every
   shader.
 
-  **And each strike cracks** (`audio.generatorArc`), at the hole it came out of rather than
+  **And each strike buzzes** (`audio.generatorArc`), at the hole it came out of rather than
   at the machine: the housing runs up to fifteen metres, so three arcs out of three holes in
   it are three cracks in three places, and that is a direction. Four takes at the widest pitch
   jitter in the set, because this is the one clip in the game that plays two or three times a
@@ -843,6 +843,16 @@ Three things about it are structural rather than decorative:
   the whole rest of the fight. Measured at 2.5 voices a second with the audio clock 6 ms off
   the wall clock, so nothing is piling up: full rate at 12 and 17 m, tapering at 19 (the near
   END of a long machine is what the range is measured to), silent at 30.
+
+  The takes are a **low transformer buzz, not a bright spark**, and that is a mix decision as
+  much as a taste one: something that snaps two or three times a second sits on top of the
+  gunfire and reads as a fault in the sound engine, where something heavy and mains-frequency
+  sits under it and reads as a room that has lost its power. Measured against the first pass —
+  a filter-and-RMS pair in `/dev-sounds.html`'s own context, since the harness measures level
+  and onset and says nothing about brightness — nine times the energy below 400 Hz relative to
+  above 2 kHz (mean band ratio 0.41 to 3.63) and a quarter of the zero-crossing rate (8.7 kHz
+  to 2.1 kHz). The four takes deliberately still span 2.0 to 5.2 on that ratio: the brightest
+  of them is what keeps the set from being one hum played over and over.
 
   The marker reaches the sink through `placer` in `gen/props.js`, and that is the trap: a prop
   only ever sees the placer, which forwards `box` and `obstacle` and nothing else. `hulk` was
