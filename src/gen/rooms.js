@@ -45,7 +45,13 @@ function openPlan(sink, { x0, z0, x1, z1 }, rng) {
       const facing = rot === 0 ? 1 : -1;
 
       tryPlace(sink, 'desk', cx, cz, rot, rng);
-      tryPlace(sink, 'chair', cx, cz - facing * 0.85, rot, rng);
+      // Through `seatFacing`, which is the same 0.85 m in front of the desk this
+      // used to place by hand and one quarter turn different: a chair at the
+      // DESK's rotation has its back to the desk, so every pod in the building
+      // was a chair somebody would have to sit in backwards. Invisible while
+      // they were empty; the moment there was a body in one it was the only
+      // thing in the room.
+      seatFacing(sink, 'desk', cx, cz, rot, rng, 0.85);
       tryPlace(sink, 'partition', cx, cz + facing * 0.62, 0, rng);
       if (c < cols - 1) tryPlace(sink, 'partition', cx + PITCH_X / 2 - 0.05, cz, 1, rng);
       // No cabinet in the pod. Wherever it went it stood in the cross aisle, and
@@ -315,7 +321,7 @@ function privateOffice(sink, bounds, rng) {
     const cz = (z0 + z1) / 2;
     const rot = rng.int(0, 3);
     if (tryPlace(sink, 'desk', cx, cz, rot, rng)) {
-      seatFacing(sink, cx, cz, rot, rng);
+      seatFacing(sink, 'desk', cx, cz, rot, rng);
       seated = true;
     }
   }
@@ -347,7 +353,7 @@ function deskAgainstWall(sink, bounds, rng) {
     const [cx, cz] = seatAt(side, x0, z0, x1, z1, standoff, margin, rng);
     if (!tryPlace(sink, 'desk', cx, cz, side, rng)) continue;
 
-    seatFacing(sink, cx, cz, side, rng);
+    seatFacing(sink, 'desk', cx, cz, side, rng);
     return true;
   }
   return false;
@@ -404,9 +410,33 @@ function wallSpanProp(sink, bounds, kind, rng, side) {
 
 // The chair that goes with whatever was just backed against a wall: a body's
 // width out in front of it, turned round to face it.
-function seatFacing(sink, cx, cz, rot, rng, gap = 0.95) {
+//
+// And the one place in the furnisher that says where somebody WORKS. A desk with
+// a monitor on it and a chair pulled up to it is a job, and the chair is where
+// the body doing it sits — so the same call that puts the chair down registers
+// the workstation, and a room cannot end up with a seated body facing the wrong
+// way or sitting on nothing. `sink.workstation` decides whether it is worth
+// keeping (see makeSink in gen/build.js); everything downstream is enemies.js's.
+function seatFacing(sink, kind, cx, cz, rot, rng, gap = 0.95) {
   const out = QUARTER[rot & 3](0, -gap);
-  return tryPlace(sink, 'chair', cx + out[0], cz + out[1], (rot + 2) & 3, rng);
+  const x = cx + out[0];
+  const z = cz + out[1];
+  const seat = (rot + 2) & 3;
+
+  // Placed inside the desk's own reservation, because a chair pulled up to a
+  // desk is inside it whatever the arithmetic says: floor is reserved by whole
+  // tiles and a 0.97 m desk reaches half a metre past its own front face. That
+  // is what `lend` is for, and without it this failed on all 16 wall-backed
+  // desks of the floor it was measured on. Every other claim on the floor still
+  // stands while the tiles are lent — the wall behind, the doorway apron, the
+  // cabinet beside it.
+  const { w, d } = footprintOf(sink, kind, rot);
+  const placed = sink.lend(cx - w / 2, cz - d / 2, cx + w / 2, cz + d / 2,
+    () => tryPlace(sink, 'chair', x, z, seat, rng));
+  if (!placed) return false;
+
+  sink.workstation(x, z, seat);
+  return true;
 }
 
 // --- the three rooms you need a card for ------------------------------------
@@ -444,7 +474,7 @@ function securityOffice(sink, bounds, rng) {
   // from the doorway rather than rolled for.
   const desk = edgeProp(sink, bounds, 'cameraDesk', rng);
   // And the chair somebody watched them from, facing the screens.
-  if (desk) seatFacing(sink, desk.cx, desk.cz, desk.rot, rng, 1.0);
+  if (desk) seatFacing(sink, 'cameraDesk', desk.cx, desk.cz, desk.rot, rng, 1.0);
 
   edgeProp(sink, bounds, 'serverRack', rng);
   if (rng.chance(0.7)) edgeProp(sink, bounds, 'workbench', rng);

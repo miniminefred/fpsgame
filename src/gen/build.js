@@ -76,6 +76,7 @@ export function buildLevel(scene, layout) {
   const dynamics = [];                     // loose props handed to the physics world
   const destructibles = [];                // everything static that can be shot apart
   const doors = [];                        // panels and leaves, see doors.js
+  const workstations = [];                 // desks with a chair at them, see furnishRooms
 
   reserveClearances(layout, reserved);
 
@@ -113,7 +114,7 @@ export function buildLevel(scene, layout) {
   readers.finish();
 
   const sink = makeSink(layout, batcher, materials,
-    { blocked, occupied, reserved, colliders, dynamics, destructibles });
+    { blocked, occupied, reserved, colliders, dynamics, destructibles, workstations });
   // Before the rooms are furnished, because the strip takes its tiles out of the
   // nav grid and out of the furnisher's reach in the same pass — and because the
   // deck's own junk is placed through the same sink and must be down before
@@ -121,7 +122,7 @@ export function buildLevel(scene, layout) {
   buildStairs(layout, batcher, materials, { colliders, blocked, occupied, fixtures }, rng);
   buildGeneratorMezzanine(layout, batcher, materials,
     { colliders, occupied, dynamics, destructibles, fixtures }, rng);
-  furnishRooms(layout, sink, rng);
+  furnishRooms(layout, sink, rng, workstations);
   furnishCorridors(layout, sink, rng);
   const cow = placeCow(layout, sink, rng);
   // Last, and through sinks of their own: a level off the ground floor has its own
@@ -185,6 +186,8 @@ export function buildLevel(scene, layout) {
     doors,
     fixtures,
     exitObject,
+    // Where the staff work, for whoever is going to be found working there.
+    workstations,
     cow,             // {x, z} if this floor rolled one, else null — see placeCow
     nav: {
       W, H, TILE, ox: layout.ox, oz: layout.oz, walk, tiles,
@@ -1624,6 +1627,58 @@ function makeSink(layout, batcher, materials, masks) {
 
     occupy(x0, z0, x1, z1) { stamp(occupied, x0, z0, x1, z1); },
 
+    /**
+     * Runs `fn` with one prop's reserved floor lent back to it, and takes it
+     * again afterwards. For a chair pulled up to a desk, which is the only kind
+     * of prop that is SUPPOSED to stand inside another one's reservation.
+     *
+     * Reserving floor rounds outward to whole tiles (see `stamp`), which is what
+     * stops two props overlapping and is not worth loosening. But a desk is
+     * 0.97 m deep, so its reservation reaches up to half a metre past its own
+     * front face — and a chair pulled up to that face therefore lands inside it
+     * however carefully it is placed in metres. Measured on one floor: 16 desks
+     * backed against walls, 16 chairs refused, every private office on the floor
+     * furnished with a desk nobody could be sitting at.
+     *
+     * Everything else still applies while the tiles are lent: a wall is still a
+     * wall, a doorway apron is still reserved, and the cabinet beside the desk
+     * still has its own floor. It is one prop's claim that is waived, for the one
+     * prop that belongs to it.
+     */
+    lend(x0, z0, x1, z1, fn) {
+      const r = range(x0, z0, x1, z1);
+      const held = [];
+      for (let ty = r.ty0; ty <= r.ty1; ty++) {
+        for (let tx = r.tx0; tx <= r.tx1; tx++) {
+          const i = ty * W + tx;
+          if (occupied[i]) { held.push(i); occupied[i] = 0; }
+        }
+      }
+      try { return fn(); } finally { for (const i of held) occupied[i] = 1; }
+    },
+
+    /**
+     * A place somebody works: where the chair is, and which way round they are
+     * sitting in it. `rot` is the chair's own quarter turn, so the body faces
+     * the desk for exactly the reason the chair does.
+     *
+     * The furnisher is the only thing on the floor that knows a desk has a
+     * monitor on it and a chair pulled up to it, so it is the only thing that
+     * can say where a working body goes — enemies.js would otherwise be
+     * guessing at furniture from the nav grid. Nothing here reserves anything:
+     * a workstation is an offer, taken up by whoever is staffing the room (see
+     * `_takeDesk` in enemies.js) and ignored if nobody is.
+     *
+     * A sink furnishing a storey does not collect them. The nav grid on a level
+     * is not the ground floor's, the desks on the generator's mezzanine are off
+     * it entirely, and a body seated somewhere nothing can walk to is a body
+     * that stands up into a wall.
+     */
+    workstation(x, z, rot) {
+      if (level) return;
+      masks.workstations.push({ x, z, rot, room: null });
+    },
+
     box(key, x0, y0, z0, x1, y1, z1) {
       const b = { key, x0, y0: y0 + level, z0, x1, y1: y1 + level, z1 };
       if (hulkOn) b.hulk = hulkOn;
@@ -1817,7 +1872,7 @@ function makeSink(layout, batcher, materials, masks) {
   };
 }
 
-function furnishRooms(layout, sink, rng) {
+function furnishRooms(layout, sink, rng, workstations) {
   for (const room of layout.rooms) {
     // Keep furniture off the walls so nothing clips into the skirting.
     const bounds = {
@@ -1826,7 +1881,15 @@ function furnishRooms(layout, sink, rng) {
       x1: worldX(layout, room.x1) - 0.15,
       z1: worldZ(layout, room.y1) - 0.15,
     };
+    const before = workstations.length;
     furnish(sink, room, bounds, rng, layout.doors);
+    // Whose room each desk is in, stamped here rather than threaded through the
+    // furnisher: `seatFacing` is called from six roles and none of them has any
+    // other reason to know which room it is filling, and a workstation lands
+    // between these two lines or it does not exist. Who works in a room is
+    // decided per room (see `_spawnPoints` in enemies.js), so this is the one
+    // fact about a desk that the placement needs and the placer cannot give.
+    for (let i = before; i < workstations.length; i++) workstations[i].room = room;
   }
 }
 
