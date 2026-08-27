@@ -1195,6 +1195,71 @@ by everyone wearing that word. The hit flash follows whatever they are actually 
 Gunfire spread is sampled as a real angle and converted into a miss distance at your range,
 so backing off genuinely makes you harder to hit.
 
+### The staff are at work (`workstations` in `gen/build.js` + `_takeDesk`/`animateWorking`)
+About 23 of a floor's ~175 bodies are found sitting at a desk, typing, with their backs to
+the door. It is presentational — a seated body is `idle` like any other and is on its feet
+the frame it sees or hears you — but it is what makes a floor of offices read as a building
+somebody works in rather than as a shooting gallery waiting to start.
+
+**The furnisher decides where, because it is the only thing that knows.** A desk with a
+monitor on it and a chair pulled up to it is a job, and `seatFacing` in `gen/rooms.js` is
+the one call that places that chair — so it registers a **workstation** (where the chair
+is, and the quarter turn that faces the desk) through `sink.workstation`. `enemies.js`
+would otherwise be guessing at furniture from the nav grid, and `_seat` converts that turn
+to a yaw with the same line `tryPlace` uses for a model, because a body and the chair under
+it face the same way for the same reason. Levels do not collect them: the desks on the
+generator's mezzanine are off the nav grid entirely, and a body seated somewhere nothing
+can walk to is a body that stands up into a wall.
+
+Four things about it were learned by measuring rather than by looking:
+
+- **A chair pulled up to a desk could not be placed at all**, and had never been: floor is
+  reserved by whole tiles (`stamp`), a desk is 0.97 m deep, so its reservation reaches half
+  a metre past its own front face and the chair always landed inside it. 16 wall-backed
+  desks on the floor this was measured on, 16 chairs refused — every private office in the
+  building furnished with a desk nobody could be sitting at, which nobody had noticed
+  because nobody was sitting at them. `sink.lend` waives that one prop's claim for the one
+  prop that belongs to it, and nothing else: the wall behind, the doorway apron and the
+  cabinet beside it all still stand.
+- **A cubicle pod's chair had its back to its own desk.** It was placed at the *desk's*
+  rotation, and the chair has to be a quarter turn round from that (`edgeProp`'s table
+  again — see above). Invisible while the pods were empty; the moment there is a body in
+  one it is the only thing in the room.
+- **Which rooms get served before the roster runs out is the whole of where a floor's
+  staff are.** The headcount is spread over a hundred-odd rooms and runs out long before
+  all of them have had a turn, so the first pass goes to the rooms with desks in them and
+  the archive gets whoever is left. Left to the shuffle it came out as **six** people at a
+  desk on a floor of a hundred and six, with two thirds of the building's desks empty.
+  First pass only: held for every pass it fills five rooms and empties the rest of a floor
+  small enough to come round again.
+- **A room with desks is dealt a shift, not the flat 0-3 a storeroom draws** (`DESK_TEAM`),
+  and a desk nobody fits in front of is dropped from the pool rather than refused at the
+  door — a third of a cubicle farm's pods fail `nav.clear` because the pitch is tight and
+  the grid holds a body to whole tiles, and counting those deals a farm five people and
+  then stands all five of them up. `AT_DESK` keeps one station in five empty on purpose: a
+  room with somebody at every single desk reads as a diorama.
+
+**The pose hinges the limbs about a real joint** (`hinge` in `enemy-anim.js`), and that is
+the one thing here that is not free. Every part of a rig is a bare mesh (`part` in
+`rigs.js`), so `rotation.x` alone turns a leg about the point half way down it — which the
+walk cycle gets away with because the swing is a few degrees, and which at 70° leaves a
+hand's width of daylight at the hip and puts the foot through the floor. `stand` puts the
+limbs back when they get up, because nothing else in that file ever moves one. Both beats —
+typing, and the pause to look at whatever it did — run off the `walkPhase` every body is
+already seeded with, so a farm of forty cubicles is forty people at forty different moments
+without one extra number being stored. The sidearm goes to the hip rather than being hidden:
+`animate` rewrites its position every frame for anybody on their feet and never gets the
+chance here, so left alone it hangs in the air where a standing hand would be.
+
+`e.seat` is `'desk'`, `'floor'` (the two janitors on their break, who sit on the floor of a
+broom closet — a different pose for a different room) or null. On the wire it is one bit
+that only ever stands somebody up: which seat a body has is a fact about the floor, and
+both browsers generated the same one from the same seed.
+
+The manager is at his own desk and one guard is on the cameras, which is the only reason
+that room exists. A Sentry Unit is never seated (`standing` in `enemy-types.js`) — it was
+bought to walk the floor.
+
 ### Furniture models (`gen/models.js` + `gen/props.js`)
 Static props are drawn with downloaded CC0/CC-BY GLBs; loose props are not. The split is
 about physics, not destructibility: a loose prop needs its own mesh so the solver can move
