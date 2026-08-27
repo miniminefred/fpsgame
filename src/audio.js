@@ -108,6 +108,13 @@ const LIBRARY = {
   // way the second one did.
   'generator-blast': { variants: 3, gain: 1.30, pitch: 0.05 },
 
+  // ...and the wreck it leaves, arcing for as long as the player is on the
+  // floor. Mixed well down and given the widest pitch jitter of anything in the
+  // set: this is the one clip that plays a few times a SECOND for minutes on
+  // end, so the thing that would give it away is not level, it is hearing the
+  // same crack twice.
+  'generator-arc': { variants: 4, gain: 0.45, pitch: 0.16 },
+
   // What the bullet landed on. Every surface in the building answers back in its
   // own material — see SUBSTANCE below for which prop is made of what.
   'hit-flesh':        { variants: 3, gain: 0.70, pitch: 0.12 },
@@ -240,6 +247,13 @@ const AUDIBLE_STEP = 15;
 // He carries further than anything else on the floor, which is the point: you
 // are meant to hear him two rooms away and go and find out what that is.
 const PANIC_AUDIBLE = 44;
+// The wrecked generator's arcs, and the shortest range of the three on purpose.
+// Everything else here is an event: it happens, it is over, and hearing one from
+// the far end of the floor tells you something. An arc is not — it goes on for as
+// long as you are on this floor, so a range that carries would put a crackle
+// under the whole rest of the fight. This is about the room it is standing in and
+// the corridor outside it.
+const ARC_AUDIBLE = 18;
 
 // Roughly where a voice leaves a body, so a shout does not come from their shoes.
 const MOUTH_HEIGHT = 1.35;
@@ -499,6 +513,20 @@ export class GameAudio {
    * of power sounds like leaving at once.
    */
   generatorBlast(point) { this._placed('generator-blast', point); }
+
+  /**
+   * One arc jumping out of the wreck's torn plating (`arcs.js`) — the noise the
+   * machine goes on making after it has stopped being a machine.
+   *
+   * The range rejection is here rather than in the caller for the same reason
+   * `_near`'s is: an arc knows where it struck and nothing about where the player
+   * is standing, and distance is this module's business. It matters more than for
+   * a one-shot, because nothing ever stops asking — see ARC_AUDIBLE.
+   */
+  generatorArc(point) {
+    if (!this.audibleAt(point.x, point.z, ARC_AUDIBLE)) return;
+    this._placed('generator-arc', point);
+  }
 
   /** A sliding door, from wherever in the building it is. */
   doorOpen(point) { this._placed('door-open', point); }
