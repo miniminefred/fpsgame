@@ -163,6 +163,26 @@ const MIN_SPAWN_GAP = FIRST_CONTACT_GAP;
 // the work is whether or not anybody is sitting down at it.
 const DESK_TEAM = 5;
 
+// The harmless staff in the hallways when you arrive, and the one place in the
+// roster where two numbers next to each other are drawn on purpose differently.
+//
+// The toilet guy is a flat one or two whatever the floor is. He is a joke —
+// announcing his problem at volume while a firefight goes on around him — and a
+// joke lands once, maybe twice, and is a running gag by the sixth time you have
+// heard it. The rest of them are the building's background traffic, so they scale
+// with how much building there is (`layout.areaRatio`, the floor's size against
+// the usual one at this depth): six people spread over a slab half again the
+// normal size is an empty office, and the same six over a small one is a crowd.
+// Same reasoning as the cameras and the roster itself, which both ask that
+// question — see PER_FLOOR in cameras.js and tuningFor in game.js.
+const HALL_PANICKERS = [1, 2];
+const HALL_BYSTANDERS = [4, 6];
+// Metres between two of them, so a busier floor does not stand a courier inside
+// a cleaner. `this.corridors` is every tenth corridor tile, which is a fine
+// sample for picking somewhere to walk to and a coarse one for putting a dozen
+// bodies down without collisions.
+const NEUTRAL_GAP = 1.4;
+
 // The cleaning staff. Doing rounds in the corridors, plus the two on their
 // break in the broom closet. See _janitors.
 const JANITORS = [1, 3];
@@ -316,11 +336,28 @@ export class Enemies {
     // see one cross the end of a hallway and have to decide, quickly, whether it
     // mattered.
     const neutrals = [];
-    for (let i = rng.int(1, 2); i > 0; i--) neutrals.push(TYPES.panicker);
-    for (let i = rng.int(1, 3); i > 0; i--) neutrals.push(rng.pick(BYSTANDERS));
+    for (let i = rng.int(HALL_PANICKERS[0], HALL_PANICKERS[1]); i > 0; i--) {
+      neutrals.push(TYPES.panicker);
+    }
+    // Scaled by the size of the slab rather than fixed — see HALL_BYSTANDERS.
+    // Rounded, and never to nothing: a floor with no harmless staff on it at all
+    // is a floor where every silhouette down a corridor is a target, which is the
+    // decision these exist to make you keep having to take.
+    const crowd = Math.max(1, Math.round(
+      rng.int(HALL_BYSTANDERS[0], HALL_BYSTANDERS[1]) * (layout.areaRatio ?? 1)));
+    for (let i = crowd; i > 0; i--) neutrals.push(rng.pick(BYSTANDERS));
 
     for (let i = 0; i < neutrals.length; i++) {
-      const spot = this.corridors.length ? rng.pick(this.corridors) : spots[i];
+      // A few tries at somewhere nobody is already standing, and the last pick
+      // regardless if the floor is too busy to find one: a body a metre inside
+      // another body is bad, and a floor quietly one courier short of what it
+      // rolled is worse — nothing downstream would ever say so.
+      let spot = null;
+      for (let tries = 0; tries < 8; tries++) {
+        spot = this.corridors.length ? rng.pick(this.corridors) : spots[i];
+        if (!spot) break;
+        if (!this.items.some((e) => Math.hypot(e.x - spot.x, e.z - spot.z) < NEUTRAL_GAP)) break;
+      }
       if (spot) this._add(spot.x, spot.z, rng, tuning, neutrals[i]);
     }
 
