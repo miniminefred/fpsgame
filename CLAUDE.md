@@ -220,6 +220,7 @@ src/
   shooting.js     Hitscan: fire rate, ammo, spread, recoil, damage, prop impulses
   weapons.js      Five GLB viewmodels, recoil/reload animation, per-gun combat stats
   extinguishers.js  The secondary: a thrown cylinder, its gas, and what it sets off
+  spills.js       Water on the floor: what comes out of a shot cooler, and its noise
   effects.js      Pooled tracers, impact flashes, bullet decals
   arcs.js         Electricity coming off a wrecked machine
   physics.js      cannon-es rigid bodies for loose furniture
@@ -996,6 +997,24 @@ was widened: a copyroom shut off by a crate and a shelving unit **0.85 m apart o
 diagonal**, which a 0.8 m square body cannot pass. It had been reachable at roughly one floor
 in five hundred for the generator's whole existence.
 
+**And the same bug had a second home, in `scatter` itself** (`SCATTER_LANE` in
+`gen/rooms.js`). A static prop dropped in the middle of the floor is the only thing the
+furnisher does that can wall a room off, and `canPlace` rounds a footprint outward to whole
+tiles — so two props in diagonally adjacent tile blocks pass it and still leave a gap no body
+fits through. Found by adding cardboard to every room, which shifted the rng stream and turned
+up an itbay with **2266 cells of its own floor cut off behind exactly two scattered crates,
+with a two-cell neck between them** — the same 0.53 m of perpendicular clearance against a
+0.8 m body. A scattered static now has to leave a body's radius clear on every side, which
+costs a little density in a busy room (a crate that cannot leave a lane beside it does not
+land) and takes that room from 482 reachable cells to 2682. Loose props are exempt: you walk
+into a carton and it moves.
+
+Worth knowing how thin the evidence for "no failures" can be. The 300-floor sweep was green
+before the cardboard and red after, and the mechanism was not the cardboard — it was two
+crates that could have been dealt to any seed. A **690-floor** sweep of the pre-cardboard code
+found nothing, which is how a 1-in-300 fragility hides: the seeds are fixed, so a green sweep
+is evidence about those seeds and not about the generator.
+
 ### Floor generation (`gen/layout.js`, on the vocabulary in `gen/tiles.js`)
 Real office floors are not mazes, so the generator does not build one. It carves a corridor
 spine first (2-4 vertical, 1-3 horizontal bands, guaranteed to intersect, so the corridor
@@ -1068,6 +1087,27 @@ of there being no wall across a corridor to cut a hole in:
   cost the run. The reader mounts differently from a room's — a hall door's only wall is the
   corridor's side, running the other way — so it turns 90°, stands proud of that wall, and
   steps back *against* the swing so an open leaf never folds over it.
+
+### A panel slides as far as the wall goes (`slidePocketRun` in `gen/tiles.js`)
+`slidePocketSide` answers whether a doorway can hold a panel at all: it proves the wall
+beside the opening carries `span` SOLID tiles, which is exactly the panel's own width. The
+builder then slid the panel `width * 1.02` — a hair further than its width, so its trailing
+edge finishes inside the jamb rather than flush with it — and on the doorways where that
+proven minimum is *all* the wall there is, the hair put **3 to 4 cm of the panel's far end out
+the other side**, standing in whatever was there. Measured over five floors: 3 to 6 doors
+each, 674 sliding doors swept, and none of them touching furniture — this is the whole of
+"some doors clip through things", and it is a sliver of door edge in the next room.
+
+`slidePocketRun` measures how much wall is actually there (most doorways have more than the
+minimum, and keep the hair), and the travel is clamped to it less `POCKET_CLEAR`. That 2 cm
+is not slack either: it stops the panel's far face landing exactly coplanar with the far face
+of the wall it is inside, which is a shimmering rectangle of door on the end of a wall — a
+worse artefact than the one it replaces. After: **zero panels past the wall on 674 doors
+across six floors.**
+
+A hall door's leaves were measured in the same sweep and are fine. A folded leaf overlaps the
+wall it folds against by half its thickness, which is by design and invisible; nothing of
+either kind ever reaches furniture.
 
 ### The prologue (`freeThePrologue` in `gen/locks.js`)
 White is the one lock you meet holding nothing, so it is the one the floor has to prove it
@@ -1859,10 +1899,34 @@ Three rules earned their place the hard way:
 - **Never the same take twice in a row**, and every play draws a random playback rate.
   That, not clip count, is what stops repetition sounding cheap.
 
+**A LOOP is a different problem from a one-shot, and it took a player to notice.** Two things
+in `sfx.js` are the fix, and both are about the floor cleaner's motor:
+
+- **Loop the part of the clip that is actually running** (`loopWindow`). The engine conditions
+  one-shots by starting them at their onset, and `bed` exempts a clip from that on the grounds
+  that trimming a bed's head would break the seam it loops on. The roomba clip is a `bed`, and
+  measured: its **first 2.4 seconds are near-silent** (windowed RMS 8.7 → 0.7 before the motor
+  arrives at 2.4 s, steady ~22 after). Looping the whole 8 s buffer therefore switched the
+  vacuum off for a third of every cycle — "its sound should be continuous, not on and off",
+  exactly. `loopStart`/`loopEnd` now bracket the stretch that carries the clip's own level,
+  found by windowed RMS rather than the sample-level onset detector: that one is looking for a
+  transient, and a motor fading up over a second and a half has no transient to find.
+- **A loop names the range it should be audible over** (`loopFalloff`, and `MOTOR_AUDIBLE` in
+  `audio.js`). A positional loop is the one sound in the game with **no occlusion** — it is not
+  routed through `soundPath`, because re-routing it every frame would swing the source across
+  the room — so it arrived from the far end of the floor at full brightness while everything
+  else lost its treble and half its level through a wall. Its falloff is `linear` rather than
+  the inverse model every one-shot uses, which is the point: inverse never reaches zero, so
+  "audible within twelve metres" comes out as a hum that is merely quiet everywhere. Full level
+  to 2.5 m, straight down, silent at 12 — and louder up close than it was, because making
+  something local and not making it louder just makes it quiet.
+
 `/dev-sounds.html` measures the whole set and flags duds — a variant far quieter than
 its siblings is a clip to regenerate, not to amplify. Check it after generating anything;
 roughly a third of first-pass draws came back unusable and none of it is audible as a
-fault from inside the game.
+fault from inside the game. Note what it does **not** measure: whether a clip is fit to be
+looped. That is `loopWindow`'s business now, but the 2.4 s of dead air sat in the set for
+months with every measurement in the harness reading healthy.
 
 Enemy types name a vocal set with `voice` (`enemy` staff who shout at you, `zombie`,
 `robot`), so a new type gets its own throat by adding four files.
@@ -1871,6 +1935,103 @@ Every prop carries a `substance` (`gen/props.js`), which picks its impact, break
 settle clips from one table in `audio.js` — a filing cabinet and a pot plant have no
 business sounding alike when shot, destroyed, or landing. Window glazing and ceiling
 tubes are building, not furniture, so their `kind` names their substance instead.
+
+### Cardboard, and what happens to it (`carton` in `gen/props.js`)
+Every room rolls for a little cardboard on top of its own recipe (`cartons` in
+`gen/rooms.js`): three rooms in five get one to seven cartons, half against a wall and half
+dropped where somebody put them down. About 200 crushable props on a floor of a hundred
+rooms, counting the `crateStack`s the storerooms already had.
+
+It is the one prop that loses every argument it is in. 2.2 kg against a chair's 9, so walking
+into one sends it sliding; 8 hp, so one round of anything ends it; and `crushable`, so
+**anybody who walks over one flattens it** — which includes the staff going about their day,
+and is most of what makes it worth having. `crush` in `destruction.js` is the same path a
+shot takes with a different noise on the end and no impact flash: nothing struck it, it was
+stood on.
+
+Three things about the flattening are load-bearing:
+
+- **The staff have no idea it is there.** A loose prop is not on the nav grid, so a body walks
+  straight through where it stood. That is what makes flattening the honest reading of it
+  rather than a clipping bug, and it is why `CRUSH_REACH` is tight: a box crushed by somebody
+  who walked *past* it would read as the box breaking on its own.
+- **It is asked per prop, not per body** (`enemies.anyNear`, off the same per-frame bucket grid
+  `_separate` uses). The alternative is what this file has been caught doing three times
+  already: a loop over 200 bodies for every one of a growing number of things.
+- **...and only a slice of them each frame** (`CRUSH_SLICE`). 200 props × the 25 cells that
+  could hold a body near one is five thousand lookups a frame for an event that happens a few
+  times a minute; a round-robin covers the floor in four frames, which is 70 ms — less than
+  the time a body takes to cross the box it is flattening. Same trick as `snapshot` in
+  `enemies.js`, for the same reason.
+
+Host-only in a co-op session, like every other break: the message goes out through
+`onBreakProp`. A joiner's `anyNear` finds nobody anyway, because the grid it reads is only
+rebuilt by the side running the AI.
+
+### Water on the floor (`spills.js`)
+Shooting a water cooler used to leave plastic and a dry carpet, which is the same class of lie
+as a round through somebody's forearm that does not scratch them: the player did a thing, it
+had no consequence, and the tell is that they can see where the water should be.
+
+`spills: 'water'` on the prop is the whole of the wiring; `damageProp` reads it. **Two events,
+one system.** A round into the bottle OPENS it — a glug, a stream down the outside of the
+machine, and a patch that spreads while it empties. Killing it BURSTS it — the whole bottle at
+once, a gush, and a patch four times the size. Both then drip for nine seconds, because a
+floor that has been wet for a minute is still wet. An intact cooler burbles to itself every
+ten seconds or so if you are in the room with it (`_coolerGlug` in `game.js`), which is the
+cheapest way to make a breakroom sound occupied.
+
+Five things were learned by looking at it rather than by writing it:
+
+- **A puddle needs two layers.** Wet floor is DARKER than dry, which is what says "wet" on
+  pale vinyl — and on the dark grey tile half this building is floored with, a dark patch is
+  invisible. 0.85 of near-black on grey tile came out as a slightly grubby tile. So the
+  darkening stays and an additive sheen goes on top of it, which is also what a shallow puddle
+  does under a ceiling panel: the sheen carries it on a dark floor, the darkening on a light one.
+- **The patch belongs to the PROP, not to the shot** (`dyn.puddle`). A cooler hit three times
+  spreads one puddle rather than stacking three on one tile.
+- **Water lands on the floor the prop is standing on** — its own underside, not y = 0 — so a
+  cooler shot in an attic wets the attic.
+- **The stream comes out where the round went in.** The first version ran it down the centre
+  line of the cooler, which is inside its own plinth and therefore behind it from every angle.
+- **The cooler had to be re-authored to be worth shooting** (six boxes instead of two). A prop
+  comes apart into exactly the boxes it was drawn from, so a 1.0 m plinth and a 0.42 m bottle
+  threw two fragments the size of the machine — which landed where the machine had been
+  standing, so a destroyed cooler looked like an intact one that had stopped being solid.
+
+Pooled and bounded like brass and debris: 20 patches, oldest reused, nothing allocated per
+event. Patches deliberately do **not** time out — a puddle is a mark on the floor like a
+scorch, and water that dried while you watched would be worse than no water at all. Not
+synced in co-op, for the same reason decals are not.
+
+### The solver's world is the building's (`GUARD_MARGIN` in `physics.js`)
+The two backstop planes — one under the floor, one over the roof — are **derived from the
+colliders the floor hands over**, not written down. Nothing is meant to touch either: the
+floor plate, the roofs, every level's own slab and the plant room's high roof are all real
+colliders, and the planes only catch a body that has found a gap between them.
+
+**Written down is how they came to be wrong, and it cost both of a player's bug reports at
+once.** `ceilingY` was 3.0 — "the suspended ceiling, as far as the solver is concerned" —
+from a building whose tallest point was an ordinary room. An attic's floor is
+`LEVEL_Y` = 3.2 (`gen/stairs.js`), so **every attic in the game was above the lid**, and a
+cannon `Plane` is an infinite half-space: the lid shoved every loose crate up there back
+down while the attic's own slab held it up, and the two never agreed. Measured on floor 1,
+old lid, five seconds of simulation: **27 of 27 loose props sunk below the attic floor, 26 of
+them penetrating its walls, worst 0.20 m, 26 still awake**. With the lid derived (8.1 m on
+that floor) the same sweep is **zero of everything, all asleep**. A box dropped in an attic
+used to oscillate between 3.28 and 3.35 m for ever; it now lands at 3.520 and is asleep
+inside a second, unchanged at 6 s. The basement was never affected — it is above
+`floorGuardY` — and it measured clean before and after, which is worth knowing when reading
+a report that mentions both.
+
+So this is one bug with two symptoms, and the second one is the lesson: **things clipping
+through each other in a level and things refusing to settle in a level were the same fault**,
+because a solver being pushed two ways at once resolves it sideways. The generator's own
+placement was never wrong — a freshly generated floor measures zero interpenetration on every
+level, before the first tick.
+
+The generator room's mezzanine deck (`WALL_H`) puts debris in the same place, and its roof is
+at `WALL_H * 2` — over twice the old lid — so both were quietly on the wrong side of it too.
 
 ### Destruction (`destruction.js` + `gen/geom.js` + `physics.js`)
 Everything on a floor can be destroyed: all furniture, the window glazing, and the ceiling
