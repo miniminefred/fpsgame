@@ -64,9 +64,10 @@ document.getElementById('run').addEventListener('click', runAll);
 touchBox.addEventListener('change', runAll);
 
 // A module script is deferred and the iframe is not, so by the time this runs
-// the frame has usually loaded already and the load event will never come.
-frame.addEventListener('load', () => setTimeout(runAll, 500));
-if (frame.contentDocument?.readyState === 'complete') setTimeout(runAll, 500);
+// the frame has usually loaded already and the load event will never come — so
+// both triggers are kept, and `runAll` is what makes that safe (see below).
+frame.addEventListener('load', runAll);
+runAll();
 
 function frameDoc() {
   return frame.contentDocument;
@@ -174,9 +175,57 @@ function check(doc, w, h) {
   return { fails, measured: persistent.length + transient.length };
 }
 
+/**
+ * One sweep at a time, and the last request always wins.
+ *
+ * This is not defensive tidiness, it is the fix to a harness that spent its
+ * existence reporting nine sizes out of twelve as broken when the HUD was fine.
+ * Both start triggers above fire in the ordinary case — an iframe's initial
+ * about:blank is `complete` the moment the deferred module runs, and then the
+ * real document arrives and raises `load` — so two sweeps ran at once, each
+ * resizing the frame out from under the other's `await settle()`. Every rect
+ * then got measured against the OTHER sweep's viewport, which reads exactly like
+ * a HUD hanging off the bottom of the screen: "offscreen #tstick — 163 bottom".
+ *
+ * The duplicate rows in the report were the tell, and the reason it survived so
+ * long is that the two sweeps disagreed rather than both failing — one of them
+ * always came out clean, so the page always had a plausible answer on it.
+ */
+let sweeping = false;
+let again = false;
 async function runAll() {
+  if (sweeping) { again = true; return; }
+  sweeping = true;
+  try {
+    await sweep();
+  } finally {
+    sweeping = false;
+  }
+  if (again) { again = false; runAll(); }
+}
+
+/**
+ * The game's own document, once it is actually there.
+ *
+ * Measuring about:blank finds none of the selectors, and `check` is perfectly
+ * happy to report zero elements and no failures — an all-clear for a page that
+ * never loaded, which is the one result a harness must never be able to print.
+ */
+async function frameReady() {
+  for (let i = 0; i < 50; i++) {
+    if (frameDoc()?.getElementById('hud')) return true;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  return false;
+}
+
+async function sweep() {
+  if (!(await frameReady())) {
+    summary.textContent = 'the game frame never loaded — nothing was measured';
+    summary.className = 'bad';
+    return;
+  }
   const doc = frameDoc();
-  if (!doc || !doc.body) return;
 
   const only = params.get('only');
   const list = only ? PRESETS.filter(([name]) => name.toLowerCase().includes(only.toLowerCase())) : PRESETS;
@@ -189,7 +238,16 @@ async function runAll() {
     setFrame(w, h);
     await settle();
 
-    const { fails, measured } = check(doc, w, h);
+    // The frame is what the media queries and every rect below are measured
+    // against, so a sweep that has somehow ended up looking at a different
+    // viewport has to say so rather than blame the HUD for the difference. This
+    // is the assertion that would have named the double-sweep bug on sight.
+    const view = frameView();
+    const fails = (view.w === w && view.h === h) ? [] :
+      [`frame viewport is ${view.w}x${view.h}, expected ${w}x${h} — measurements below are not this size`];
+
+    const { fails: found, measured } = check(doc, w, h);
+    fails.push(...found);
     if (fails.length) failed++;
     report.appendChild(row(name, w, h, fails, measured));
   }
@@ -207,6 +265,13 @@ async function runAll() {
 // still fits beside the report. Only the parent is transformed, so the frame's
 // own viewport — and therefore every media query and every rect measured
 // inside it — is the full size.
+// What the frame's own viewport actually measures, which is the thing the CSS
+// inside it responds to.
+function frameView() {
+  const el = frameDoc()?.documentElement;
+  return { w: el?.clientWidth ?? 0, h: el?.clientHeight ?? 0 };
+}
+
 function setFrame(w, h) {
   frame.style.width = `${w}px`;
   frame.style.height = `${h}px`;
