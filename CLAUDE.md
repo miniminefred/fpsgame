@@ -505,6 +505,18 @@ storey taller than everything else, no suspended ceiling, a roof of its own at `
 2` instead of the ordinary one, and a machine at the far end you can shoot to cut the
 power to the whole floor.
 
+**It is worked by a crew rather than held by a crowd** (`_generatorRoom` in `enemies.js`,
+`GEN_TECHS` and `GEN_WORKERS`): 2-3 hostile Technicians and 3-5 Maintenance Workers who
+carry on with their shift while you shoot at them, both `weight: 0` so a weighted roll can
+never produce the mix anywhere else. It was 10-15 with 2-4 of them hostile, and at that size
+the plant room was the biggest fight on the floor — a second security office by accident,
+when the room is supposed to be about the machine at the end of it and about whether you are
+willing to shoot the thing keeping the lights on. Whatever the spacing check cannot fit comes
+off the workers rather than the technicians, so a tight room is still the plant room instead
+of four men ignoring you. Worth knowing before tuning any of it: only about **3%** of floors
+roll a room that qualifies at all (144 layouts swept), so this is a set piece you meet every
+thirty floors or so, not a fixture.
+
 **That roof is the fix to a hole, and it is worth knowing why it was missing.** The walls
 were built at double height so the room would read "walled up two storeys rather than
 roofless" — the wall pass says exactly that — but `generatorRoomCut` took the room out of
@@ -1139,8 +1151,16 @@ Lockdown…), so floors have their own character without any of them becoming on
 repeated; the name is shown on the way in. Types share one rig with different numbers and
 colours; the visor colour tells you what is about to happen.
 
-A handful of **neutrals** — the Panicking Staffer looking for a toilet, plus a Night Cleaner
-and Couriers — are placed by hand on every floor rather than rolled (`weight: 0`). They are
+A crowd of **neutrals** — the Panicking Staffer looking for a toilet, plus Night Cleaners and
+Couriers — are placed by hand in the corridors of every floor rather than rolled
+(`weight: 0`). The two halves of that are drawn deliberately differently (`HALL_PANICKERS`,
+`HALL_BYSTANDERS`): the toilet guy is a flat one or two whatever the floor is, because he is
+a joke and a joke lands twice and is a running gag by the sixth time, while the rest are the
+building's background traffic and so scale with `layout.areaRatio` — six people over a slab
+half again the usual size is an empty office, and the same six over a small one is a crowd.
+The same question `tuningFor` and `cameras.js` already ask. They are placed `NEUTRAL_GAP`
+apart, because `this.corridors` samples every tenth tile and that is coarse enough to stand
+a courier inside a cleaner once there are a dozen of them. They are
 not in the state machine at all: no alert, no chase, no weapon, and seeing or hearing you
 changes nothing. They do **not** count toward clearing the floor (`hostileCount`, not
 `aliveCount`), so you can walk past every one and take the exit. Shoot one and it flees for
@@ -1195,11 +1215,24 @@ by everyone wearing that word. The hit flash follows whatever they are actually 
 Gunfire spread is sampled as a real angle and converted into a miss distance at your range,
 so backing off genuinely makes you harder to hit.
 
-### The staff are at work (`workstations` in `gen/build.js` + `_takeDesk`/`animateWorking`)
-About 23 of a floor's ~175 bodies are found sitting at a desk, typing, with their backs to
-the door. It is presentational — a seated body is `idle` like any other and is on its feet
-the frame it sees or hears you — but it is what makes a floor of offices read as a building
-somebody works in rather than as a shooting gallery waiting to start.
+### A chair means harmless (`workstations` in `gen/build.js` + `_takeDesk`/`animateWorking`)
+**Four bodies on a floor are sitting down, and none of them is going to fight you fairly.**
+The Manager is at his own desk behind the black door, one guard is on the cameras in the
+security office, and two janitors are on their break on the floor of a broom closet. Every
+one of those is placed by hand, is a set piece for the room it is in, and is the reason that
+room exists. Nothing that was *rolled* sits: the shift a room is dealt works standing up.
+
+It used to be about 23 of a floor's ~175 bodies, found typing with their backs to the door,
+and it read beautifully — but it read as a promise the state machine does not keep. A seated
+body is `idle` like any other and is on its feet the frame it sees or hears you, so
+"somebody is sitting at that desk" was information the player could not act on. Now it is:
+if it is in a chair, walking past it costs nothing. The floor pays for that in atmosphere,
+which is a real cost and was accepted knowingly — an office of standing staff is less of a
+workplace than an office of typing ones.
+
+What did NOT change is any of the machinery below. The furnisher still places every chair
+and still faces it at its desk, the pose still hinges a real joint, and the four who do sit
+go through exactly the path all twenty-three used to.
 
 **The furnisher decides where, because it is the only thing that knows.** A desk with a
 monitor on it and a chair pulled up to it is a job, and `seatFacing` in `gen/rooms.js` is
@@ -1236,8 +1269,9 @@ Four things about it were learned by measuring rather than by looking:
   and a desk nobody fits in front of is dropped from the pool rather than refused at the
   door — a third of a cubicle farm's pods fail `nav.clear` because the pitch is tight and
   the grid holds a body to whole tiles, and counting those deals a farm five people and
-  then stands all five of them up. `AT_DESK` keeps one station in five empty on purpose: a
-  room with somebody at every single desk reads as a diorama.
+  then stands all five of them up. That count is now the *only* thing a room's desks decide:
+  how many people are in the room, not where any of them stands. A twelve-pod farm is still
+  where the work is whether or not anybody is sitting at it, so it is still staffed like it.
 
 **The pose hinges the limbs about a real joint** (`hinge` in `enemy-anim.js`), and that is
 the one thing here that is not free. Every part of a rig is a bare mesh (`part` in
@@ -1246,8 +1280,7 @@ walk cycle gets away with because the swing is a few degrees, and which at 70° 
 hand's width of daylight at the hip and puts the foot through the floor. `stand` puts the
 limbs back when they get up, because nothing else in that file ever moves one. Both beats —
 typing, and the pause to look at whatever it did — run off the `walkPhase` every body is
-already seeded with, so a farm of forty cubicles is forty people at forty different moments
-without one extra number being stored. The sidearm goes to the hip rather than being hidden:
+already seeded with, so no seated body needs one number stored beyond the one it already had. The sidearm goes to the hip rather than being hidden:
 `animate` rewrites its position every frame for anybody on their feet and never gets the
 chance here, so left alone it hangs in the air where a standing hand would be.
 
@@ -1256,9 +1289,11 @@ broom closet — a different pose for a different room) or null. On the wire it 
 that only ever stands somebody up: which seat a body has is a fact about the floor, and
 both browsers generated the same one from the same seed.
 
-The manager is at his own desk and one guard is on the cameras, which is the only reason
-that room exists. A Sentry Unit is never seated (`standing` in `enemy-types.js`) — it was
-bought to walk the floor.
+There is no longer a `standing` flag on the Sentry Unit, and its absence is the tell that
+this rule is enforced in one place rather than per type. It existed to keep the one machine
+on the roster out of a chair while everybody else sat down; with nobody rolled sitting down
+there is nothing for it to except, and a flag no code reads is a flag that will be trusted
+by the next person to read the file.
 
 ### Furniture models (`gen/models.js` + `gen/props.js`)
 Static props are drawn with downloaded CC0/CC-BY GLBs; loose props are not. The split is
