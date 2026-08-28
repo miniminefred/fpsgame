@@ -46,6 +46,8 @@ export const TYPES = {
     suit: 0x2d3a2e, shirt: 0xf0a63c, visor: 0x63686e, unlockFloor: 2, weight: 2,
   },
   analyst: {
+    // The baseline in every column, this one included: `aimMul` is 1 by default,
+    // and an analyst is what the floor's aim curve was written against.
     name: 'Analyst', hp: 1, speed: 1, damage: 1, rate: 1, spread: 1,
     range: 15, melee: false, scale: 1,
     suit: 0x41464e, shirt: 0xd9dde1, visor: 0x8b9198, unlockFloor: 1, weight: 4,
@@ -54,6 +56,9 @@ export const TYPES = {
     // Fast, inaccurate chip damage — the one that punishes standing still.
     name: 'Sysadmin', hp: 0.8, speed: 1.12, damage: 0.45, rate: 0.4, spread: 1.7,
     range: 13, melee: false, scale: 0.97,
+    // Slowest onto a target on the roster, which is the same character the spread
+    // already describes: whoever this is spends the fight hosing a doorway.
+    aimMul: 1.25,
     suit: 0x2f4448, shirt: 0xbfe3d8, visor: 0xa2b4bf, unlockFloor: 3, weight: 3,
   },
   security: {
@@ -68,6 +73,9 @@ export const TYPES = {
     ...GUARD,
     name: 'Security', hp: 1.7, speed: 0.98, damage: 1.5, rate: 1.15, spread: 2.1,
     range: 9, melee: false, scale: 1.07, unlockFloor: 4, weight: 3,
+    // Paid to be looking. Not the fastest on target — that is the machine — but
+    // quicker than anybody who had to put a spreadsheet down first.
+    aimMul: 0.9,
   },
   guardBaton: {
     // The same guard with the sidearm still holstered. Shares the name, because
@@ -86,6 +94,9 @@ export const TYPES = {
     // Slow, tanky, accurate at range. Deal with it or leave the floor.
     name: 'Manager', hp: 2.7, speed: 0.82, damage: 1.9, rate: 1.6, spread: 0.55,
     range: 21, melee: false, scale: 1.14,
+    // The tightest cone on the floor gets the second-quickest draw to go with it:
+    // being unhurried is what he is, and it is not the same as being slow.
+    aimMul: 0.85,
     suit: 0x1c2126, shirt: 0xd8c08a, visor: 0x4f5460, unlockFloor: 6, weight: 2,
   },
   reanimated: {
@@ -200,6 +211,11 @@ export const TYPES = {
     // means the thing looking at you is not going to wander off.
     name: 'Sentry Unit', hp: 3.2, speed: 0.78, damage: 1.45, rate: 1.35, spread: 0.7,
     range: 17, melee: false, scale: 1.18,
+    // Quickest onto a target in the building, and the one that should be: it was
+    // bought to watch a corridor, it is not carrying anything it has to put down,
+    // and the darkest visor on the floor ought to mean the thing wearing it is
+    // the one you cannot walk out in front of.
+    aimMul: 0.65,
     suit: 0x474d55, shirt: 0x9aa3ab, visor: 0x3a4048, voice: 'robot',
     unlockFloor: 2, weight: 3,
   },

@@ -777,5 +777,12 @@ function tuningFor(floor, areaRatio) {
     // Tighter cone with depth: later floors punish standing in the open.
     spread: Math.max(0.022, 0.075 - t * 0.0035),
     reaction: Math.max(0.12, 0.5 - t * 0.025),
+    // How long a shooter has to hold you before its first round (see AIM_CONE in
+    // enemies.js). This is the floor's whole answer to "can I surprise anybody":
+    // it is time to see them, pick which one, and fire first. Like every curve
+    // here it tightens with depth rather than switching off — a deep floor still
+    // gives you a third of a second, which is enough for a shot you had already
+    // decided on and not enough to go looking for one.
+    aim: Math.max(0.34, 0.85 - t * 0.045),
   };
 }

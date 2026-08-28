@@ -4,7 +4,7 @@ import { CORRIDOR, STAFF_ONLY, FIRST_CONTACT_GAP, worldX, worldZ } from './gen/l
 import { buildRig } from './rigs.js';
 import { TYPES, BYSTANDERS, pickType, pickTheme } from './enemy-types.js';
 import { DEATH_TIME, HIT_FLASH, SWING_TIME, animate, die } from './enemy-anim.js';
-import { angleLerp, smoothTo } from './util.js';
+import { angleDelta, angleLerp, smoothTo } from './util.js';
 import { makeRng } from './gen/rng.js';
 import { EYE } from './metrics.js';
 
@@ -109,6 +109,35 @@ const CORRIDOR_SAMPLE = 10;    // keep every Nth corridor tile as a waypoint
 const FLEE_TIME = 8;
 const FLEE_SPEED = 1.45;
 const FLEE_AWAY = 4;           // metres a flee destination must gain on you
+// The beat between being seen and being shot at.
+//
+// Sight is line of sight and nothing else, and `fireCooldown` has been ticking
+// down since the floor was generated — so before this, a body that heard a shot
+// two rooms ago was standing in `chase` with its cooldown long expired, and the
+// frame you crossed its door frame it fired. With its back to you, if that is how
+// it happened to be standing. Rounding a corner into three of those is not a fight
+// you lost, it is one you were never in.
+//
+// So a shooter has to HOLD you for `tuning.aim` seconds before its first round,
+// and only the time it spends actually pointing at you counts (AIM_CONE) — which
+// is what makes the one facing the wrong way the one you get to surprise, since
+// turning round is already a real cost (the yaw smoothing in _move).
+//
+// It DRAINS rather than resets (AIM_DRAIN), which is the rule cameras.js already
+// uses and for the same reason: one frame behind the door frame is not a pardon,
+// and a player bobbing in and out of a doorway must not be permanently
+// un-shootable. The second peek costs them less than the first did.
+//
+// Melee is exempt. A swing already lands part-way through rather than on the
+// wind-up (see SWING_TIME), which is the same courtesy paid in the same coin.
+const AIM_CONE = 1.05;     // radians of yaw error they will aim inside (~60°)
+const AIM_DRAIN = 0.6;     // seconds of aim lost per second out of sight
+// ...and how much credit one body may bank, as a multiple of what it needs. A
+// body that has been shooting at you for thirty seconds must not be holding
+// thirty seconds of aim, or the drain buys you nothing for the rest of the fight
+// and stepping back out of a doorway is instantly fatal for ever after.
+const AIM_BANK = 1.6;
+
 const PREFERRED = 7;       // range a shooter tries to hold
 const TOO_CLOSE = 3.5;
 const GIVE_UP = 7;         // seconds of no contact before they settle down
@@ -1161,6 +1190,10 @@ export class Enemies {
       state: 'idle',
       timer: rng.range(0, 1),
       fireCooldown: rng.range(0.4, 1.6),
+      // Seconds of you held in their sights. Gates the FIRST round only — it goes
+      // on accumulating past the threshold, so a fight already in progress fires
+      // on its ordinary cadence. See AIM_CONE.
+      aim: 0,
       contact: 0,          // seconds since last seen the player
       lastSeen: null,
       walkPhase: rng.range(0, 6),
@@ -1929,10 +1962,25 @@ export class Enemies {
       }
     }
 
+    // How long they have had you lined up, and how long they need. Ticked before
+    // the returns below, because losing sight of you is precisely when it has to
+    // start draining.
+    const need = this.tuning.aim * (e.type.aimMul ?? 1);
+    const onTarget = sees && e.state === 'fight'
+      && Math.abs(angleDelta(e.yaw, Math.atan2(-(px - e.x), -(pz - e.z)))) < AIM_CONE;
+    e.aim = onTarget
+      ? Math.min(e.aim + dt, need * AIM_BANK)
+      : Math.max(0, e.aim - dt * AIM_DRAIN);
+
     if (e.state !== 'fight' || !sees || dist > e.type.range) return;
     if (e.fireCooldown > 0) return;
 
     const type = e.type;
+    // The aim window, and the one thing that can hold a shot back with everything
+    // else about it ready. `aimMul` is how fast this type gets on target — a
+    // machine built to watch a corridor against somebody who was doing a
+    // spreadsheet ninety seconds ago. See enemy-types.js.
+    if (!type.melee && e.aim < need) return;
     e.fireCooldown = this.tuning.fireInterval * type.rate * (0.75 + Math.random() * 0.5);
 
     // Melee types don't shoot: they swing, and the hit lands mid-swing rather
