@@ -38,6 +38,30 @@ const GRAVITY = -16;
 const SLEEP_SPEED_LIMIT = 0.18; // m/s (and rad/s)
 const SLEEP_TIME_LIMIT = 0.5;   // seconds below the limit before a body sleeps
 
+// The two backstop planes, and how far outside the building they sit.
+//
+// Nothing is meant to touch either of them: the floor plate, the roofs, every
+// level's own slab and the generator room's high roof are all real colliders, and
+// these only catch a body that has found a gap between them. So the single
+// requirement is that they are clear of every collider on the floor — which is why
+// they are DERIVED from the statics rather than written down.
+//
+// Written down is how they came to be wrong. `ceilingY` was 3.0, "the suspended
+// ceiling, as far as the solver is concerned", from a building whose tallest point
+// was an ordinary room. An attic's floor is LEVEL_Y = 3.2 (gen/stairs.js), so every
+// attic in the game was ABOVE the lid — and a cannon Plane is an infinite
+// half-space, so the lid shoved every loose crate up there back down while the
+// attic's own slab held it up, and the two never agreed. A box dropped in an attic
+// oscillated between 3.28 and 3.35 m for ever and could never sleep: measured over
+// eight seconds, and exactly what a player reported. The generator room's mezzanine
+// deck (WALL_H) puts debris in the same place, and its roof is at WALL_H * 2 —
+// twice the old lid.
+const GUARD_MARGIN = 1.5;
+// Where they start, before any statics have said how tall this floor is: one
+// ordinary room, which is all a floor with no colliders in it could be.
+const GUARD_CEILING = 3.0;
+const GUARD_FLOOR = -6;
+
 // Damping bleeds off the residual energy the solver leaves behind. Without it
 // props creep for several seconds and never reach the sleep threshold.
 const LINEAR_DAMPING = 0.05;
@@ -114,15 +138,11 @@ export class Physics {
 
     this.world = null;
     this.props = [];
-    // The suspended ceiling, as far as the solver is concerned. Mirrors CEIL_H
-    // in gen/layout.js; kept as a field so nothing here has to import the
-    // floorplan to know how tall a room is.
-    this.ceilingY = 3.0;
-    // ...and where the world gives out underneath. Deeper than the deepest basement
-    // (LEVEL_Y below the floor plate, gen/stairs.js), because the floor is a collider
-    // now and this is only the backstop under it. Same reasoning as ceilingY: a field
-    // rather than an import, so the solver never has to read the floorplan.
-    this.floorGuardY = -6;
+    // Where the world gives out, above and below. Both are grown to fit this floor's
+    // own colliders in `addStatics` — see GUARD_MARGIN — so this module still never
+    // imports the floorplan, and still cannot be wrong about how tall it is.
+    this.ceilingY = GUARD_CEILING;
+    this.floorGuardY = GUARD_FLOOR;
     // Static bodies, keyed by the level collider they were built from, so a
     // destroyed prop can take its own collision away with it.
     this._statics = new Map();
@@ -191,6 +211,10 @@ export class Physics {
     this._statics.clear();
     this._accum = 0;
     this._hasGround = false;
+    this._guards = null;
+    // A new world is a new building: the old one's height says nothing about it.
+    this.ceilingY = GUARD_CEILING;
+    this.floorGuardY = GUARD_FLOOR;
   }
 
   /**
@@ -202,6 +226,21 @@ export class Physics {
   addStatics(boxes) {
     if (!this.world) return;
 
+    // How tall and how deep this floor turned out to be. Measured before the planes
+    // are built and again on every later batch, because a caller may hand the floor
+    // over in several and the guards must never end up inside the building. A
+    // collider with no `base` starts at the floor.
+    for (const b of boxes ?? []) {
+      if (b.top + GUARD_MARGIN > this.ceilingY) this.ceilingY = b.top + GUARD_MARGIN;
+      const under = (b.base ?? 0) - GUARD_MARGIN;
+      if (under < this.floorGuardY) this.floorGuardY = under;
+    }
+    // Already built, and this batch may have raised the roof or dug a basement.
+    if (this._guards) {
+      this._guards.ground.position.y = this.floorGuardY;
+      this._guards.ceiling.position.y = this.ceilingY;
+    }
+
     // Callers may hand over a floor's colliders in more than one batch, so the
     // ground is created once per world rather than once per call.
     if (!this._hasGround) {
@@ -210,7 +249,7 @@ export class Physics {
         type: Body.STATIC,
         shape: new Plane(),
         material: this._worldMat,
-        // Below the deepest basement, not at y = 0. The real floor is a collider now
+        // Under the deepest thing on this floor, not at y = 0. The real floor is a collider now
         // (`floorPlate` in gen/build.js) with a hole where a staircase goes down, so a
         // plane at zero would be a lid over every basement in the building and
         // everything down there — loose crates, debris, a body — would be shoved up
@@ -224,9 +263,12 @@ export class Physics {
       ground.quaternion.setFromAxisAngle(new Vec3(1, 0, 0), -Math.PI / 2);
       this.world.addBody(ground);
 
-      // And a lid. Nothing the player can throw gets near the ceiling, but a
-      // holed extinguisher is not thrown — it flies, and without this it leaves
-      // through the roof and goes off somewhere over the car park.
+      // And a lid, above the highest collider on the floor. Nothing the player can
+      // throw gets near the roof, but a holed extinguisher is not thrown — it flies,
+      // and without this it leaves through the roof and goes off somewhere over the
+      // car park. What it must never be is a lid over part of the building — see
+      // GUARD_MARGIN for the attic that spent its life being pushed through its own
+      // floor by this plane.
       const ceiling = new Body({
         mass: 0,
         type: Body.STATIC,
@@ -239,6 +281,7 @@ export class Physics {
       ceiling.quaternion.setFromAxisAngle(new Vec3(1, 0, 0), Math.PI / 2);
       this.world.addBody(ceiling);
 
+      this._guards = { ground, ceiling };
       this._hasGround = true;
     }
 
