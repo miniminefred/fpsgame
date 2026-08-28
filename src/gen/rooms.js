@@ -1,5 +1,6 @@
-import { QUARTER, tryPlace, footprintOf } from './props.js';
+import { PROPS, QUARTER, tryPlace, footprintOf } from './props.js';
 import { doorSide, doorsOnRoom } from './layout.js';
+import { PLAYER_RADIUS } from '../metrics.js';
 
 // What each kind of room is furnished with. The catalogue in props.js says what
 // a desk IS; this says where desks go. Splitting them keeps a room type to a
@@ -659,12 +660,38 @@ function wallClutter(sink, bounds, kinds, perM2, rng) {
 
 // Clutter dropped where it was put down. `perM2` is one item per that many
 // square metres — the room's own size decides how littered it is.
+//
+// A STATIC prop dropped in the middle of the floor is the one thing the furnisher
+// does that can wall a room off, so it has to leave a body's width around it.
+//
+// This is the copyroom bug in a second room type (see reserveThroughRoutes in
+// gen/build.js): `canPlace` rounds a footprint outward to whole tiles, so two
+// props in diagonally adjacent tile blocks can pass that test and still leave a
+// gap no body can get through — two 0.8 m crates a tile apart on the diagonal
+// have about 0.53 m of perpendicular clearance against a 0.8 m body. Measured in
+// an itbay on one floor in three hundred: 2266 cells of its own floor cut off
+// behind exactly two scattered crates, with a two-cell neck between them.
+//
+// Asking for the footprint plus a body's radius on every side is the whole fix,
+// and it costs a little density in a busy room: a crate that cannot leave a lane
+// beside it is a crate that does not land. Loose props are exempt because they are
+// not obstacles — you walk into a carton and it moves.
+const SCATTER_LANE = PLAYER_RADIUS;
+
 function scatter(sink, bounds, kinds, perM2, rng) {
   const { x0, z0, x1, z1 } = bounds;
   const n = 1 + Math.floor(((x1 - x0) * (z1 - z0)) / perM2);
   for (let i = 0; i < n; i++) {
-    tryPlace(sink, rng.pick(kinds),
-      rng.range(x0 + 0.5, x1 - 0.5), rng.range(z0 + 0.5, z1 - 0.5), rng.int(0, 3), rng);
+    const kind = rng.pick(kinds);
+    const x = rng.range(x0 + 0.5, x1 - 0.5);
+    const z = rng.range(z0 + 0.5, z1 - 0.5);
+    const rot = rng.int(0, 3);
+    if (!PROPS[kind]?.mass) {
+      const foot = footprintOf(sink, kind, rot);
+      const w = foot.w / 2 + SCATTER_LANE, d = foot.d / 2 + SCATTER_LANE;
+      if (!sink.canPlace(x - w, z - d, x + w, z + d)) continue;
+    }
+    tryPlace(sink, kind, x, z, rot, rng);
   }
 }
 
