@@ -19,6 +19,38 @@ export function furnish(sink, room, bounds, rng, doors) {
 
   const fill = ROLES[room.role] ?? privateOffice;
   fill(sink, bounds, rng, room, doors);
+  cartons(sink, bounds, rng);
+}
+
+// How much of the building has cardboard lying about in it, and how much.
+//
+// Every role gets this on top of its own recipe, which is the point: a delivery
+// that never got put away is not a kind of room, it is a thing that has happened
+// in three rooms out of five. Rolled per room rather than spread evenly, so some
+// rooms are clear and some have a small pile — and the pile is what makes an
+// office readable as somewhere people work rather than somewhere props were
+// placed. They are the one prop the player can shove out of the way, shoot to
+// nothing, or walk through the middle of while the staff flatten them (see
+// `crushable` in props.js).
+const CARTON_CHANCE = 0.62;
+const CARTON_PER_M2 = 11;      // one carton per this much floor, where they land
+const CARTON_MAX = 7;
+
+function cartons(sink, bounds, rng) {
+  if (!rng.chance(CARTON_CHANCE)) return;
+  const { x0, z0, x1, z1 } = bounds;
+  const n = Math.min(CARTON_MAX, 1 + Math.floor(area(bounds) / CARTON_PER_M2));
+  for (let i = 0; i < n; i++) {
+    // Against a wall about half the time. A carton in the middle of the carpet
+    // reads as dropped; one against the skirting reads as stacked and left, and a
+    // room wants some of each.
+    if (rng.chance(0.5)) {
+      edgeProp(sink, bounds, 'carton', rng);
+    } else {
+      tryPlace(sink, 'carton', rng.range(x0 + 0.4, x1 - 0.4), rng.range(z0 + 0.4, z1 - 0.4),
+        rng.int(0, 3), rng);
+    }
+  }
 }
 
 // Cubicle farm: pods on a 3.7 x 3.0 m pitch, each a desk backed by an L of

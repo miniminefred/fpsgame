@@ -67,6 +67,10 @@ const SIGHT = 22;          // metres they can notice you at, with line of sight
 // and moving either on its own sends the shove negative, which pulls bodies
 // together instead of apart.
 const SEPARATION = 0.8;
+// How far apart two heights have to be before they are different levels. Used by
+// anyNear, whose callers are on the floor rather than in the nav grid and so have
+// a height rather than a layer number.
+const SAME_LEVEL = 1.2;
 const SEPARATION_SQ = SEPARATION * SEPARATION;
 
 // Packed cell key for the separation grid. The building is centred on the origin
@@ -1916,6 +1920,37 @@ export class Enemies {
       if (bucket) bucket.push(e);
       else this._cells.set(key, [e]);
     }
+  }
+
+  /**
+   * The nearest living body within `r` of a point on the same level, or null.
+   *
+   * Off the same per-frame bucket grid `_separate` uses, because the alternative
+   * is what this file has already been caught doing three times: a loop over the
+   * whole roster for every one of a growing number of things. A floor carries up
+   * to 200 bodies and a room's worth of cardboard, and the crush test asks this
+   * once per carton per frame.
+   *
+   * `y` is which level the asker is standing on, not a tolerance to be tuned: a
+   * body one storey below a box in an attic is not standing on it, however exactly
+   * the tiles line up.
+   */
+  anyNear(x, z, y, r) {
+    const cx = Math.floor(x / SEPARATION), cz = Math.floor(z / SEPARATION);
+    const reach = Math.ceil(r / SEPARATION);
+    const r2 = r * r;
+    for (let gz = cz - reach; gz <= cz + reach; gz++) {
+      for (let gx = cx - reach; gx <= cx + reach; gx++) {
+        const bucket = this._cells.get(packCell(gx, gz));
+        if (!bucket) continue;
+        for (const e of bucket) {
+          if (!e.alive || Math.abs(e.y - y) > SAME_LEVEL) continue;
+          const dx = e.x - x, dz = e.z - z;
+          if (dx * dx + dz * dz <= r2) return e;
+        }
+      }
+    }
+    return null;
   }
 
   // Keep bodies from occupying the same tile.

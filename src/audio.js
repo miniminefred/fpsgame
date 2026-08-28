@@ -164,6 +164,17 @@ const LIBRARY = {
   // about the collision, so game.js decides when a shove has happened and this
   // plays every time it says so.
   'prop-shove':    { variants: 3, gain: 0.40, pitch: 0.12 },
+  // A carton going flat under somebody's boots. Its own clip rather than
+  // break-cardboard, because the two are different events: one is a box coming
+  // apart because it was shot, the other is a box losing an argument with a body
+  // that never broke stride. Mixed low — it happens as a by-product of somebody
+  // walking, so it belongs under the footsteps rather than over them.
+  'crush-cardboard': { variants: 3, gain: 0.42, pitch: 0.16 },
+  // The water cooler: the bottle glugging when it is hit, the gush when it goes,
+  // and what is left dripping onto the carpet afterwards. See spills.js.
+  'water-gush': { variants: 2, gain: 0.55, pitch: 0.10 },
+  'water-glug': { variants: 3, gain: 0.50, pitch: 0.14 },
+  'water-drip': { variants: 3, gain: 0.34, pitch: 0.18 },
 
   step: { variants: 4, gain: 0.30, pitch: 0.14 },
   land: { variants: 2, gain: 0.50, pitch: 0.10 },
@@ -575,6 +586,33 @@ export class GameAudio {
   /** Furniture shoved aside by the player walking into it. */
   propShove(point) {
     this._placed('prop-shove', point);
+  }
+
+  /** A cardboard box flattened by somebody walking over it. */
+  crushProp(point) {
+    this._placed('crush-cardboard', point);
+  }
+
+  // --- the water cooler ---------------------------------------------------------
+  //
+  // Three clips for three moments of the same event, which is what makes it read
+  // as a thing happening rather than as one sound effect: the bottle answers a
+  // round with a glug, a killed cooler empties itself onto the floor, and then the
+  // carpet drips for a while afterwards. See spills.js for the timing.
+
+  /** A round into the bottle: air going in where the water is coming out. */
+  waterGlug(point) {
+    this._placed('water-glug', point);
+  }
+
+  /** The bottle emptying itself over the floor. */
+  waterGush(point) {
+    this._placed('water-gush', point);
+  }
+
+  /** The tail of it, one drip at a time. */
+  waterDrip(point) {
+    this._placed('water-drip', point);
   }
 
   /** The cow, announcing itself. */

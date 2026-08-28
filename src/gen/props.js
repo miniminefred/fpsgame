@@ -183,8 +183,34 @@ export const PROPS = {
     },
   },
 
+  // A single carton, and the lightest thing on the floor.
+  //
+  // It exists to be in the way rather than to be furniture: light enough that
+  // walking into one sends it sliding, weak enough that one round of anything
+  // ends it, and `crushable` so that anybody who walks over it flattens it (see
+  // `crush` in destruction.js). Deliberately NOT model-backed — a loose prop
+  // needs its own mesh for the solver to move, and the boxes it is drawn from are
+  // the pieces it comes apart into.
+  carton: {
+    w: 0.44, d: 0.38, mass: 2.2, hp: 8, substance: 'cardboard', crushable: true,
+    build(p, rng) {
+      const h = rng.range(0.26, 0.34);
+      const hw = 0.21, hd = 0.18;
+      p.box('cardboard', -hw, 0, -hd, hw, h, hd);
+      // The taped seam across the top, and a shipping label on one face. Two
+      // little boxes, and they are what stop it reading as a brown cube.
+      p.box('paper', -0.05, h, -hd, 0.05, h + 0.006, hd);
+      if (rng.chance(0.7)) {
+        p.box('paper', -0.09, h * 0.45, -hd - 0.004, 0.09, h * 0.72, -hd + 0.004);
+      }
+      p.obstacle(-hw, -hd, hw, hd, h);
+    },
+  },
+
   crateStack: {
-    w: 0.72, d: 0.72, mass: 6, hp: 28, substance: 'cardboard',
+    // Lighter and weaker than it was, and `crushable` like the single carton: the
+    // point of a cardboard box is that it loses every argument it is in.
+    w: 0.72, d: 0.72, mass: 4, hp: 12, substance: 'cardboard', crushable: true,
     build(p, rng) {
       let y = 0;
       const layers = rng.int(1, 3);
@@ -267,7 +293,9 @@ export const PROPS = {
   },
 
   waterCooler: {
-    w: 0.4, d: 0.4, mass: 11, hp: 35, substance: 'plastic',
+    // `spills` is what makes it leak when it is shot rather than merely break —
+    // see damageProp in destruction.js and spills.js for what comes out.
+    w: 0.4, d: 0.4, mass: 11, hp: 35, substance: 'plastic', spills: 'water',
     build(p) {
       p.box('metal', -0.18, 0, -0.18, 0.18, 1.0, 0.18);
       p.box('screenOn', -0.14, 1.0, -0.14, 0.14, 1.42, 0.14);   // the bottle
@@ -874,7 +902,8 @@ export function tryPlace(sink, kind, cx, cz, rot, rng, span = 0) {
 
   if (spec.mass) {
     // Loose: its own rigid body, and its own mesh so physics can move it.
-    sink.beginDynamic(spec.mass, spec.hp, spec.substance);
+    sink.beginDynamic(spec.mass, spec.hp, spec.substance,
+      { crushable: spec.crushable, spills: spec.spills });
     spec.build(placer(sink, cx, cz, rot), rng, drawW);
     sink.endDynamic();
   } else if (model) {

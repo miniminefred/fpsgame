@@ -30,6 +30,25 @@ const BREATH_SPEED = 4;        // moving at least this fast to be out of breath
 // has to happen here, where the collision is actually understood.
 const SHOVE_INTERVAL = 0.4;
 
+// How close a body has to get to a cardboard box before it goes flat under them.
+//
+// A body is 0.4 m of radius and a carton about 0.2, so this is the two of them
+// touching plus a little: what it must NOT be is generous, or a box is flattened
+// by somebody who walked past it. The staff have no idea the box is there — it is
+// not on the nav grid, because it is loose — so a body walks straight through
+// where it stood, and this is what makes that read as flattening it rather than
+// as clipping through it.
+const CRUSH_REACH = 0.62;
+// ...and how many boxes are tested per frame.
+//
+// A floor carries about 200 crushable props and each test walks the 25 bucket
+// cells that could hold a body near it, so testing all of them every frame is
+// five thousand lookups for an event that happens a few times a minute. A
+// round-robin over the list covers the whole floor in four frames, which is 70 ms
+// — less than the time a body takes to cross the box it is flattening, and the
+// same trick `snapshot` in enemies.js uses on the same reasoning.
+const CRUSH_SLICE = 48;
+
 // The cow (see placeCow in gen/build.js), on the rare floor that has one: how
 // long between one moo and the next, randomised so it doesn't read as a loop.
 const MOO_INTERVAL = [7, 16];
@@ -510,6 +529,9 @@ export class Game {
   // loose prop into a body the player and bullets can shove.
   _initPhysics(level) {
     this.pushColliders = [];
+    // The loose props a body walking over them flattens. See _crushBoxes.
+    this.crushables = [];
+    this._crushCursor = 0;
     if (!this.physics) return;
 
     this.physics.reset();
@@ -531,10 +553,47 @@ export class Game {
       // square the width of the prop's longest horizontal side. Slightly
       // generous, but a chair you can't quite touch beats one you clip through.
       dyn.reach = Math.max(dyn.size.x, dyn.size.z) / 2;
+      if (dyn.crushable) this.crushables.push(dyn);
       const collider = { minX: 0, maxX: 0, minZ: 0, maxZ: 0, top: 0, push: dyn };
       dyn.collider = collider;
       this.pushColliders.push(collider);
       this._syncCollider(dyn);
+    }
+  }
+
+  /**
+   * The staff flattening the cardboard they walk over.
+   *
+   * Host-only in a co-op session for the same reason every other break is: the
+   * message goes out through `onBreakProp` and the other end applies it, so two
+   * browsers cannot disagree about which boxes are still standing. On a joiner
+   * `enemies.anyNear` finds nobody anyway — the bucket grid it reads is only
+   * rebuilt by the side running the AI.
+   *
+   * The list is the crushable props and not every loose prop: a floor carries a
+   * few hundred of those and a room's worth of cardboard, and this runs every
+   * frame. Entries are dropped as they break, so a floor gets quieter to check
+   * the longer it has been fought over.
+   */
+  _crushBoxes() {
+    const list = this.crushables;
+    if (!list?.length) return;
+    let checked = 0;
+    while (checked < CRUSH_SLICE && list.length) {
+      if (this._crushCursor >= list.length) this._crushCursor = 0;
+      const i = this._crushCursor;
+      const dyn = list[i];
+      checked++;
+      if (dyn.broken) { list.splice(i, 1); continue; }
+      this._crushCursor++;
+      const p = dyn.group.position;
+      // Its own underside, so a box in an attic is only flattened by somebody
+      // standing in the attic.
+      const foot = p.y - dyn.size.y / 2;
+      if (!this.enemies.anyNear(p.x, p.z, foot, CRUSH_REACH + dyn.reach)) continue;
+      this.destruction.crush(dyn, { x: p.x, y: foot + 0.05, z: p.z });
+      list.splice(i, 1);
+      this._crushCursor = i;
     }
   }
 
@@ -561,6 +620,8 @@ export class Game {
 
     const level = this.level.current;
     if (!level) return;
+
+    this._crushBoxes();
 
     // Physics runs even while dead, so anything you knocked over on the way
     // out settles instead of freezing mid-air.

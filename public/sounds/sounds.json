@@ -4,13 +4,13 @@
     {
       "name": "amb-drone",
       "text": "empty corridor room tone, low uneasy hum, no music, no voices",
-      "duration": 26.0,
+      "duration": 26,
       "loop": true
     },
     {
       "name": "amb-office",
       "text": "office air conditioning hum with distant fluorescent buzz, no music, no voices",
-      "duration": 26.0,
+      "duration": 26,
       "loop": true
     },
     {
@@ -23,7 +23,7 @@
     {
       "name": "break-electronic",
       "text": "electronic appliance blowing apart, plastic shatter with electrical sparks and falling parts, close mic, dry, no music",
-      "duration": 2.0,
+      "duration": 2,
       "influence": 0.75,
       "variants": 3
     },
@@ -44,7 +44,7 @@
     {
       "name": "break-metal",
       "text": "metal filing cabinet collapsing and crashing onto a hard floor, close mic, dry, no music",
-      "duration": 2.0,
+      "duration": 2,
       "influence": 0.75,
       "variants": 3
     },
@@ -71,13 +71,13 @@
     {
       "name": "breath-2",
       "text": "single deep gasping inhale of a man out of breath, close mic, dry, no words, no music",
-      "duration": 1.0,
+      "duration": 1,
       "influence": 0.6
     },
     {
       "name": "breath-3",
       "text": "ragged panting breath of a man sprinting, close mic, dry, no words, no music",
-      "duration": 1.0,
+      "duration": 1,
       "influence": 0.6
     },
     {
@@ -89,7 +89,7 @@
     {
       "name": "breath-5",
       "text": "quick double breath in and out while jogging, close mic, dry, no words, no music",
-      "duration": 1.0,
+      "duration": 1,
       "influence": 0.6
     },
     {
@@ -97,6 +97,13 @@
       "text": "laboured winded breath of an exhausted man running, close mic, dry, no words, no music",
       "duration": 1.1,
       "influence": 0.6
+    },
+    {
+      "name": "crush-cardboard",
+      "text": "cardboard box crushed flat under a boot, single dry crunch of collapsing card, close mic, no reverb, no music, no voices",
+      "duration": 0.9,
+      "influence": 0.75,
+      "variants": 3
     },
     {
       "name": "debris-settle",
@@ -135,7 +142,7 @@
     {
       "name": "enemy-alert-1",
       "text": "angry man shouting \"HEY YOU!\", close mic, dry, no music",
-      "duration": 1.0,
+      "duration": 1,
       "influence": 0.7
     },
     {
@@ -153,7 +160,7 @@
     {
       "name": "enemy-alert-12",
       "text": "angry man shouting \"GET HIM!\", close mic, dry, no music",
-      "duration": 1.0,
+      "duration": 1,
       "influence": 0.75
     },
     {
@@ -201,7 +208,7 @@
     {
       "name": "enemy-alert-2",
       "text": "angry man shouting \"STOP!\", close mic, dry, no music",
-      "duration": 1.0,
+      "duration": 1,
       "influence": 0.7
     },
     {
@@ -449,7 +456,7 @@
     {
       "name": "enemy-idle",
       "text": "man muttering irritably to himself under his breath, close mic, dry, no music",
-      "duration": 2.0,
+      "duration": 2,
       "influence": 0.55,
       "variants": 2
     },
@@ -550,14 +557,14 @@
     {
       "name": "generator-arc",
       "text": "low heavy electrical arcing from a broken transformer, deep mains-frequency buzz with gritty crackle, dull thud rather than sharp snap, close mic, dry, no music, no voices",
-      "duration": 1.0,
+      "duration": 1,
       "influence": 0.75,
       "variants": 4
     },
     {
       "name": "generator-blast",
       "text": "huge industrial generator exploding, deep sub-bass boom then tearing metal and a long rumbling decay, close mic, dry, no music, no voices",
-      "duration": 3.0,
+      "duration": 3,
       "influence": 0.7,
       "variants": 3
     },
@@ -571,7 +578,7 @@
     {
       "name": "heal",
       "text": "soft synthetic recovery chime, warm and reassuring, short, no music",
-      "duration": 1.0,
+      "duration": 1,
       "influence": 0.75
     },
     {
@@ -710,7 +717,7 @@
     {
       "name": "moo",
       "text": "single loud deep cow moo, one clear mooo vocalization, close mic, dry, no music, no other animals, no background noise",
-      "duration": 3.0,
+      "duration": 3,
       "influence": 0.7,
       "variants": 2
     },
@@ -964,7 +971,7 @@
     {
       "name": "player-death",
       "text": "human male final gasp and body dropping to a hard floor, close mic, no words, no music",
-      "duration": 2.0,
+      "duration": 2,
       "influence": 0.6
     },
     {
@@ -1019,7 +1026,7 @@
     {
       "name": "robot-alert",
       "text": "aggressive robotic alert chirp, synthetic scanning beep, short, dry, no music",
-      "duration": 1.0,
+      "duration": 1,
       "influence": 0.7,
       "variants": 3
     },
@@ -1054,7 +1061,7 @@
     {
       "name": "roomba",
       "text": "robot vacuum cleaner running on a hard office floor, steady motor whine and suction hum, close mic, dry, no music, no voices",
-      "duration": 8.0,
+      "duration": 8,
       "loop": true
     },
     {
@@ -1102,7 +1109,7 @@
     {
       "name": "shotgun-fire",
       "text": "enormous 12 gauge shotgun blast at close range, huge deep booming low end and a hard percussive slam, thick body, long decaying tail, close mic, dry, no music, no voices",
-      "duration": 2.0,
+      "duration": 2,
       "influence": 0.8,
       "variants": 5
     },
@@ -1135,9 +1142,30 @@
       "variants": 2
     },
     {
+      "name": "water-drip",
+      "text": "single drip of water falling into a shallow puddle on a hard floor, close mic, dry, no music, no voices",
+      "duration": 0.7,
+      "influence": 0.7,
+      "variants": 3
+    },
+    {
+      "name": "water-glug",
+      "text": "office water cooler bottle glugging, one large air bubble rising through water, close mic, dry, no music, no voices",
+      "duration": 1.2,
+      "influence": 0.7,
+      "variants": 3
+    },
+    {
+      "name": "water-gush",
+      "text": "water pouring out of a toppled office water cooler bottle onto a hard floor, steady heavy gush, close mic, dry, no music, no voices",
+      "duration": 2.4,
+      "influence": 0.7,
+      "variants": 2
+    },
+    {
       "name": "zombie-alert",
       "text": "zombie snarl and hungry moan, wet guttural, close mic, dry, no words, no music",
-      "duration": 1.0,
+      "duration": 1,
       "influence": 0.55,
       "variants": 3
     },

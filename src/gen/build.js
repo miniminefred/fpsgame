@@ -1828,7 +1828,13 @@ function makeSink(layout, batcher, materials, masks) {
       });
     },
 
-    beginDynamic(mass, hp, substance) { pending = { mass, hp, substance, boxes: [] }; },
+    // `traits` is whatever about a loose prop the runtime has to know that is not
+    // its shape: whether a body walking over it flattens it, and whether shooting
+    // it puts water on the floor. Both are read in game.js and destruction.js,
+    // which never see the catalogue.
+    beginDynamic(mass, hp, substance, traits) {
+      pending = { mass, hp, substance, traits, boxes: [] };
+    },
 
     // Turns the collected boxes into one free-standing group whose origin sits
     // at the centre of their combined bounds — which is exactly where the
@@ -1878,6 +1884,8 @@ function makeSink(layout, batcher, materials, masks) {
         mass: p.mass,
         hp: p.hp ?? 0,
         substance: p.substance,
+        crushable: !!p.traits?.crushable,
+        spills: p.traits?.spills ?? null,
         size: { x: maxX - minX, y: maxY - minY, z: maxZ - minZ },
         position: { x: cx, y: cy, z: cz },
       });

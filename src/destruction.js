@@ -839,6 +839,21 @@ export class Destruction {
     }
   }
 
+  /**
+   * A cardboard box gone flat under somebody who did not stop for it.
+   *
+   * The same path a shot takes, with a different noise on the end and no impact
+   * flash: nothing struck it, it was simply stood on. Silent about who did it —
+   * whoever walks over one flattens it, and that includes the staff going about
+   * their day, which is most of what makes it worth having.
+   */
+  crush(dyn, at) {
+    if (!dyn || dyn.broken) return;
+    const point = at ?? dyn.group.position;
+    this._breakProp(dyn, _up.set(0, -1, 0), point, 'crush');
+    this.onBreakProp?.(dyn, { x: 0, y: -1, z: 0 }, point);
+  }
+
   // --- breaking ---------------------------------------------------------------
 
   /**
@@ -1445,7 +1460,7 @@ export class Destruction {
 
   // Loose prop: retire the intact body and re-emit its boxes as independent
   // ones, thrown outward from the shot that finished it.
-  _breakProp(dyn, dir, point) {
+  _breakProp(dyn, dir, point, how = 'shot') {
     dyn.broken = true;
 
     if (dyn.handle) this.physics?.remove(dyn.handle);
@@ -1462,8 +1477,14 @@ export class Destruction {
 
     this._scatter(dyn.parts, dyn, dir, point);
 
-    this.effects.impact(point, _up.set(0, 1, 0), 0xffe4b0);
-    this.audio.breakThing('prop', dyn.substance, point);
+    // A crushed box was not hit by anything, so there is nothing to flash and the
+    // noise is the flattening rather than the breaking.
+    if (how === 'crush') {
+      this.audio.crushProp(point);
+    } else {
+      this.effects.impact(point, _up.set(0, 1, 0), 0xffe4b0);
+      this.audio.breakThing('prop', dyn.substance, point);
+    }
   }
 
   /**
