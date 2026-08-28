@@ -105,6 +105,31 @@ export function bfs(tiles, W, H, sx, sy) {
  * generation with no import between them. Putting the question in the vocabulary
  * is what keeps there being exactly one of it.
  */
+/**
+ * How many consecutive SOLID tiles the wall carries on beyond an opening, in one
+ * direction, up to `max`.
+ *
+ * `slidePocketSide` above answers whether a panel FITS; this answers how much room
+ * it has, which is a different question and the one the builder needs. A panel
+ * slides a hair further than its own width so that its trailing edge finishes
+ * inside the jamb rather than flush with it — and on the doorways where the wall
+ * carries on for exactly the proven minimum, that hair put the panel's far end 3 cm
+ * out the other side of the wall and into the next room. Measured over five floors:
+ * 3 to 6 doors each, 3-4 cm of panel edge standing in open space.
+ */
+export function slidePocketRun(tiles, W, H, door, dir, max = 12) {
+  const at = (tx, ty) => (tx >= 0 && ty >= 0 && tx < W && ty < H ? tiles[ty * W + tx] : SOLID);
+  let run = 0;
+  for (let i = 1; i <= max; i++) {
+    const ok = door.vertical
+      ? at(door.x0, dir > 0 ? door.y1 - 1 + i : door.y0 - i) === SOLID
+      : at(dir > 0 ? door.x1 - 1 + i : door.x0 - i, door.y0) === SOLID;
+    if (!ok) break;
+    run++;
+  }
+  return run;
+}
+
 export function slidePocketSide(tiles, W, H, door, prefer = 1) {
   const at = (tx, ty) => (tx >= 0 && ty >= 0 && tx < W && ty < H ? tiles[ty * W + tx] : SOLID);
   const span = door.vertical ? door.y1 - door.y0 : door.x1 - door.x0;

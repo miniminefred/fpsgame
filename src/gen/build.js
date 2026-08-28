@@ -7,7 +7,7 @@ import { furnish } from './rooms.js';
 import { modelInfo, stampModel, paintDebris } from './models.js';
 import {
   TILE, WALL_H, CEIL_H, DOOR_H, DOOR_CLEAR,
-  SOLID, ROOM, CORRIDOR, DOOR, isOpen, worldX, worldZ, slidePocketSide, doorSide, doorsOnRoom,
+  SOLID, ROOM, CORRIDOR, DOOR, isOpen, worldX, worldZ, slidePocketSide, slidePocketRun, doorSide, doorsOnRoom,
 } from './layout.js';
 import { CARDS, READER_LIT, READER_OPEN } from '../keycards.js';
 import { PLAYER_RADIUS } from '../metrics.js';
@@ -1263,6 +1263,13 @@ function buildGeneratorLights(layout, batcher, materials, fixtures, destructible
 // --- sliding doors ----------------------------------------------------------
 
 const DOOR_T = 0.09;           // panel thickness
+// How far short of the end of its pocket a fully-retracted panel stops.
+//
+// Not slack: it is what keeps the panel's far face from landing exactly on the far
+// face of the wall it is inside. Those two faces coplanar is a shimmering rectangle
+// of door on the end of a wall, which is a worse artefact than the 3 cm of panel
+// edge standing in the next room that this replaces.
+const POCKET_CLEAR = 0.02;
 const DOOR_PANEL_H = DOOR_H - 0.04;
 // Which doorways get a panel. Where a retracted one goes — and why some
 // openings cannot take one at all — is slidePocketSide's business, in layout.js,
@@ -1332,9 +1339,15 @@ function buildSlidingDoors(layout, scene, materials, doors, colliders, readers, 
       baseX: cx, baseZ: cz,
       dirX: d.vertical ? 0 : side,
       dirZ: d.vertical ? side : 0,
-      // A hair further than its own width, so the leading edge finishes inside
-      // the jamb rather than flush with it.
-      travel: width * 1.02,
+      // A hair further than its own width, so the trailing edge finishes inside
+      // the jamb rather than flush with it — but never further than the wall
+      // actually goes. `slidePocketSide` proves a pocket exactly as long as the
+      // opening, and on the doorways where that is all the wall there is, the hair
+      // put 3 to 4 cm of the panel's far end out in the open on the other side. It
+      // is the same panel either way; what changed is that the number now comes
+      // from the wall rather than from a multiplier.
+      travel: Math.min(width * 1.02,
+        Math.max(0, slidePocketRun(layout.tiles, layout.W, layout.H, d, side) * TILE - POCKET_CLEAR)),
       height: DOOR_PANEL_H,
       // null on an ordinary door; a card tier on a badged one. See doors.js.
       lock: d.lock ?? null,

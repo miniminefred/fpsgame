@@ -34,7 +34,7 @@ export {
   TILE, WALL_H, CEIL_H, DOOR_H, DOOR_CLEAR,
   SOLID, ROOM, CORRIDOR, DOOR, isOpen,
   worldX, worldZ, centreX, centreZ, tileX, tileY,
-  bfs, slidePocketSide, doorSide,
+  bfs, slidePocketSide, slidePocketRun, doorSide,
 } from './tiles.js';
 // FIRST_CONTACT_GAP is re-exported rather than re-declared, and that is not
 // tidiness — enemies.js imports it from here and measures the prologue guarantee
