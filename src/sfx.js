@@ -52,6 +52,31 @@ const REF_DISTANCE = 4;
 const MAX_DISTANCE = 70;
 const ROLLOFF = 1.15;
 
+// A positional LOOP is a different problem from a placed one-shot, and it gets
+// its own falloff.
+//
+// Every other sound in this game is an event: a gunshot two rooms away tells you
+// something, so REF_DISTANCE is generous on purpose. A machine that is simply
+// always on tells you nothing from the far end of the floor and sits under the
+// whole mix while it does — which is the same argument ARC_AUDIBLE makes in
+// audio.js one step further along. So a loop names the range it should be
+// audible over, and the falloff is derived to be all but silent there: with the
+// inverse model, gain = ref / (ref + rolloff * (d - ref)).
+// Linear rather than the inverse model every one-shot uses, and that is the whole
+// point: inverse never reaches zero, so "audible within twelve metres" comes out
+// as a hum that is merely quiet everywhere, and it falls off so fast over the
+// first few metres that the room the thing is in barely gets it either. Linear
+// says what the range means — full level up close, straight down, silent at the
+// number — which is the shape the request was actually describing.
+const LOOP_REF = 2.5;          // metres of "right next to it", full level
+// How much of its own level a stretch of a loop has to carry to be part of the
+// loop. Generated clips routinely open with a second or two of near-silence
+// before the thing switches on, and looping THAT is a machine that turns itself
+// off every few seconds — measured on the floor cleaner: 2.4 s of dead air at
+// the head of an 8 s clip, so its motor stopped for a third of every cycle.
+const LOOP_LEVEL = 0.45;
+const LOOP_WINDOW = 0.1;       // seconds per window when looking for the steady part
+
 // A sound with a wall in the way. Distance alone is a poor model of an office:
 // someone shouting six metres away through drywall and someone shouting six
 // metres away down an open corridor are the same distance and nothing like the
@@ -300,8 +325,8 @@ export class Sfx {
    * ambience one: it is a thing in the world, and it should duck under gunfire
    * the way everything else in the world does.
    */
-  loopAt(name, { gain = 1, x = 0, y = 0, z = 0 } = {}) {
-    const handle = { name, gain, source: null, panner: null, positional: true, x, y, z };
+  loopAt(name, { gain = 1, x = 0, y = 0, z = 0, range = 0 } = {}) {
+    const handle = { name, gain, source: null, panner: null, positional: true, x, y, z, range };
     this.loops.push(handle);
     this._flushLoops();
     return handle;
@@ -386,12 +411,18 @@ export class Sfx {
     for (const handle of this.loops) {
       if (handle.source) continue;
       const entry = this.library.get(handle.name);
-      const buffer = entry?.takes[0]?.buffer;
+      const take = entry?.takes[0];
+      const buffer = take?.buffer;
       if (!buffer) continue;
 
       const src = this.ctx.createBufferSource();
       src.buffer = buffer;
       src.loop = true;
+      // Round the steady part of the clip and not the whole file — see
+      // loopWindow for the machine that switched itself off every 8 seconds.
+      const win = loopWindow(take);
+      src.loopStart = win.start;
+      src.loopEnd = win.end;
 
       const g = this.ctx.createGain();
       g.gain.value = (entry.gain ?? 1) * handle.gain;
@@ -399,10 +430,12 @@ export class Sfx {
       if (handle.positional) {
         const panner = this.ctx.createPanner();
         panner.panningModel = 'equalpower';
-        panner.distanceModel = 'inverse';
-        panner.refDistance = REF_DISTANCE;
-        panner.maxDistance = MAX_DISTANCE;
-        panner.rolloffFactor = ROLLOFF;
+        const fall = handle.range ? loopFalloff(handle.range)
+          : { distanceModel: 'inverse', refDistance: REF_DISTANCE, maxDistance: MAX_DISTANCE, rolloffFactor: ROLLOFF };
+        panner.distanceModel = fall.distanceModel;
+        panner.refDistance = fall.refDistance;
+        panner.maxDistance = fall.maxDistance;
+        panner.rolloffFactor = fall.rolloffFactor;
         setPosition(panner, handle.x, handle.y, handle.z);
         handle.panner = panner;
         src.connect(g).connect(panner).connect(this.sfxBus);
@@ -411,8 +444,9 @@ export class Sfx {
       }
 
       // Beds start at a random offset so two floors in a row don't open on the
-      // same swell of air conditioning.
-      src.start(0, Math.random() * buffer.duration);
+      // same swell of air conditioning — inside the loop window, or the first
+      // pass through would play the dead air the window exists to skip.
+      src.start(0, win.start + Math.random() * Math.max(0.001, win.end - win.start));
       handle.source = src;
       if (!handle.positional) started = true;
     }
@@ -454,6 +488,58 @@ function measure(buffer, bed) {
   const offset = Math.max(0, i - lead) / buffer.sampleRate;
 
   return { buffer, offset, norm, rms, peak };
+}
+
+/**
+ * The steady part of a clip, as { start, end } in seconds.
+ *
+ * Windowed RMS rather than the sample-level onset `condition` uses, because that
+ * one is looking for a transient — the crack of a gunshot — and a motor has no
+ * transient to find: it fades up over a second and a half, and any single sample
+ * in that fade can clear a peak-relative threshold. What a loop needs is the
+ * stretch that carries the clip's own level, from both ends.
+ *
+ * Cached on the take, because it is measured once per clip and read on every
+ * loop start.
+ */
+function loopWindow(take) {
+  if (take.loopWin) return take.loopWin;
+  const buffer = take.buffer;
+  const x = buffer.getChannelData(0);
+  const sr = buffer.sampleRate;
+  const step = Math.max(1, Math.round(LOOP_WINDOW * sr));
+  const level = [];
+  for (let i = 0; i + step <= x.length; i += step) {
+    let s = 0;
+    for (let j = i; j < i + step; j++) s += x[j] * x[j];
+    level.push(Math.sqrt(s / step));
+  }
+  let start = 0, end = buffer.duration;
+  if (level.length > 2) {
+    const loud = Math.max(...level) * LOOP_LEVEL;
+    let a = 0;
+    while (a < level.length && level[a] < loud) a++;
+    let b = level.length - 1;
+    while (b > a && level[b] < loud) b--;
+    // Only believe it if what is left is long enough to be a loop at all; a clip
+    // measured down to nothing keeps its whole buffer and its old behaviour.
+    if ((b - a) * LOOP_WINDOW > 0.5) {
+      start = a * LOOP_WINDOW;
+      end = Math.min(buffer.duration, (b + 1) * LOOP_WINDOW);
+    }
+  }
+  take.loopWin = { start, end };
+  return take.loopWin;
+}
+
+/** Panner falloff for a loop that should be local. See LOOP_REF. */
+function loopFalloff(range) {
+  return {
+    distanceModel: 'linear',
+    refDistance: LOOP_REF,
+    rolloffFactor: 1,
+    maxDistance: Math.max(LOOP_REF + 1, range),
+  };
 }
 
 // A generated set is drawn one clip at a time and the draws are not consistent,

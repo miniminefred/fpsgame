@@ -256,6 +256,12 @@ const PANIC_AUDIBLE = 44;
 // carried would put a buzz under the whole rest of the fight. This is the room it
 // is standing in and the corridor outside it.
 const ARC_AUDIBLE = 18;
+// And the floor cleaner's motor, shorter still — the only sound in the game that
+// never stops AND never gets muffled by a wall (see startMotor). At 18 m a buzz
+// out of a wrecked machine is information: something over there is broken. A
+// vacuum cleaner three rooms away is not information, it is a hum on the mix, and
+// a player asked for it to stop carrying. This is the room it is in and no more.
+const MOTOR_AUDIBLE = 12;
 
 // Roughly where a voice leaves a body, so a shout does not come from their shoes.
 const MOUTH_HEIGHT = 1.35;
@@ -451,11 +457,20 @@ export class GameAudio {
    * has no onset to route round a doorway, and re-routing it every frame as the
    * player walks would swing the source across the room. A straight panner is
    * the honest treatment of a noise that is simply always on.
+   *
+   * Which makes it the one sound in the game with no occlusion at all, and so the
+   * one that has to be kept local by its falloff instead — everything else loses
+   * its treble and half its level through a wall, while this arrived from the far
+   * end of the floor at full brightness. See MOTOR_AUDIBLE, and `loopFalloff` in
+   * sfx.js for how a range becomes a falloff.
    */
   startMotor(enemy) {
     const clip = enemy.type.motor;
     if (!clip || !this.sfx.ready) return null;
-    return this.sfx.loopAt(clip, { gain: 0.7, x: enemy.x, y: 0.1, z: enemy.z });
+    // Louder up close than it was, and gone by MOTOR_AUDIBLE: the two go
+    // together, or making it local just makes it quiet.
+    return this.sfx.loopAt(clip, {
+      gain: 0.95, x: enemy.x, y: 0.1, z: enemy.z, range: MOTOR_AUDIBLE });
   }
 
   moveMotor(handle, x, y, z) { this.sfx.moveLoop(handle, x, y, z); }
