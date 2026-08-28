@@ -1146,6 +1146,38 @@ they open the doors themselves on the way to you. `losClear` is shared with `lig
 (a fixture you cannot see cannot light you) and `soundPath`, and all three want the same
 answer, which is why a shut door now occludes light and sound as well.
 
+**Being seen is not being shot: a shooter has to get on target first** (`AIM_CONE`,
+`AIM_DRAIN`, `AIM_BANK` in `enemies.js`, `aim` in `tuningFor`). Sight is line of sight and
+nothing else, and `fireCooldown` has been ticking down since the floor was generated — so a
+body that heard a shot two rooms ago stood in `chase` with its cooldown long expired and
+fired the frame you crossed its door frame, with its back to you if that is how it happened
+to be standing. Rounding a corner into three of those is not a fight you lost, it is one you
+were never in. `tuning.aim` is now the beat before the first round: 0.85 s on floor 1 down to
+0.34 s deep, times the type's own `aimMul` — 0.65 for a Sentry Unit that was bought to watch
+a corridor, 1.25 for a Sysadmin who was doing a spreadsheet ninety seconds ago. Four things
+about it are the design rather than the tuning:
+
+- **Only time spent POINTING at you counts** (`AIM_CONE`, ~60°). Turning round is already a
+  real cost — the yaw smoothing in `_move` — so this is what makes the body facing the wrong
+  way the one you get to surprise. Measured on floor 1: 0.83 s to the first round facing you,
+  0.95 s if it has to come round first.
+- **It drains rather than resets** (`AIM_DRAIN`, 0.6 s per second out of sight), which is the
+  rule `cameras.js` already uses and for the same reason: one frame behind the door frame is
+  not a pardon, and a player bobbing in and out of a doorway must not be permanently
+  un-shootable. The second peek costs them less than the first.
+- **...but the credit is capped** (`AIM_BANK`, 1.6× what they need). Without it a body 30
+  seconds into a firefight holds 30 seconds of aim, the drain buys you nothing for the rest
+  of it, and stepping out of cover is instantly fatal for ever after. Measured: banked aim
+  tops out at 1.36 s, a 1 s break leaves 0.76 s (so a quick re-peek costs 0.09 s), and 4 s
+  of cover wipes it — a fresh sighting then costs the full 0.92 s again.
+- **Melee is exempt**, because it already pays the same courtesy in the same coin: a swing
+  lands part-way through rather than on the wind-up (`SWING_TIME`), so you can back out of
+  reach after seeing it start.
+
+It is a different number from `tuning.reaction`, which is the idle → `alert` → `chase`
+delay: that one is how long somebody takes to *notice*, and it does nothing at all for the
+body that noticed you a minute ago and is already walking your way.
+
 Each floor rolls a **theme** that tilts the type weights (Infestation, Automated,
 Lockdown…), so floors have their own character without any of them becoming one enemy
 repeated; the name is shown on the way in. Types share one rig with different numbers and
