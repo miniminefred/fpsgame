@@ -108,6 +108,20 @@ concerned even on a desktop monitor, and one page load covers every size. It fou
 collisions the day it was written. It does not run under `npm test`, because it needs a
 browser to lay anything out.
 
+**One sweep at a time, and that is a fix rather than a nicety.** Both of its start triggers
+fire in the ordinary case — an iframe's initial `about:blank` is `complete` the moment the
+deferred module runs, so the readyState check starts a sweep, and then the real document
+arrives and raises `load` — so two sweeps ran concurrently, each resizing the frame out from
+under the other's `await settle()`. Every rect was then measured against the OTHER sweep's
+viewport, which reads *exactly* like a broken HUD: `offscreen #tstick — 163 bottom`, nine of
+twelve sizes red, on a HUD with nothing wrong with it. It lasted because the two sweeps
+disagreed rather than both failing, so one of them always came out clean and the page always
+had a plausible answer on it; the duplicated rows were the only tell. `runAll` now queues
+instead of overlapping, a sweep refuses to measure until the game's own `#hud` exists (an
+all-clear for a page that never loaded is the one result a harness must not be able to
+print), and each size asserts the frame's real `clientWidth`/`clientHeight` against the
+preset — the assertion that would have named this on sight.
+
 ## Publishing — GitHub Pages
 
 Public at **github.com/miniminefred/fpsgame**, live at
