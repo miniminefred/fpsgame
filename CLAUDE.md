@@ -1216,11 +1216,19 @@ Gunfire spread is sampled as a real angle and converted into a miss distance at 
 so backing off genuinely makes you harder to hit.
 
 ### A chair means harmless (`workstations` in `gen/build.js` + `_takeDesk`/`animateWorking`)
-**Four bodies on a floor are sitting down, and none of them is going to fight you fairly.**
-The Manager is at his own desk behind the black door, one guard is on the cameras in the
-security office, and two janitors are on their break on the floor of a broom closet. Every
-one of those is placed by hand, is a set piece for the room it is in, and is the reason that
-room exists. Nothing that was *rolled* sits: the shift a room is dealt works standing up.
+**Two bodies on a floor are sitting down, and both of them are a set piece for the room they
+are in.** The Manager is at his own desk behind the black door, and one guard is on the
+cameras in the security office — the only reason either room exists. Nothing that was
+*rolled* sits: the shift a room is dealt works standing up.
+
+**And nothing sits on the FLOOR any more either**, which is the second half of the same rule
+and was missed the first time round. Two janitors used to be found on their break on the
+floor of the broom closet, and the closet is behind a yellow door — but a janitor is hostile,
+swings the longest reach on the floor, and counts toward `hostileCount`, so you cannot finish
+a floor without killing both of them. A body sitting down was therefore a tell that meant
+"harmless" in two rooms and meant nothing in a third, which is worse than no tell at all.
+They wait on their feet now, and `animateFloor` went with them (in git, if anything harmless
+is ever put in a cupboard).
 
 It used to be about 23 of a floor's ~175 bodies, found typing with their backs to the door,
 and it read beautifully — but it read as a promise the state machine does not keep. A seated
@@ -1231,7 +1239,7 @@ which is a real cost and was accepted knowingly — an office of standing staff 
 workplace than an office of typing ones.
 
 What did NOT change is any of the machinery below. The furnisher still places every chair
-and still faces it at its desk, the pose still hinges a real joint, and the four who do sit
+and still faces it at its desk, the pose still hinges a real joint, and the two who do sit
 go through exactly the path all twenty-three used to.
 
 **The furnisher decides where, because it is the only thing that knows.** A desk with a
@@ -1284,8 +1292,7 @@ already seeded with, so no seated body needs one number stored beyond the one it
 `animate` rewrites its position every frame for anybody on their feet and never gets the
 chance here, so left alone it hangs in the air where a standing hand would be.
 
-`e.seat` is `'desk'`, `'floor'` (the two janitors on their break, who sit on the floor of a
-broom closet — a different pose for a different room) or null. On the wire it is one bit
+`e.seat` is `'desk'` or null — a desk is the only seat there is. On the wire it is one bit
 that only ever stands somebody up: which seat a body has is a fact about the floor, and
 both browsers generated the same one from the same seed.
 
@@ -1449,12 +1456,12 @@ whatever the theme asked for.
 
 **Yellow belongs to the janitors and to nobody else.** One to three do rounds in
 the corridors — outside every lock, which is what guarantees the card is reachable
-with nothing in your pocket — and every one of them carries it. Two more sit in
+with nothing in your pocket — and every one of them carries it. Two more wait in
 the broom closet, marked `behindLock` and dealt no card at all, because two men
-sitting in the room their own key opens holding that key is the exact failure this
-system exists to prevent. They are only seated **if at least one janitor made it
+standing in the room their own key opens holding that key is the exact failure this
+system exists to prevent. They are only posted **if at least one janitor made it
 onto rounds**; without a reachable holder the closet pair would be a floor that
-cannot be cleared. Same shape as the manager one tier down: take the card off
+cannot be cleared, since they count toward clearing it like any other hostile. Same shape as the manager one tier down: take the card off
 somebody in a hallway, and it buys you a door with two more behind it.
 
 **Black is different, and it is the last beat of a floor.** The Manager sits in

@@ -622,19 +622,25 @@ export class Enemies {
   }
 
   /**
-   * The cleaning staff: a few doing rounds, and the two on their break.
+   * The cleaning staff: a few doing rounds, and the two in the cupboard.
    *
    * They are the only source of the yellow card, so where they stand is a
    * correctness question rather than a flavour one. The ones on rounds go in the
    * corridors — outside every lock, which is what guarantees the card is
    * reachable with nothing in your pocket — and the two in the broom closet are
-   * marked `behindLock` so they are not dealt one. Two men sitting in the room
+   * marked `behindLock` so they are not dealt one. Two men standing in the room
    * their own key opens, holding that key, is the exact failure the whole
    * keycard system is built to avoid.
    *
    * So the closet is the same shape as the manager's office one tier down: you
    * take the card off somebody in a hallway, and it buys you a door with two
    * more of them behind it who did not hear you coming.
+   *
+   * They used to be found sitting on the floor of it, on their break, and that is
+   * gone for one reason: they are hostile, they carry a mop that hits harder than
+   * most things on the floor, and they count toward clearing it — so a body
+   * sitting down was the one tell in the building that meant "harmless" and also
+   * meant nothing. Everything that sits now is something you can walk past.
    */
   _janitors(layout, nav, rng, tuning) {
     // On rounds. Corridors, because a mop is used in corridors and because that
@@ -663,23 +669,21 @@ export class Enemies {
     if (!closet || !onRounds) return;
 
     const room = closet.room;
-    let seated = 0;
-    for (let tries = 0; tries < 60 && seated < CLOSET_JANITORS; tries++) {
+    const placed = [];
+    for (let tries = 0; tries < 60 && placed.length < CLOSET_JANITORS; tries++) {
       const tx = rng.int(room.x0, room.x1 - 1);
       const ty = rng.int(room.y0, room.y1 - 1);
       if (!nav.walkable(tx, ty)) continue;
       const x = nav.wx(tx), z = nav.wz(ty);
       if (!nav.clear(x, z, RADIUS)) continue;
-      if (this.items.some((e) => e.seat && Math.hypot(e.x - x, e.z - z) < 0.9)) continue;
+      // Spaced like the men in the security office, and for the same reason: a
+      // broom closet is a small room and two tries can otherwise land on tiles a
+      // shoulder apart.
+      if (placed.some((p) => Math.hypot(p.x - x, p.z - z) < GUARD_GAP)) continue;
 
       const e = this._add(x, z, rng, tuning, TYPES.janitor);
       e.behindLock = true;
-      // They get up the moment anything happens — see _animate. Until then they
-      // are on the floor with their backs to a shelf, which is what a broom
-      // closet is for. Not in a chair: there is no desk in a broom closet, and
-      // the two poses are as different as the two rooms (see animateSeated).
-      e.seat = 'floor';
-      seated++;
+      placed.push({ x, z });
     }
   }
 
@@ -1193,9 +1197,9 @@ export class Enemies {
       // Carrying a badge that opens doors: the security response to an alarm,
       // and nobody else on the floor. See `alarm`.
       keyed: false,
-      // Sitting it out until something happens, and on what: 'desk' for somebody
-      // found working, 'floor' for the two janitors on their break. Null is
-      // standing up, which is everybody else. See animateSeated in enemy-anim.js.
+      // 'desk' for the two bodies on the floor allowed to sit in a chair — the
+      // Manager at his own, one guard on the cameras — and null for everybody
+      // else, which is standing up. See animateWorking in enemy-anim.js.
       seat: null,
       // The materials a hit whitens: whatever this one is actually wearing.
       flash: rig.flash ?? [],
@@ -2043,9 +2047,10 @@ export class Enemies {
       // Whether they are still sitting is the host's; WHICH seat it is is a fact
       // about the floor, and both browsers generated the same one from the same
       // seed. So the bit only ever stands somebody up — the fallback is there
-      // for form, since a body that has left its chair never gets back into it.
+      // for form, since a body that has left its chair never gets back into it,
+      // and a desk is the only seat there is.
       if (!(packed & 8)) e.seat = null;
-      else e.seat ??= 'floor';
+      else e.seat ??= 'desk';
       e.state = SNAP_STATES[packed & 7] ?? 'idle';
     }
   }

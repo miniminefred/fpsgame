@@ -12,11 +12,7 @@ import { lerp, smoothTo } from './util.js';
 // and the death clock, `_shoot` starts a swing) and read here, so they live with
 // the animations they time and are imported back the other way.
 
-// How far a seated body drops, and how far its legs come up to meet the floor.
-const SIT_DROP = 0.42;
-const SIT_LEGS = -1.5;         // radians — straight out in front
-
-// And somebody in a chair at a desk. The drop puts the hip joint a few
+// Somebody in a chair at a desk. The drop puts the hip joint a few
 // centimetres over the chair's seat, which is at 0.5 (see `chair` in
 // gen/props.js), and the limbs then swing about a real joint — see `hinge`.
 //
@@ -115,7 +111,10 @@ export function animate(e, dt, audio) {
     e.seat = null;
     stand(e);
   }
-  if (e.seat) return animateSeated(e, dt);
+  // A desk is the only seat left in the building — the two janitors who sat on
+  // the floor of a broom closet are on their feet now, and `animateFloor` went
+  // with them (git has it, if anything harmless ever sits down in there).
+  if (e.seat) return animateWorking(e, dt);
 
   const moving = e.state === 'chase' || e.state === 'fight' || e.state === 'wander';
   e.walkPhase += dt * (moving ? 9 : 1.4);
@@ -166,14 +165,6 @@ export function animate(e, dt, audio) {
 }
 
 /**
- * Whichever way this one is sitting it out. See `_seat` and the janitors in
- * enemies.js for who gets which.
- */
-export function animateSeated(e, dt) {
-  return e.seat === 'desk' ? animateWorking(e, dt) : animateFloor(e, dt);
-}
-
-/**
  * At a desk, doing the job. The one pose in the game that is meant to be seen
  * from behind: a floor of offices with somebody at a monitor in three of them is
  * a building at work, and the same floor with everybody standing in the middle of
@@ -218,37 +209,6 @@ export function animateWorking(e, dt) {
   } else {
     e.gun.position.set(0.3, 1.0, -0.08);
     e.gun.rotation.x = 1.25;
-  }
-
-  tickFlash(e, dt);
-}
-
-/**
- * On the floor with their legs out in front of them, mop across the knees.
- *
- * Done by dropping the whole rig and folding the legs forward rather than by
- * authoring a second skeleton: the hip joint is already at the top of the leg
- * (see rigs.js), so rotating there is genuinely what sitting down does, and the
- * bones ragdolls.js reads are the ones it was always going to read.
- *
- * The lean is a slow breath rather than a pose held rigid — two men waiting out
- * a shift should not read as two mannequins somebody left in a cupboard.
- */
-export function animateFloor(e, dt) {
-  e.walkPhase += dt * 0.9;
-  const breath = Math.sin(e.walkPhase) * 0.03;
-
-  e.group.position.y = e.y - SIT_DROP;
-  e.legL.rotation.x = SIT_LEGS;
-  e.legR.rotation.x = SIT_LEGS - 0.12;
-  e.armL.rotation.x = -0.35 + breath;
-  e.armR.rotation.x = -0.5 + breath;
-  e.torso.rotation.x = 0.12 + breath;
-  if (e.blunt) {
-    // Mop across the lap, handle out, which is where you put it when you are
-    // not using it and is also why it is the first thing back in his hands.
-    e.blunt.rotation.x = -1.35;
-    e.blunt.position.y = 0.82;
   }
 
   tickFlash(e, dt);
