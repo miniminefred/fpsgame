@@ -177,6 +177,12 @@ const OFFICE_GUARDS = [2, 5];
 const GUARD_BATON = 0.4;       // how much of the shift drew a baton instead
 const GUARD_GAP = 0.8;         // metres between two men in one room
 
+// The generator room's crew, in the two halves that are the point of it: the
+// ones who will come at you, and the ones who will carry on with their shift
+// while you shoot at them. See _generatorRoom.
+const GEN_TECHS = [2, 3];
+const GEN_WORKERS = [3, 5];
+
 // The response to an alarm (see `alarm` below). Four men come up from the floor
 // below — unless the security office on THIS floor is still manned, in which
 // case the men in it are the response and only two more are sent. Which makes
@@ -693,18 +699,26 @@ export class Enemies {
   /**
    * The generator room's crew (see the `generator` role in gen/rooms.js) —
    * opportunistic, like the room itself: a floor that didn't roll a room big
-   * enough for one has nothing to place here. 10-15 of them, spaced the same
-   * way the security office spaces its guards, with 2-4 hostile and the rest
-   * standing around doing nothing about you — same shape as the neutral
-   * bystanders elsewhere, just local to this one room instead of wandering
-   * the floor. Both types are `weight: 0` (see enemy-types.js): the mix
-   * belongs here and nowhere else, so a weighted roll must never produce it.
+   * enough for one has nothing to place here. A handful of them, spaced the same
+   * way the security office spaces its guards: 2-3 hostile technicians and 3-5
+   * workers doing nothing about you — same shape as the neutral bystanders
+   * elsewhere, just local to this one room instead of wandering the floor. Both
+   * types are `weight: 0` (see enemy-types.js): the mix belongs here and nowhere
+   * else, so a weighted roll must never produce it.
+   *
+   * It is a CREW and not a crowd, and the numbers are small deliberately. A dozen
+   * bodies in here made the plant room the biggest fight on the floor, which is a
+   * second security office by accident — the room is meant to be about the machine
+   * at the end of it, and about whether you are willing to shoot the thing that
+   * keeps the lights on. Five to eight people is a shift working late; fifteen is
+   * an ambush that happens to have a generator in it.
    */
   _generatorRoom(layout, nav, rng, tuning) {
     const room = layout.rooms.find((r) => r.role === 'generator');
     if (!room) return;
 
-    const want = rng.int(10, 15);
+    const techs = rng.int(GEN_TECHS[0], GEN_TECHS[1]);
+    const want = techs + rng.int(GEN_WORKERS[0], GEN_WORKERS[1]);
     const spots = [];
     for (let tries = 0; tries < 300 && spots.length < want; tries++) {
       const tx = rng.int(room.x0, room.x1 - 1);
@@ -719,7 +733,11 @@ export class Enemies {
       spots.push({ x, z });
     }
 
-    const angry = Math.min(rng.int(2, 4), spots.length);
+    // Whatever the spacing check could not find room for comes off the workers
+    // rather than off the technicians: the hostile half is what makes the room a
+    // fight at all, and a tight room that only fitted four people should still be
+    // the plant room rather than four men ignoring you.
+    const angry = Math.min(techs, spots.length);
     for (let i = 0; i < spots.length; i++) {
       this._add(spots[i].x, spots[i].z, rng, tuning, i < angry ? TYPES.technician : TYPES.worker);
     }
