@@ -147,22 +147,20 @@ const OUTSIDE_MIN = 5;
 // number here is how that guarantee quietly stopped being about the same thing.
 const MIN_SPAWN_GAP = FIRST_CONTACT_GAP;
 
-// How much of an office is at its desk when you walk in.
+// How big a shift one room may be dealt.
 //
-// Not all of it, and that is the whole reason it is a die rather than "sit down
-// wherever there is a chair". A room where every single body is seated facing a
-// monitor reads as a diorama; one where four of five are working and the fifth
-// is standing over somebody's shoulder reads as an office. The rest of the
-// roster is unchanged — anybody who does not get a desk stands where they always
-// stood, which is also what happens in a storeroom, a corridor or a room whose
-// desks were all taken.
-const AT_DESK = 0.8;
-// ...and how big a shift one room may be dealt. A room is staffed to the desks
-// it HAS rather than to the flat 0-3 a storeroom draws — an open-plan farm with
+// A room is staffed to the desks it HAS rather than to the flat 0-3 a storeroom draws — an open-plan farm with
 // two people in it and ten empty pods is not a half-staffed office, it is a room
 // somebody forgot to fill. The cap is what keeps the biggest farm on the floor
 // from swallowing the roster, and it wants to stay under the 1-3 a team is (see
 // spawn) times a couple, or the rest of the building empties out to fill it.
+//
+// Note what it does NOT decide any more: where any of them stands. A chair is for
+// somebody who is not going to shoot you — the two hand-placed set pieces (see
+// _manager and _security) and nobody else — so the shift a room is dealt works
+// standing up and the desks in it are left empty. Counting a room's stations is
+// still the right way to size that shift: a room with twelve pods in it is where
+// the work is whether or not anybody is sitting down at it.
 const DESK_TEAM = 5;
 
 // The cleaning staff. Doing rounds in the corridors, plus the two on their
@@ -296,12 +294,11 @@ export class Enemies {
         left = rng.chance(0.45) ? 1 : (rng.chance(0.72) ? 2 : 3);
       }
       left--;
-      const e = this._add(spot.x, spot.z, rng, tuning, team.type);
-      // Whoever drew a desk is found at it, working. Not everybody can be: a
-      // Sentry Unit is a machine on patrol and has no more business at a
-      // keyboard than the floor cleaner does, so it stands at the station it
-      // was given instead. See `standing` in enemy-types.js.
-      if (spot.desk && !team.type.standing) this._seat(e, spot.desk);
+      // On their feet, wherever they were put down. Nobody who is going to fight
+      // you is found sitting in a chair — a seated body on this floor means a
+      // harmless one, and the only exceptions are the two placed by hand, which
+      // are worth it: the Manager at his own desk and one guard on the cameras.
+      this._add(spot.x, spot.z, rng, tuning, team.type);
     }
 
     this._security(layout, nav, rng, tuning);
@@ -972,9 +969,10 @@ export class Enemies {
     // Where a body may be put down at all. A single walkable tile is not enough:
     // movement tests a whole body radius, so a tile wedged against furniture is
     // one an enemy can stand on but never leave, and spawning there makes it a
-    // statue. Every spot on the floor is held to this, a desk included — a body
-    // at one is going to want to stand up out of it. `spots` is read live, which
+    // statue. Every spot on the floor is held to this. `spots` is read live, which
     // is what keeps two bodies from being put down on top of each other.
+    //
+    // A room's own desks are not candidates at all — see DESK_TEAM.
     const ok = (x, z) => nav.clear(x, z, RADIUS)
       && Math.hypot(x - layout.spawn.x, z - layout.spawn.z) >= minDist
       && !spots.some((s) => Math.hypot(s.x - x, s.z - z) < 1.6);
@@ -1002,17 +1000,10 @@ export class Enemies {
           : (rng.chance(0.28) ? 0 : rng.int(1, 3));
 
         for (let placed = 0; placed < want && spots.length < count; placed++) {
-          // A desk in this room before a patch of its carpet. This is the whole
-          // of "the staff are at work": the furnisher already decided where the
-          // desks are and which way the chairs face (see `seatFacing` in
-          // gen/rooms.js), so being found working is a question of standing
-          // people where the work is rather than of animating anything new.
-          const desk = rng.chance(AT_DESK) ? this._takeDesk(room, ok) : null;
-          if (desk) {
-            spots.push({ x: desk.x, z: desk.z, room, desk });
-            continue;
-          }
-
+          // A patch of the room's carpet, and never one of its chairs. The desks
+          // stay in the pool for the two bodies that are allowed to sit in one:
+          // somebody dealt a station they are not going to sit at is standing
+          // inside the chair rather than working at the desk.
           for (let tries = 0; tries < 14; tries++) {
             const tx = rng.int(room.x0, room.x1 - 1);
             const ty = rng.int(room.y0, room.y1 - 1);
@@ -2092,14 +2083,16 @@ export class Enemies {
  * The floor's desks, bucketed by the room each one is in.
  *
  * Shuffled inside each bucket, because the furnisher lays a cubicle farm out row
- * by row: taken in order, the three people in a twelve-pod room are the three
- * pods nearest one corner every single time, and a room reads as a queue rather
- * than as an office. Shuffling is also what makes the pods that are EMPTY
- * scattered, which is most of what says the room is half-staffed tonight.
+ * by row: taken in order, the desk the Manager is found at is the pod nearest
+ * one corner of his office every single time.
+ *
+ * The rest of a room's stations are counted rather than taken — how many there
+ * are is what sizes the shift the room is dealt (see DESK_TEAM), and the shift
+ * works standing up.
  *
  * Keyed on the room object itself. Both browsers in a co-op session generated
  * the same floor from the same seed, so these are the same desks in the same
- * order on both ends and everybody sits down in the same chair.
+ * order on both ends and the two bodies that do sit down sit in the same chairs.
  */
 function deskPool(workstations, nav, rng) {
   const by = new Map();
