@@ -9,6 +9,7 @@ import * as THREE from 'three';
 //
 // Built once and shared. A level teardown disposes geometry, never these.
 
+const PUDDLE_PX = 128;
 const SCORCH_PX = 128;
 const FLASH_PX = 128;
 const GLOW_PX = 64;
@@ -28,7 +29,10 @@ export function getFx() {
 function build() {
   const scorch = [];
   for (let i = 0; i < SCORCH_VARIANTS; i++) scorch.push(texture(scorchSplat(i * 977 + 13)));
-  return { scorch, flash: texture(flashStar()), glow: texture(softGlow()) };
+  return {
+    scorch, flash: texture(flashStar()), glow: texture(softGlow()),
+    puddle: texture(wetPatch()),
+  };
 }
 
 function texture(canvas) {
@@ -145,6 +149,49 @@ function softGlow() {
     [0, 'rgba(255,255,255,1)'], [0.25, 'rgba(255,255,255,0.65)'],
     [0.6, 'rgba(255,255,255,0.16)'], [1, 'rgba(255,255,255,0)'],
   ]);
+  return canvas;
+}
+
+/**
+ * A patch of water on the floor: soft in the middle, ragged at the edge.
+ *
+ * Blobs rather than one gradient, for the same reason the scorch marks are —
+ * water does not spread in a circle, it goes where the floor lets it, and the
+ * lopsided edge is most of what stops it reading as a decal somebody stamped
+ * there. The rim is drawn brighter than the middle because that is where a
+ * shallow puddle catches the light.
+ */
+function wetPatch() {
+  const canvas = surface(PUDDLE_PX);
+  const ctx = canvas.getContext('2d');
+  const c = PUDDLE_PX / 2;
+
+  // The body of it, well inside the edge so the blobs below have somewhere to go.
+  radial(ctx, c, c, c * 0.78, [
+    [0, 'rgba(255,255,255,0.95)'], [0.55, 'rgba(255,255,255,0.8)'],
+    [0.85, 'rgba(255,255,255,0.28)'], [1, 'rgba(255,255,255,0)'],
+  ]);
+
+  // Lobes reaching out of it, at a fixed set of angles so the shape is the same
+  // every time it is built and different every way it is turned.
+  let seed = 20240828;
+  const rand = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2 + rand() * 0.5;
+    const reach = c * (0.42 + rand() * 0.36);
+    const r = c * (0.2 + rand() * 0.2);
+    radial(ctx, c + Math.cos(a) * reach, c + Math.sin(a) * reach, r, [
+      [0, 'rgba(255,255,255,0.6)'], [0.6, 'rgba(255,255,255,0.22)'], [1, 'rgba(255,255,255,0)'],
+    ]);
+  }
+
+  // And the wet rim: a ring just inside the edge, brighter than what it encloses.
+  ctx.globalCompositeOperation = 'lighter';
+  radial(ctx, c, c, c, [
+    [0, 'rgba(255,255,255,0)'], [0.72, 'rgba(255,255,255,0)'],
+    [0.86, 'rgba(255,255,255,0.3)'], [1, 'rgba(255,255,255,0)'],
+  ]);
+  ctx.globalCompositeOperation = 'source-over';
   return canvas;
 }
 

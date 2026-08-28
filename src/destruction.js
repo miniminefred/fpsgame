@@ -714,7 +714,7 @@ export class Destruction {
    * told about. Announcing every knock-on as well would be two hundred messages
    * saying what the first one implied.
    */
-  constructor({ scene, physics, effects, audio, shooting, lighting }) {
+  constructor({ scene, physics, effects, audio, shooting, lighting, spills }) {
     this.onShatter = null;
     this.onBreakProp = null;
     this.scene = scene;
@@ -723,6 +723,9 @@ export class Destruction {
     this.audio = audio;
     this.shooting = shooting;
     this.lighting = lighting;
+    // Water on the floor. Optional like extinguishers: a build with no spills is
+    // a build where a shot cooler simply breaks, which is what it did before.
+    this.spills = spills ?? null;
 
     this.level = null;
     // The ceiling still coming down from a power cut, if one is — see
@@ -833,10 +836,35 @@ export class Destruction {
     this.audio.bulletHitMaterial('prop', dyn.substance, point);
     if (!dyn.hp) return;
     dyn.hp -= damage;
+    // A round into something with water in it opens it, whether or not that round
+    // was the one that finished it — the difference between the two is how much
+    // comes out, and `_breakProp` below asks for the bigger one.
+    if (dyn.spills && dyn.hp > 0) this._spill(dyn, point, false);
     if (dyn.hp <= 0) {
       this._breakProp(dyn, dir, point);
       this.onBreakProp?.(dyn, dir, point);
     }
+  }
+
+  /**
+   * What comes out of a prop that had liquid in it.
+   *
+   * The patch belongs to the PROP rather than to the shot, so a cooler hit three
+   * times spreads one puddle instead of stacking three on the same tile — which
+   * is what `dyn.puddle` is for. Water lands on whatever floor the prop is
+   * standing on, which is its own underside and not y = 0: a cooler shot in an
+   * attic wets the attic.
+   */
+  _spill(dyn, point, burst) {
+    if (!this.spills) return;
+    const floor = dyn.group.position.y - dyn.size.y / 2;
+    const from = Math.max(floor + 0.15, Math.min(point?.y ?? 0, floor + dyn.size.y));
+    if (dyn.puddle?.live) {
+      this.spills.feed(dyn.puddle, { burst });
+      return;
+    }
+    dyn.puddle = this.spills.start(dyn.group.position.x, floor, dyn.group.position.z,
+      { from, burst, atX: point?.x ?? dyn.group.position.x, atZ: point?.z ?? dyn.group.position.z });
   }
 
   /**
@@ -1474,6 +1502,10 @@ export class Destruction {
       dyn.collider.push = null;
       dyn.collider.top = -1;
     }
+
+    // Everything it was holding ends up on the floor. Before the debris, so the
+    // gush is under the sound of the plastic rather than after it.
+    if (dyn.spills) this._spill(dyn, point, true);
 
     this._scatter(dyn.parts, dyn, dir, point);
 

@@ -14,6 +14,7 @@ import { Shooting } from './shooting.js';
 import { Physics } from './physics.js';
 import { Destruction } from './destruction.js';
 import { Extinguishers } from './extinguishers.js';
+import { Spills } from './spills.js';
 import { Doors } from './doors.js';
 import { Casings } from './casings.js';
 import { Keycards, Wallet } from './keycards.js';
@@ -58,7 +59,8 @@ const shooting = new Shooting({
   camera, controls: player.controls, keys, weapons, effects, enemies, hud, audio, physics, casings,
 });
 
-const destruction = new Destruction({ scene, physics, effects, audio, shooting, lighting });
+const spills = new Spills({ scene, audio });
+const destruction = new Destruction({ scene, physics, effects, audio, shooting, lighting, spills });
 const extinguishers = new Extinguishers({
   scene, physics, effects, audio, destruction, enemies, player, hud,
 });
@@ -76,7 +78,7 @@ const cameras = new Cameras({ scene, audio, effects });
 
 const game = new Game({
   scene, camera, player, weapons, shooting, enemies,
-  effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, doors, casings,
+  effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, spills, doors, casings,
   keycards, wallet, ragdolls, cameras,
 });
 
@@ -115,7 +117,7 @@ addEventListener('mousedown', () => {
 // production builds by the bundler.
 if (import.meta.env.DEV) {
   window.dev = {
-    game, player, enemies, shooting, keys, physics, destruction, extinguishers, doors,
+    game, player, enemies, shooting, keys, physics, destruction, extinguishers, doors, spills,
     scene, camera, weapons, renderer, audio, casings, keycards, wallet, ragdolls, cameras,
     touch, net, netplay, coopMenu,
     // One frame of the world by hand, for measuring something without the

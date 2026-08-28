@@ -49,6 +49,15 @@ const CRUSH_REACH = 0.62;
 // same trick `snapshot` in enemies.js uses on the same reasoning.
 const CRUSH_SLICE = 48;
 
+// How often an intact water cooler burbles to itself, and how far away one has to
+// be to bother. A cooler that is not doing anything is still a bottle of water
+// with air getting into it, and one glug every ten seconds or so from the corner
+// of a breakroom is the kind of noise that makes a floor sound occupied. Rolled
+// against the nearest one rather than all of them: a floor can carry twenty-odd
+// and hearing them all is a pond.
+const COOLER_GLUG = [7, 15];   // seconds between burbles
+const COOLER_RANGE = 9;        // metres — the room you are standing in
+
 // The cow (see placeCow in gen/build.js), on the rare floor that has one: how
 // long between one moo and the next, randomised so it doesn't read as a loop.
 const MOO_INTERVAL = [7, 16];
@@ -85,7 +94,7 @@ export class Game {
    * `physics` is the exception and stays guarded, because the solver really can
    * be absent and the game is meant to keep running without it.
    */
-  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, doors, casings, keycards, wallet, ragdolls, cameras }) {
+  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, spills, doors, casings, keycards, wallet, ragdolls, cameras }) {
     this.player = player;
     this.weapons = weapons;
     this.shooting = shooting;
@@ -98,6 +107,7 @@ export class Game {
     this.physics = physics;
     this.destruction = destruction;
     this.extinguishers = extinguishers;
+    this.spills = spills ?? null;
     this.doors = doors;
     this.casings = casings;
     this.keycards = keycards;
@@ -157,6 +167,7 @@ export class Game {
     this.pulseTimer = 0;
     this.breathTimer = 0;
     this.shoveTimer = 0;
+    this.coolerTimer = COOLER_GLUG[0];
     this.cow = null;
     this.mooTimer = 0;
 
@@ -441,6 +452,8 @@ export class Game {
     // does — the handles they hold only mean anything inside that world.
     this.destruction.clear();
     this.extinguishers.clear();
+    // Water is the floor's, the pool of patches is not — same split as debris.
+    this.spills?.clear();
     this.casings.clear();
     // Cards do not travel between floors. A building where the card you found on
     // eight opens nine has exactly one locked door in it, on floor one.
@@ -597,6 +610,34 @@ export class Game {
     }
   }
 
+  /**
+   * The nearest unbroken water cooler, muttering to itself.
+   *
+   * Cheap by being rare: the scan is over the floor's coolers (a couple of dozen)
+   * and it happens once every ten seconds or so, which is nothing next to the
+   * per-frame work above. A broken one is skipped — whatever it had to say it said
+   * when it emptied itself onto the carpet (see spills.js).
+   */
+  _coolerGlug(dt) {
+    this.coolerTimer -= dt;
+    if (this.coolerTimer > 0) return;
+    this.coolerTimer = COOLER_GLUG[0] + Math.random() * (COOLER_GLUG[1] - COOLER_GLUG[0]);
+
+    const level = this.level.current;
+    if (!level || this.player.dead) return;
+    const at = this.player.object.position;
+    let best = null, bestD = COOLER_RANGE * COOLER_RANGE;
+    for (const dyn of level.dynamics) {
+      if (!dyn.spills || dyn.broken) continue;
+      const p = dyn.group.position;
+      const d2 = (p.x - at.x) * (p.x - at.x) + (p.z - at.z) * (p.z - at.z);
+      if (d2 < bestD) { bestD = d2; best = dyn; }
+    }
+    if (!best) return;
+    const p = best.group.position;
+    this.audio.waterGlug({ x: p.x, y: p.y + 0.5, z: p.z });
+  }
+
   _syncCollider(dyn) {
     const p = dyn.group.position;
     const c = dyn.collider;
@@ -622,6 +663,7 @@ export class Game {
     if (!level) return;
 
     this._crushBoxes();
+    this._coolerGlug(dt);
 
     // Physics runs even while dead, so anything you knocked over on the way
     // out settles instead of freezing mid-air.
@@ -640,6 +682,7 @@ export class Game {
     // pickable — a floor you could not leave, from a guard meant to be harmless.
     this.destruction.update(dt);
     this.extinguishers.update(dt);
+    this.spills?.update(dt);
     // The other player opens doors too. A panel that only answers to the browser
     // it is running in is one your friend walks into — and worse, one that opens
     // in front of you and stays shut in front of them in the same doorway.

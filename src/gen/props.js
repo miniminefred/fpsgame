@@ -296,10 +296,23 @@ export const PROPS = {
     // `spills` is what makes it leak when it is shot rather than merely break —
     // see damageProp in destruction.js and spills.js for what comes out.
     w: 0.4, d: 0.4, mass: 11, hp: 35, substance: 'plastic', spills: 'water',
+    // Authored in courses rather than as two big boxes, and that is about how it
+    // DIES. A prop comes apart into exactly the boxes it was drawn from, so a
+    // 1.0 m plinth with a 0.42 m bottle on it threw two fragments the size of the
+    // machine — which landed where the machine had been standing and left a
+    // destroyed cooler looking like an intact one that had stopped being solid.
+    // Six pieces read as a wrecked cooler; two read as the same cooler.
     build(p) {
-      p.box('metal', -0.18, 0, -0.18, 0.18, 1.0, 0.18);
-      p.box('screenOn', -0.14, 1.0, -0.14, 0.14, 1.42, 0.14);   // the bottle
+      // The plinth, in three courses with a recessed back.
+      for (const [y0, y1] of [[0, 0.34], [0.34, 0.68], [0.68, 1.0]]) {
+        p.box('metal', -0.18, y0, -0.18, 0.18, y1 - 0.01, 0.18);
+      }
+      // The bottle, in two: they are the pieces that go furthest when it bursts.
+      p.box('screenOn', -0.14, 1.0, -0.14, 0.14, 1.21, 0.14);
+      p.box('screenOn', -0.13, 1.21, -0.13, 0.13, 1.42, 0.13);
+      // Tap and drip tray.
       p.box('metalDark', -0.1, 0.62, -0.2, 0.1, 0.72, -0.17);
+      p.box('metalDark', -0.13, 0.5, -0.19, 0.13, 0.54, -0.14);
       p.obstacle(-0.18, -0.18, 0.18, 0.18, 1.42);
     },
   },
