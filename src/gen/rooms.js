@@ -676,22 +676,34 @@ function cafeteria(sink, bounds, rng, room, doors) {
       if (!tryPlace(sink, 'canteenTable', cx, cz, rot, rng)) continue;
       landed++;
 
-      // Chairs down both long sides, most of them pushed back in. Placed
-      // directly rather than through seatFacing, and that is deliberate: that
-      // call registers a WORKSTATION, and a canteen chair is somewhere to eat
-      // lunch rather than somewhere a body works — see _takeDesk in enemies.js,
-      // which would otherwise find twenty jobs in here and stand somebody up
-      // from a dinner table.
-      for (const t of [-0.62, 0.62]) {
-        if (rng.chance(0.72)) {
-          if (rot === 0) tryPlace(sink, 'chair', cx + t, cz - reach, 0, rng);
-          else tryPlace(sink, 'chair', cx - reach, cz + t, 1, rng);
+      // Chairs down both long sides, most of them pushed back in.
+      //
+      // Inside the table's own reservation, which is what `lend` is for and is
+      // not optional: floor is claimed by whole tiles, so a 0.86 m table's claim
+      // reaches a good way past its own edge and a chair pulled up to it lands
+      // inside that claim whatever the arithmetic says. Exactly the failure
+      // seatFacing documents, and it showed here the same way — four tables in
+      // the room and not one chair at any of them. Every other claim still
+      // stands while the tiles are lent: the servery, the doorway aprons, the
+      // vending machine on the wall behind.
+      //
+      // Placed directly rather than through seatFacing, though, and that is
+      // deliberate: that call also registers a WORKSTATION, and a canteen chair
+      // is somewhere to eat lunch rather than somewhere a body works — see
+      // _takeDesk in enemies.js, which would otherwise find twenty jobs in here.
+      const { w: tw, d: td } = footprintOf(sink, 'canteenTable', rot);
+      sink.lend(cx - tw / 2, cz - td / 2, cx + tw / 2, cz + td / 2, () => {
+        for (const t of [-0.62, 0.62]) {
+          if (rng.chance(0.72)) {
+            if (rot === 0) tryPlace(sink, 'chair', cx + t, cz - reach, 0, rng);
+            else tryPlace(sink, 'chair', cx - reach, cz + t, 1, rng);
+          }
+          if (rng.chance(0.72)) {
+            if (rot === 0) tryPlace(sink, 'chair', cx + t, cz + reach, 2, rng);
+            else tryPlace(sink, 'chair', cx + reach, cz + t, 3, rng);
+          }
         }
-        if (rng.chance(0.72)) {
-          if (rot === 0) tryPlace(sink, 'chair', cx + t, cz + reach, 2, rng);
-          else tryPlace(sink, 'chair', cx + reach, cz + t, 3, rng);
-        }
-      }
+      });
       // Only after one lands: the next along starts a full pitch away, so the
       // rank keeps the gap a body walks through between two tables (see
       // TABLE_PITCH) rather than having it eroded by the sliding.
