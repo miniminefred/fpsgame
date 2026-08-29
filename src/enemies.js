@@ -1040,7 +1040,15 @@ export class Enemies {
     // every door in the building and on every employee in it, so a white room is
     // a room with the key to itself standing in it — and the guarantee that
     // makes the FIRST one openable is _cardOutside below, not this.
-    const rooms = rng.shuffle(layout.rooms.filter((r) => r.role !== 'lobby' && !r.staffOnly));
+    // Nor in the room the player is standing in when the floor starts, whatever
+    // that room is this time. Keyed off `spawnRoom` rather than off the 'lobby'
+    // role, because the floor now arrives in its canteen when it has one (see
+    // pickCafeteria in gen/layout.js) — and a role name is a fact about how a
+    // room is FURNISHED, while "do not put anybody here" is a fact about where
+    // the player materialises. Left as the role test, a cafeteria floor would
+    // have opened with a dozen people standing around the arrival point.
+    const rooms = rng.shuffle(
+      layout.rooms.filter((r) => r !== layout.spawnRoom && !r.staffOnly));
     if (!rooms.length) return spots;
 
     // The same rooms, workplaces first. The roster is spread over a hundred-odd
