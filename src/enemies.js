@@ -230,6 +230,21 @@ const OFFICE_GUARDS = [2, 5];
 const GUARD_BATON = 0.4;       // how much of the shift drew a baton instead
 const GUARD_GAP = 0.8;         // metres between two men in one room
 
+// The canteen's own, in the room the floor arrives in — see _diners. A handful
+// rather than a crowd, and that is the whole tuning: a canteen with fifteen
+// people in it is a room you have to work out before you can move, and the point
+// of these is that you do not have to work them out at all. Two to five at the
+// tables and a couple on their feet is a late shift on its break; it also leaves
+// most of the seating empty, which is the room reading as somewhere the rest of
+// the floor is too busy to be.
+const DINERS = [2, 5];
+const DINERS_STANDING = [0, 2];
+// Metres of the arrival point kept to yourself. The seats are outside it anyway
+// — no table is furnished into the square kept clear where the player
+// materialises — so this is only ever about the ones on their feet, who are
+// placed on open floor and would otherwise be free to stand on your head.
+const DINER_SPAWN_GAP = 2.5;
+
 // The generator room's crew, in the two halves that are the point of it: the
 // ones who will come at you, and the ones who will carry on with their shift
 // while you shoot at them. See _generatorRoom.
@@ -337,7 +352,10 @@ export class Enemies {
     this.shoutTimer = 0;
     this.theme = pickTheme(layout.floorNumber, rng);
     this.corridors = collectCorridors(layout, nav);
-    this.desks = deskPool(workstations, nav, rng);
+    this.desks = deskPool(workstations, nav, rng, 'desk');
+    // The canteen's chairs, pooled apart from the desks because they are not
+    // jobs: see `at` on sink.workstation in gen/build.js.
+    this.tables = deskPool(workstations, nav, rng, 'table');
 
     const spots = this._spawnPoints(layout, nav, rng, tuning.count);
     // A room holds a team, not a headcount. Whoever is in a room is in it
@@ -408,6 +426,7 @@ export class Enemies {
     }
 
     this._cardOutside(layout, nav, rng, tuning);
+    this._diners(layout, nav, rng, tuning);
     this._janitors(layout, nav, rng, tuning);
     this._manager(layout, nav, rng, tuning);
     this._generatorRoom(layout, nav, rng, tuning);
@@ -818,6 +837,63 @@ export class Enemies {
   }
 
   /**
+   * The staff on their break, in the canteen the floor puts you down in.
+   *
+   * The only people in the building you meet before you have taken a step, and
+   * the one room whose population is decided by what is IN it rather than by the
+   * difficulty curve: everybody here is harmless, none of them counts toward
+   * clearing the floor, and walking past the lot of them is the intended way to
+   * leave. Nobody hostile is ever placed in here — _spawnPoints skips the room
+   * the player arrives in — so this is the only thing that populates it at all.
+   *
+   * Which makes them a tell rather than a fight, and the tell is the CHAIR. A
+   * body sitting down means a harmless one everywhere in this building; the two
+   * exceptions, the Manager and the guard on the cameras, are both behind a
+   * locked door and neither is the first thing anybody sees. So a floor now opens
+   * on four people sitting at their lunch: the rule stated on the way in, with
+   * nothing at stake, so that the next chair the player sees already means
+   * something.
+   */
+  _diners(layout, nav, rng, tuning) {
+    const room = layout.spawnRoom;
+    if (room.role !== 'cafeteria') return;
+
+    // Seated first, and only into a chair a whole body fits in front of — the
+    // pool has already dropped the ones nav cannot stand anybody at (see
+    // deskPool). Taking a seat REMOVES it, so two people can never be dealt the
+    // same chair, which would be one body inside another eating the same lunch.
+    for (let i = rng.int(DINERS[0], DINERS[1]); i > 0; i--) {
+      const seat = this._takeDesk(room, (x, z) => nav.clear(x, z, RADIUS), this.tables);
+      if (!seat) break;
+      this._seat(this._add(seat.x, seat.z, rng, tuning, TYPES.diner), seat, 'table');
+    }
+
+    // And a couple on their feet: at the counter, in a gangway, wherever the room
+    // has floor left. A canteen where every single person is seated in a row
+    // reads as a waiting room — and somebody standing is also what makes the
+    // seated ones read as people who chose to sit rather than as furniture with
+    // heads on.
+    for (let i = rng.int(DINERS_STANDING[0], DINERS_STANDING[1]); i > 0; i--) {
+      let spot = null;
+      for (let tries = 0; tries < 60 && !spot; tries++) {
+        const tx = rng.int(room.x0, room.x1 - 1);
+        const ty = rng.int(room.y0, room.y1 - 1);
+        if (!nav.walkable(tx, ty)) continue;
+        const x = nav.wx(tx), z = nav.wz(ty);
+        if (!nav.clear(x, z, RADIUS)) continue;
+        // Off the arrival point, and off each other. The seats need neither —
+        // no table is furnished into the square kept clear where the player
+        // materialises, and a chair can only be dealt once.
+        if (Math.hypot(x - layout.spawn.x, z - layout.spawn.z) < DINER_SPAWN_GAP) continue;
+        if (this.items.some((e) => Math.hypot(e.x - x, e.z - z) < NEUTRAL_GAP)) continue;
+        spot = { x, z };
+      }
+      if (!spot) break;
+      this._add(spot.x, spot.z, rng, tuning, TYPES.diner);
+    }
+  }
+
+  /**
    * The people with a badge who are standing where no badge is needed to reach
    * them.
    *
@@ -1135,8 +1211,8 @@ export class Enemies {
    * monitor. A desk the test refuses is left in the pool: the next caller asks a
    * different question of it.
    */
-  _takeDesk(room, ok) {
-    const free = this.desks.get(room);
+  _takeDesk(room, ok, pool = this.desks) {
+    const free = pool.get(room);
     if (!free) return null;
     for (let i = 0; i < free.length; i++) {
       if (ok(free[i].x, free[i].z)) return free.splice(i, 1)[0];
@@ -1153,8 +1229,8 @@ export class Enemies {
    * here — hearing, sight, pathing, the card in their pocket, the ragdoll —
    * needs to know this was ever a thing.
    */
-  _seat(e, station) {
-    e.seat = 'desk';
+  _seat(e, station, at = 'desk') {
+    e.seat = at;
     // The chair's quarter turn, converted the one way it can be: a prop's turns
     // rotate the front from -Z toward +X, which is a negative rotation about Y.
     // Same line as tryPlace's, because a body and the chair under it face the
@@ -2141,7 +2217,12 @@ export class Enemies {
       // for form, since a body that has left its chair never gets back into it,
       // and a desk is the only seat there is.
       if (!(packed & 8)) e.seat = null;
-      else e.seat ??= 'desk';
+      // Only ever fills in a seat the joiner does not already have. Which seat
+      // it is comes off the TYPE rather than being assumed to be a desk: both
+      // browsers generated the same floor and the same roster, so a body that
+      // eats lunch is eating lunch on both ends, and defaulting a diner to a
+      // desk would sit them typing at a canteen table.
+      else e.seat ??= e.type.dines ? 'table' : 'desk';
       e.state = SNAP_STATES[packed & 7] ?? 'idle';
     }
   }
@@ -2245,9 +2326,14 @@ export class Enemies {
  * the same floor from the same seed, so these are the same desks in the same
  * order on both ends and the two bodies that do sit down sit in the same chairs.
  */
-function deskPool(workstations, nav, rng) {
+function deskPool(workstations, nav, rng, at) {
   const by = new Map();
   for (const w of workstations) {
+    // Desks and canteen tables come through the same call and are pooled apart,
+    // because what they mean is different: a desk is a job and a table is lunch.
+    // Mixed, a cafeteria's ten chairs would read to _spawnPoints as a room with
+    // ten jobs going in it and it would be dealt a shift to match.
+    if (w.at !== at) continue;
     // A desk the furnisher could not attribute to a room — nothing in the
     // catalogue places one outside a room today, and a corridor full of unowned
     // workstations would be dealt to whoever asked first.

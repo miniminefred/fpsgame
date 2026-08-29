@@ -172,6 +172,24 @@ export const TYPES = {
     range: 0, melee: false, scale: 0.99, neutral: true,
     suit: 0x6b5a1e, shirt: 0xf2c14e, visor: 0xffc93a, unlockFloor: 1, weight: 0,
   },
+  diner: {
+    // On their break in the canteen the floor arrives in — the only people in
+    // the building you meet before you have taken a step, and the reason that
+    // room reads as somewhere people work rather than a set. Sitting down, which
+    // is the whole of what makes them safe to walk past: a chair means harmless
+    // in this building, and these are the first bodies that rule was ever
+    // written for. See _diners in enemies.js.
+    //
+    // A visor of their own, like every other neutral. Hue says threat here and
+    // shade says which one, so a harmless type needs a colour no hostile wears:
+    // the grey ramp is every hostile human, green is the Reanimated, and blue is
+    // nowhere near the courier's yellow or the cleaner's brown at the range you
+    // first see one from — which for these is across a room, seated, before you
+    // have decided anything.
+    name: 'Staff on Break', hp: 0.5, speed: 1.05, damage: 0, rate: 99, spread: 1,
+    range: 0, melee: false, scale: 1.0, neutral: true, dines: true,
+    suit: 0x3f4a59, shirt: 0xc6d0dc, visor: 0x5aa9ff, unlockFloor: 1, weight: 0,
+  },
   worker: {
     // The generator room's docile majority — logged in on the terminals
     // around it, or just standing near the thing, and no more interested in

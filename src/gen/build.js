@@ -1687,9 +1687,15 @@ function makeSink(layout, batcher, materials, masks) {
      * it entirely, and a body seated somewhere nothing can walk to is a body
      * that stands up into a wall.
      */
-    workstation(x, z, rot) {
+    workstation(x, z, rot, at = 'desk') {
       if (level) return;
-      masks.workstations.push({ x, z, rot, room: null });
+      // `at` is what the chair is pulled up to, and the two are not
+      // interchangeable: a desk is a JOB — it decides how big a shift a room is
+      // dealt and it seats a body typing (see _spawnPoints and deskPool in
+      // enemies.js) — while a canteen table is somewhere to eat lunch. Pooled
+      // apart at the other end, so a cafeteria full of seats can never be read
+      // as a room with twenty jobs going in it.
+      masks.workstations.push({ x, z, rot, at, room: null });
     },
 
     box(key, x0, y0, z0, x1, y1, z1) {

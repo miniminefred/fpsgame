@@ -715,7 +715,16 @@ function cafeteria(sink, bounds, rng, room, doors) {
           for (const t of [-0.62, 0.62]) {
             if (!rng.chance(0.72)) continue;
             const [ax, az] = QUARTER[side](t, 0);
-            tryPlace(sink, 'chair', cx + ox + ax, cz + oz + az, (side + 2) & 3, rng);
+            const x = cx + ox + ax, z = cz + oz + az;
+            const seat = (side + 2) & 3;
+            // Registered as a seat at a TABLE, not as a workstation. Same record
+            // and the same one call that puts the chair down — the furnisher is
+            // the only thing that knows a chair is here and which way it is
+            // turned — but `at` keeps it out of the desk pool, so nobody is ever
+            // dealt a job in here and _diners has somewhere to sit people.
+            if (tryPlace(sink, 'chair', x, z, seat, rng)) {
+              sink.workstation(x, z, seat, 'table');
+            }
           }
         }
       });
