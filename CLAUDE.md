@@ -1074,6 +1074,32 @@ Three things about them were learned by running it:
   is sitting rather than rolled — it has to be stable for the run and identical in both
   browsers of a co-op session, and the chair came from the same seed on both ends.
 
+**And two more came from a player shooting one**, which is the case none of the above
+exercises: a seated body that has to become a walking one.
+
+- **A seat has to be somewhere a route can START from, not merely somewhere a body fits.**
+  `nav.clear` is a point test against `walk` — can a body of this radius stand exactly
+  here — while `fits` is that same test taken at the TILE CENTRE, and `fits` is what every
+  flood and every `descendOn` runs on. A chair tucked into the corner of a tile passes one
+  and fails the other, and the body seated there stands up perfectly well and then cannot
+  path anywhere for the rest of the run. Measured on the chair the player actually shot:
+  **400 destination picks, 0 accepted, 101 of them refused at `descendOn`** because the
+  body's own tile was not on the field. He stood at the table walking on the spot until the
+  floor ended. `deskPool` asks `fitsAt` now. It costs seats — a chair that only just fits is
+  no chair at all — and that is right in both directions, because the two set pieces this
+  pool has always fed get up to FIGHT you: the Manager and the guard on the cameras were
+  both a bad roll away from the same paralysis, silently, since the day they were seated.
+- **The ANIMATOR is what stands a body up, and nothing else may do it.** `stand` in
+  `enemy-anim.js` puts the hips and shoulders back where `rigs.js` left them, and it is the
+  only thing that ever does: the walk cycle writes limb ROTATIONS every frame and recovers
+  on its own, but a limb's POSITION is moved by `hinge` and by nothing else. Clearing
+  `e.seat` from inside `_wander` skipped that, so a body got out of its chair still carrying
+  the chair's joints — measured, `legL` at (-0.12, **0.71**, **-0.40**) against the rig's
+  (-0.12, 0.43, 0) — and walked the rest of the floor with its hips and shoulders dropped
+  into a seat that was not there. It is exactly as obvious as it sounds: "walks like an
+  alien". `_wander` now only stops holding `idle`, and the frame ends with `animate` seeing
+  a seated body in `wander` and standing it up the one way that works.
+
 **One bug in this file was found twice over while seating them, and it is the `edgeProp`
 table again.** A chair's turn is a quarter turn round from the thing it is pulled up to, and
 written out by hand as four coordinates and four turns half of them were wrong: every chair
