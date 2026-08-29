@@ -140,12 +140,19 @@ function meetingRoom(sink, bounds, rng) {
     const seats = Math.max(2, Math.floor((alongX ? x1 - x0 : z1 - z0) / 0.85) - 1);
     for (let i = 0; i < seats; i++) {
       const t = (i - (seats - 1) / 2) * 0.85;
-      if (alongX) {
-        tryPlace(sink, 'chair', cx + t, cz - half, 0, rng);
-        tryPlace(sink, 'chair', cx + t, cz + half, 2, rng);
-      } else {
-        tryPlace(sink, 'chair', cx - half, cz + t, 1, rng);
-        tryPlace(sink, 'chair', cx + half, cz + t, 3, rng);
+      // Both long sides, each chair turned to face the table. Derived rather
+      // than written out, and it is a FIX rather than a tidy-up: written out it
+      // was four coordinates and four turns, and the two for a table running
+      // east-west were backwards — every meeting room on that half of the roll
+      // sat its whole meeting facing the walls. Measured off the geometry rather
+      // than argued about: the backrest of every chair was the box nearest the
+      // table. `side` is the quarter turn naming which way the chair is offset
+      // and (side + 2) is what brings its front back round, exactly as
+      // seatFacing has always done it for a desk.
+      for (const side of [rot, (rot + 2) & 3]) {
+        const [ox, oz] = QUARTER[side](0, -half);
+        const [ax, az] = QUARTER[side](t, 0);
+        tryPlace(sink, 'chair', cx + ox + ax, cz + oz + az, (side + 2) & 3, rng);
       }
     }
   } else {
