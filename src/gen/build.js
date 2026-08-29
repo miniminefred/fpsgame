@@ -2205,9 +2205,28 @@ function reserveClearances(layout, reserved) {
     else stampTiles(d.x0 - 1, d.y0 - SWING, d.x1, d.y1 + SWING);
   }
 
+  // A clear square where the player materialises, and another at the hatch they
+  // leave by.
+  //
+  // Four metres across rather than the five and a half it used to be, and what
+  // changed is the spawn. This was sized when arriving always meant a lift lobby
+  // — a small room furnished against its walls anyway, where the difference is
+  // invisible — and a floor now arrives in its canteen when it has one (see
+  // pickCafeteria in gen/layout.js), which is the first room this has ever been
+  // stamped into that is furnished AROUND the player. Measured: a cafeteria is
+  // typically 8 to 12 m across, and 5.5 m of clear square through the middle of
+  // it plus the lane kept in front of the servery is the room's whole depth. 11
+  // of 37 came out with a counter, a vending machine and nothing whatever to sit
+  // at, which is exactly how they looked.
+  //
+  // It stays well clear of what it is for either way: the props sweep holds both
+  // points to 1.5 m of clear floor (SPAWN/EXIT in tools/validate-props.mjs), and
+  // this is 2 m to the nearest edge of the square.
+  const ARRIVAL_CLEAR = 4;   // tiles from the centre tile, so a 9 x 9 square
   for (const room of [layout.spawnRoom, layout.exitRoom]) {
     const cx = Math.round(room.cx), cy = Math.round(room.cy);
-    stampTiles(cx - 5, cy - 5, cx + 5, cy + 5);
+    stampTiles(cx - ARRIVAL_CLEAR, cy - ARRIVAL_CLEAR,
+      cx + ARRIVAL_CLEAR, cy + ARRIVAL_CLEAR);
   }
 
   // Both of these are about a route rather than a spot, and both hang off the same
