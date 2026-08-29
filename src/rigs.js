@@ -229,8 +229,18 @@ function buildHuman(type, rng) {
     if (mats.capBadge) cap.push(mesh(GEO.capBadge, mats.capBadge, 0, 1.80, -0.146));
   }
 
-  // Melee staff drop the gun and swing whatever was on their desk instead.
-  gun.visible = !type.melee;
+  // Melee staff drop the gun and swing whatever was on their desk instead — and
+  // the harmless are not armed at all.
+  //
+  // That second half was missing, and it had been quietly costing the neutrals
+  // the one job they have. Measured on a floor: the Panicking Staffer 2 of 2,
+  // the Night Cleaner 3 of 3 and the Maintenance Worker 4 of 4, every one of
+  // them running about with a sidearm in their hand. The whole point of these
+  // people is that you can decide not to shoot them from the far end of a
+  // corridor — hue says threat and shade says which one — and a silhouette
+  // holding a pistol has already answered that question the other way, whatever
+  // colour its visor is.
+  gun.visible = !type.melee && !type.neutral;
   let blunt = null;
   let bluntSpec = null;
   if (type.melee) {
