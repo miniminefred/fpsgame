@@ -633,29 +633,55 @@ function cafeteria(sink, bounds, rng, room, doors) {
   const [a0, a1, b0, b1] = rot === 0
     ? [seat.x0, seat.x1, seat.z0, seat.z1]
     : [seat.z0, seat.z1, seat.x0, seat.x1];
-  const cols = Math.floor((a1 - a0) / TABLE_PITCH);
-  const rows = Math.floor((b1 - b0) / ROW_PITCH);
-  const padA = (a1 - a0 - cols * TABLE_PITCH) / 2;
-  const padB = (b1 - b0 - rows * ROW_PITCH) / 2;
   // Half the table's real depth plus room for a chair to be pushed under it —
   // measured through footprintOf like every other placement, never off the
   // catalogue numbers.
   const reach = footprintOf(sink, 'canteenTable').d / 2 + 0.42;
 
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const a = a0 + padA + (c + 0.5) * TABLE_PITCH;
-      const b = b0 + padB + (r + 0.5) * ROW_PITCH;
+  // Rows laid from the queue lane backward, and each row filled by WALKING it
+  // rather than by stepping a grid.
+  //
+  // That is the whole difference between a canteen and an empty hall, and it was
+  // measured rather than guessed. On a rigid grid a cell is all or nothing: the
+  // table either fits at the one spot the arithmetic named or the room does
+  // without it, and the middle of a cafeteria is the one piece of floor with a
+  // doorway apron, a through-route lane and the square kept clear where the
+  // player materialises all stamped across it. Six cells in an 11 x 10 m room,
+  // all six touching one reservation or another, and the room came out with a
+  // servery, a vending machine and nothing at all to sit at. Sliding along the
+  // row instead puts tables on both sides of whatever is in the way and lands a
+  // median of 5, because a row is a rank of tables at a spacing rather than
+  // furniture at named coordinates.
+  // Both axes are WALKED rather than stepped as a grid, and that is the whole
+  // difference between a canteen and an empty hall. It was measured, not
+  // guessed. On a grid a cell is all or nothing — the table fits at the one spot
+  // the arithmetic named or the room does without it — and the middle of a
+  // cafeteria is the one piece of floor carrying a doorway apron, a through-route
+  // lane and the square kept clear where the player materialises, all stamped
+  // across it. Every cell in an 11 x 10 m room touched one reservation or
+  // another and the room came out with nothing at all to sit at.
+  //
+  // Sliding puts tables on both sides of whatever is in the way: along a row for
+  // an apron reaching into it, and across the rows for a band of floor that is
+  // spoken for. The ranks stay parallel and evenly spaced because each axis only
+  // jumps a full pitch once something has actually landed.
+  const STEP = 0.25;
+  const half = footprintOf(sink, 'canteenTable').w / 2;
+
+  for (let b = b0 + reach; b <= b1 - reach; b += 0.5) {
+    let landed = 0;
+    for (let a = a0 + half; a <= a1 - half; a += STEP) {
       const cx = rot === 0 ? a : b;
       const cz = rot === 0 ? b : a;
       if (!tryPlace(sink, 'canteenTable', cx, cz, rot, rng)) continue;
+      landed++;
 
       // Chairs down both long sides, most of them pushed back in. Placed
       // directly rather than through seatFacing, and that is deliberate: that
       // call registers a WORKSTATION, and a canteen chair is somewhere to eat
       // lunch rather than somewhere a body works — see _takeDesk in enemies.js,
-      // which would otherwise find twenty jobs in here and seat somebody typing
-      // at a dinner table.
+      // which would otherwise find twenty jobs in here and stand somebody up
+      // from a dinner table.
       for (const t of [-0.62, 0.62]) {
         if (rng.chance(0.72)) {
           if (rot === 0) tryPlace(sink, 'chair', cx + t, cz - reach, 0, rng);
@@ -666,7 +692,12 @@ function cafeteria(sink, bounds, rng, room, doors) {
           else tryPlace(sink, 'chair', cx + reach, cz + t, 3, rng);
         }
       }
+      // Only after one lands: the next along starts a full pitch away, so the
+      // rank keeps the gap a body walks through between two tables (see
+      // TABLE_PITCH) rather than having it eroded by the sliding.
+      a += TABLE_PITCH - STEP;
     }
+    if (landed) b += ROW_PITCH - 0.5;
   }
 
   // And what a canteen keeps round its edges. The counter is the set piece;
