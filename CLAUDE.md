@@ -975,6 +975,82 @@ the deck at 3.2 m, and on the door wall they do it starting from inside the door
 the one-turn walk is the tested claim and not just the intended one. Each deck comes out
 with three to five desks on it.
 
+### The cafeteria, and arriving in it (`cafeteria` in `gen/rooms.js` + `pickCafeteria`)
+The floor's canteen, and the room you are standing in when the floor starts. It is the
+plant room's sibling — a big room composed around one thing — and it is deliberately the
+**common** one where the generator is the rare one: **577 of 600** swept floors get a
+cafeteria against 20 that get a plant room.
+
+**The set piece is the servery, and it is `spanning` for exactly the reason the generator
+is.** It runs the wall opposite the door you come in by, corner to corner: a three-metre
+counter parked against the middle of a twelve-metre wall is a kitchenette somebody
+installed, and a serving line reaching both corners is the END of the room, which is what
+the seating faces and what you see from the doorway. Hot pans sunk into the top, a sneeze
+guard, a tray rail, a till at one end and lit menu boards on a gantry over the back —
+the boards because they are the one thing in the room worth reading, and because a lit
+panel is how everything else in this building says *look here*. It carries `building:
+true` on its collider like the generator, and for the same reason: a counter that runs a
+whole wall is well past the furniture caps in `validate-props.mjs`, which exist to catch a
+prop that has accidentally become a building.
+
+**Which room it picks is decided before anything else about the floor**, because it becomes
+the **spawn room** — and the exit's distance ranking, every lock, the prologue and where a
+staircase may go are all measured from the spawn. Three requirements, and the third is the
+load-bearing one:
+
+- 85 m² and a short side of 12 tiles, or the rows behind the queue lane have nowhere to go.
+- Not a room the plant room could have had. `fitsGenerator` is named rather than written
+  inline for this — the generator wants the biggest most rectangular room on the floor and
+  only ~3% of floors roll one at all, so a canteen claiming rooms by size alone would
+  quietly cost the game its rarest set piece. Measured on the same seeds: **20/300 floors
+  have a plant room before and after.**
+- **A doorway onto a CORRIDOR.** This is the room the player is standing in holding
+  nothing, so its way out has to be the part of the floor the prologue is measured over.
+  A big room whose only door opens into somebody's office starts the floor by walking
+  through a stranger's office to reach the building.
+
+The pick is deterministic — the biggest room that qualifies — rather than a draw, and that
+is the argument `assignLocks` already makes: it runs before the floor's own rng has been
+spent on anything, so a die here would re-roll the contents of every room in the building
+off a number that has nothing to do with them. The 23 floors in 600 with nowhere suitable
+fall back to the lift lobby exactly as before, and `spawnRoom.role` is the only thing that
+says which happened.
+
+**Three things about furnishing it were bugs first, and all three are the same shape: a
+room furnished AROUND the player is a case nothing in the furnisher had ever had to
+handle.**
+
+- **The seating is walked, not stepped.** On a grid a cell is all or nothing — the table
+  fits at the one spot the arithmetic named or the room does without it — and the middle of
+  a cafeteria is the one piece of floor carrying a doorway apron, a through-route lane and
+  the square kept clear at the arrival point, all stamped across it. Every one of the six
+  cells in an 11 x 10 m room touched one reservation or another, and the room came out with
+  a servery, a vending machine and **nothing whatever to sit at**. Sliding along both axes
+  puts tables on either side of whatever is in the way; each axis only jumps a full pitch
+  once something has landed, so the ranks stay parallel and evenly spaced.
+- **The square kept clear where you arrive came down from 5.5 m to 4 m** (`ARRIVAL_CLEAR`
+  in `gen/build.js`). It was sized when arriving always meant a lift lobby — a small room
+  furnished against its walls anyway, where the difference is invisible. A cafeteria is 8
+  to 12 m across, and 5.5 m of clear square through the middle plus the lane in front of
+  the servery is the room's whole depth: **11 of 37 came out with nothing to sit at**. It
+  is still 2 m to the nearest edge against the 1.5 m the props sweep holds both points to.
+- **A chair pulled up to a table needs `sink.lend`**, the same trap `seatFacing` documents
+  one room type over: floor is claimed by whole tiles, so a table's claim reaches well past
+  its own edge and every chair landed inside it — four tables in the room and not one chair
+  at any of them. It does NOT go through `seatFacing`, though, because that call also
+  registers a workstation, and a canteen chair is somewhere to eat lunch rather than
+  somewhere a body works.
+
+After all three: **median 4 tables and 8 chairs** per cafeteria, and none without seating.
+
+**And nobody is staffed into it** — `_spawnPoints` in `enemies.js` now keys that off
+`layout.spawnRoom` rather than off the `'lobby'` role. A role name is a fact about how a
+room is FURNISHED, while "do not put anybody here" is a fact about where the player
+materialises; left as the role test, a cafeteria floor would have opened with a dozen
+people standing round the arrival point. The mid-sized `canteen` role is untouched and the
+two are meant to read differently: that one is somewhere on the floor to eat, this one is
+the canteen the floor is arranged around.
+
 ### What furniture is never allowed to close (`reserveClearances` in `gen/build.js`)
 A tile mask the furnisher may not place into, stamped before a single prop is put down —
 because a floor should not be furnished into a state it then has to be rescued from. Doorways
@@ -1511,7 +1587,7 @@ between floors. The five fall into **two groups governed by completely different
 rules**, and conflating them is the mistake to avoid:
 
 **White is the staff badge.** It goes on *every* room with a door — the exit room
-included, the spawn lobby excluded (a reader on the room you start inside is a
+included, the room you spawn in excluded (a reader on the room you start inside is a
 floor you cannot leave) — and on most of the doors across the corridors too. Every
 employee carries one. So white is not really a lock, it is the first thirty
 seconds of a floor before you have taken a badge off somebody, and picking one up
@@ -1580,7 +1656,7 @@ checks `8.*`, plus `5.lock-sealed` in `validate-props.mjs`):
   `FIRST_CONTACT` metres of the lifts — and, since the corridors got readers too,
   standing inside `layout.prologue`, which is the part of the floor you can walk
   to before you have badged anything. Without both halves of that guarantee a
-  floor is a lift lobby and two hundred shut doors.
+  floor is one room and two hundred shut doors.
 - **Every** opening into a locked room is locked, not just the ones that room cut,
   and a door is never *downgraded* — the white pass uses `??=`. Two staff-only
   rooms are never allowed to share a doorway at all, because whichever tier that
