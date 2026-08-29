@@ -3,7 +3,9 @@ import { clamp } from '../util.js';
 import {
   TILE, SOLID, ROOM, CORRIDOR, DOOR, isOpen, bfs, worldX, worldZ,
 } from './tiles.js';
-import { assignLocks, lockedMask, prologueRegion, doorsOnRoom } from './locks.js';
+import {
+  assignLocks, lockedMask, prologueRegion, doorsOnRoom, opensOntoCorridor,
+} from './locks.js';
 import { planStairs } from './stairs.js';
 
 // Procedural office floorplan.
@@ -252,7 +254,11 @@ export function generateLayout(seed, floorNumber) {
     r.cy = (r.y0 + r.y1) / 2;
   }
 
-  const spawnRoom = pickSpawnRoom(live, rng);
+  // Where the floor puts you down. The staff canteen when the slab threw up a
+  // room big enough to hold one, and the lift lobby when it did not — see
+  // pickCafeteria for why that is a preference rather than a guarantee.
+  const cafeteria = pickCafeteria(live, tiles, W, doors);
+  const spawnRoom = cafeteria ?? pickSpawnRoom(live, rng);
   const dist = bfs(tiles, W, H, Math.round(spawnRoom.cx), Math.round(spawnRoom.cy));
 
   // The exit goes somewhere far, but not reliably in the opposite corner — the
@@ -267,7 +273,7 @@ export function generateLayout(seed, floorNumber) {
     ? rng.pick(ranked.slice(0, Math.max(1, Math.ceil(ranked.length * 0.25)))).r
     : spawnRoom;
 
-  assignRoles(live, spawnRoom, exitRoom, doors, rng);
+  assignRoles(live, spawnRoom, exitRoom, doors, rng, cafeteria ? 'cafeteria' : 'lobby');
   // On its own stream, not the floor's. Everything downstream of here — the
   // furniture in every room on the floor — draws from `rng`, so spending a
   // variable number of numbers on picking locks would re-roll the contents of a
@@ -636,6 +642,51 @@ function pickSpawnRoom(rooms, rng) {
   return rng.pick(good.length ? good : rooms);
 }
 
+// How big a room has to be before it is a canteen rather than a room with a
+// counter in it, and how deep before the rows behind the queue lane have
+// anywhere to go. A long thin room of the same area comes out as a corridor
+// with a servery at one end, which is why the short side is asked for
+// separately.
+const CAFE_MIN_AREA = 85;    // m²
+const CAFE_MIN_SHORT = 12;   // tiles, so 6 m
+
+/**
+ * The floor's canteen, and the room the player arrives in.
+ *
+ * Picked before anything else about the floor is decided, because it BECOMES the
+ * spawn room — and the exit's distance ranking, every lock, the prologue and
+ * where a staircase may go are all measured from the spawn.
+ *
+ * The corridor doorway is the load-bearing requirement rather than the size. This
+ * is the room the player is standing in holding nothing at all, so the way out of
+ * it has to be the part of the floor the prologue is measured over; a big room
+ * whose only door opens into somebody's office starts the floor by walking
+ * through a stranger's office to reach the building.
+ *
+ * And it stays off any room the plant room could have had. The generator wants
+ * the biggest, most rectangular room on the floor and only about one floor in
+ * thirty rolls one that qualifies at all, so a canteen claiming rooms by size
+ * would quietly cost the game its rarest set piece on the few floors that have
+ * it. Generator-capable rooms are a last resort here, not the first pick.
+ *
+ * Deterministic — the biggest room that qualifies — rather than a draw, and that
+ * is the same argument assignLocks makes: this runs before the floor's rng has
+ * been spent on anything at all, so a die here would re-roll the contents of
+ * every room in the building off a number that has nothing to do with them.
+ * Which room is the canteen already varies with the floor, because the floorplan
+ * it is picked out of does.
+ */
+function pickCafeteria(rooms, tiles, W, doors) {
+  const fits = rooms.filter((r) =>
+    r.areaM2 >= CAFE_MIN_AREA
+    && Math.min(r.wTiles, r.hTiles) >= CAFE_MIN_SHORT
+    && doorsOnRoom(doors, r).some((d) => opensOntoCorridor(d, W, tiles)));
+  if (!fits.length) return null;
+
+  const spare = fits.filter((r) => !fitsGenerator(r, doors));
+  return (spare.length ? spare : fits).sort((a, b) => b.areaM2 - a.areaM2)[0];
+}
+
 // Where the role ladder splits. Aspect is tested before area on purpose: a long
 // thin room is a service room whatever its floor area, and testing area first
 // made that branch unreachable.
@@ -671,7 +722,19 @@ const ROLE_PICKS = {
   small: ['office', 'office', 'copyroom', 'storage', 'breakroom', 'utility', 'archive', 'server'],
 };
 
-function assignRoles(rooms, spawnRoom, exitRoom, doors, rng) {
+// Whether a room could be the plant room. Named rather than written inline in
+// the wants list below, because pickCafeteria has to ask the same question to
+// keep off the one room a generator could have had — and two copies of a
+// predicate this specific is how the sweep ends up certifying a floor the
+// generator never builds. See FIRST_CONTACT_GAP for the version of this that
+// shipped.
+function fitsGenerator(r, doors) {
+  const long = Math.max(r.wTiles, r.hTiles), short = Math.min(r.wTiles, r.hTiles);
+  return r.areaM2 > 110 && short >= 15 && long / short >= 1.35
+    && doorsOnRoom(doors, r).length === 1;
+}
+
+function assignRoles(rooms, spawnRoom, exitRoom, doors, rng, spawnRole) {
   for (const r of rooms) r.role = rng.pick(ROLE_PICKS[roleBranch(r)]);
 
   // Guarantee the flavour rooms the floor is meant to have — but only in rooms
@@ -701,11 +764,7 @@ function assignRoles(rooms, spawnRoom, exitRoom, doors, rng) {
     // floor manages all of this, and that's fine: see buildLevel's generator
     // handling, which is opportunistic the same way the security office and
     // broom closet are.
-    ['generator', (r) => {
-      const long = Math.max(r.wTiles, r.hTiles), short = Math.min(r.wTiles, r.hTiles);
-      return r.areaM2 > 110 && short >= 15 && long / short >= 1.35
-        && doorsOnRoom(doors, r).length === 1;
-    }],
+    ['generator', (r) => fitsGenerator(r, doors)],
     ['storage', (r) => r.areaM2 < 90],
     ['copyroom', (r) => r.areaM2 < 55],
     ['server', (r) => r.areaM2 < 70],
@@ -726,6 +785,9 @@ function assignRoles(rooms, spawnRoom, exitRoom, doors, rng) {
     if (room) { room.role = role; room.forcedRole = true; }
   }
 
-  spawnRoom.role = 'lobby';
+  // 'cafeteria' when the floor had a room worth arriving in and 'lobby' when it
+  // did not. Assigned last either way, so the shuffled draw above can never
+  // land a storeroom on the room the player is standing in.
+  spawnRoom.role = spawnRole;
   exitRoom.role = 'exit';
 }
