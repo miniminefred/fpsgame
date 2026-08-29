@@ -1043,6 +1043,49 @@ handle.**
 
 After all three: **median 4 tables and 8 chairs** per cafeteria, and none without seating.
 
+
+**And it is the one room on the floor with people in it who are not a fight** (`_diners`).
+Two to five staff at the tables with their lunch, plus a couple on their feet, all of them
+`neutral` — none counts toward clearing the floor, and walking past the lot of them is the
+intended way to leave. Nobody hostile is ever placed here (`_spawnPoints` skips the room the
+player arrives in), so this is the whole population of it.
+
+Which makes them a **tell** rather than a fight, and the tell is the chair: a body sitting
+down means a harmless one everywhere in this building, and the two exceptions are both
+behind a locked door. A floor now opens on four people at their lunch — the rule stated
+before anything is at stake, so the next chair the player sees already means something.
+Three things about them were learned by running it:
+
+- **A seated neutral has to be told to stay seated.** Every neutral is spawned into
+  `wander`, and the animator stands up any seated body whose state is not `idle`/`alert` —
+  so the whole canteen was on its feet by the first frame, five people placed at five chairs
+  and not one still in it. `_wander` now holds `idle` for a body with a seat and walks it
+  nowhere. Being shot at is the one thing that changes their mind: `flee` clears the seat,
+  and from the next frame they are an ordinary neutral running for a door. Measured: shoot
+  one and it is out of the chair on the next tick while the other three carry on eating.
+- **A seat records what it is a seat AT** (`at` on `sink.workstation`). A desk is a JOB — it
+  decides how big a shift a room is dealt and it seats a body typing — and a canteen chair
+  is lunch. Pooled together, a cafeteria's ten chairs would read to `_spawnPoints` as ten
+  jobs going in the room and it would be dealt a shift to match.
+- **An arm has no elbow in it**, so a hand cannot be brought to a mouth: swinging the
+  shoulder further forward reaches across the table rather than up to the face. What reads
+  as eating is the body coming DOWN to meet the food, a small dip per mouthful, with one
+  hand out at the tray and the other where it was. Which hand is hashed from where the body
+  is sitting rather than rolled — it has to be stable for the run and identical in both
+  browsers of a co-op session, and the chair came from the same seed on both ends.
+
+**One bug in this file was found twice over while seating them, and it is the `edgeProp`
+table again.** A chair's turn is a quarter turn round from the thing it is pulled up to, and
+written out by hand as four coordinates and four turns half of them were wrong: every chair
+in the new cafeteria, and — pre-existing, for as long as `meetingRoom` has existed — every
+chair in any meeting room whose table runs east-west, all of them seated with their backs to
+the table they belong to. Proved on the geometry rather than argued about, by asking which
+side of each chair its backrest was on: 9 of 20 chairs on the test floor had it on the table
+side, and 0 of 20 after. Both now derive the turn the way `seatFacing` always has — `side` is
+the quarter turn naming which way the chair is offset, `(side + 2)` is what brings its front
+back round — and the same `QUARTER` rotates the offset along the table, so a table running
+north-south needs no second set of coordinates.
+
 **And nobody is staffed into it** — `_spawnPoints` in `enemies.js` now keys that off
 `layout.spawnRoom` rather than off the `'lobby'` role. A role name is a fact about how a
 room is FURNISHED, while "do not put anybody here" is a fact about where the player
@@ -1334,8 +1377,16 @@ Visors answer that same question first and identity second. Every hostile human 
 **grey** — one ramp from near-white (Intern) to near-black (Sentry Unit), brightest for
 what dies to a look and darkest for what does not — and the Reanimated wear green. The
 harmless staff are the only ones in an actual colour: white for the Panicking Staffer,
-brown for the Night Cleaner, yellow for the Courier. So hue says threat, shade says which
-one, and no two types share a visor.
+brown for the Night Cleaner, yellow for the Courier, blue for the Staff on Break. So hue
+says threat, shade says which one, and no two types share a visor.
+
+**And none of them is holding a gun, which they all were.** `rigs.js` hid the sidearm on a
+melee type and on nobody else, so every neutral in the building was walking about with a
+pistol in its hand — measured on one floor, the Panicking Staffer 2 of 2, the Night Cleaner
+3 of 3, the Maintenance Worker 4 of 4. The whole job of these people is that you can decide
+not to shoot them from the far end of a corridor, and a silhouette holding a pistol has
+already answered that the other way whatever colour its visor is. `gun.visible` now asks
+`!type.melee && !type.neutral`.
 
 **A round is worth what it is worth where it lands** (`HIT_ZONES`). All six boxes of the
 human rig stop bullets — head ×1.12, torso ×1, each arm and leg ×0.92 — and every one
@@ -1378,10 +1429,17 @@ Gunfire spread is sampled as a real angle and converted into a miss distance at 
 so backing off genuinely makes you harder to hit.
 
 ### A chair means harmless (`workstations` in `gen/build.js` + `_takeDesk`/`animateWorking`)
-**Two bodies on a floor are sitting down, and both of them are a set piece for the room they
-are in.** The Manager is at his own desk behind the black door, and one guard is on the
-cameras in the security office — the only reason either room exists. Nothing that was
-*rolled* sits: the shift a room is dealt works standing up.
+**Everything that sits down is a set piece for the room it is in, and nothing that was
+*rolled* sits at all** — the shift a room is dealt works standing up. Three of them, and the
+first is the one the rule is really for:
+
+- **The staff on their break**, at the tables in the canteen the floor arrives in (`_diners`
+  in `enemies.js`). Harmless, and the first bodies the player ever sees — so the tell is
+  stated on the way in, with nothing at stake, before the first chair that matters.
+- **The Manager**, at his own desk behind the black door.
+- **One guard**, on the cameras in the security office.
+
+The last two are the only reason either room exists, and both are behind a lock.
 
 **And nothing sits on the FLOOR any more either**, which is the second half of the same rule
 and was missed the first time round. Two janitors used to be found on their break on the
