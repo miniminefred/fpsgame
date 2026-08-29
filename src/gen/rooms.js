@@ -693,14 +693,22 @@ function cafeteria(sink, bounds, rng, room, doors) {
       // _takeDesk in enemies.js, which would otherwise find twenty jobs in here.
       const { w: tw, d: td } = footprintOf(sink, 'canteenTable', rot);
       sink.lend(cx - tw / 2, cz - td / 2, cx + tw / 2, cz + td / 2, () => {
-        for (const t of [-0.62, 0.62]) {
-          if (rng.chance(0.72)) {
-            if (rot === 0) tryPlace(sink, 'chair', cx + t, cz - reach, 0, rng);
-            else tryPlace(sink, 'chair', cx - reach, cz + t, 1, rng);
-          }
-          if (rng.chance(0.72)) {
-            if (rot === 0) tryPlace(sink, 'chair', cx + t, cz + reach, 2, rng);
-            else tryPlace(sink, 'chair', cx + reach, cz + t, 3, rng);
+        // Which way round a chair goes is the one thing in a seating plan that
+        // is easy to get backwards, and this file has now done it twice — a
+        // cubicle pod's chair with its back to its own desk, and every chair in
+        // here facing away from the table it belongs to. Written out by hand it
+        // is four coordinates and four turns and half of them were wrong, so the
+        // turn is DERIVED the way seatFacing derives it: `side` is the quarter
+        // turn naming which way the chair is offset, and the chair is turned the
+        // opposite way, (side + 2), which brings its front back round to face
+        // the table. The same QUARTER rotates the offset ALONG the side, so a
+        // table running north-south needs no second set of coordinates.
+        for (const side of [rot, (rot + 2) & 3]) {
+          const [ox, oz] = QUARTER[side](0, -reach);
+          for (const t of [-0.62, 0.62]) {
+            if (!rng.chance(0.72)) continue;
+            const [ax, az] = QUARTER[side](t, 0);
+            tryPlace(sink, 'chair', cx + ox + ax, cz + oz + az, (side + 2) & 3, rng);
           }
         }
       });
