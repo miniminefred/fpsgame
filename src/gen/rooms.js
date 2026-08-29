@@ -569,6 +569,122 @@ function generatorRoom(sink, bounds, rng, room, doors) {
   scatter(sink, bounds, ['crateStack', 'crate', 'pallet'], 26, rng);
 }
 
+// The staff canteen, and the room the floor puts you down in — see
+// pickCafeteria in gen/layout.js, which is what makes it the spawn room.
+//
+// It is a set piece the way the plant room is, and the composition is the whole
+// of it: the servery runs the far wall corner to corner, the strip in front of
+// it is left clear because that is where a queue would stand, and the seating
+// behind that is laid in ROWS facing the counter. Rows rather than the `canteen`
+// role's scatter of round tables, because rows are what make the servery the END
+// of the room instead of one wall of four — the same argument the generator's
+// wall-to-wall placement rests on.
+//
+// `canteen` is still what a mid-sized room rolls, and the two are meant to read
+// differently: that one is somewhere on the floor to eat, this one is the
+// canteen the floor is arranged around.
+function cafeteria(sink, bounds, rng, room, doors) {
+  const { x0, z0, x1, z1 } = bounds;
+
+  // Dead opposite the door you come in by, so the counter is the first thing in
+  // front of you. `doorsOnRoom` rather than `room.doors`, for the reason
+  // generatorRoom gives: a room's own list holds only the doors IT cut, and a
+  // room this big usually has neighbours who cut theirs into a shared wall. A
+  // room with no doorway at all falls back to a long wall, which is where a
+  // serving line would go anyway.
+  const door = doorsOnRoom(doors, room)[0];
+  const alongX = (x1 - x0) >= (z1 - z0);
+  const facing = door ? (doorSide(door, room) + 2) % 4 : (alongX ? 0 : 1);
+
+  // Corner to corner if that wall will take it. The wall it wants can be
+  // unavailable — a doorway apron across it, or another room's door in it — and
+  // a servery on the wrong wall beats a cafeteria with no counter in it, so
+  // edgeProp is the fallback. It may land the thing somewhere else entirely,
+  // which is why everything below measures off where the counter ACTUALLY went
+  // rather than off where it was asked for.
+  const line = wallSpanProp(sink, bounds, 'servery', rng, facing)
+    ?? edgeProp(sink, bounds, 'servery', rng);
+  const side = line ? line.side : facing;
+
+  // The queue. Nothing is furnished into the strip in front of the counter: it
+  // is where you stand to be served, and a table in it is a table that has to be
+  // squeezed past to reach the one thing the room is for.
+  const QUEUE = 2.4;
+  const seat = { x0, z0, x1, z1 };
+  if (side === 0) seat.z1 -= QUEUE;
+  else if (side === 1) seat.x0 += QUEUE;
+  else if (side === 2) seat.z0 += QUEUE;
+  else seat.x1 -= QUEUE;
+
+  // Rows parallel to the counter, so every table faces it and the gangways run
+  // toward it.
+  const rot = (side === 0 || side === 2) ? 0 : 1;
+  // Across the rows: the table, a chair on each side of it, and a gangway wide
+  // enough to get past the backs of two occupied chairs.
+  const ROW_PITCH = 3.2;
+  // Along a row, and this one is a clearance rather than a taste: a table is
+  // 2.3 m and STATIC, so the gap between two of them is a gap in a wall the
+  // length of the room. At the 2.9 m that looked right it was 0.6 m, which a
+  // 0.8 m body does not fit through — a row would have sealed every gangway
+  // behind it off from the next but for the ends. Same lane SCATTER_LANE keeps
+  // beside anything dropped in the middle of a room, and for the same reason.
+  const TABLE_PITCH = 3.3;
+
+  const [a0, a1, b0, b1] = rot === 0
+    ? [seat.x0, seat.x1, seat.z0, seat.z1]
+    : [seat.z0, seat.z1, seat.x0, seat.x1];
+  const cols = Math.floor((a1 - a0) / TABLE_PITCH);
+  const rows = Math.floor((b1 - b0) / ROW_PITCH);
+  const padA = (a1 - a0 - cols * TABLE_PITCH) / 2;
+  const padB = (b1 - b0 - rows * ROW_PITCH) / 2;
+  // Half the table's real depth plus room for a chair to be pushed under it —
+  // measured through footprintOf like every other placement, never off the
+  // catalogue numbers.
+  const reach = footprintOf(sink, 'canteenTable').d / 2 + 0.42;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const a = a0 + padA + (c + 0.5) * TABLE_PITCH;
+      const b = b0 + padB + (r + 0.5) * ROW_PITCH;
+      const cx = rot === 0 ? a : b;
+      const cz = rot === 0 ? b : a;
+      if (!tryPlace(sink, 'canteenTable', cx, cz, rot, rng)) continue;
+
+      // Chairs down both long sides, most of them pushed back in. Placed
+      // directly rather than through seatFacing, and that is deliberate: that
+      // call registers a WORKSTATION, and a canteen chair is somewhere to eat
+      // lunch rather than somewhere a body works — see _takeDesk in enemies.js,
+      // which would otherwise find twenty jobs in here and seat somebody typing
+      // at a dinner table.
+      for (const t of [-0.62, 0.62]) {
+        if (rng.chance(0.72)) {
+          if (rot === 0) tryPlace(sink, 'chair', cx + t, cz - reach, 0, rng);
+          else tryPlace(sink, 'chair', cx - reach, cz + t, 1, rng);
+        }
+        if (rng.chance(0.72)) {
+          if (rot === 0) tryPlace(sink, 'chair', cx + t, cz + reach, 2, rng);
+          else tryPlace(sink, 'chair', cx + reach, cz + t, 3, rng);
+        }
+      }
+    }
+  }
+
+  // And what a canteen keeps round its edges. The counter is the set piece;
+  // these are what make the room read as one people use.
+  edgeProp(sink, bounds, 'vending', rng);
+  if (rng.chance(0.7)) edgeProp(sink, bounds, 'vending', rng);
+  if (rng.chance(0.8)) edgeProp(sink, bounds, 'counter', rng);      // the coffee run
+  edgeProp(sink, bounds, 'waterCooler', rng);
+  edgeProp(sink, bounds, 'recyclingBin', rng);
+  if (rng.chance(0.7)) edgeProp(sink, bounds, 'trashCan', rng);
+  edgeProp(sink, bounds, 'plant', rng);
+  if (rng.chance(0.7)) edgeProp(sink, bounds, 'plant', rng);
+  // A kitchen has one on the wall, and this is the room the player starts in —
+  // the secondary is worth having within reach of the first doorway.
+  edgeProp(sink, bounds, 'extinguisher', rng);
+  if (rng.chance(0.6)) edgeProp(sink, bounds, 'extinguisher', rng);
+}
+
 function lobby(sink, bounds, rng) {
   edgeProp(sink, bounds, 'plant', rng);
   if (rng.chance(0.7)) edgeProp(sink, bounds, 'sofa', rng);
@@ -591,6 +707,7 @@ const ROLES = {
   utility: utilityRoom,
   training: trainingRoom,
   canteen,
+  cafeteria,
   reception,
   office: privateOffice,
   manager: managerOffice,
