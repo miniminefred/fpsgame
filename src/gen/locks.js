@@ -329,7 +329,11 @@ function prologueRoom(tiles, W, dist, cx, cy) {
 
 // Is either side of this doorway a corridor? Corridor is where the first
 // card-holder stands, so it is what the prologue is counting.
-function opensOntoCorridor(d, W, tiles) {
+//
+// Exported for gen/layout.js, which asks the same question for a different
+// reason: the room the player arrives in has to open onto the corridor network
+// rather than onto somebody else's office (see pickCafeteria).
+export function opensOntoCorridor(d, W, tiles) {
   for (let y = d.y0; y < d.y1; y++) {
     for (let x = d.x0; x < d.x1; x++) {
       const sides = d.vertical
