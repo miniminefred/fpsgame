@@ -519,6 +519,132 @@ export const PROPS = {
     },
   },
 
+  // --- what a canteen is made of ---------------------------------------------
+
+  canteenTable: {
+    // No model, and that is the point of it: the candidates are all dining
+    // tables, and what tells a refectory table from a meeting table is not the
+    // slab, it is the trays nobody cleared off it. A GLB would have to bring
+    // its own, and would bring a dining room with them.
+    w: 2.3, d: 0.86, hp: 80, substance: 'wood',
+    build(p, rng) {
+      const H = 0.74;
+      p.box('laminate', -1.15, H - 0.05, -0.43, 1.15, H, 0.43);
+      // Trestles rather than four legs, so a chair pushed in at either end has
+      // somewhere to go.
+      for (const sx of [-0.8, 0.8]) {
+        p.box('metal', sx - 0.05, 0, -0.3, sx + 0.05, H - 0.05, 0.3);
+        p.box('metalDark', sx - 0.3, 0, -0.34, sx + 0.3, 0.05, 0.34);
+      }
+      p.box('metal', -0.8, 0.12, -0.04, 0.8, 0.18, 0.04);         // stretcher
+      // Lunch, abandoned mid-shift. Every place is rolled on its own, so no two
+      // tables in a room come out laid the same way.
+      for (const sx of [-0.75, -0.25, 0.25, 0.75]) {
+        for (const sz of [-0.2, 0.2]) {
+          if (!rng.chance(0.32)) continue;
+          p.box('plastic', sx - 0.16, H, sz - 0.11, sx + 0.16, H + 0.03, sz + 0.11);
+          if (rng.chance(0.7)) {
+            p.box('paper', sx - 0.09, H + 0.03, sz - 0.07, sx + 0.09, H + 0.05, sz + 0.07);
+          }
+          if (rng.chance(0.5)) {
+            p.box('paper', sx + 0.04, H + 0.03, sz - 0.05, sx + 0.11, H + 0.12, sz + 0.02);
+          }
+        }
+      }
+      p.obstacle(-1.15, -0.43, 1.15, 0.43, H);
+    },
+  },
+
+  servery: {
+    // The counter you queue at, and the whole reason a cafeteria reads as one
+    // from its doorway rather than as a meeting room with too many tables in
+    // it.
+    //
+    // `spanning` for exactly the reason the generator is (see its entry below):
+    // it is built to the width it is ASKED for and runs its wall corner to
+    // corner. A three-metre counter parked against the middle of a
+    // twelve-metre wall is a kitchenette somebody installed; a serving line
+    // reaching both corners IS the end of the room, which is what the seating
+    // faces and what you walk in at.
+    spanning: true,
+    // `w` is the fallback for the rare wall that will not take a full span, and
+    // the size anything that does not ask measures. `d` covers the carcass AND
+    // the tray rail standing proud of its front — a prop whose declared
+    // footprint stops short of its own geometry is a prop you can put your
+    // shoulder through (10.geo-fit in tools/validate-props.mjs).
+    w: 3.4, d: 1.0, hp: 240, substance: 'metal',
+    build(p, rng, w = 3.4) {
+      const hw = w / 2;
+      // Every detail below is placed by measuring IN from an end, never at a
+      // hard-coded x — that is what lets one servery be 4 m on one floor and
+      // 12 m on the next without stretching its fittings into a different
+      // counter. Same rule as the generator, and for the same reason.
+      const inset = (m) => Math.max(0, hw - m);
+      const H = 0.92;
+
+      p.box('metalDark', -hw, 0, 0.0, hw, 0.12, 0.46);          // recessed kickboard
+      p.box('metal', -hw, 0.12, -0.2, hw, H, 0.5);              // carcass
+      p.box('metal', -hw, H, -0.28, hw, H + 0.04, 0.5);         // stainless top, overhanging
+      p.box('metalDark', -hw, H + 0.04, 0.44, hw, H + 0.14, 0.5); // splashback lip
+
+      // The hot line: pans of whatever today is, sunk into the top. Counted off
+      // the length rather than fixed at four, so a long counter gets more of
+      // them instead of four stretched ones.
+      const run = Math.max(0.9, w - 1.6);
+      const wells = Math.max(2, Math.round(run / 0.85));
+      const pan = run / wells;
+      for (let i = 0; i < wells; i++) {
+        const cx = -run / 2 + (i + 0.5) * pan;
+        const half = pan / 2 - 0.05;
+        p.box('metalDark', cx - half, H + 0.04, 0.02, cx + half, H + 0.1, 0.38);
+        // Not every pan is still in service at this hour.
+        if (rng.chance(0.7)) {
+          p.box(rng.chance(0.5) ? 'hazard' : 'cardboard',
+            cx - half + 0.04, H + 0.1, 0.06, cx + half - 0.04, H + 0.14, 0.34);
+        }
+      }
+
+      // Sneeze guard: posts up off the top with a glass screen between them, at
+      // about the height reaching over one stops being possible.
+      for (const sx of [-inset(0.25), inset(0.25)]) {
+        p.box('metal', sx - 0.03, H + 0.04, -0.12, sx + 0.03, H + 0.62, -0.06);
+      }
+      p.box('glass', -inset(0.25), H + 0.32, -0.105, inset(0.25), H + 0.62, -0.075);
+
+      // Tray rail, on brackets: the part of the counter that reaches the queue.
+      p.box('metal', -inset(0.08), 0.86, -0.45, inset(0.08), 0.9, -0.33);
+      for (const sx of [-inset(0.3), 0, inset(0.3)]) {
+        p.box('metal', sx - 0.03, 0.86, -0.33, sx + 0.03, 0.9, -0.2);
+      }
+
+      // The till, at one end, where a queue ends.
+      const till = inset(0.5);
+      p.box('metalDark', till - 0.2, H + 0.04, 0.04, till + 0.2, H + 0.26, 0.36);
+      p.box('screenOn', till - 0.15, H + 0.26, 0.08, till + 0.15, H + 0.28, 0.3);
+
+      // Menu boards on a gantry over the back of the counter. Lit, because they
+      // are the one thing in the room worth reading, and because a lit panel is
+      // how everything else in this building says "look here".
+      const board = inset(0.55);
+      for (const sx of [-board, board]) {
+        p.box('metal', sx - 0.04, H + 0.14, 0.42, sx + 0.04, 1.96, 0.5);
+      }
+      p.box('metalDark', -board, 1.96, 0.4, board, 2.36, 0.5);
+      const panels = Math.max(2, Math.round(board * 2 / 1.1));
+      for (let i = 0; i < panels; i++) {
+        const x0 = -board + (i + 0.06) * (board * 2 / panels);
+        const x1 = -board + (i + 0.94) * (board * 2 / panels);
+        p.box(rng.chance(0.85) ? 'screenOn' : 'screen', x0, 2.02, 0.38, x1, 2.3, 0.4);
+      }
+
+      // Shell rather than furniture, the same as the generator and for the same
+      // reason: a counter that runs a whole wall is well past the furniture caps
+      // in tools/validate-props.mjs, which are there to catch a prop that has
+      // accidentally become a building.
+      p.obstacle(-hw, -0.5, hw, 0.5, H + 0.62, true);
+    },
+  },
+
   trashCan: {
     w: 0.44, d: 0.44, mass: 4, hp: 12, substance: 'plastic',
     build(p, rng) {
