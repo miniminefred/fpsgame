@@ -37,6 +37,23 @@ const TAP_THROW = 0.05;
 const WORK_BEAT = 0.41;
 const WORK_DUTY = -0.35;
 
+// Lunch, in the canteen the floor arrives in (see _diners in enemies.js). The
+// same SIT as a desk — a chair is a chair, and the hips and knees do not know
+// what is on the table — so only the arms and the torso differ, and the torso is
+// what does the work.
+//
+// An arm is one box with no elbow in it, so a hand cannot be brought to a mouth:
+// swinging the shoulder further forward reaches ACROSS the table rather than up
+// to the face. What reads as eating instead is the body coming DOWN to meet the
+// food — a small dip on each mouthful — with one hand out at the tray and the
+// other resting where it was. One hand, not both: two arms rising together is
+// not eating, it is applause.
+const MEAL_BEAT = 0.23;    // slower than typing. A mouthful is not a keystroke.
+const MEAL_DUTY = 0.35;
+const MEAL_ARMS = 0.92;    // forearms on the table, either side of the tray
+const MEAL_REACH = 0.17;   // how far the eating hand goes out over it
+const MEAL_DIP = 0.13;     // and how far the body comes down to meet it
+
 // Where a limb hangs from and how long it is, in rig space. Same numbers
 // rigs.js builds the body from — this file already restates the gun's and the
 // mop's rest positions the same way, and unlike those two these have a check on
@@ -111,10 +128,10 @@ export function animate(e, dt, audio) {
     e.seat = null;
     stand(e);
   }
-  // A desk is the only seat left in the building — the two janitors who sat on
-  // the floor of a broom closet are on their feet now, and `animateFloor` went
-  // with them (git has it, if anything harmless ever sits down in there).
-  if (e.seat) return animateWorking(e, dt);
+  // Two seats now: a desk somebody is working at, and a canteen table somebody
+  // is having their lunch at. Which one a body is in is `e.seat` — see _seat in
+  // enemies.js — and it is the same pose from the hips down either way.
+  if (e.seat) return e.seat === 'table' ? animateEating(e, dt) : animateWorking(e, dt);
 
   const moving = e.state === 'chase' || e.state === 'fight' || e.state === 'wander';
   e.walkPhase += dt * (moving ? 9 : 1.4);
@@ -209,6 +226,49 @@ export function animateWorking(e, dt) {
   } else {
     e.gun.position.set(0.3, 1.0, -0.08);
     e.gun.rotation.x = 1.25;
+  }
+
+  tickFlash(e, dt);
+}
+
+/**
+ * At a table, having lunch. Everything the desk pose says about beats applies
+ * here — both run off `walkPhase`, which every body is seeded a different value
+ * of, so a canteen of five is five people at five different moments of a meal
+ * without one extra number being stored.
+ *
+ * Which hand eats is decided by where the body is STANDING, not rolled: it has
+ * to be stable for the life of the run or a diner swaps hands every frame, and
+ * it has to come out the same in both browsers of a co-op session — and the
+ * floor, and so the chair, and so the body's position, is generated from the
+ * same seed on both ends. A cheap hash of the coordinates is all of that for
+ * free, where a random number would need storing and sending.
+ */
+export function animateEating(e, dt) {
+  e.walkPhase += dt;
+  const bite = Math.sin(e.walkPhase * MEAL_BEAT) > MEAL_DUTY;
+  // Eased rather than switched, or the body snaps up and down like a nodding toy.
+  const dip = bite ? (0.5 - Math.cos(e.walkPhase * 2.6) * 0.5) : 0;
+  const breath = Math.sin(e.walkPhase) * 0.025;
+  const lefty = ((Math.abs(e.x) * 71 + Math.abs(e.z) * 131) | 0) % 2 === 0;
+
+  e.group.position.y = e.y - DESK_DROP;
+  hinge(e.legL, -HIP_X, LEG_Y, LEG_HALF, DESK_LEGS);
+  hinge(e.legR, HIP_X, LEG_Y, LEG_HALF, DESK_LEGS - 0.08);
+  hinge(e.armL, -ARM_X, ARM_Y, ARM_HALF, MEAL_ARMS + (lefty ? dip * MEAL_REACH : 0));
+  hinge(e.armR, ARM_X, ARM_Y, ARM_HALF, MEAL_ARMS + (lefty ? 0 : dip * MEAL_REACH));
+  // Down to the food and back up to chew. Kept small for the reason the desk
+  // pose keeps its lean small: the torso is one box and the collar strip in
+  // front of it is another, so a real fold opens a gap at the neck.
+  e.torso.rotation.x = 0.06 + dip * MEAL_DIP + breath;
+
+  // Nothing in a hand — a diner is neutral, so the rig never showed them a gun
+  // (see rigs.js) — but a blunt is still possible if anything melee is ever sat
+  // down at a table, and left alone it hangs in the air where a standing hand
+  // would be.
+  if (e.blunt) {
+    e.blunt.rotation.x = -0.1;
+    e.blunt.position.y = 1.04;
   }
 
   tickFlash(e, dt);

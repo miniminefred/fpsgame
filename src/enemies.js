@@ -1709,6 +1709,26 @@ export class Enemies {
       }
     }
 
+    // Somebody at their lunch is the one body on the floor that is already
+    // where it wants to be, so the wander loop does not walk them anywhere.
+    //
+    // Holding `idle` is what keeps them in the chair: a seated body is stood up
+    // by the animator the moment its state is anything else (see `animate` in
+    // enemy-anim.js), and every neutral is spawned into `wander`, so without
+    // this the whole canteen was on its feet by the first frame — five people
+    // placed at five chairs and not one of them still in it.
+    //
+    // Being shot at is what changes their mind, and `flee` is the one flag that
+    // says so. Standing up is the whole of the transition: from the next frame
+    // they are an ordinary neutral on the ordinary loop, running for a door.
+    if (e.seat) {
+      if (e.flee <= 0) { e.state = 'idle'; return; }
+      e.seat = null;
+      e.state = 'wander';
+      this._repick(e);
+      return;
+    }
+
     e.wanderTimer -= dt;
     const togo = Math.hypot(e.wanderX - e.x, e.wanderZ - e.z);
 
