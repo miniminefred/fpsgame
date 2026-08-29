@@ -1723,7 +1723,16 @@ export class Enemies {
     // they are an ordinary neutral on the ordinary loop, running for a door.
     if (e.seat) {
       if (e.flee <= 0) { e.state = 'idle'; return; }
-      e.seat = null;
+      // Out of the chair — but the ANIMATOR is what stands a body up, and this
+      // must not do it itself. `stand` in enemy-anim.js puts the hips and
+      // shoulders back where rigs.js left them, and nothing else in that file
+      // ever moves a limb: the walk cycle writes rotations only. Clearing the
+      // seat here instead left a body carrying its seated joints around the
+      // floor for the rest of the run, hips and shoulders still dropped into
+      // the chair — which is exactly what it looks like, a man walking like an
+      // alien. So all this does is stop holding `idle`; the frame ends with
+      // `animate` seeing a seated body in `wander`, and it clears the seat and
+      // stands them up the one way that works.
       e.state = 'wander';
       this._repick(e);
       return;
@@ -2364,7 +2373,24 @@ function deskPool(workstations, nav, rng, at) {
     // many desks a room has is what decides how big a shift it is dealt (see
     // _spawnPoints) — counting stations nobody can sit at deals a farm five
     // people and then stands all five of them up.
-    if (!nav.clear(w.x, w.z, RADIUS)) continue;
+    //
+    // Asked of `fits` rather than with `nav.clear`, and the difference is the
+    // whole bug. `clear` is a point test: can a body of this radius stand at
+    // this exact spot. `fits` is that same test taken at the TILE CENTRE, and it
+    // is what every flood and every `descendOn` runs on — so a chair tucked into
+    // the corner of a tile passes `clear` and fails `fits`, and a body seated
+    // there can stand up perfectly well and then never route anywhere for the
+    // rest of the run. Measured on a canteen chair that a player shot: 400
+    // destination picks, 0 accepted, 101 of them refused at `descendOn` because
+    // the body's own tile was not on the field. He stood at the table walking on
+    // the spot until the floor ended.
+    //
+    // It costs seats — a chair that only just fits is now no chair at all — and
+    // that is the right trade in both directions: the two set pieces this pool
+    // has always fed (the Manager, the guard on the cameras) get up to FIGHT
+    // you, and one that cannot leave its desk is worse than one that never sat
+    // at it.
+    if (!nav.fitsAt(nav.tx(w.x), nav.ty(w.z))) continue;
     const list = by.get(w.room);
     if (list) list.push(w);
     else by.set(w.room, [w]);
