@@ -205,6 +205,42 @@ export const TYPES = {
     aimMul: 1.1,
     suit: 0x4d5a66, shirt: 0xc0c7cd, visor: 0xdde2e6, unlockFloor: 1, weight: 0,
   },
+  legacy: {
+    // The one before all of them, and still walking about.
+    //
+    // This IS the original Sentry Unit — the same numbers, the same grey shell
+    // over a pale under-layer, the same near-black visor — kept because it is a
+    // silhouette this building already had and the machine floor is the one
+    // place it belongs. What it does NOT have is a chassis, and that is the
+    // whole of its character: it is built on the human rig, so it is the only
+    // machine on the floor shaped like the people it replaced. An older idea of
+    // what a robot should look like, still on the payroll because nobody has
+    // signed off decommissioning it.
+    //
+    // Which makes it the useful thing on a roster of tracks and wheels and
+    // fans: at the far end of a corridor it reads as staff, and it is not.
+    name: 'Legacy Unit', hp: 3.2, speed: 0.78, damage: 1.45, rate: 1.35, spread: 0.7,
+    range: 17, melee: false, scale: 1.18,
+    // Quickest onto a target in the building alongside the Sentry it was the
+    // first draft of: it was bought to watch a corridor, and it is not carrying
+    // anything it has to put down.
+    aimMul: 0.65,
+    // A hair off the Sentry's near-black rather than the same value, because no
+    // two types share a visor and these two are the same numbers under
+    // different bodies. It sits between the Sentry and the Loader, which is
+    // where its 3.2 hp puts it on the ramp — and at this end of the ramp the
+    // shade is only settling an order, since everything down here already means
+    // "not the one you walk out in front of". What tells it from the Sentry at
+    // range is the silhouette, and that is the whole point of it.
+    suit: 0x474d55, shirt: 0x9aa3ab, visor: 0x3f4550, voice: 'robot',
+    // The one machine that has to SAY it is one, because it is the one that does
+    // not look like one. Everywhere the game asks "is this a machine" it has
+    // been able to read the answer off `chassis` — and this is built on the
+    // human rig, so `chassis` says no about a thing that is plainly a robot.
+    // See isMachine.
+    machine: true,
+    unlockFloor: 1, weight: 0,
+  },
   porter: {
     // Deliveries. The machine floor's Courier and the same joke told about the
     // building instead of about a man: it has a load, it is taking it
@@ -330,6 +366,17 @@ export const TYPES = {
   },
 };
 
+/**
+ * Whether this is a machine, which is NOT the same question as whether it has a
+ * chassis.
+ *
+ * Five of the six are drawn by `buildRobot` and answer for themselves; the
+ * Legacy Unit is built on the human rig and has to say so (`machine`). The
+ * distinction matters wherever the answer is about the THING rather than about
+ * how it is drawn — a machine does not stop for lunch, whatever shape it is.
+ */
+export const isMachine = (type) => !!type.chassis || !!type.machine;
+
 // The neutrals that are not the toilet guy. He is guaranteed on every floor;
 // these fill in around him so the harmless staff are not one repeated joke.
 export const BYSTANDERS = [TYPES.cleaner, TYPES.courier];
@@ -376,12 +423,13 @@ export const THEMES = [
   // written to prevent, and it would be that twice over here, since the whole
   // point of this shift is that the building is being WORKED. So the share is
   // split across the jobs: a hundred clerks at the desks, sentries in the
-  // corridors, loaders shifting stock, welders on the racks and a few drones
-  // over all of it.
+  // corridors, loaders shifting stock, welders on the racks, a few drones over
+  // all of it — and the Legacy Units, which have no job at all beyond being the
+  // generation before the rest and the only machine here shaped like a person.
   { name: 'Automated', weight: 3, light: 0.72, tint: 0x7fb4ff,
     rats: [0, 0], patrols: [0, 1], cleaners: [3, 5], bystanders: ['porter'],
     conveyors: [5, 9],
-    share: { clerk: 0.34, sentry: 0.2, loader: 0.14, welder: 0.13, drone: 0.09 },
+    share: { clerk: 0.28, sentry: 0.17, legacy: 0.14, loader: 0.13, welder: 0.11, drone: 0.07 },
     boost: { sysadmin: 6, facilities: 3, reanimated: 0 } },
   { name: 'Lockdown', weight: 2, light: 0.75, rats: [1, 1], patrols: [3, 4], boost: { security: 6, manager: 4 } },
   { name: 'Night shift', weight: 2, light: 0.5, rats: [2, 3], patrols: [1, 2], boost: { reanimated: 4, sentry: 4, facilities: 3 } },

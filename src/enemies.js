@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { BODY_RADIUS as RADIUS } from './nav.js';
 import { CORRIDOR, STAFF_ONLY, FIRST_CONTACT_GAP, worldX, worldZ } from './gen/layout.js';
 import { buildRig, buildTray } from './rigs.js';
-import { TYPES, BYSTANDERS, pickType, pickTheme } from './enemy-types.js';
+import { TYPES, BYSTANDERS, isMachine, pickType, pickTheme } from './enemy-types.js';
 import { DEATH_TIME, HIT_FLASH, SWING_TIME, animate, die, stand } from './enemy-anim.js';
 import { angleDelta, angleLerp, smoothTo } from './util.js';
 import { makeRng } from './gen/rng.js';
@@ -2248,7 +2248,7 @@ export class Enemies {
   _lunchOk(e) {
     return e.alive && !e.neutral && !e.behindLock && !e.break && !e.seat
       && !e.lunchDone              // one break a floor
-      && !e.type.chassis           // a machine has nowhere to put it
+      && !isMachine(e.type)        // a machine has nowhere to put it
       && !e.type.undead            // ...and this one is off the payroll
       && !e.keyed                  // an alarm response is not going for lunch
       && e.state === 'idle'        // ...and neither is anybody already in a fight
