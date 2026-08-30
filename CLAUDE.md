@@ -1675,6 +1675,40 @@ eventually, the visor says whether it is about to shoot you.
 **Machines do not eat** (`type.chassis`) and neither do the Reanimated (`type.undead`).
 Between them that is every hostile in the building that is not staff.
 
+**And a seat is only a seat while the furniture is still there** (`_seatGone`). A seated pose
+is drawn relative to a prop, and that prop is LOOSE: one round ends it and walking into it
+moves it, and neither used to reach the body — destroy a canteen and the people in it went on
+sitting in mid-air, which is what a player reported. So `_seat` records what the pose is drawn
+against (the chair under it, and for a canteen seat the table in front of it) and `_seatGone`
+checks them once a frame for the handful of bodies that are sitting down. The lists are the
+ones the player already collides against, handed over rather than copied, so they stay live: a
+shot prop retires its own collider with `top = -1` and a shoved one moves its own bounds, and
+neither is an event anybody has to send. Null is an ordinary answer and means *do not check* —
+a lookup that fails must never read as the chair having gone.
+
+The chair is checked for every seat and the table only for a canteen one, because they fail
+differently: losing the chair is a body sitting on nothing, which is wrong wherever it
+happens, while losing the table leaves the chair doing its job and only the tray in the air.
+Measured: a shot chair, a chair shoved 2.65 m, a shot table and the seated set piece all stand
+up with their joints restored to the rig's own, an untouched chair sits 0.009 m from its body
+and is still at 0.009 m ten seconds later against a 0.5 m tolerance, and four floors produced
+zero spontaneous stand-ups.
+
+**`stand` is exported for it**, because `animate` could no longer be the only thing that
+decides a body is out of a chair — its own rule is that `idle` and `alert` HOLD the pose, and
+"the chair is not there any more" has to stand up somebody who is idle and staying idle.
+Clearing `e.seat` and calling `stand` are still one operation, wrapped in `_standUp`, which is
+the whole of what that rule was ever protecting.
+
+**And a body sits ON its chair, which it did not** (`_settleOnto`, `SEAT_SNAP`). Found while
+verifying the above and worse than the bug that prompted it: everybody who WALKED to lunch sat
+down about a metre from their chair — all 46 measured seatings between 0.98 and 1.09 m out —
+because a flow field walks to tile centres and a chair is not at one, so `LUNCH_ARRIVE` was
+being read as "close enough to sit", which it never was. The field gets them to the chair and
+the last metre is walked in a straight line over what is open room floor by construction (the
+furnisher only offers a station a whole body fits in front of), with `_seat` closing the last
+few centimetres exactly. Worst gap over 22 seatings is now 0.03 m.
+
 Three things came out of measuring rather than writing it:
 
 - **A route is only a route if the BODY is on it.** Flooding to the counter says nothing
