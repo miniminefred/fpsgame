@@ -1057,8 +1057,10 @@ After all three: **median 4 tables and 8 chairs** per cafeteria, and none withou
 **And it is the one room on the floor with people in it who are not a fight** (`_diners`).
 Two to five staff at the tables with their lunch, plus a couple on their feet, all of them
 `neutral` — none counts toward clearing the floor, and walking past the lot of them is the
-intended way to leave. Nobody hostile is ever placed here (`_spawnPoints` skips the room the
-player arrives in), so this is the whole population of it.
+intended way to leave. Nobody hostile is ever *placed* here (`_spawnPoints` skips the room
+the player arrives in), so this is the whole population it starts with — but it is no longer
+the whole population it ever has, because employees come down for lunch and go back up. See
+Lunch below; everything in this section is the beat that cycle opens on.
 
 Which makes them a **tell** rather than a fight, and the tell is the chair: a body sitting
 down means a harmless one everywhere in this building, and the two exceptions are both
@@ -1070,7 +1072,9 @@ Three things about them were learned by running it:
   `wander`, and the animator stands up any seated body whose state is not `idle`/`alert` —
   so the whole canteen was on its feet by the first frame, five people placed at five chairs
   and not one still in it. `_wander` now holds `idle` for a body with a seat and walks it
-  nowhere. Being shot at is the one thing that changes their mind: `flee` clears the seat,
+  nowhere, and `_lunchSeated` says the same thing one caller further along: the same bug
+  came back the day the arrival diners were handed to the lunch cycle, because that path
+  seats them without going through `_wander` at all. Being shot at is the one thing that changes their mind: `flee` clears the seat,
   and from the next frame they are an ordinary neutral running for a door. Measured: shoot
   one and it is out of the chair on the next tick while the other three carry on eating.
 - **A seat records what it is a seat AT** (`at` on `sink.workstation`). A desk is a JOB — it
@@ -1532,38 +1536,44 @@ two on every floor there has ever been, and the last human on a floor of robots 
 lavatory is the joke landing harder rather than a joke out of place.
 
 ### A chair means harmless (`workstations` in `gen/build.js` + `_takeDesk`/`animateWorking`)
-**Everything that sits down is a set piece for the room it is in, and nothing that was
-*rolled* sits at all** — the shift a room is dealt works standing up. Three of them, and the
-first is the one the rule is really for:
+**Nothing that is going to fight you is ever found sitting down.** That is the rule, it is
+the one tell in the building that is about behaviour rather than about identity, and
+everything below is in service of it.
 
-- **The staff on their break**, at the tables in the canteen the floor arrives in (`_diners`
-  in `enemies.js`). Harmless, and the first bodies the player ever sees — so the tell is
-  stated on the way in, with nothing at stake, before the first chair that matters.
+Three kinds of body are in a chair, and the first is the one the rule is really for:
+
+- **Anybody on their break**, at the tables in the canteen the floor arrives in. Harmless
+  while they are there, and the first bodies the player ever sees — so the tell is stated on
+  the way in, with nothing at stake, before the first chair that matters. This used to be a
+  fixed cast of permanently-neutral diners; it is now a **cycle** that ordinary employees
+  walk too, which is the next section.
 - **The Manager**, at his own desk behind the black door.
 - **One guard**, on the cameras in the security office.
 
 The last two are the only reason either room exists, and both are behind a lock.
 
-**And nothing sits on the FLOOR any more either**, which is the second half of the same rule
-and was missed the first time round. Two janitors used to be found on their break on the
-floor of the broom closet, and the closet is behind a yellow door — but a janitor is hostile,
-swings the longest reach on the floor, and counts toward `hostileCount`, so you cannot finish
-a floor without killing both of them. A body sitting down was therefore a tell that meant
-"harmless" in two rooms and meant nothing in a third, which is worse than no tell at all.
-They wait on their feet now, and `animateFloor` went with them (in git, if anything harmless
-is ever put in a cupboard).
+**And nothing sits on the FLOOR either**, which is the second half of the same rule and was
+missed the first time round. Two janitors used to be found on their break on the floor of the
+broom closet, and the closet is behind a yellow door — but a janitor is hostile, swings the
+longest reach on the floor, and counts toward `hostileCount`, so you cannot finish a floor
+without killing both of them. A body sitting down was therefore a tell that meant "harmless"
+in two rooms and meant nothing in a third, which is worse than no tell at all. They wait on
+their feet now, and `animateFloor` went with them (in git, if anything harmless is ever put
+in a cupboard).
 
-It used to be about 23 of a floor's ~175 bodies, found typing with their backs to the door,
-and it read beautifully — but it read as a promise the state machine does not keep. A seated
-body is `idle` like any other and is on its feet the frame it sees or hears you, so
-"somebody is sitting at that desk" was information the player could not act on. Now it is:
-if it is in a chair, walking past it costs nothing. The floor pays for that in atmosphere,
-which is a real cost and was accepted knowingly — an office of standing staff is less of a
-workplace than an office of typing ones.
+**What a rolled body may NOT do is sit at its desk**, and that is the part that was taken
+away. It used to be about 23 of a floor's ~175 bodies, found typing with their backs to the
+door, and it read beautifully — but it read as a promise the state machine does not keep. A
+body at a desk is `idle` like any other and is on its feet the frame it sees or hears you, so
+"somebody is sitting at that desk" was information the player could not act on. A body at
+LUNCH is different in the one way that matters: it is out of the state machine entirely, so
+the chair is telling the truth. The floor pays for the lost desks in atmosphere, which is a
+real cost and was accepted knowingly — an office of standing staff is less of a workplace
+than an office of typing ones.
 
 What did NOT change is any of the machinery below. The furnisher still places every chair
-and still faces it at its desk, the pose still hinges a real joint, and the two who do sit
-go through exactly the path all twenty-three used to.
+and still faces it at its desk, the pose still hinges a real joint, and everybody who does
+sit goes through exactly the path all twenty-three used to.
 
 **The furnisher decides where, because it is the only thing that knows.** A desk with a
 monitor on it and a chair pulled up to it is a job, and `seatFacing` in `gen/rooms.js` is
@@ -1615,15 +1625,107 @@ already seeded with, so no seated body needs one number stored beyond the one it
 `animate` rewrites its position every frame for anybody on their feet and never gets the
 chance here, so left alone it hangs in the air where a standing hand would be.
 
-`e.seat` is `'desk'` or null — a desk is the only seat there is. On the wire it is one bit
-that only ever stands somebody up: which seat a body has is a fact about the floor, and
-both browsers generated the same one from the same seed.
+`e.seat` is `'desk'`, `'table'` or null. On the wire it is one bit that only ever stands
+somebody up, plus the break bit beside it to say which kind of chair — a desk somebody was
+PLACED at came from the shared seed and both browsers have it, and a canteen chair somebody
+WALKED to did not. See Lunch below.
 
 There is no longer a `standing` flag on the Sentry Unit, and its absence is the tell that
 this rule is enforced in one place rather than per type. It existed to keep the one machine
-on the roster out of a chair while everybody else sat down; with nobody rolled sitting down
-there is nothing for it to except, and a flag no code reads is a flag that will be trusted
-by the next person to read the file.
+on the roster out of a chair while everybody else sat down; nothing that is rolled sits at a
+desk any more, so there is nothing for it to except, and a flag no code reads is a flag that
+will be trusted by the next person to read the file. The machines are still kept out of the
+canteen, and by the same one place: `type.chassis` in `_lunchOk`.
+
+### Lunch (`_lunch` in `enemies.js` + `buildTray` in `rigs.js`)
+The canteen had a job that was not fighting you, and the people in it did it for ever:
+placed in a chair when the floor was generated and still in it when the floor ended. A break
+that never ends is a tableau, not a shift.
+
+So there is a **cycle**, and both halves of the canteen run the same one — walk in, queue at
+the counter, take a tray, find a seat, eat, take the tray back, walk out. The staff the floor
+opens on start half way through it, already seated and already eating, because that is the
+picture the arrival is for; they get a longer first sitting than anybody else (`EAT_FIRST`)
+for the same reason, since four people who file out inside a minute is the picture gone
+before the player has finished reading it.
+
+**What makes it more than scenery is who else joins.** An ordinary employee takes a break:
+they down tools, their visor goes to the canteen blue, they walk the whole cycle, and their
+own colour comes back as they leave the room. That is the first thing in the building that
+changes a visor at runtime, so the rule it states had to stay exactly true in both
+directions:
+
+- **Blue eyes are not fighting you.** A body on its break is out of the state machine as
+  completely as a neutral — no alert, no chase, nothing in its hands. Walking past one costs
+  nothing, which is the promise the chair has always made.
+- **...and the tell is live.** Any damage ends the break on the spot (`_damage` calls
+  `_lunchEnd` before anything else), so the frame a body stops being harmless is the frame
+  its eyes stop saying it is. Measured: a Security shot mid-walk went blue → `#7d7973`,
+  sidearm back, `alert`, inside one call; a diner shot at the table dropped its tray, kept
+  its own blue — that IS its colour — and was out of the chair on the next tick.
+
+**Two things it deliberately does not change, and both are correctness rather than taste.**
+`hostileCount` reads `e.neutral`, which is a fact about the TYPE and is never touched here —
+measured at 88 before, during and after three lunches, and at 214 across a floor that sent
+nine people to eat. A count that moved would make "floor cleared" fire and un-fire, and the
+black card is timed off it. And the minimap still shows them as what they are, because the
+two markers answer different questions: the map says whether you have to shoot this
+eventually, the visor says whether it is about to shoot you.
+
+**Machines do not eat** (`type.chassis`) and neither do the Reanimated (`type.undead`).
+Between them that is every hostile in the building that is not staff.
+
+Three things came out of measuring rather than writing it:
+
+- **A route is only a route if the BODY is on it.** Flooding to the counter says nothing
+  about whether the flood reached the walker, and most of the staff are behind a badged door,
+  which is out of the nav grid entirely (the same rule that makes `pathDistance` come back
+  -1 for hearing). Before both halves were checked, bodies set off for a canteen they could
+  not reach and spent the whole stage cap re-flooding the floor thirty times a second from a
+  tile they were not standing on. The answer is the best thing in here, because it MOVES
+  over a floor: with nothing in your pocket **5 of 79** staff can reach the canteen — the
+  ones already in the corridors — and one white card opens 170 doorways and makes it **77 of
+  79**. The building goes to lunch once the building has been opened, which is not a rule
+  anybody wrote.
+- **Reachability is asked before anything is committed.** A failed attempt that had already
+  created the break would mark that body as having had one (`lunchDone`, which is what stops
+  the same man queueing twice while nobody else goes), and nine tenths of the floor would be
+  out of the running before the player had opened a door. It is also **one flood per
+  attempt, not one per dart**: the field from a fixed counter is the same field whoever is
+  asking, and two dozen floods of a ten thousand tile floor to answer one question is the
+  shape of loop this file has been caught writing three times.
+- **The stage cap is 100 seconds**, not the 55 it started at. A walk from an office at one
+  end of a deep floor took a Security fifty seconds at lunch pace, and a body that gives up
+  half way goes back to work in the middle of a corridor for no reason the player can see.
+  It is a backstop rather than a timeout anybody should reach — a break that quietly never
+  ends is a body that is harmless for the rest of the floor and still has to be killed.
+
+**The furnisher says where the queue is**, through the same `sink.workstation` pipe the
+chairs use and under names of its own (`servery`, `trays`). It is the only thing that knows
+where the counter actually landed — `cafeteria` asks for the wall opposite the door and may
+miss it entirely — so it is the only thing that can say where you stand to be served, which
+is exactly the argument `seatFacing` makes about a chair. Three places down the line rather
+than one in the middle of it, because a serving line is long on purpose and four people
+queueing on the same tile is one body inside another; the tray rack takes the far end, pulled
+a little inboard so it is not against the room's own wall (one canteen in ten lost its rack
+that way). A rack that still cannot be stood at falls back to the counter, which is not a
+fudge: handing your tray back across the counter you took it from is what you would do, and
+what it buys is that the cycle can always be finished.
+
+`_stroll` is the walk lifted out of `_wander` so both callers can have it, and it **returns
+what happened** rather than recovering itself — a neutral makes a whole new plan and somebody
+on their lunch re-floods to the same counter, and neither wants the other's answer.
+
+Costs about 0.1 ms a frame per walker on a floor of 147 (1.85 → 2.04 ms with two out), which
+is the ordinary cost of a wandering body: they already carry a field of their own.
+
+**On the wire it is two more bits** in the slot the seat already rode in (`SNAP_BREAK`,
+`SNAP_TRAY`). The visor is the game's one universal tell, and a joiner looking at an employee
+wearing its own colour that is not going to shoot back is being lied to. The tray goes over
+rather than being derived from the break, because a body walks the first and last beat of a
+lunch without one — and the break bit is also what tells a joiner that the chair is a canteen
+table, since unlike every other seat in the building a chair somebody WALKED to did not come
+from the shared seed.
 
 ### Furniture models (`gen/models.js` + `gen/props.js`)
 Static props are drawn with downloaded CC0/CC-BY GLBs; loose props are not. The split is
@@ -2050,6 +2152,11 @@ The pieces that had to change to allow two players at all:
   a chat window freezes their friend's floor solid. The render is skipped and the
   simulation runs off a timer — and Chrome exempts a tab making a noise from its harshest
   throttling, which this one is.
+
+The **snapshot's sixth slot** is three bits of state and three flags — in a chair, on a
+break, carrying a tray. The last two are there because the visor is the game's one universal
+tell: a joiner looking at an employee wearing its own colour that is not going to shoot back
+is being lied to. See Lunch above.
 
 **Not synced, on purpose:** ragdoll poses, spent brass, decals, debris, extinguisher gas
 and the generator's arcs. All cosmetic, all hundreds of bodies a floor, none of it changes
