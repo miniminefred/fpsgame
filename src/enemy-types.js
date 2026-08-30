@@ -346,27 +346,90 @@ export function pickType(floorNumber, rng, theme) {
   return TYPES.analyst;
 }
 
+/**
+ * Whether a theme can be ITSELF at this depth.
+ *
+ * A SHARE is the theme's identity rather than a tilt — four in five of the staff
+ * ARE this — so it is required, not preferred: an Automated floor a depth above
+ * the Sentry Unit would be a floor named after machines with no machine on it,
+ * which is the same nothing an Infestation with no Reanimated would be. `boost`
+ * stays a `some`, because a tilt that only half applies is still a floor with a
+ * character.
+ *
+ * Named rather than written inline in the filter below because forceTheme has to
+ * ask the same question to say WHY a shift it was handed is not going to look
+ * like itself yet, and a second copy of a predicate this specific is how a tool
+ * ends up certifying a floor the game never builds.
+ */
+function themeUsable(theme, floorNumber) {
+  const shares = Object.keys(theme.share ?? {});
+  if (shares.some((k) => !TYPES[k] || TYPES[k].unlockFloor > floorNumber)) return false;
+
+  const keys = Object.keys(theme.boost);
+  return !keys.length || shares.length
+    || keys.some((k) => TYPES[k] && TYPES[k].unlockFloor <= floorNumber);
+}
+
+// The shift being worked on, or null for the ordinary weighted draw. DEV ONLY:
+// nothing in the shipped game ever sets this — see forceTheme.
+let forced = null;
+
+/**
+ * Pin every floor to one shift, or pass null to go back to the draw.
+ *
+ * This is a workbench, not a feature: iterating on a shift means seeing it, and
+ * the alternative is descending until the die agrees with you — an Automated
+ * floor is three in sixteen, so half the time that is four floors of somebody
+ * else's building. `main.js` reaches it from `?shift=` and from `dev.shift()`,
+ * both stripped from a production build with the rest of `window.dev`.
+ *
+ * It is deliberately OFF unless somebody asks for it in the URL or at the
+ * console, because a dev aid that is simply on is how the generator room came to
+ * be under the player's feet on every floor of every dev build for weeks: the
+ * game stops being played the way it ships, and nobody notices, because it works.
+ *
+ * Matched loosely on the name (case, spaces and dashes) — these are typed into a
+ * URL bar by hand. Returns the theme it pinned, or null.
+ */
+export function forceTheme(name, floorNumber = 1) {
+  const key = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+  forced = name == null ? null : THEMES.find((t) => key(t.name) === key(name)) ?? null;
+
+  if (name != null && !forced) {
+    console.warn(`[shift] no such shift ${JSON.stringify(name)} — try one of: `
+      + THEMES.map((t) => t.name).join(', '));
+  } else if (forced && !themeUsable(forced, floorNumber)) {
+    // Pinned anyway: the ask was explicit. But a machine floor with no machines
+    // yet unlocked reads as the pin not having worked at all, so say which floor
+    // it starts being itself on rather than leaving that to be puzzled out.
+    // Which floor that is has to be read off themeUsable's own two rules and not
+    // off the deepest thing the theme names: EVERY share has to be unlocked (so
+    // the latest of them decides), while ONE boost is enough (so the earliest
+    // does), and mixing those up names a floor two deeper than the answer.
+    const at = (keys) => keys.map((k) => TYPES[k]?.unlockFloor ?? 1);
+    const shares = at(Object.keys(forced.share ?? {}));
+    const boosts = at(Object.keys(forced.boost ?? {}));
+    const floor = shares.length ? Math.max(...shares)
+      : (boosts.length ? Math.min(...boosts) : 1);
+    console.warn(`[shift] ${forced.name} pinned, but it is not itself until floor ${floor}`
+      + ` — dev.game.goToFloor(${floor})`);
+  }
+  return forced;
+}
+
 // Weighted pick over the themes whose signature types this floor can actually
 // staff — an Infestation with no Reanimated unlocked is just a normal floor
 // wearing a different name.
 export function pickTheme(floorNumber, rng) {
-  const usable = THEMES.filter((theme) => {
-    // A SHARE is the theme's identity rather than a tilt — four in five of the
-    // staff ARE this — so it is required, not preferred: an Automated floor a
-    // depth above the Sentry Unit would be a floor named after machines with no
-    // machine on it, which is the same nothing an Infestation with no
-    // Reanimated would be. `boost` stays a `some`, because a tilt that only
-    // half applies is still a floor with a character.
-    const shares = Object.keys(theme.share ?? {});
-    if (shares.some((k) => !TYPES[k] || TYPES[k].unlockFloor > floorNumber)) return false;
-
-    const keys = Object.keys(theme.boost);
-    return !keys.length || shares.length
-      || keys.some((k) => TYPES[k] && TYPES[k].unlockFloor <= floorNumber);
-  });
+  const usable = THEMES.filter((theme) => themeUsable(theme, floorNumber));
   let total = 0;
   for (const theme of usable) total += theme.weight;
   let roll = rng() * total;
+  // Rolled even when the answer is already decided, so a pinned floor is the
+  // same building as an unpinned one — every number after this comes off the
+  // same stream, and a shift you can turn on and off is worth much less if it
+  // re-rolls the roster's placement underneath you as you do.
+  if (forced) return forced;
   for (const theme of usable) {
     roll -= theme.weight;
     if (roll <= 0) return theme;

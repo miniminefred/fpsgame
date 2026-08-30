@@ -93,6 +93,15 @@ keycards, wallet, ragdolls, cameras }`, which is the fastest way to jump floors,
 or measure something from the console. Note the render loop is `requestAnimationFrame`, so
 a backgrounded tab does not tick — measure with the tab visible, or step `update()` by hand.
 
+`dev.shift('night shift')` pins every floor to one theme while you are working on that
+theme, and `?shift=night-shift` on the URL does the same across the reloads HMR cannot do
+in place; `dev.shift(null)` hands the floors back to the die. It is off unless asked for,
+and that is deliberate rather than shy — a dev aid that is simply *on* is how a spawn
+override put the player inside the generator room on every floor of every dev build for
+weeks, which is the game quietly no longer being played the way it ships. It warns when
+the shift you pinned cannot be itself at this depth (an Automated floor above the Sentry
+Unit is a machine floor with no machine on it) and names the floor where it can be.
+
 `/dev-models.html` is a contact-sheet harness for inspecting the furniture models at true
 relative scale (see the header of `src/dev-models.js` for its query parameters);
 `/dev-guns.html` does the same for the five weapon viewmodels and their measured muzzle

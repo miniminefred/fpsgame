@@ -7,6 +7,8 @@ import { Player } from './player.js';
 import { Weapons } from './weapons.js';
 import { Effects } from './effects.js';
 import { Enemies } from './enemies.js';
+// Dev only, and tree-shaken out of a production build with its one call site.
+import { forceTheme } from './enemy-types.js';
 import { GameAudio } from './audio.js';
 import { Hud } from './hud.js';
 import { Minimap } from './minimap.js';
@@ -124,7 +126,21 @@ if (import.meta.env.DEV) {
     // render loop moving underneath it — and for driving a tab that is not
     // being looked at, which is how the co-op protocol is tested.
     step: (render = true) => tick(render),
+    // The shift every floor comes out as while you are working on one — the
+    // ordinary weighted draw otherwise, and there is no way to turn this on but
+    // to ask for it. `dev.shift('night shift')` from the console takes effect on
+    // the NEXT floor (the theme is rolled once, in enemies.spawn), so it pairs
+    // with `dev.game.nextFloor()`; `?shift=night-shift` on the URL is the one to
+    // use while iterating, because it survives the reload that HMR does not.
+    // `dev.shift(null)` hands the floors back to the die.
+    shift: (name) => forceTheme(name ?? null, game.floor),
   };
+
+  // ...and the same thing off the URL, read once at boot: ?shift=automated.
+  // Named for what it does rather than for the field it sets, because this is
+  // typed by a person who wants the floor to be an Automated one.
+  const wanted = new URLSearchParams(location.search).get('shift');
+  if (wanted) forceTheme(wanted, 1);
 }
 
 // Furniture models want to be in hand before the first floor is furnished, or
