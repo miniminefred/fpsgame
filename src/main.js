@@ -22,6 +22,7 @@ import { Casings } from './casings.js';
 import { Keycards, Wallet } from './keycards.js';
 import { Ragdolls } from './ragdolls.js';
 import { Cameras } from './cameras.js';
+import { Conveyors } from './conveyors.js';
 import { Net } from './net.js';
 import { createCoopMenu } from './mp-menu.js';
 import { NetPlay } from './netplay.js';
@@ -77,11 +78,12 @@ enemies.ragdolls = ragdolls;
 const wallet = new Wallet();
 const keycards = new Keycards({ scene, audio, wallet });
 const cameras = new Cameras({ scene, audio, effects });
+const conveyors = new Conveyors({ scene, audio });
 
 const game = new Game({
   scene, camera, player, weapons, shooting, enemies,
   effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, spills, doors, casings,
-  keycards, wallet, ragdolls, cameras,
+  keycards, wallet, ragdolls, cameras, conveyors,
 });
 
 // Co-op. All three are live from load and none of them touches the game until a
@@ -121,6 +123,7 @@ if (import.meta.env.DEV) {
   window.dev = {
     game, player, enemies, shooting, keys, physics, destruction, extinguishers, doors, spills,
     scene, camera, weapons, renderer, audio, casings, keycards, wallet, ragdolls, cameras,
+    conveyors,
     touch, net, netplay, coopMenu,
     // One frame of the world by hand, for measuring something without the
     // render loop moving underneath it — and for driving a tab that is not

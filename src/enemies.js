@@ -339,8 +339,17 @@ export class Enemies {
     return n;
   }
 
-  // Populates a floor. `tuning` scales with depth — see game.js.
-  spawn(layout, nav, rng, tuning, workstations = []) {
+  /**
+   * Populates a floor. `tuning` scales with depth — see game.js.
+   *
+   * The shift is handed in rather than drawn here, and that is not tidiness: it
+   * decides what is fitted to the BUILDING as well as who is standing in it
+   * (see `conveyors` on THEMES), so it has to be known before the floor's
+   * colliders go to the solver — which is well before this runs. It is still
+   * the first draw off the floor's rng, exactly where it was, so nothing after
+   * it moved. Left off, it is drawn here as before.
+   */
+  spawn(layout, nav, rng, tuning, workstations = [], theme = null) {
     this.clear();
     this.nav = nav;
     this.tuning = tuning;
@@ -350,7 +359,7 @@ export class Enemies {
     this.layout = layout;
     this.rng = rng;
     this.shoutTimer = 0;
-    this.theme = pickTheme(layout.floorNumber, rng);
+    this.theme = theme ?? pickTheme(layout.floorNumber, rng);
     this.corridors = collectCorridors(layout, nav);
     this.desks = deskPool(workstations, nav, rng, 'desk');
     // The canteen's chairs, pooled apart from the desks because they are not

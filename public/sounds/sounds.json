@@ -99,6 +99,13 @@
       "influence": 0.6
     },
     {
+      "name": "conveyor",
+      "text": "industrial conveyor belt running steadily, rubber belt over metal rollers, low electric motor hum, continuous mechanical rumble, close mic, dry, no reverb, no music, no voices",
+      "duration": 12.0,
+      "influence": 0.6,
+      "loop": true
+    },
+    {
       "name": "crush-cardboard",
       "text": "cardboard box crushed flat under a boot, single dry crunch of collapsing card, close mic, no reverb, no music, no voices",
       "duration": 0.9,

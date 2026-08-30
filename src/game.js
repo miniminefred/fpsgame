@@ -1,6 +1,7 @@
 import { Level, distanceToExit } from './level.js';
 import { makeRng, randomSeed } from './gen/rng.js';
 import { CARDS } from './keycards.js';
+import { pickTheme } from './enemy-types.js';
 
 // The run: generate a floor, clear it, take the exit down, repeat forever.
 //
@@ -92,7 +93,7 @@ export class Game {
    * `physics` is the exception and stays guarded, because the solver really can
    * be absent and the game is meant to keep running without it.
    */
-  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, spills, doors, casings, keycards, wallet, ragdolls, cameras }) {
+  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, spills, doors, casings, keycards, wallet, ragdolls, cameras, conveyors }) {
     this.player = player;
     this.weapons = weapons;
     this.shooting = shooting;
@@ -112,6 +113,7 @@ export class Game {
     this.wallet = wallet;
     this.ragdolls = ragdolls;
     this.cameras = cameras;
+    this.conveyors = conveyors;
 
     // Co-op. Wired after construction by main.js, because NetPlay needs a Game
     // and a Game would then need a NetPlay — and it is the third genuinely
@@ -183,6 +185,9 @@ export class Game {
     this.cameras.onAlarm = () => this._onAlarm();
     this.shooting.onCameraHit = (cam, damage, point, normal) =>
       this.cameras.damage(cam, damage, point, normal);
+    // A parcel on a belt, which is the only thing on a conveyor a round can
+    // take off it — the line itself is building services, like the ceiling.
+    this.shooting.onParcelHit = (parcel, point) => this.conveyors.hit(parcel, point);
   }
 
   // --- building security --------------------------------------------------------
@@ -423,6 +428,18 @@ export class Game {
 
     const level = this.level.generate(seed, this.floor);
 
+    // The shift, rolled HERE rather than inside enemies.spawn, because the
+    // BUILDING has to know it now: a theme that runs parcel lines on the walls
+    // has to say so before the floor's colliders are handed to the solver and
+    // to the player. It is still the first draw off this floor's rng — that was
+    // enemies.spawn's first line — so nothing after it has moved for that.
+    const theme = pickTheme(this.floor, rng);
+    // Fitted before the physics, because a run pushes its own collider onto the
+    // level's list and both consumers are about to read it. It contributes no
+    // nav tile and reserves no floor: a belt is above everything, which is what
+    // makes putting geometry into a finished floor safe at all. See conveyors.js.
+    this.conveyors.spawn(level.layout, rng, theme, level.colliders);
+
     this._initPhysics(level);
     this.destruction.setLevel(level);
     // Split rather than concatenated: the building holds still and gets indexed,
@@ -452,7 +469,7 @@ export class Game {
     // come out anywhere from two-thirds to half again the usual size, so the
     // curve is per typical floor and the slab that turned up scales it.
     this.enemies.spawn(level.layout, level.nav, rng,
-      tuningFor(this.floor, level.layout.areaRatio), level.workstations);
+      tuningFor(this.floor, level.layout.areaRatio), level.workstations, theme);
     // After the staff, because the cameras are watching the floor rather than
     // watching them — nothing about where one goes depends on who is standing
     // where, and taking the roster's dice first keeps enemy placement reading
@@ -463,6 +480,7 @@ export class Game {
     // things on its walls looking at them.
     this.shooting.setHittables([
       ...level.meshes, ...this.enemies.meshes, ...this.cameras.meshes,
+      ...this.conveyors.meshes,
     ]);
     // Scorch marks are clipped to the building only — an enemy standing against
     // a wall is not part of that wall, however flush he is with it.
@@ -667,6 +685,7 @@ export class Game {
       // from the player, off exactly that field.
       this.cameras.update(dt, this.player);
       this.hud.setWatch(this.cameras.watch);
+      this.conveyors.update(dt);
 
       this._checkFloorState(dt, level);
       this._vitals(dt);

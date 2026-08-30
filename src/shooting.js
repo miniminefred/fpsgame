@@ -43,6 +43,7 @@ export class Shooting {
     this.onSurfaceHit = null;
     // (cam, damage, point, normal) => boolean — true if that shot destroyed it.
     this.onCameraHit = null;
+    this.onParcelHit = null;
     // (muzzle, end) => void — co-op's. One call per trigger pull, so the other
     // browser can draw the tracer and hear the gun. Its END is where this shot
     // actually stopped rather than a fixed range down the barrel, which is the
@@ -280,6 +281,12 @@ export class Shooting {
       // is.
       const cctv = hit.object.userData.cctv;
       if (cctv && this.onCameraHit?.(cctv, damage, hit.point, this._normal)) return 'hit';
+
+      // A parcel on a belt. Same shape as a camera and for the same reason:
+      // either this took it off the line, which earns the marker, or it is
+      // already gone and the round carries on into the wall behind it.
+      const parcel = hit.object.userData.parcel;
+      if (parcel && this.onParcelHit?.(parcel, hit.point)) return 'hit';
 
       // Loose furniture takes the hit as a shove. Heavier-hitting guns move it
       // further, which is what makes a shotgun feel like a shotgun.

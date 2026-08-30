@@ -205,6 +205,12 @@ const LIBRARY = {
   // stayed in the room, which a one-shot sound never has to survive.
   roomba: { gain: 0.28, pitch: 0, bed: true },
 
+  // A parcel line running on a corridor wall (see conveyors.js). A bed like the
+  // floor cleaner's and mixed under it, because a floor runs several of these at
+  // once and each of them is running for as long as the player is on the floor —
+  // the same argument the generator's arcs make, one step quieter still.
+  conveyor: { gain: 0.22, pitch: 0, bed: true },
+
   'amb-office': { gain: 0.30, pitch: 0, bed: true },
   'amb-drone':  { gain: 0.22, pitch: 0, bed: true },
 };
@@ -273,6 +279,11 @@ const ARC_AUDIBLE = 18;
 // vacuum cleaner three rooms away is not information, it is a hum on the mix, and
 // a player asked for it to stop carrying. This is the room it is in and no more.
 const MOTOR_AUDIBLE = 12;
+// ...and a belt's, which is shorter. It is the same untreated positional loop
+// with the same lack of occlusion, but there are several running at once on a
+// floor rather than one following a body about, and a hum that carries is a hum
+// under everything else in the building.
+const BELT_AUDIBLE = 10;
 
 // Roughly where a voice leaves a body, so a shout does not come from their shoes.
 const MOUTH_HEIGHT = 1.35;
@@ -486,6 +497,20 @@ export class GameAudio {
 
   moveMotor(handle, x, y, z) { this.sfx.moveLoop(handle, x, y, z); }
   stopMotor(handle) { this.sfx.stopLoop(handle); }
+
+  /**
+   * A machine that runs continuously and does NOT move: a parcel line on a
+   * wall. Everything the note above startMotor says applies here and one thing
+   * does not — there is nothing to follow, so the handle only ever needs
+   * stopping, which stopMotor already does.
+   *
+   * A long line asks for several of these down its length. That is the point of
+   * it: a twenty metre belt heard from one point is a machine in a corner.
+   */
+  startBelt(x, y, z) {
+    if (!this.sfx.ready) return null;
+    return this.sfx.loopAt('conveyor', { gain: 0.9, x, y, z, range: BELT_AUDIBLE });
+  }
 
   enemyStep(enemy) {
     const at = this._near(enemy, AUDIBLE_STEP);
