@@ -90,11 +90,21 @@ function hinge(limb, x, y, half, angle) {
   limb.position.set(x, y + half * (1 - Math.cos(angle)), -half * Math.sin(angle));
 }
 
-// Back to how rigs.js left them. The walk cycle writes every limb ROTATION
-// every frame and so recovers on its own, but nothing else in here ever moves a
-// limb, so a body that stood up out of a chair would carry the chair's hips and
-// shoulders around the floor with it for the rest of the run.
-function stand(e) {
+/**
+ * Back to how rigs.js left them. The walk cycle writes every limb ROTATION
+ * every frame and so recovers on its own, but nothing else in here ever moves a
+ * limb, so a body that stood up out of a chair would carry the chair's hips and
+ * shoulders around the floor with it for the rest of the run.
+ *
+ * Exported because `animate` is no longer the only thing that can decide a body
+ * is out of its chair — the chair itself can be shot apart or shoved away (see
+ * `_seatGone` in enemies.js), and that has to stand up a body which is `idle`
+ * and staying `idle`, which is exactly the state the pose is held through here.
+ * The rule that came with this function is unchanged: clearing `e.seat` without
+ * calling it is what makes a body walk like an alien, so the two are one
+ * operation and enemies.js wraps them together rather than calling this alone.
+ */
+export function stand(e) {
   e.torso.rotation.x = 0;
   hinge(e.legL, -HIP_X, LEG_Y, LEG_HALF, 0);
   hinge(e.legR, HIP_X, LEG_Y, LEG_HALF, 0);

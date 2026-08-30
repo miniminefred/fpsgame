@@ -3,7 +3,7 @@ import { BODY_RADIUS as RADIUS } from './nav.js';
 import { CORRIDOR, STAFF_ONLY, FIRST_CONTACT_GAP, worldX, worldZ } from './gen/layout.js';
 import { buildRig, buildTray } from './rigs.js';
 import { TYPES, BYSTANDERS, pickType, pickTheme } from './enemy-types.js';
-import { DEATH_TIME, HIT_FLASH, SWING_TIME, animate, die } from './enemy-anim.js';
+import { DEATH_TIME, HIT_FLASH, SWING_TIME, animate, die, stand } from './enemy-anim.js';
 import { angleDelta, angleLerp, smoothTo } from './util.js';
 import { makeRng } from './gen/rng.js';
 import { EYE } from './metrics.js';
@@ -261,7 +261,16 @@ const LUNCH_FIRST = 25;        // seconds before the first employee downs tools
 const LUNCH_GAP = [14, 34];    // ...and between one and the next
 const LUNCH_DARTS = 24;        // tries at finding a willing body — see _sendToLunch
 const LUNCH_PACE = 0.85;       // somebody walking to lunch has not noticed you
-const LUNCH_ARRIVE = 1.1;      // metres: near enough to a counter or a chair
+const LUNCH_ARRIVE = 1.1;      // metres: near enough to a counter or a rack
+// ...but NOT near enough to a chair, and that is a different number for a
+// reason. A flow field walks to tile centres and a chair is not at one, so the
+// walk finishes wherever the last tile put them — measured over 46 seatings,
+// EVERY body that walked to lunch sat down 0.98 to 1.09 m from its chair, which
+// is a metre of daylight between somebody and the thing they are sitting on.
+// The field gets them to the chair and `_settleOnto` takes the last metre in a
+// straight line, which is open room floor by construction: the furnisher only
+// offers a station a whole body fits in front of (see deskPool).
+const SEAT_SNAP = 0.06;
 // Any walking stage that takes longer than this is abandoned and the body goes
 // back to work where it stands. It is a backstop rather than a timeout anybody
 // should reach: a break that quietly never ends is a body that is harmless for
@@ -281,6 +290,24 @@ const DROP_TIME = [1.5, 3];    // putting the tray back
 // written down twice: what "on a break" looks like is one colour in this
 // building, and a second copy of it is a second colour within a week.
 const BREAK_VISOR = TYPES.diner.visor;
+
+// A seated pose is drawn relative to furniture, and furniture on this floor can
+// be shot apart and shoved about. See _seatGone.
+//
+// SEAT_DRIFT is how far the chair may wander before the body is no longer on it.
+// Generous: a loose prop settles against its neighbours for a second after the
+// floor is built and jitters when anything lands near it, and a canteen that
+// stands itself up because a chair twitched is a worse bug than the one this
+// fixes. A body is 0.4 m across, so half a metre is already past the seat.
+const SEAT_DRIFT = 0.5;
+// How far in front of the seat the table is, and the band a table top can be in.
+// The gap is `seatFacing`'s own — a chair is placed a body's width out from the
+// prop's CENTRE, so the probe lands inside the table rather than at its edge —
+// and the band is what keeps the scan from matching the wall behind it or the
+// floor plate under it.
+const TABLE_AHEAD = 0.9;
+const TABLE_LOW = 0.35;
+const TABLE_HIGH = 1.4;
 // Metres of the arrival point kept to yourself. The seats are outside it anyway
 // — no table is furnished into the square kept clear where the player
 // materialises — so this is only ever about the ones on their feet, who are
@@ -379,6 +406,23 @@ export class Enemies {
     let n = 0;
     for (const e of this.items) if (e.alive && !e.neutral && !e.behindLock) n++;
     return n;
+  }
+
+  /**
+   * The floor's colliders: the building with its fitted furniture, and the loose
+   * props that move. Handed over by game.js before `spawn`, and held for one
+   * question only — is the thing somebody is sitting on still there.
+   *
+   * Both are the SAME arrays the player collides against rather than copies, so
+   * they stay live: a prop that is shot apart retires its own entry by setting
+   * `top = -1` (`_breakProp` in destruction.js, and the same for a static in
+   * `_shatter`), and a loose prop that is shoved moves its own bounds. Those are
+   * exactly the two things a seated body needs to notice, and neither of them is
+   * an event anybody sends.
+   */
+  setColliders(statics, loose) {
+    this.colliders = statics ?? [];
+    this.loose = loose ?? [];
   }
 
   /**
@@ -1318,12 +1362,109 @@ export class Enemies {
    */
   _seat(e, station, at = 'desk') {
     e.seat = at;
+    // ON the chair, not near it. Every other caller placed the body at the
+    // station to begin with so this is a no-op for them; for somebody who WALKED
+    // here it is the last few centimetres `_settleOnto` could not close, and it
+    // is what makes "is the chair still under me" a question with an exact
+    // answer rather than one with a metre of slack in it.
+    e.x = station.x;
+    e.z = station.z;
+    e.group.position.set(e.x, e.y, e.z);
+    // What the pose is drawn relative to, looked up ONCE here rather than
+    // searched for every frame. A seat is two props: the chair holding them up,
+    // and — for lunch — the table their tray is on. Either can be destroyed and
+    // the chair can also be shoved, so a seated body has to be able to tell.
+    //
+    // Null is a perfectly ordinary answer and means "do not check": a lookup
+    // that comes back empty must never be read as the chair having gone, or a
+    // seat the scan simply could not attribute would stand its body up on the
+    // first frame it ever sat down.
+    e.chair = this._looseAt(station.x, station.z);
+    e.table = at === 'table' ? this._surfaceAhead(station) : null;
     // The chair's quarter turn, converted the one way it can be: a prop's turns
     // rotate the front from -Z toward +X, which is a negative rotation about Y.
     // Same line as tryPlace's, because a body and the chair under it face the
     // same way for the same reason.
     e.yaw = -station.rot * Math.PI / 2;
     e.group.rotation.y = e.yaw;
+  }
+
+  /**
+   * Whatever a body was sitting on has gone. Stands them up, and this is the one
+   * place that decides so.
+   *
+   * The pose is the problem it solves: a seated body is drawn hips-down into a
+   * chair that is a separate prop, and that prop is loose — one round ends it,
+   * and walking into it moves it. Neither used to reach the body, so the canteen
+   * could be blown apart and leave four people sitting in mid-air, which is what
+   * a player reported.
+   *
+   * The chair is checked for EVERY seat and the table only for a canteen one,
+   * because they fail differently. Losing the chair is the body sitting on
+   * nothing, which is wrong wherever it happens; losing the table leaves the
+   * chair doing its job and only the tray hanging in the air, so it ends the
+   * lunch rather than being a general rule about desks — a Manager at a desk
+   * that has been shot out from under his monitor is still sitting on his chair.
+   */
+  _seatGone(e) {
+    const chair = e.chair;
+    // Null means the scan could not attribute one, which is not the same as the
+    // chair having gone — see the note in _seat.
+    const lost = chair && (chair.top < 0
+      || Math.abs((chair.minX + chair.maxX) / 2 - e.x) > SEAT_DRIFT
+      || Math.abs((chair.minZ + chair.maxZ) / 2 - e.z) > SEAT_DRIFT);
+    const noTable = e.seat === 'table' && e.table && e.table.top < 0;
+    if (!lost && !noTable) return;
+
+    // A break ends the way it ends anywhere else — the chair goes back to the
+    // pool, the tray goes, the visor comes back — and `_lunchEnd` stands them up
+    // on its way past. Anything else is on its feet and back on the clock.
+    if (e.break) this._lunchEnd(e);
+    else this._standUp(e);
+  }
+
+  /**
+   * Out of the chair, joints and all.
+   *
+   * Clearing `e.seat` and calling `stand` are ONE operation and this is the only
+   * place either happens deliberately: `stand` in enemy-anim.js puts the hips and
+   * shoulders back where rigs.js left them, and nothing else in that file ever
+   * moves a limb's position, so a body that left its chair any other way carried
+   * the chair's joints round the floor for the rest of the run. The animator's
+   * own stand-up — a seated body whose state is no longer idle or alert — is the
+   * same operation reached the other way round, and does the same two things.
+   */
+  _standUp(e) {
+    if (!e.seat) return;
+    e.seat = null;
+    e.chair = null;
+    e.table = null;
+    stand(e);
+  }
+
+  // The loose prop standing at a point — the chair under a seat. Bounds rather
+  // than a radius, because a collider is what the rest of the game collides
+  // against and its footprint is the honest answer to "is there one here".
+  _looseAt(x, z) {
+    for (const b of this.loose ?? []) {
+      if (b.top < 0) continue;
+      if (x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ) return b;
+    }
+    return null;
+  }
+
+  // ...and the fitted one a body's width in front of a seat, which is the desk
+  // or the table it is pulled up to. Static, so it never moves and only `top`
+  // can change.
+  _surfaceAhead(station) {
+    const yaw = -station.rot * Math.PI / 2;
+    const x = station.x - Math.sin(yaw) * TABLE_AHEAD;
+    const z = station.z - Math.cos(yaw) * TABLE_AHEAD;
+    for (const b of this.colliders ?? []) {
+      if (b.top < TABLE_LOW || b.top > TABLE_HIGH) continue;
+      if (x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ) return b;
+    }
+    return null;
   }
 
   _add(x, z, rng, tuning, type) {
@@ -1416,6 +1557,10 @@ export class Enemies {
       // Manager at his own, one guard on the cameras — and null for everybody
       // else, which is standing up. See animateWorking in enemy-anim.js.
       seat: null,
+      // ...and the two props that pose is drawn relative to, so a body can tell
+      // when it is sitting on nothing. See _seatGone.
+      chair: null,
+      table: null,
       // Somebody's lunch: which beat of the cycle they are on, and the tray in
       // their hands while they are on it. Both null for the whole building most
       // of the time — see the block above _sendToLunch.
@@ -1707,6 +1852,9 @@ export class Enemies {
 
     for (const e of this.items) {
       if (!e.alive) { die(e, dt); continue; }
+      // Whatever they were sitting on can be shot apart or shoved out from under
+      // them, and until this was here neither stood anybody up. See _seatGone.
+      if (e.seat) this._seatGone(e);
 
       // Who this one is dealing with. Everything that follows is measured against
       // them, and a body with nobody left to deal with simply loses contact and
@@ -2120,7 +2268,14 @@ export class Enemies {
     const room = this.layout?.spawnRoom;
     if (!room) return false;
 
-    const seat = this._takeDesk(room, (x, z) => this.nav.clear(x, z, RADIUS), this.tables);
+    // A chair that has been shot apart or shoved across the room is not a free
+    // seat, and this is the one place to say so: the station goes back into the
+    // pool when a break ends whatever became of the chair, so it is on the way
+    // OUT that it has to be checked rather than on the way in. Without it the
+    // next person to come down for lunch sits in the hole the last one's chair
+    // left.
+    const seat = this._takeDesk(room,
+      (x, z) => this.nav.clear(x, z, RADIUS) && !!this._looseAt(x, z), this.tables);
     if (!seat) return false;
 
     e.break = { stage: 'go', at: null, seat, timer: LUNCH_STAGE_CAP };
@@ -2184,7 +2339,8 @@ export class Enemies {
 
       case 'toseat':
         if (b.timer < 0) { this._lunchEnd(e); return; }
-        if (this._lunchWalk(e, dt, b.seat)) {
+        // Two legs to it: the field to the chair, then the last metre onto it.
+        if (this._lunchWalk(e, dt, b.seat) && this._settleOnto(e, dt, b.seat)) {
           this._seat(e, b.seat, 'table');
           // `idle` is what keeps them in the chair: the animator stands up any
           // seated body whose state is anything else (see `animate` in
@@ -2298,6 +2454,29 @@ export class Enemies {
   }
 
   /**
+   * The last metre onto a chair, walked in a straight line rather than on the
+   * field. True once they are on it.
+   *
+   * `_tryMove` rather than an assignment, so the same collision the rest of the
+   * walk uses still applies — and if it cannot make ground the body sits anyway,
+   * because `_seat` puts it exactly on the station regardless and a body wedged
+   * beside its own chair for the length of the stage cap is the worse outcome.
+   */
+  _settleOnto(e, dt, at) {
+    const dx = at.x - e.x, dz = at.z - e.z;
+    const gap = Math.hypot(dx, dz);
+    if (gap < SEAT_SNAP) return true;
+
+    const step = this.tuning.speed * e.type.speed * LUNCH_PACE * dt;
+    const k = Math.min(1, step / gap);
+    const moved = this._tryMove(e, dx * k, 0) | this._tryMove(e, 0, dz * k);
+    e.group.position.set(e.x, e.y, e.z);
+    e.yaw = angleLerp(e.yaw, Math.atan2(-dx, -dz), smoothTo(9, dt));
+    e.group.rotation.y = e.yaw;
+    return !moved;
+  }
+
+  /**
    * The break is over, however it ended: finished, given up on, or shot at.
    *
    * Everything it hands back has to be handed back exactly once — the chair, the
@@ -2312,12 +2491,13 @@ export class Enemies {
     this._takeTray(e);
     this._lunchLook(e, false);
 
-    // Out of the chair if they were still in one. Not by clearing `e.seat` —
-    // see the note in the `eat` case above — but by leaving them in a state the
-    // animator will stand them up out of. `_damage` overwrites this with `alert`
-    // a line later when the break ended because somebody shot them, and that is
-    // a standing state too.
-    if (e.seat) e.state = 'wander';
+    // Out of the chair if they were still in one, joints and all — see
+    // `_standUp`. It used to be done by leaving them in a state the animator
+    // would stand them up out of, which worked for every way a break could end
+    // until one of them was "the chair is not there any more": that path has to
+    // stand somebody up who is `idle` and staying `idle`, and idle is exactly
+    // the state the animator holds the pose through.
+    if (e.seat) { this._standUp(e); e.state = e.neutral ? 'wander' : 'idle'; }
     else if (e.state === 'wander' && !e.neutral) e.state = 'idle';
   }
 

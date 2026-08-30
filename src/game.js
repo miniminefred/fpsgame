@@ -445,6 +445,11 @@ export class Game {
     // Split rather than concatenated: the building holds still and gets indexed,
     // the loose furniture moves every frame and cannot be. See setColliders.
     this.player.setColliders(level.colliders, this.pushColliders);
+    // The same two lists, for the one question the roster asks of them: is the
+    // chair somebody is sitting on still there. Given rather than copied, so
+    // both stay live as props are shot apart and shoved about — see
+    // setColliders in enemies.js.
+    this.enemies.setColliders(level.colliders, this.pushColliders);
     // ...and the slab it may not leave, which is the one containment guarantee
     // that does not depend on any of them resolving correctly. See _contain.
     this.player.setBounds(level.bounds);
