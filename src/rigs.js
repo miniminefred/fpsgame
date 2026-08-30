@@ -899,6 +899,62 @@ function buildRobot(type, rng) {
   };
 }
 
+/**
+ * A tray of lunch, for whoever is on their break — see _lunch in enemies.js.
+ *
+ * Built on demand rather than hidden on every rig the way the sidearm is, and
+ * that is the difference between a handful of these on a floor and a hundred
+ * and fifty: a gun is carried by most of the building and a tray by four people
+ * at a time, so this is the one thing a body is handed rather than born with.
+ *
+ * Geometry AND materials are module-level and never disposed, like `capLabels`
+ * above. A tray is not part of anybody's hit flash — it is not what they are
+ * wearing, it is what they are holding — so it has no business in `mats`, which
+ * is also what keeps it out of the per-body disposal a rig's materials get.
+ *
+ * Authored around the point it is held at, facing -Z like everything else, so
+ * the caller only has to say where the hands are.
+ */
+let trayParts = null;
+
+export function buildTray() {
+  trayParts ??= {
+    geo: {
+      slab: new THREE.BoxGeometry(0.34, 0.02, 0.24),
+      lip: new THREE.BoxGeometry(0.34, 0.025, 0.015),
+      bowl: new THREE.BoxGeometry(0.14, 0.05, 0.14),
+      cup: new THREE.CylinderGeometry(0.032, 0.028, 0.09, 8),
+      // Whatever is on the plate. One box, and its whole job is to be a colour
+      // that is not the tray: at the range you ever see one this is a bright
+      // spot on a grey slab, and that is all it needs to be.
+      food: new THREE.BoxGeometry(0.10, 0.03, 0.10),
+    },
+    mat: {
+      tray: new THREE.MeshStandardMaterial({ color: 0x9aa3ab, roughness: 0.7 }),
+      bowl: new THREE.MeshStandardMaterial({ color: 0xe8e4d8, roughness: 0.85 }),
+      food: new THREE.MeshStandardMaterial({ color: 0xc4622e, roughness: 0.9 }),
+      cup: new THREE.MeshStandardMaterial({ color: 0xd8dde1, roughness: 0.6 }),
+    },
+  };
+
+  const { geo, mat } = trayParts;
+  const group = new THREE.Group();
+  const put = (g, m, x, y, z) => {
+    const mesh = new THREE.Mesh(g, m);
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    group.add(mesh);
+  };
+
+  put(geo.slab, mat.tray, 0, 0, 0);
+  put(geo.lip, mat.tray, 0, 0.012, -0.12);
+  put(geo.lip, mat.tray, 0, 0.012, 0.12);
+  put(geo.bowl, mat.bowl, -0.05, 0.035, -0.01);
+  put(geo.food, mat.food, -0.05, 0.06, -0.01);
+  put(geo.cup, mat.cup, 0.11, 0.055, 0.03);
+  return group;
+}
+
 // The materials a hit flash whitens: the body and what it has on, never the
 // visor (it is the one colour that has to keep meaning what it means) and never
 // the gun. MeshBasicMaterial has no `emissive`, which is what filters those two

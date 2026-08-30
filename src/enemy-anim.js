@@ -54,6 +54,15 @@ const MEAL_ARMS = 0.92;    // forearms on the table, either side of the tray
 const MEAL_REACH = 0.17;   // how far the eating hand goes out over it
 const MEAL_DIP = 0.13;     // and how far the body comes down to meet it
 
+// Lunch, carried. Both arms out in front and level, with the tray across them —
+// a tray is the one thing in the building held in two hands, which is most of
+// what makes somebody carrying one read as carrying one from across a room.
+const TRAY_ARMS = -1.25;
+const TRAY_CARRY = [0, 1.14, -0.44];
+// ...and put down in front of them once they are sitting at it. The group is
+// dropped by DESK_DROP while seated, so this is the table's own height plus it.
+const TRAY_TABLE = [0, 1.03, -0.46];
+
 // Where a limb hangs from and how long it is, in rig space. Same numbers
 // rigs.js builds the body from — this file already restates the gun's and the
 // mop's rest positions the same way, and unlike those two these have a check on
@@ -155,7 +164,20 @@ export function animate(e, dt, audio) {
   const aiming = e.state === 'fight';
   if (e.swing > 0) e.swing -= dt;
 
-  if (e.type.melee) {
+  if (e.tray) {
+    // Carrying lunch, and it wins over both branches below rather than sitting
+    // beside them: a body on its break has put the sidearm away and stopped
+    // swinging whatever was on its desk (see _lunch in enemies.js), so there is
+    // nothing for the melee pose to be about.
+    const k = smoothTo(10, dt);
+    e.armL.rotation.x = lerp(e.armL.rotation.x, TRAY_ARMS, k);
+    e.armR.rotation.x = lerp(e.armR.rotation.x, TRAY_ARMS, k);
+    e.tray.rotation.x = 0;
+    // Bobs with the stride, the way anything held does. Small: a tray carried
+    // by somebody who does not want to drop it does not swing.
+    e.tray.position.set(TRAY_CARRY[0], TRAY_CARRY[1] + Math.sin(e.walkPhase) * 0.012,
+      TRAY_CARRY[2]);
+  } else if (e.type.melee) {
     // Wind up behind the head, then bring it down hard. The weapon rides the
     // right arm so the two read as one motion.
     const winding = e.swing > SWING_TIME * 0.55;
@@ -319,6 +341,16 @@ export function animateEating(e, dt) {
   // pose keeps its lean small: the torso is one box and the collar strip in
   // front of it is another, so a real fold opens a gap at the neck.
   e.torso.rotation.x = 0.06 + dip * MEAL_DIP + breath;
+
+  // The tray goes ON the table rather than staying in their hands, which is the
+  // whole difference between eating and holding lunch. It is put where the
+  // reach above is aimed, so the hand that dips is the hand that dips at it.
+  if (e.tray) {
+    e.tray.position.set(TRAY_TABLE[0], TRAY_TABLE[1], TRAY_TABLE[2]);
+    // Level with the table, not with the body: the torso leans in to eat and
+    // the tray does not lean with it.
+    e.tray.rotation.x = -e.torso.rotation.x;
+  }
 
   // Nothing in a hand — a diner is neutral, so the rig never showed them a gun
   // (see rigs.js) — but a blunt is still possible if anything melee is ever sat
