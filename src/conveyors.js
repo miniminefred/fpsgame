@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { CORRIDOR, SOLID, worldX, worldZ } from './gen/layout.js';
 import { BODY_H } from './metrics.js';
 import { clamp01 } from './util.js';
+import { getTech } from './tech-textures.js';
 
 // Parcel lines: the building moving its own stock about, on the walls.
 //
@@ -79,6 +80,27 @@ const MAX_PARCELS = 110;
 // point is a machine in a corner rather than a line down a corridor.
 const MOTOR_PITCH = 9;
 
+// Metres between the cleats on the belt. The tread canvas carries two of them
+// per tile, so a run is tiled `len / (CLEAT * 2)` times and the pitch lands on a
+// whole cleat however long the line came out — a half-cleat at the join is the
+// one thing on a scrolling texture the eye reliably finds.
+const CLEAT = 0.4;
+// ...and the stripes on the guard rails, which are not scrolled: a rail is
+// bolted down and only the belt inside it moves. Coarse enough to read from the
+// far end of a corridor.
+const STRIPE = 0.55;
+// The lit panel on each drive head. Wide and shallow, because that is the shape
+// of the housing it is let into and the shape of a readout anyway.
+const SCREEN_W = 0.26;
+const SCREEN_H = 0.11;
+// The running light down the front of the deck, and how far apart its lamps
+// are. It is fitted on the OUTER face because that is the only lit surface of a
+// belt a player ever sees: the deck top is above eye height and its underside
+// faces away from every light in the building, so without this a line that is
+// running and a line that has stopped look identical from the corridor.
+const RUNWAY_H = 0.035;
+const RUNWAY_PITCH = 0.5;
+
 const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 export class Conveyors {
@@ -100,18 +122,22 @@ export class Conveyors {
         new THREE.BoxGeometry(0.24, 0.20, 0.34),
         new THREE.BoxGeometry(0.36, 0.16, 0.26),
       ],
+      screen: new THREE.PlaneGeometry(SCREEN_W, SCREEN_H),
     };
+    const tech = getTech();
+    this.tech = tech;
     this.mats = {
-      frame: new THREE.MeshStandardMaterial({ color: 0x3b4149, roughness: 0.5, metalness: 0.5 }),
-      // The belt itself: matte black rubber, which is what makes the boxes on
-      // it read at all in a corridor lit at three quarters.
-      belt: new THREE.MeshStandardMaterial({ color: 0x16181b, roughness: 0.95 }),
-      guard: new THREE.MeshStandardMaterial({ color: 0xd8a12a, roughness: 0.7 }),
+      frame: new THREE.MeshStandardMaterial({
+        map: tech.plate, color: 0x3b4149, roughness: 0.5, metalness: 0.5,
+      }),
       parcel: [
         new THREE.MeshStandardMaterial({ color: 0xb08a5a, roughness: 0.95 }),
         new THREE.MeshStandardMaterial({ color: 0x9c7a4d, roughness: 0.95 }),
         new THREE.MeshStandardMaterial({ color: 0xc2a077, roughness: 0.95 }),
       ],
+      // Shared across every line on the floor, unlike the belt and the rails:
+      // nothing about a readout depends on how long the run under it is.
+      screen: new THREE.MeshBasicMaterial({ map: tech.readout, color: 0xd6f2ff }),
     };
   }
 
@@ -256,14 +282,45 @@ export class Conveyors {
     const L = run.len;
     const mid = -L / 2;
 
+    // The belt and its rails are the two surfaces whose pattern has to run the
+    // LENGTH of this particular line, and a texture carries its own repeat — so
+    // both are per run rather than shared. `clone` shares the canvas underneath,
+    // which is the whole cost: what is per run is two numbers.
+    //
+    // The belt is also the one texture in the game that moves. Scrolling it at
+    // the speed the stock travels is what turns a black slab into something that
+    // is running, and it costs one number a frame (see `update`).
+    run.beltMap = this.tech.tread.clone();
+    run.beltMap.needsUpdate = true;
+    run.beltMap.repeat.set(1, Math.max(1, Math.round(L / (CLEAT * 2))));
+    run.beltMat = new THREE.MeshStandardMaterial({
+      map: run.beltMap, color: 0x24272b, roughness: 0.95,
+    });
+
+    const stripes = this.tech.hazard.clone();
+    stripes.needsUpdate = true;
+    stripes.repeat.set(Math.max(1, Math.round(L / STRIPE)), 1);
+    run.railMat = new THREE.MeshStandardMaterial({
+      map: stripes, color: 0xd8a12a, roughness: 0.7,
+    });
+
+    // The running light, per run for the same reason and scrolled off the same
+    // number. Its map tiles along the plane's OWN x — a plane's u runs along its
+    // width, and turning it to face out of the wall puts that width along the
+    // run — so this one is an `offset.x` where the deck's is an `offset.y`.
+    run.lightMap = this.tech.runway.clone();
+    run.lightMap.needsUpdate = true;
+    run.lightMap.repeat.set(Math.max(1, Math.round(L / RUNWAY_PITCH)), 1);
+    run.lightMat = new THREE.MeshBasicMaterial({ map: run.lightMap });
+
     // The channel bolted to the wall, the deck, and the two rails. The rails
     // are yellow because everything else up there is the colour of the ceiling,
     // and a line whose edges you cannot see is a shelf.
     slab(this.mats.frame, SPINE_W, SPINE_H, L,
       run.wallSign * (DEPTH / 2 + 0.02), DECK_Y + SPINE_H / 2 - 0.02, mid);
-    slab(this.mats.belt, DEPTH, DECK_T, L, 0, DECK_Y - DECK_T / 2, mid);
+    slab(run.beltMat, DEPTH, DECK_T, L, 0, DECK_Y - DECK_T / 2, mid);
     for (const side of [-1, 1]) {
-      slab(this.mats.guard, RAIL_T, RAIL_H, L,
+      slab(run.railMat, RAIL_T, RAIL_H, L,
         side * (DEPTH / 2 - RAIL_T / 2), DECK_Y + RAIL_H / 2, mid);
     }
 
@@ -274,7 +331,28 @@ export class Conveyors {
     }
     for (const end of [-HEAD_L / 2, -L + HEAD_L / 2]) {
       slab(this.mats.frame, DEPTH + 0.04, HEAD_H, HEAD_L, 0, CLEAR_Y + HEAD_H / 2, end);
+      // A panel on the side of the housing, reporting whatever a parcel line
+      // reports. It faces ACROSS the corridor rather than down it, because the
+      // drive head is at the end of the run and the end of a run is the one part
+      // of it you are never standing in front of. Lit, like everything else in
+      // this building with numbers on it.
+      for (const side of [-1, 1]) {
+        const panel = new THREE.Mesh(this.geo.screen, this.mats.screen);
+        panel.position.set(side * (DEPTH / 2 + 0.021), CLEAR_Y + HEAD_H * 0.55, end);
+        panel.rotation.y = side * Math.PI / 2;
+        group.add(panel);
+      }
     }
+
+    // ...and the running light along the front of it. A plane rather than a box:
+    // it is a lamp behind a lens, it is only ever seen from the corridor, and a
+    // box would put the same map on five faces it does not belong on.
+    const light = new THREE.Mesh(
+      new THREE.PlaneGeometry(L, RUNWAY_H), run.lightMat);
+    light.position.set(-run.wallSign * (DEPTH / 2 + 0.004), DECK_Y - DECK_T / 2, mid);
+    light.rotation.y = -run.wallSign * Math.PI / 2;
+    group.add(light);
+    run.lightGeo = light.geometry;
 
     // One collider for the lot of it, with an underside. See the header.
     const hw = (run.dx ? L : DEPTH + 0.04) / 2;
@@ -348,6 +426,21 @@ export class Conveyors {
   update(dt) {
     if (!this.runs.length) return;
 
+    // The belt surface, moving at the speed of the stock on it. One number per
+    // run: the cleats are `CLEAT * 2` metres apart in a tile, so the offset is
+    // in tiles per second rather than metres, and it is wrapped rather than
+    // allowed to grow — a float that climbs for the whole of a long floor loses
+    // the precision the pattern is made of.
+    const roll = (SPEED * dt) / (CLEAT * 2);
+    const flow = (SPEED * dt) / RUNWAY_PITCH;
+    for (const run of this.runs) {
+      run.beltMap.offset.y = (run.beltMap.offset.y + roll) % 1;
+      // Backwards, because a plane turned to face out of the wall has its u
+      // running against the way the stock travels — and a running light that
+      // crawls the wrong way down a belt is the one detail on it anybody checks.
+      run.lightMap.offset.x = (run.lightMap.offset.x - flow) % 1;
+    }
+
     for (const p of this.parcels) {
       const mesh = p.mesh;
 
@@ -410,6 +503,17 @@ export class Conveyors {
       // the same trap the floor cleaner's motor documents in enemies.js.
       for (const m of run.motors) if (m.handle) this.audio?.stopMotor(m.handle);
       this.scene.remove(run.group);
+      // Per-run, so they go with the run. The canvas under a cloned texture is
+      // shared with the one in tech-textures.js and is not ours to release —
+      // disposing a clone drops the GPU copy and leaves the image alone, which
+      // is exactly what is wanted.
+      run.beltMap.dispose();
+      run.railMat.map.dispose();
+      run.lightMap.dispose();
+      run.beltMat.dispose();
+      run.railMat.dispose();
+      run.lightMat.dispose();
+      run.lightGeo.dispose();
     }
     this.runs.length = 0;
     this.meshes.length = 0;
@@ -419,6 +523,7 @@ export class Conveyors {
   dispose() {
     this.clear();
     this.geo.box.dispose();
+    this.geo.screen.dispose();
     for (const g of this.geo.parcel) g.dispose();
     for (const m of Object.values(this.mats)) {
       if (Array.isArray(m)) for (const one of m) one.dispose();

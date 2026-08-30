@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { hexCss } from './util.js';
+import { getTech } from './tech-textures.js';
 
 // What the things walking around a floor are made of.
 //
@@ -696,6 +697,11 @@ function geoFor(key) {
     g.mast = new THREE.BoxGeometry(0.035, 0.10, 0.035);
     g.beacon = new THREE.CylinderGeometry(0.045, 0.045, 0.055, 10);
   }
+  // The lit panel on the front of the chassis. Every machine gets one — it is
+  // the cheapest thing on the roster that says the difference between a painted
+  // box and a box that is switched on, and it is the one part of a machine that
+  // is still doing something while it stands still.
+  g.screen = new THREE.PlaneGeometry(s.torso.size[0] * 0.42, s.torso.size[1] * 0.26);
 
   chassisGeo.set(key, g);
   return g;
@@ -708,6 +714,7 @@ function geoFor(key) {
 function buildRobot(type, rng) {
   const s = CHASSIS[type.chassis];
   const geo = geoFor(type.chassis);
+  const tech = getTech();
 
   const group = new THREE.Group();
   group.rotation.y = rng.range(0, Math.PI * 2);
@@ -726,10 +733,30 @@ function buildRobot(type, rng) {
     skin: new THREE.MeshStandardMaterial({ color: FRAME, roughness: 0.5, metalness: 0.6 }),
     visor: new THREE.MeshBasicMaterial({ color: type.visor }),
     gun: new THREE.MeshStandardMaterial({ color: 0x24272b, roughness: 0.5, metalness: 0.4 }),
+    // Lit rather than lit-upon, like the visor and for the same reason: a screen
+    // that goes dark when the room does is a screen nobody switched on. Tinted
+    // rather than white so the readout carries a little of the machine's own
+    // paint, which is what keeps six of them in a corridor from looking like six
+    // copies of one panel.
+    screen: new THREE.MeshBasicMaterial({ map: tech.readout, color: 0xbfe6ff }),
   };
+  // Plating on the paint and on the frame under it. One image over both, because
+  // it IS one factory finish — what differs is the colour it is multiplying
+  // against, which is the whole reason the canvas is drawn near-white.
+  mats.suit.map = tech.plate;
+  mats.skin.map = tech.plate;
   if (type.melee) Object.assign(mats, bluntMats());
   if (s.tray) {
     mats.parcel = new THREE.MeshStandardMaterial({ color: 0xb08a5a, roughness: 0.95 });
+  }
+  if (s.band) {
+    // The hazard band gets its own material rather than sharing the trim's,
+    // because it is the one part of a machine that is painted to be looked at:
+    // the stripes multiply against a hi-vis yellow instead of against the dark
+    // grey everything else on the loader is.
+    mats.band = new THREE.MeshStandardMaterial({
+      map: tech.hazard, color: 0xe0aa2e, roughness: 0.72,
+    });
   }
   if (s.beacon) {
     // Unlit, like the visor, and for the same reason: a lamp that goes dark
@@ -776,9 +803,9 @@ function buildRobot(type, rng) {
   }
   if (geo.bandF) {
     const y = s.torso.y + s.torso.size[1] * 0.16;
-    extra.push(mesh(geo.bandF, mats.shirt, 0, y, -(s.torso.size[2] / 2 + 0.011)));
+    extra.push(mesh(geo.bandF, mats.band, 0, y, -(s.torso.size[2] / 2 + 0.011)));
     for (const side of [-1, 1]) {
-      extra.push(mesh(geo.bandS, mats.shirt, side * (s.torso.size[0] / 2 + 0.011), y, 0));
+      extra.push(mesh(geo.bandS, mats.band, side * (s.torso.size[0] / 2 + 0.011), y, 0));
     }
   }
   if (geo.fork) {
@@ -825,6 +852,20 @@ function buildRobot(type, rng) {
     beacon = mesh(geo.beacon, mats.beacon, 0, y + 0.128, 0);
     extra.push(beacon);
   }
+
+  // The readout, a couple of millimetres off the plating so it never z-fights
+  // with it. A plane rather than a box: it is a screen, it is only ever seen
+  // from the front, and two triangles on a hundred and fifty bodies is worth
+  // being careful about.
+  const screen = mesh(geo.screen, mats.screen,
+    0, s.torso.y + s.torso.size[1] * 0.12, -(s.torso.size[2] / 2 + 0.006));
+  // A PlaneGeometry faces +Z and a machine faces -Z, so without this the one
+  // lit thing on the front of the chassis is a back face and is not drawn at
+  // all. It is also the only part of a rig that must not cast: a flat quad
+  // pressed against plating shadows itself along its own edge.
+  screen.rotation.y = Math.PI;
+  screen.castShadow = false;
+  extra.push(screen);
 
   let blunt = null;
   let bluntSpec = null;
