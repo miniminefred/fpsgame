@@ -475,6 +475,10 @@ export class Game {
     // How much of this floor's lighting is still on. Read off the theme, which
     // enemies.spawn has already rolled by this point.
     this.lighting.setMood(this.enemies.theme?.light ?? 1);
+    // ...and what colour it is lit in. Always set, never only when a theme asks
+    // for one: the tubes' materials and the scene's fog are shared with the
+    // floor that just ended, so a tint left standing is the next floor's too.
+    this.lighting.setTint(this.enemies.theme?.tint ?? null);
     this.lighting.setOcclusion(level.nav.losClear.bind(level.nav));
     this.minimap.setLevel(level.map);
 

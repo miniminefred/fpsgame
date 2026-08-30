@@ -42,6 +42,16 @@ const PANEL_KEYS = ['panel', 'panelWarm'];
 // the darkest the engine supports, whether that darkness came from a theme, a
 // dead generator, or the two of them at once.
 const MIN_FILL = 0.15;
+// How far a floor's own colour of light carries, per surface — see `tint` on
+// THEMES and setTint below. Three numbers rather than one, in the order the
+// light actually reaches you: the tubes ARE the source and take the colour
+// nearly whole, the fill between them takes most of it, and the haze at the end
+// of a corridor takes the least. A fog pulled all the way to a colour stops
+// reading as distance and becomes a wall of that colour, and the far end of a
+// corridor is the one thing on a floor the player has to be able to read.
+const TINT_LAMP = 0.8;
+const TINT_FILL = 0.6;
+const TINT_HAZE = 0.4;
 
 const SUN_DIR = new THREE.Vector3(0.28, 1, 0.2).normalize();
 const SUN_DIST = 30;
@@ -122,14 +132,52 @@ export function createLighting(scene) {
     const material = getAssets().materials[key];
     return { material, color: material.color.clone() };
   });
+  // This floor's colour of light, or null for the building's own (see setTint).
+  let tint = null;
+
+  // Everything a tint touches, recorded as AUTHORED so every apply starts from
+  // the rest colour instead of compounding onto the last one. The same reason
+  // panelRest exists, and it matters more here than there: the tubes' materials
+  // are shared with every floor that will ever be built, and the fog is the
+  // whole run's — a tint that could not be undone would be a cold blue office
+  // for the rest of the session.
+  const tintable = [
+    ...panelRest.map(({ material, color }) =>
+      ({ target: material.color, rest: color, mix: TINT_LAMP, power: true })),
+    { target: hemi.color, rest: hemi.color.clone(), mix: TINT_FILL },
+    { target: hemi.groundColor, rest: hemi.groundColor.clone(), mix: TINT_FILL },
+    { target: ambient.color, rest: ambient.color.clone(), mix: TINT_FILL },
+    { target: sun.color, rest: sun.color.clone(), mix: TINT_FILL },
+  ];
+  // The haze is the scene's rather than the rig's, and it is only here because
+  // this is the one place that knows what colour the floor is lit in. Guarded
+  // because a scene is not obliged to have either.
+  if (scene.fog) {
+    tintable.push({ target: scene.fog.color, rest: scene.fog.color.clone(), mix: TINT_HAZE });
+  }
+  if (scene.background?.isColor) {
+    tintable.push({ target: scene.background, rest: scene.background.clone(), mix: TINT_HAZE });
+  }
+
+  // Colour first and brightness second: a tint says what the light IS and the
+  // supply says how hard it is being driven, so a floor on quarter power stays
+  // the colour it was rather than fading toward the one it was authored in.
+  function applyColors() {
+    for (const e of tintable) {
+      e.target.copy(e.rest);
+      if (tint) e.target.lerp(tint, e.mix);
+      if (e.power) e.target.multiplyScalar(power);
+    }
+  }
 
   function setFixtures(list) {
     fixtures = list ?? [];
     sinceRehome = REHOME_INTERVAL;
     for (const l of lights) l.intensity = 0;
     spark.intensity = 0;
-    // A new floor has its own supply, and the materials are shared with the
-    // one that just ended.
+    // A new floor has its own supply and its own colour of light, and the
+    // materials carrying both are shared with the one that just ended.
+    setTint(null);
     setPower(1);
   }
 
@@ -177,10 +225,27 @@ export function createLighting(scene) {
    */
   function setPower(level = 1) {
     power = Math.max(0, level);
-    for (const { material, color } of panelRest) {
-      material.color.copy(color).multiplyScalar(power);
-    }
+    applyColors();
     applyFill();
+  }
+
+  /**
+   * What colour this floor is lit in — a hex, or null for the building's own
+   * warm white. A theme's third job, after how many are working the floor and
+   * how much of the lighting is still on (see `tint` on THEMES).
+   *
+   * It is a colour write on shared materials and six lights, so it costs the
+   * same as setPower: nothing is added, removed or recompiled.
+   *
+   * And it has to reach EVERY half of a lit floor, which is the same rule
+   * setPower documents one function down. The tubes you look at, the pools they
+   * cast, the fill between them and the haze at the end of the corridor are one
+   * fact about a floor; tint two of the four and the result does not read as a
+   * floor lit in a colour, it reads as blue lights in a beige building.
+   */
+  function setTint(hex = null) {
+    tint = hex == null ? null : new THREE.Color(hex);
+    applyColors();
   }
 
   // A shot-out ceiling tube or a broken window. Dropping it from the candidate
@@ -255,6 +320,8 @@ export function createLighting(scene) {
       const { f } = pick;
       light.position.set(f.x, f.y, f.z);
       light.color.setHex(f.color);
+      // The pool a tube casts is the same light as the tube — see setTint.
+      if (tint) light.color.lerp(tint, TINT_LAMP);
       light.distance = f.distance;
       // Fade the furthest ones out so a fixture swapping in doesn't pop.
       const edge = f.distance * f.distance;
@@ -269,7 +336,9 @@ export function createLighting(scene) {
   }
 
   function dispose() {
-    // The tubes' materials outlive this lighting rig — see PANEL_KEYS.
+    // The tubes' materials outlive this lighting rig — see PANEL_KEYS — and so
+    // does the scene's own fog.
+    setTint(null);
     setPower(1);
     scene.remove(hemi, ambient, sun, sun.target, spark);
     for (const l of lights) scene.remove(l);
@@ -277,6 +346,7 @@ export function createLighting(scene) {
   }
 
   return {
-    setFixtures, removeFixture, setOcclusion, setMood, setPower, update, dispose, sun, spark,
+    setFixtures, removeFixture, setOcclusion, setMood, setPower, setTint, update, dispose,
+    sun, spark,
   };
 }
