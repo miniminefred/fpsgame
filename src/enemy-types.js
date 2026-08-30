@@ -264,10 +264,16 @@ export const BYSTANDERS = [TYPES.cleaner, TYPES.courier];
 // a weight is a ratio against a pool that keeps growing as you descend (see
 // pickType). What is left over is still rolled on `boost`, so the fifth of the
 // floor that is still breathing keeps a character of its own.
+// `tint` is what colour the floor is lit in, and `cleaners` how many floor units
+// are working it — the two levers a theme has on the BUILDING rather than on who
+// is standing in it. A tint reaches the tubes, the pools they cast, the fill and
+// the haze at once (see setTint in lighting.js), which is what makes it read as
+// a floor lit in that colour rather than as coloured bulbs in a beige office.
 export const THEMES = [
   { name: 'Business as usual', weight: 4, light: 1, rats: [1, 1], patrols: [1, 3], boost: {} },
   { name: 'Infestation', weight: 3, light: 0.34, rats: [4, 6], patrols: [0, 0], share: { reanimated: 0.8 }, boost: { intern: 2 } },
-  { name: 'Automated', weight: 3, light: 0.9, rats: [0, 1], patrols: [1, 2], boost: { sentry: 7, sysadmin: 3 } },
+  { name: 'Automated', weight: 3, light: 0.72, tint: 0x7fb4ff, rats: [0, 0], patrols: [0, 1], cleaners: [3, 5],
+    share: { sentry: 0.75 }, boost: { sysadmin: 6, facilities: 2, reanimated: 0 } },
   { name: 'Lockdown', weight: 2, light: 0.75, rats: [1, 1], patrols: [3, 4], boost: { security: 6, manager: 4 } },
   { name: 'Night shift', weight: 2, light: 0.5, rats: [2, 3], patrols: [1, 2], boost: { reanimated: 4, sentry: 4, facilities: 3 } },
   { name: 'All-hands', weight: 2, light: 1, rats: [1, 1], patrols: [2, 4], boost: { analyst: 6, intern: 5, manager: 3 } },
@@ -309,9 +315,14 @@ export function pickType(floorNumber, rng, theme) {
     .filter(([key]) => TYPES[key] && TYPES[key].unlockFloor <= floorNumber);
   const shared = new Set(shares.map(([key]) => key));
 
+  // A boost of 0 is how a theme says a type is not IN this building tonight —
+  // filtered out rather than left in at zero, because a weightless entry can
+  // still win the walk below on a roll of exactly zero, and `reanimated: 0` on
+  // the machine floor has to mean none rather than almost none.
   const pool = unlocked
     .filter(([key]) => !shared.has(key))
-    .map(([key, t]) => ({ t, w: theme?.boost[key] ?? t.weight }));
+    .map(([key, t]) => ({ t, w: theme?.boost[key] ?? t.weight }))
+    .filter((e) => e.w > 0);
 
   const draw = rng();
   let band = 0;
@@ -340,8 +351,18 @@ export function pickType(floorNumber, rng, theme) {
 // wearing a different name.
 export function pickTheme(floorNumber, rng) {
   const usable = THEMES.filter((theme) => {
+    // A SHARE is the theme's identity rather than a tilt — four in five of the
+    // staff ARE this — so it is required, not preferred: an Automated floor a
+    // depth above the Sentry Unit would be a floor named after machines with no
+    // machine on it, which is the same nothing an Infestation with no
+    // Reanimated would be. `boost` stays a `some`, because a tilt that only
+    // half applies is still a floor with a character.
+    const shares = Object.keys(theme.share ?? {});
+    if (shares.some((k) => !TYPES[k] || TYPES[k].unlockFloor > floorNumber)) return false;
+
     const keys = Object.keys(theme.boost);
-    return !keys.length || keys.some((k) => TYPES[k] && TYPES[k].unlockFloor <= floorNumber);
+    return !keys.length || shares.length
+      || keys.some((k) => TYPES[k] && TYPES[k].unlockFloor <= floorNumber);
   });
   let total = 0;
   for (const theme of usable) total += theme.weight;
