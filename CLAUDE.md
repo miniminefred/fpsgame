@@ -240,6 +240,7 @@ src/
   doors.js        Sliding panels, proximity sensors, and the badged ones
   cameras.js      Wall cameras and laser tripwires, and the alarm they raise
   conveyors.js    Parcel lines on the corridor walls, and the stock on them
+  tech-textures.js  The finish on things that are made rather than fitted
   net.js          Co-op's wire: a code, a peer-to-peer channel, a message pump
   netplay.js      ...and its protocol: who decides what, and what crosses
   remote-player.js  The other player as a body, posed from their packets
@@ -1488,11 +1489,24 @@ corridors (0.20), Loader Units shifting stock (0.14), Welder Units on the racks 
 Survey Drones over all of it (0.09). Measured over 200k draws at floors 2, 3, 4, 6, 12 and
 30: machines 89.9–90.2% throughout and every type within 0.2 of its share.
 
-Four of them are `weight: 0`, and that is how the theme stays a place rather than a tint:
-outside an Automated floor none of them is ever rolled, so meeting a Loader Unit means you
-are on the floor that has loaders on it. The **Sentry Unit** is the exception and always
-was — Facilities bought it to watch a corridor in a building full of people, so it turns up
-in one, and it is the reason `themeUsable` still holds Automated back to floor 2.
+...and a sixth that is on the roster for a different reason. The **Legacy Unit** IS the
+original Sentry Unit — the same numbers, the same grey shell over a pale under-layer, the
+same near-black visor — kept because it is a silhouette the building already had. What it
+does not have is a chassis, and that is its whole character: built on the human rig, it is
+the only machine on the floor shaped like the people it replaced, and at the far end of a
+corridor it reads as staff. Its visor sits a hair off the Sentry's, because no two types
+share one and these two are the same numbers under different bodies.
+
+Which is what `isMachine` is for, and it is a fix rather than a tidy: everywhere the game
+asked whether something was a machine it read the answer off `chassis`, which is a question
+about how a body is DRAWN. The Legacy Unit answered no, and the first thing to notice was
+`_lunchOk` sending a robot to the canteen for its lunch.
+
+Five of them are `weight: 0`, and that is how the theme stays a place rather than a tint:
+outside an Automated floor none is ever rolled, so meeting a Loader Unit means you are on
+the floor that has loaders on it. The **Sentry Unit** is the exception and always was —
+Facilities bought it to watch a corridor in a building full of people, so it turns up in
+one, and it is the reason `themeUsable` still holds Automated back to floor 2.
 
 **A chassis hands back the SAME field names as a person** — `torso`, `head`, `armL`/`armR`,
 `legL`/`legR`, `gun`, `blunt` — and that is the trick the whole thing rests on: the state
@@ -1524,9 +1538,18 @@ are simply higher up, and nothing in the engine has to learn what flight is.
 The Loader Unit is the one machine painted a **colour** rather than a shade, which is right
 (hi-vis is what plant is painted, and the hardest single hit in the building should be
 legible from the end of a corridor) and was not enough on its own: two thirds of a metre of
-flat yellow reads as a crate. A dark hazard band across the front and down each flank is
-what turns it back into a machine, off the same second material the forks and the mast
-already use.
+flat yellow reads as a crate. A hazard band across the front and down each flank is what
+turns it back into a machine.
+
+**And they wear a finish** (`tech-textures.js`). Panel seams and a course of fasteners on the
+paint and on the frame under it, hazard stripes on the Loader's band, and a lit readout on
+every chest — which is the cheapest thing on the roster that says the difference between a
+painted box and a box that is switched on, and the only part of a machine still doing
+something while it stands still. Two details in it are not decoration: the readout is a
+PlaneGeometry turned to face -Z, because a plane faces +Z and a machine does not, so without
+the turn the one lit thing on the front of the chassis is a back face and is not drawn at
+all; and it never casts, because a flat quad pressed against plating shadows itself along its
+own edge. Measured on a floor of 166 machines: 0.5 ms and 15 draw calls for the lot.
 
 **`bystanders` on a theme** is the same argument for the corridors. The harmless traffic is a
 Night Cleaner and a Courier unless a theme names its own, and here it is the **Porter Unit** —
@@ -1745,6 +1768,21 @@ a little inboard so it is not against the room's own wall (one canteen in ten lo
 that way). A rack that still cannot be stood at falls back to the counter, which is not a
 fudge: handing your tray back across the counter you took it from is what you would do, and
 what it buys is that the cycle can always be finished.
+
+**They look like they are running, and that took putting the motion somewhere visible.** A
+belt is fitted at 2.16 m, so the one surface you never see is the one the stock moves on, and
+the underside you DO see faces away from every light in the building — the scrolling tread on
+the deck is honest and invisible, and a line that was running looked exactly like a line that
+had stopped. The `runway` strip is that motion put on the outer face where somebody standing
+in the corridor reads it: bright dashes on a dark band, scrolled at belt speed. Its offset
+runs backwards, because a plane turned to face out of a wall has its u against the way the
+stock travels, and a running light crawling the wrong way down a belt is the one detail on it
+anybody checks. The rails wear the same hazard stripes the Loader's band does.
+
+The belt, its rails and its running light are per RUN rather than shared, because all three
+carry a pattern that has to run the length of that particular line and a repeat lives on the
+texture rather than on the material. `clone` shares the canvas underneath, so what is per run
+is two numbers.
 
 `_stroll` is the walk lifted out of `_wander` so both callers can have it, and it **returns
 what happened** rather than recovering itself — a neutral makes a whole new plan and somebody
