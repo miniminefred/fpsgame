@@ -111,6 +111,10 @@ export const TYPES = {
     // punishes backing into a corner rather than standing in the open.
     name: 'Reanimated', hp: 2.4, speed: 0.86, damage: 1.3, rate: 1.35, spread: 1,
     range: 2.1, melee: true, scale: 1.03, blunt: ['chairLeg', 'extinguisher'],
+    // Which is also the whole of why it does not stop for lunch (see _lunchOk in
+    // enemies.js). A machine has nowhere to put it; this one has no interest in
+    // it. Between them that is every hostile in the building that is not staff.
+    undead: true,
     suit: 0x33502c, shirt: 0x8fb063, visor: 0x66ff4d, voice: 'zombie',
     unlockFloor: 1, weight: 3,
   },

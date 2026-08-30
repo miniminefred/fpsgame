@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BODY_RADIUS as RADIUS } from './nav.js';
 import { CORRIDOR, STAFF_ONLY, FIRST_CONTACT_GAP, worldX, worldZ } from './gen/layout.js';
-import { buildRig } from './rigs.js';
+import { buildRig, buildTray } from './rigs.js';
 import { TYPES, BYSTANDERS, pickType, pickTheme } from './enemy-types.js';
 import { DEATH_TIME, HIT_FLASH, SWING_TIME, animate, die } from './enemy-anim.js';
 import { angleDelta, angleLerp, smoothTo } from './util.js';
@@ -32,6 +32,15 @@ const SNAP_UNIT = 100;
 // walking, and getting that wrong is a floor of people sliding about with still
 // legs.
 const SNAP_STATES = ['idle', 'alert', 'chase', 'fight', 'wander'];
+// The flags that ride in the same slot, above the three bits the state takes.
+// A break has to cross because the VISOR is on the other side of it: it is the
+// game's one universal tell, and a joiner looking at an employee with its own
+// colour on that is not going to shoot back is being lied to. The tray goes with
+// it rather than being derived from the break, because a body walks the first
+// and last beat of a lunch without one.
+const SNAP_SEAT = 8;
+const SNAP_BREAK = 16;
+const SNAP_TRAY = 32;
 
 // How far from either player a body has to be before it is worth sending. Well
 // beyond SIGHT, because the joiner can watch somebody walk up a corridor long
@@ -239,6 +248,39 @@ const GUARD_GAP = 0.8;         // metres between two men in one room
 // the floor is too busy to be.
 const DINERS = [2, 5];
 const DINERS_STANDING = [0, 2];
+
+// Lunch, and the shape of a break. See the block above `_sendToLunch`.
+//
+// LUNCH_MAX is employees away from their post at once, and it is deliberately a
+// handful: the point of a break is that you catch somebody at one, and a canteen
+// with a queue out of the door is a floor that has stopped being an office. What
+// bounds the total in the room is the chairs — `_lunchStart` takes one out of
+// the same pool the arrival diners came from and cannot start without it.
+const LUNCH_MAX = 4;
+const LUNCH_FIRST = 25;        // seconds before the first employee downs tools
+const LUNCH_GAP = [14, 34];    // ...and between one and the next
+const LUNCH_DARTS = 24;        // tries at finding a willing body — see _sendToLunch
+const LUNCH_PACE = 0.85;       // somebody walking to lunch has not noticed you
+const LUNCH_ARRIVE = 1.1;      // metres: near enough to a counter or a chair
+// Any walking stage that takes longer than this is abandoned and the body goes
+// back to work where it stands. It is a backstop rather than a timeout anybody
+// should reach: a break that quietly never ends is a body that is harmless for
+// the rest of the floor and still has to be killed to clear it.
+//
+// Generous on purpose. Measured on a deep floor, a walk from an office at one
+// end of the building to the counter took a Security fifty seconds at lunch
+// pace — so a cap that merely looked comfortable was cutting real journeys
+// short, and a body that gives up half way to the canteen goes back to work in
+// the middle of a corridor for no reason the player can see.
+const LUNCH_STAGE_CAP = 100;
+const SERVE_TIME = [2.5, 5];   // at the counter, being served
+const EAT_TIME = [40, 90];     // at the table
+const EAT_FIRST = [70, 150];   // ...and the arrival canteen's longer first sitting
+const DROP_TIME = [1.5, 3];    // putting the tray back
+// The canteen blue, taken off the type that wears it permanently rather than
+// written down twice: what "on a break" looks like is one colour in this
+// building, and a second copy of it is a second colour within a week.
+const BREAK_VISOR = TYPES.diner.visor;
 // Metres of the arrival point kept to yourself. The seats are outside it anyway
 // — no table is furnished into the square kept clear where the player
 // materialises — so this is only ever about the ones on their feet, who are
@@ -365,6 +407,21 @@ export class Enemies {
     // The canteen's chairs, pooled apart from the desks because they are not
     // jobs: see `at` on sink.workstation in gen/build.js.
     this.tables = deskPool(workstations, nav, rng, 'table');
+    // Where you queue and where the trays go back, both registered by the
+    // furnisher because it is the only thing that knows where the counter
+    // actually landed (see `cafeteria` in gen/rooms.js). Unlike a chair these
+    // are shared and never taken out of the pool: a serving hatch is somewhere
+    // you stand for four seconds, not somewhere you sit for a minute.
+    this.servery = deskPool(workstations, nav, rng, 'servery').get(layout.spawnRoom) ?? [];
+    // ...and where they go back. Falling back to the counter itself is not a
+    // fudge: a rack that a body cannot stand at is dropped like any other
+    // station, and handing your tray back across the counter you took it from is
+    // what you would do in a canteen that has no rack. What it buys is that the
+    // cycle can always be finished — a break with nowhere to put the tray down
+    // is a body stuck holding it for the rest of the floor.
+    this.trayRack = (deskPool(workstations, nav, rng, 'trays').get(layout.spawnRoom) ?? [])[0]
+      ?? this.servery[0] ?? null;
+    this.lunchTimer = LUNCH_FIRST;
 
     const spots = this._spawnPoints(layout, nav, rng, tuning.count);
     // A room holds a team, not a headcount. Whoever is in a room is in it
@@ -889,7 +946,13 @@ export class Enemies {
     for (let i = rng.int(DINERS[0], DINERS[1]); i > 0; i--) {
       const seat = this._takeDesk(room, (x, z) => nav.clear(x, z, RADIUS), this.tables);
       if (!seat) break;
-      this._seat(this._add(seat.x, seat.z, rng, tuning, TYPES.diner), seat, 'table');
+      const diner = this._add(seat.x, seat.z, rng, tuning, TYPES.diner);
+      this._seat(diner, seat, 'table');
+      // Half way through the cycle rather than at the start of it: they are
+      // already eating when the floor opens, because that is the picture the
+      // arrival is for. Everything after this beat is the same cycle any
+      // employee who comes down for lunch later will walk. See _lunch.
+      this._lunchSeated(diner, seat, rng);
     }
 
     // And a couple on their feet: at the counter, in a gangway, wherever the room
@@ -1353,6 +1416,15 @@ export class Enemies {
       // Manager at his own, one guard on the cameras — and null for everybody
       // else, which is standing up. See animateWorking in enemy-anim.js.
       seat: null,
+      // Somebody's lunch: which beat of the cycle they are on, and the tray in
+      // their hands while they are on it. Both null for the whole building most
+      // of the time — see the block above _sendToLunch.
+      break: null,
+      tray: null,
+      // One break a floor, and this is what says so. Without it a body that has
+      // just walked out of the canteen is `idle` again and eligible again, and
+      // the same man queues twice while nobody else goes at all.
+      lunchDone: false,
       // The materials a hit whitens: whatever this one is actually wearing.
       flash: rig.flash ?? [],
     };
@@ -1425,6 +1497,12 @@ export class Enemies {
     if (!e.alive) return null;
     e.health -= damage;
     e.hitFlash = HIT_FLASH;
+    // Lunch is over. This is what keeps the visor honest: a body on its break is
+    // out of the state machine entirely, and the frame that stops being true is
+    // the frame its eyes stop saying it. Everything below then treats them as
+    // whatever they actually are — a neutral runs, an employee gets up and
+    // fights — and neither branch has to know there was ever a tray.
+    if (e.break) this._lunchEnd(e);
     // Being shot at is a reliable way to get someone's attention.
     if (e.neutral) {
       // They have nothing to fight you with and never did. Zeroing the timer
@@ -1457,6 +1535,11 @@ export class Enemies {
   _die(e, hit = null) {
     e.alive = false;
     e.deathTime = DEATH_TIME;
+    // A chair nobody is ever going to sit in, and a tray that would otherwise
+    // ride a ragdoll down: `_lunchEnd` hands both back. The visor it restores is
+    // overwritten a few lines below for anything that ragdolls, which is right —
+    // dead is a louder thing to say than off duty.
+    if (e.break) this._lunchEnd(e);
     // A dead machine stops making machine noise. Nothing else clears this, and
     // the loop would otherwise run on out of a wreck for the rest of the floor.
     if (e.motor) { this.audio?.stopMotor(e.motor); e.motor = null; }
@@ -1611,6 +1694,15 @@ export class Enemies {
     }
 
     if (this.puppet) { this._poseAll(dt, audio); return; }
+
+    // Whose turn it is at the counter. Host side only, with everything else that
+    // decides what the roster does — a joiner is posed from snapshots and a
+    // break arrives on the wire like every other state (see `snapshot`).
+    this.lunchTimer -= dt;
+    if (this.lunchTimer <= 0) {
+      this.lunchTimer = LUNCH_GAP[0] + Math.random() * (LUNCH_GAP[1] - LUNCH_GAP[0]);
+      this._sendToLunch();
+    }
     if (this.shoutTimer > 0) this.shoutTimer -= dt;
 
     for (const e of this.items) {
@@ -1622,6 +1714,7 @@ export class Enemies {
       const target = this._pick(e, live);
       if (!target) {
         e.contact += dt;
+        if (e.break) { this._lunch(e, dt, audio); animate(e, dt, audio); continue; }
         if (e.neutral) { this._wander(e, dt, audio); animate(e, dt, audio); continue; }
         this._think(e, dt, Infinity, false, false, null);
         this._move(e, dt, 0, 0, 1, false);
@@ -1660,14 +1753,19 @@ export class Enemies {
       // Neutrals are not in the state machine at all: no alert, no chase, no
       // weapon. Seeing you and hearing you change nothing — the only thing that
       // does is being shot, and that makes them run rather than fight.
-      if (e.neutral) {
+      if (e.neutral || e.break) {
         // Where this one is running away FROM. `_repick` needs it and is called
         // from places with no target to hand, so it is set per body rather than
         // once per frame: with two players on the floor, "away" has to be away
         // from the one who actually shot at them.
         this.playerX = target.x;
         this.playerZ = target.z;
-        this._wander(e, dt, audio);
+        // Somebody on their break is out of the state machine exactly as far as
+        // a neutral is, whatever their type says — no alert, no chase, no
+        // weapon. Seeing you and hearing you change nothing; being shot ends the
+        // break, and `_damage` is where that happens.
+        if (e.break) this._lunch(e, dt, audio);
+        else this._wander(e, dt, audio);
         animate(e, dt, audio);
         continue;
       }
@@ -1794,24 +1892,38 @@ export class Enemies {
       }
     }
 
-    // Downhill on his own field, not straight at the destination: the whole
-    // point of giving him one is that he goes round the wall instead of into it.
-    const dir = this.nav.descendOn(e.field, e.x, e.z, this._v);
-    if (!dir) { this._repick(e); return; }
-
     const speed = this.tuning.speed * e.type.speed * (e.flee > 0 ? FLEE_SPEED : 1);
+    if (this._stroll(e, dt, speed) !== 'moved') this._repick(e);
+  }
+
+  /**
+   * One frame of walking downhill on this body's OWN field, not straight at
+   * whatever it is heading for: the whole point of giving somebody a field is
+   * that they go round the wall instead of into it.
+   *
+   * Returns what happened, because the two callers recover differently — a
+   * neutral makes a whole new plan and somebody on their lunch re-floods to the
+   * same counter, and neither wants the other's answer.
+   *
+   *   'moved'   made ground, or is sidestepping something and still might
+   *   'stuck'   wedged for long enough that the plan is the problem
+   *   'noroute' not on the field at all
+   */
+  _stroll(e, dt, speed) {
+    const dir = this.nav.descendOn(e.field, e.x, e.z, this._v);
+    if (!dir) return 'noroute';
+
     const movedX = this._tryMove(e, dir.x * speed * dt, 0);
     const movedZ = this._tryMove(e, 0, dir.z * speed * dt);
     // Wedged against something the grid thinks is passable. Sidestep first —
     // it is usually a doorway they are half a metre to the side of — and only
-    // make a whole new plan if that gets nowhere either.
+    // hand the problem back if that gets nowhere either.
     if (!movedX && !movedZ) {
       e.stuck += dt;
       const step = speed * dt;
       if (!this._tryMove(e, -dir.z * e.strafe * step, dir.x * e.strafe * step)) {
         e.strafe *= -1;
       }
-      if (e.stuck > 0.6) this._repick(e);
     } else {
       e.stuck = 0;
     }
@@ -1825,6 +1937,7 @@ export class Enemies {
     e.group.position.y = e.y;
     e.yaw = angleLerp(e.yaw, Math.atan2(-dir.x, -dir.z), smoothTo(9, dt));
     e.group.rotation.y = e.yaw;
+    return e.stuck > 0.6 ? 'stuck' : 'moved';
   }
 
   // Somewhere else, and a route to it. Sampled rather than searched: a handful
@@ -1878,6 +1991,374 @@ export class Enemies {
     e.wanderX = e.x;
     e.wanderZ = e.z;
     e.wanderTimer = 0.6;
+  }
+
+  // --- lunch ------------------------------------------------------------------
+  //
+  // The canteen is the one room on the floor with a JOB that is not fighting
+  // you, and until now the people in it did that job for ever: placed in a chair
+  // at floor generation and still in it when the floor ended. A break that never
+  // ends is a tableau rather than a shift.
+  //
+  // So there is a cycle, and both halves of the canteen run the same one: walk
+  // in, queue at the counter, take a tray, find a seat, eat, take the tray back,
+  // and leave. The staff the floor opens on start half way through it — already
+  // seated, already eating — because that is the picture the arrival is for.
+  //
+  // What makes it more than scenery is who else can join. **An ordinary employee
+  // takes a break**: they down tools, their visor goes to the canteen blue, they
+  // walk the whole cycle, and their own colour comes back as they walk out. The
+  // visor is the game's one universal tell (see the note above TYPES), and this
+  // is the first thing in the building that changes it at runtime — so the rule
+  // it states has to stay exactly true in both directions:
+  //
+  //   BLUE EYES ARE NOT FIGHTING YOU. A body on its break is out of the state
+  //   machine entirely: no alert, no chase, no weapon in its hands, exactly like
+  //   a neutral. Walking past one costs nothing, which is the whole promise the
+  //   chair has always made.
+  //
+  //   ...AND THE TELL IS LIVE. Any damage ends the break on the spot (see
+  //   `_damage`), so the frame a body stops being harmless is the frame its eyes
+  //   stop saying it is. Shoot into a canteen and you are in a fight with
+  //   whoever was in it; leave them alone and you are not.
+  //
+  // Two things it deliberately does NOT change. A body on break still counts
+  // toward clearing the floor, because `hostileCount` reads `e.neutral`, which
+  // is a fact about the TYPE and is never touched here — a count that moved
+  // would make "floor cleared" fire and un-fire, and the black card is timed off
+  // it. And the minimap still shows them as what they are, because the two
+  // markers answer different questions: the map says whether you have to shoot
+  // this eventually, and the visor says whether it is about to shoot you.
+  //
+  // Machines do not eat. `type.chassis` is the whole of that test.
+
+  /** How many employees have downed tools right now — the arrival diners are not
+   * counted, because they are not away from a post. */
+  get _atLunch() {
+    let n = 0;
+    for (const e of this.items) if (e.alive && e.break && !e.neutral) n++;
+    return n;
+  }
+
+  /**
+   * Every so often, somebody decides it is lunchtime.
+   *
+   * Sampled rather than filtered: the roster is two hundred people and this runs
+   * every twenty seconds or so, so a couple of dozen darts at it is both cheaper
+   * and no worse — failing simply means nobody went this time, and somebody goes
+   * on the next one.
+   *
+   * Runtime dice are `Math.random`, never the floor's own seeded stream, for the
+   * reason `_repick` and `_damage` already are: that stream is what the floor was
+   * built from and what an alarm response still rolls off, and spending it on
+   * whose turn it is at the counter would move both.
+   */
+  _sendToLunch() {
+    if (!this.servery?.length || !this.trayRack) return;
+    if (this._atLunch >= LUNCH_MAX) return;
+
+    // Can anybody get there, and who? Flooded ONCE from the counter into a
+    // field of the module's own and then read for each candidate, rather than
+    // per dart: the field from a fixed point is the same field whoever is
+    // asking, and two dozen floods of a ten thousand tile floor every twenty
+    // seconds to answer one question is the shape of loop this file has been
+    // caught writing three times.
+    //
+    // The answer moves over a floor, and that is the interesting part. Measured
+    // on floor 3: with nothing in your pocket **5 of 79** staff can reach the
+    // canteen — the ones already in the corridors — because a badged door is out
+    // of the nav grid entirely. Take one white card, 170 doorways hand their
+    // openings back, and it is **77 of 79**. So the building goes to lunch once
+    // the building has been opened, which is not a rule anybody wrote.
+    const counter = this.servery[(Math.random() * this.servery.length) | 0];
+    this._lunchField ??= this.nav.makeField();
+    if (!this.nav.floodTo(this._lunchField, counter.x, counter.z)) return;
+
+    const n = this.items.length;
+    for (let tries = 0; tries < LUNCH_DARTS && n; tries++) {
+      const e = this.items[(Math.random() * n) | 0];
+      if (!this._lunchOk(e)) continue;
+      // Asked BEFORE anything is committed. A body that cannot reach the canteen
+      // today may well be able to in a minute, so it must not be marked as
+      // having had its break — which is what starting one and failing would do,
+      // and it would quietly take nine tenths of the floor out of the running
+      // before the player had opened a single door.
+      if (!this.nav.descendOn(this._lunchField, e.x, e.z, this._v)) continue;
+      if (this._lunchStart(e, counter)) return;
+    }
+  }
+
+  /**
+   * Whether this one may go for lunch at all.
+   *
+   * `layer === 0` is the sharp one and it is a limit rather than an oversight:
+   * the walk is `_stroll` on a field flooded to a point, which is the neutrals'
+   * own machinery and has always been ground-floor shaped. Somebody in an attic
+   * stays in their attic, which is the honest answer rather than a body that
+   * sets off downstairs and gets stuck on a landing.
+   */
+  _lunchOk(e) {
+    return e.alive && !e.neutral && !e.behindLock && !e.break && !e.seat
+      && !e.lunchDone              // one break a floor
+      && !e.type.chassis           // a machine has nowhere to put it
+      && !e.type.undead            // ...and this one is off the payroll
+      && !e.keyed                  // an alarm response is not going for lunch
+      && e.state === 'idle'        // ...and neither is anybody already in a fight
+      && e.layer === 0;
+  }
+
+  /**
+   * Sends one body off on the cycle. Returns false if the canteen cannot take
+   * them, which is a perfectly ordinary answer: every chair may be full.
+   *
+   * The seat is claimed HERE rather than when they arrive at the table, and that
+   * is the same argument `_takeDesk` makes for everybody else — two people dealt
+   * one chair is two bodies eating the same lunch. It costs a chair being held
+   * by somebody still queueing, which is what a tray on a table means anyway.
+   */
+  _lunchStart(e, counter) {
+    const room = this.layout?.spawnRoom;
+    if (!room) return false;
+
+    const seat = this._takeDesk(room, (x, z) => this.nav.clear(x, z, RADIUS), this.tables);
+    if (!seat) return false;
+
+    e.break = { stage: 'go', at: null, seat, timer: LUNCH_STAGE_CAP };
+    this._lunchLook(e, true);
+    this._lunchGo(e, counter, 'go');
+    return true;
+  }
+
+  /** Already at a table with their lunch in front of them: the arrival canteen. */
+  _lunchSeated(e, seat, rng) {
+    e.break = {
+      stage: 'eat', at: null, seat,
+      // A longer first sitting than anybody who arrives later gets. The room the
+      // floor opens in is a picture before it is a process, and four people who
+      // stand up and file out inside a minute is the picture gone before the
+      // player has finished reading it.
+      timer: rng.range(EAT_FIRST[0], EAT_FIRST[1]),
+    };
+    // `idle` is what keeps them in the chair, and it has to be said HERE as well
+    // as at the end of the walk: every neutral is spawned into `wander`, and the
+    // animator stands up any seated body whose state is anything else. Without
+    // it the whole canteen was out of its chairs on the first frame — which is
+    // the same bug `_wander` documents, one caller further along.
+    e.state = 'idle';
+    this._lunchLook(e, true);
+    this._giveTray(e);
+  }
+
+  /**
+   * One frame of somebody's break. Runs instead of the state machine, not
+   * beside it — see the note above.
+   */
+  _lunch(e, dt, audio) {
+    const b = e.break;
+    b.timer -= dt;
+
+    // Lunch is where the building does its talking. Same cadence as the idle
+    // grumble everywhere else, off the same timer.
+    e.voiceTimer -= dt;
+    if (e.voiceTimer <= 0) {
+      e.voiceTimer = 7 + Math.random() * 11;
+      audio.enemyIdle(e);
+    }
+
+    switch (b.stage) {
+      case 'go':
+        // Out of the office and into the queue.
+        if (b.timer < 0) { this._lunchEnd(e); return; }
+        if (this._lunchWalk(e, dt, b.at)) {
+          this._lunchStand(e, b.at, 'collect', SERVE_TIME);
+        }
+        return;
+
+      case 'collect':
+        // Being served. The tray arrives at the END of it, because what is being
+        // waited for is the food.
+        if (b.timer > 0) return;
+        this._giveTray(e);
+        this._lunchGo(e, b.seat, 'toseat');
+        return;
+
+      case 'toseat':
+        if (b.timer < 0) { this._lunchEnd(e); return; }
+        if (this._lunchWalk(e, dt, b.seat)) {
+          this._seat(e, b.seat, 'table');
+          // `idle` is what keeps them in the chair: the animator stands up any
+          // seated body whose state is anything else (see `animate` in
+          // enemy-anim.js), which is the same trap `_wander` documents.
+          e.state = 'idle';
+          b.stage = 'eat';
+          b.timer = EAT_TIME[0] + Math.random() * (EAT_TIME[1] - EAT_TIME[0]);
+        }
+        return;
+
+      case 'eat':
+        if (b.timer > 0) return;
+        // Up, and the chair goes back in the pool for the next one. Setting
+        // `wander` is the whole of standing up and this must not clear `e.seat`
+        // itself: `stand` in enemy-anim.js is the only thing that puts the hips
+        // and shoulders back, and a body that left its chair any other way
+        // carries the chair's joints around the floor for the rest of the run.
+        e.state = 'wander';
+        this._freeDesk(b.seat);
+        b.seat = null;
+        this._lunchGo(e, this.trayRack, 'return');
+        return;
+
+      case 'return':
+        if (b.timer < 0) { this._lunchEnd(e); return; }
+        if (this._lunchWalk(e, dt, this.trayRack)) {
+          this._lunchStand(e, this.trayRack, 'drop', DROP_TIME);
+        }
+        return;
+
+      case 'drop':
+        if (b.timer > 0) return;
+        this._takeTray(e);
+        // Somewhere out of the canteen. `_repick` is the neutrals' own pick and
+        // it prefers corridors, which is exactly right here: the canteen is a
+        // room, so every corridor tile on the floor is out of it.
+        this._repick(e);
+        this._lunchGo(e, { x: e.wanderX, z: e.wanderZ }, 'leave');
+        return;
+
+      case 'leave':
+      default:
+        // Back on the clock the moment they are out of the room, which is the
+        // one thing about this that had to be true: the eyes change where the
+        // player can see it happen, and never in the room they arrived in.
+        if (b.timer < 0 || !this._inRoom(this.layout.spawnRoom, e.x, e.z)) {
+          this._lunchEnd(e);
+          return;
+        }
+        this._lunchWalk(e, dt, b.at);
+    }
+  }
+
+  // Standing at the counter for a moment, turned to face it. The station's own
+  // quarter turn is converted the one way it can be — the same line `_seat` uses,
+  // because a body standing at a counter and a chair pulled up to a desk are
+  // facing what they are facing for the same reason.
+  _lunchStand(e, at, stage, span) {
+    e.state = 'idle';
+    e.moving = false;
+    e.yaw = -at.rot * Math.PI / 2;
+    e.group.rotation.y = e.yaw;
+    e.break.stage = stage;
+    e.break.timer = span[0] + Math.random() * (span[1] - span[0]);
+  }
+
+  // Points this one at somewhere and floods the field that walks them there. A
+  // failed flood leaves the timer negative, which every walking stage reads as
+  // "no route, give it up".
+  _lunchGo(e, to, stage) {
+    const b = e.break;
+    b.at = to;
+    b.stage = stage;
+    b.timer = LUNCH_STAGE_CAP;
+    e.state = 'wander';
+    e.stuck = 0;
+    e.field ??= this.nav.makeField();
+    // Both halves, and the second one is the whole of it: a flood that reaches
+    // the counter says nothing about whether it reached HERE. Most of the staff
+    // are behind a badged door, which is out of the nav grid entirely (see the
+    // note about hearing in the header), so before the player has taken a white
+    // card the only people who can get to the canteen are the ones already in
+    // the corridors — and once one is taken, ~190 doors hand their openings back
+    // and the whole building can. Checked rather than assumed, because a body
+    // that sets off for a lunch it cannot reach spends the whole stage cap
+    // re-flooding the floor from a tile it is not standing on.
+    if (!to || !this.nav.floodTo(e.field, to.x, to.z)
+      || !this.nav.descendOn(e.field, e.x, e.z, this._v)) b.timer = -1;
+  }
+
+  // One step of a walk with a destination. True once they are there.
+  _lunchWalk(e, dt, to) {
+    if (!to) return true;
+    if (Math.hypot(to.x - e.x, to.z - e.z) < LUNCH_ARRIVE) return true;
+
+    // Unhurried on purpose. Somebody walking to their lunch at chase speed is
+    // somebody who has noticed you.
+    const speed = this.tuning.speed * e.type.speed * LUNCH_PACE;
+    if (this._stroll(e, dt, speed) !== 'moved') {
+      // Wedged, or off the field. Re-flooding is the only recovery there is —
+      // the floor changes shape as furniture is destroyed — and it is done ONCE
+      // and then checked, rather than retried every frame: a body that is not on
+      // the field will not be on the re-flooded one either, and left to try again
+      // it floods the whole floor thirty times a second for the length of the
+      // stage cap. `e.stuck` is reset so a sidestep gets its chance first.
+      e.stuck = 0;
+      if (!this.nav.floodTo(e.field, to.x, to.z)
+        || !this.nav.descendOn(e.field, e.x, e.z, this._v)) e.break.timer = -1;
+    }
+    return false;
+  }
+
+  /**
+   * The break is over, however it ended: finished, given up on, or shot at.
+   *
+   * Everything it hands back has to be handed back exactly once — the chair, the
+   * tray, the visor and the sidearm — which is why every path out of a break
+   * goes through here rather than unwinding itself.
+   */
+  _lunchEnd(e) {
+    if (!e.break) return;
+    e.lunchDone = true;
+    if (e.break.seat) this._freeDesk(e.break.seat);
+    e.break = null;
+    this._takeTray(e);
+    this._lunchLook(e, false);
+
+    // Out of the chair if they were still in one. Not by clearing `e.seat` —
+    // see the note in the `eat` case above — but by leaving them in a state the
+    // animator will stand them up out of. `_damage` overwrites this with `alert`
+    // a line later when the break ended because somebody shot them, and that is
+    // a standing state too.
+    if (e.seat) e.state = 'wander';
+    else if (e.state === 'wander' && !e.neutral) e.state = 'idle';
+  }
+
+  // Blue eyes and empty hands, or their own colour and whatever they carry.
+  // Both at once, always, because they are one statement: this one is not
+  // fighting you at the moment.
+  _lunchLook(e, on) {
+    e.mats?.visor?.color.setHex(on ? BREAK_VISOR : e.type.visor);
+    // Same test the rig builds the sidearm's visibility from (see rigs.js), with
+    // the break on top of it — so a type that never had one does not acquire one
+    // at the end of its lunch.
+    if (e.gun) e.gun.visible = !on && !e.type.melee && !e.type.neutral;
+    if (e.blunt) e.blunt.visible = !on;
+  }
+
+  _giveTray(e) {
+    if (e.tray) return;
+    e.tray = buildTray();
+    e.group.add(e.tray);
+  }
+
+  // Geometry and materials are shared and module-level (see buildTray), so
+  // there is nothing here to dispose — dropping the meshes is the whole of it.
+  _takeTray(e) {
+    if (!e.tray) return;
+    e.group.remove(e.tray);
+    e.tray = null;
+  }
+
+  // A chair back into the pool it came out of. The room is the canteen's,
+  // because that is the only room this pool ever holds.
+  _freeDesk(station) {
+    const room = this.layout?.spawnRoom;
+    const free = room && this.tables?.get(room);
+    if (free) free.push(station);
+  }
+
+  _inRoom(room, x, z) {
+    if (!room) return false;
+    const tx = this.nav.tx(x), ty = this.nav.ty(z);
+    return tx >= room.x0 && tx < room.x1 && ty >= room.y0 && ty < room.y1;
   }
 
   // Idle staff grumble to themselves now and then, which is what tells you a
@@ -2246,10 +2727,13 @@ export class Enemies {
       out[written++] = Math.round(e.z * SNAP_UNIT);
       out[written++] = Math.round(e.y * SNAP_UNIT);
       out[written++] = Math.round(e.yaw * SNAP_UNIT);
-      // One slot for everything that is not a coordinate: which state, and
-      // whether they are still in a chair. Both change how `animate` poses them,
-      // and neither is worth a number of its own.
-      out[written++] = SNAP_STATES.indexOf(e.state) + (e.seat ? 8 : 0);
+      // One slot for everything that is not a coordinate, three bits of state
+      // and three flags. `animate` poses off all of them and none is worth a
+      // number of its own.
+      out[written++] = SNAP_STATES.indexOf(e.state)
+        + (e.seat ? SNAP_SEAT : 0)
+        + (e.break ? SNAP_BREAK : 0)
+        + (e.tray ? SNAP_TRAY : 0);
     }
 
     this._snapCursor = i;
@@ -2272,17 +2756,26 @@ export class Enemies {
       e.netYaw = a[k + 4] / SNAP_UNIT;
       const packed = a[k + 5];
       // Whether they are still sitting is the host's; WHICH seat it is is a fact
-      // about the floor, and both browsers generated the same one from the same
-      // seed. So the bit only ever stands somebody up — the fallback is there
-      // for form, since a body that has left its chair never gets back into it,
-      // and a desk is the only seat there is.
-      if (!(packed & 8)) e.seat = null;
-      // Only ever fills in a seat the joiner does not already have. Which seat
-      // it is comes off the TYPE rather than being assumed to be a desk: both
-      // browsers generated the same floor and the same roster, so a body that
-      // eats lunch is eating lunch on both ends, and defaulting a diner to a
-      // desk would sit them typing at a canteen table.
-      else e.seat ??= e.type.dines ? 'table' : 'desk';
+      // about the floor. A chair a body was placed in came from the same seed on
+      // both ends — but a chair it WALKED to did not, because whose turn it is
+      // at the counter is decided at runtime and only the host decides it. So
+      // the break bit answers that: on a break, the seat is a canteen table by
+      // construction, since that is the only seat a break ever ends at.
+      if (!(packed & SNAP_SEAT)) e.seat = null;
+      else e.seat ??= (packed & SNAP_BREAK) || e.type.dines ? 'table' : 'desk';
+
+      // The break itself, which is the visor and the empty hands. Kept as a
+      // plain flag rather than the host's own `break` object: the joiner runs no
+      // part of the cycle, it only has to draw the body correctly, and giving it
+      // a half-populated stage machine is how it would end up trying to.
+      const onBreak = !!(packed & SNAP_BREAK);
+      if (onBreak !== !!e.break) {
+        e.break = onBreak ? { stage: 'net', at: null, seat: null, timer: 0 } : null;
+        this._lunchLook(e, onBreak);
+      }
+      if (!!(packed & SNAP_TRAY) !== !!e.tray) {
+        if (packed & SNAP_TRAY) this._giveTray(e); else this._takeTray(e);
+      }
       e.state = SNAP_STATES[packed & 7] ?? 'idle';
     }
   }
@@ -2364,8 +2857,12 @@ export class Enemies {
     this.items.length = 0;
     this.meshes.length = 0;
     // The desks belong to the floor being torn down, and every one of them holds
-    // a reference to one of its rooms.
+    // a reference to one of its rooms. So do the canteen's chairs and its
+    // counter, which is the same fact one room along.
     this.desks.clear();
+    this.tables?.clear();
+    this.servery = [];
+    this.trayRack = null;
   }
 
   dispose() { this.clear(); }

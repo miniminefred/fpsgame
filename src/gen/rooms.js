@@ -623,7 +623,14 @@ function cafeteria(sink, bounds, rng, room, doors) {
   // table pool can ever see one: a serving hatch is not a job and it is not
   // lunch, it is somewhere on the way to lunch. See _lunch in enemies.js.
   if (line) {
-    const stand = footprintOf(sink, 'servery', side).d / 2 + 0.75;
+    // Unrotated, the way wallSpanProp measures its own standoff: a prop is
+    // authored facing -Z, so `d` is its depth whichever wall it ends up on and
+    // QUARTER is what turns that into a direction. Asking for the rotated
+    // footprint swaps the two on the odd sides, which put the queue two and a
+    // half metres out from a counter one metre deep and stacked all three
+    // stations on the same tile.
+    const foot = footprintOf(sink, 'servery');
+    const stand = foot.d / 2 + 0.75;
     const [ox, oz] = QUARTER[side](0, -stand);
     // Facing the counter, which is a quarter turn round from the way the offset
     // points — the same derivation the chairs below use, and for the same
@@ -634,12 +641,16 @@ function cafeteria(sink, bounds, rng, room, doors) {
     // the middle of it. A serving line is long on purpose (see `spanning` in
     // gen/props.js) and four people queuing at the same tile is one body inside
     // another; the tray rack takes the far end, which is where a till is anyway.
-    const reachAlong = Math.max(0, (line.span ?? footprintOf(sink, 'servery', side).w) / 2 - 0.9);
+    const reachAlong = Math.max(0, (line.span ?? foot.w) / 2 - 0.9);
     for (const t of [-reachAlong * 0.6, 0, reachAlong * 0.6]) {
       const [ax, az] = QUARTER[side](t, 0);
       sink.workstation(line.cx + ox + ax, line.cz + oz + az, face, 'servery');
     }
-    const [rx, rz] = QUARTER[side](reachAlong, 0);
+    // The tray rack, at the till end. Pulled a little inboard of the very end of
+    // the line rather than sat on it: the end of a counter is against the room's
+    // own wall, and a station a body cannot stand at is dropped by deskPool —
+    // measured over ten floors, one canteen in ten lost its rack that way.
+    const [rx, rz] = QUARTER[side](reachAlong * 0.8, 0);
     sink.workstation(line.cx + ox + rx, line.cz + oz + rz, face, 'trays');
   }
 
