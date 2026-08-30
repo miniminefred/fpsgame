@@ -257,9 +257,16 @@ export const BYSTANDERS = [TYPES.cleaner, TYPES.courier];
 // than sat in their office, and it is zero on the floors where nobody is still
 // doing their rounds — though a floor with a security office on it always keeps
 // one, because that man is carrying the only key to it (see _security).
+// `share` is the one number here that is NOT a weight: it is the fraction of the
+// rolled staff that IS this type, and it holds at every depth. A theme reaches
+// for it when being mostly one thing is the whole of what the theme is —
+// Infestation is four Reanimated in five, and a weight cannot say that, because
+// a weight is a ratio against a pool that keeps growing as you descend (see
+// pickType). What is left over is still rolled on `boost`, so the fifth of the
+// floor that is still breathing keeps a character of its own.
 export const THEMES = [
   { name: 'Business as usual', weight: 4, light: 1, rats: [1, 1], patrols: [1, 3], boost: {} },
-  { name: 'Infestation', weight: 3, light: 0.34, rats: [4, 6], patrols: [0, 0], boost: { reanimated: 7, intern: 2 } },
+  { name: 'Infestation', weight: 3, light: 0.34, rats: [4, 6], patrols: [0, 0], share: { reanimated: 0.8 }, boost: { intern: 2 } },
   { name: 'Automated', weight: 3, light: 0.9, rats: [0, 1], patrols: [1, 2], boost: { sentry: 7, sysadmin: 3 } },
   { name: 'Lockdown', weight: 2, light: 0.75, rats: [1, 1], patrols: [3, 4], boost: { security: 6, manager: 4 } },
   { name: 'Night shift', weight: 2, light: 0.5, rats: [2, 3], patrols: [1, 2], boost: { reanimated: 4, sentry: 4, facilities: 3 } },
@@ -269,16 +276,58 @@ export const THEMES = [
 // Weighted pick from the types unlocked at this depth. Early floors are all
 // analysts and interns; the nastier staff join as you descend, and because
 // weights are relative the mix keeps shifting rather than simply adding.
+//
+// ...which is exactly why a theme that wants to be MOSTLY one thing cannot say
+// so with a weight, and this is the trap `share` exists for. A weight is a
+// ratio against whatever else is unlocked, and what else is unlocked grows with
+// every floor: Infestation's old `reanimated: 7` was 54% of the roster on floor
+// 1 and 27% by floor 6 — the same number describing a floor overrun with them
+// and a floor with a few about, with the drift going the wrong way as the name
+// on the door stayed the same. A share is a fact about the mix rather than
+// about the pool, so it holds at every depth.
+//
+// The shared types are drawn out of the weighted pool entirely and given their
+// band of the roll; whatever is left over is rolled among the rest exactly as
+// before, still tilted by the theme's `boost`. So Infestation's remaining fifth
+// is still its own mix of the living rather than a flat sample of the building.
+//
+// Deliberately ONE rng() call, as this has always been: the roll's low band
+// picks a shared type and the rest is rescaled back over the weighted pool.
+// Every floor's contents come off this stream, so a second call here would
+// shift every number after it — the same argument floorSpans and assignLocks
+// make for rolling on a stream of their own.
 export function pickType(floorNumber, rng, theme) {
   // `weight: 0` types are placed by hand rather than rolled — see spawn.
-  const pool = Object.entries(TYPES)
-    .filter(([, t]) => t.unlockFloor <= floorNumber && t.weight > 0)
+  const unlocked = Object.entries(TYPES)
+    .filter(([, t]) => t.unlockFloor <= floorNumber && t.weight > 0);
+
+  // A share only counts if that type is unlocked at this depth. A theme naming
+  // one that is not yet in the building is the `pickTheme` case one level down:
+  // it must come out as an ordinary floor rather than as a floor that is 80%
+  // nothing.
+  const shares = Object.entries(theme?.share ?? {})
+    .filter(([key]) => TYPES[key] && TYPES[key].unlockFloor <= floorNumber);
+  const shared = new Set(shares.map(([key]) => key));
+
+  const pool = unlocked
+    .filter(([key]) => !shared.has(key))
     .map(([key, t]) => ({ t, w: theme?.boost[key] ?? t.weight }));
+
+  const draw = rng();
+  let band = 0;
+  for (const [key, s] of shares) {
+    band += s;
+    if (draw < band) return TYPES[key];
+  }
+  // Nothing left to be the other fifth — a depth where the shared types are the
+  // only ones unlocked. Better the theme's own type than a body from a floor
+  // this deep that has not been reached yet.
+  if (!pool.length) return shares.length ? TYPES[shares[0][0]] : TYPES.analyst;
 
   let total = 0;
   for (const e of pool) total += e.w;
 
-  let roll = rng() * total;
+  let roll = (band ? (draw - band) / (1 - band) : draw) * total;
   for (const e of pool) {
     roll -= e.w;
     if (roll <= 0) return e.t;
