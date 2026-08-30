@@ -571,7 +571,7 @@ const CHASSIS = {
     arm: { size: [0.16, 0.54, 0.16], x: 0.39, y: 0.94 },
     leg: { size: [0.14, 0.52, 0.52], x: 0.31, y: 0.26 },
     gun: { rest: [0.39, 0.90, -0.30], aim: [0.39, 1.02, -0.52] },
-    forks: true, beacon: true,
+    forks: true, beacon: true, band: true,
   },
 
   // Spindly, quick, and carrying its own gas. Everything about it is thin
@@ -670,6 +670,14 @@ function geoFor(key) {
   }
 
   if (s.collar) g.collar = new THREE.BoxGeometry(0.17, 0.11, s.torso.size[2] * 0.8);
+  if (s.band) {
+    // The hazard band round the housing. It exists because the loader is the
+    // one machine painted a colour rather than a shade, and a two-thirds-of-a-
+    // metre slab of flat hi-vis reads as a yellow crate rather than as plant.
+    // Two geometries and three boxes: the front, and one down each flank.
+    g.bandF = new THREE.BoxGeometry(s.torso.size[0] + 0.02, 0.11, 0.02);
+    g.bandS = new THREE.BoxGeometry(0.02, 0.11, s.torso.size[2] + 0.02);
+  }
   if (s.forks) g.fork = new THREE.BoxGeometry(0.075, 0.055, 0.66);
   if (s.tank) g.tank = new THREE.CylinderGeometry(0.085, 0.085, 0.32, 12);
   if (s.rotors) {
@@ -765,6 +773,13 @@ function buildRobot(type, rng) {
     const y = s.torso.y + s.torso.size[1] / 2 - 0.04;
     const x = s.torso.size[0] / 2 + 0.06;
     extra.push(mesh(geo.collar, mats.shirt, -x, y, 0), mesh(geo.collar, mats.shirt, x, y, 0));
+  }
+  if (geo.bandF) {
+    const y = s.torso.y + s.torso.size[1] * 0.16;
+    extra.push(mesh(geo.bandF, mats.shirt, 0, y, -(s.torso.size[2] / 2 + 0.011)));
+    for (const side of [-1, 1]) {
+      extra.push(mesh(geo.bandS, mats.shirt, side * (s.torso.size[0] / 2 + 0.011), y, 0));
+    }
   }
   if (geo.fork) {
     // Out front at ankle height, where a pallet is. Deliberately long: it is
