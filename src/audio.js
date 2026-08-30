@@ -205,11 +205,21 @@ const LIBRARY = {
   // stayed in the room, which a one-shot sound never has to survive.
   roomba: { gain: 0.28, pitch: 0, bed: true },
 
-  // A parcel line running on a corridor wall (see conveyors.js). A bed like the
-  // floor cleaner's and mixed under it, because a floor runs several of these at
-  // once and each of them is running for as long as the player is on the floor —
-  // the same argument the generator's arcs make, one step quieter still.
-  conveyor: { gain: 0.22, pitch: 0, bed: true },
+  // A parcel line running on a corridor wall (see conveyors.js). Mixed to sit
+  // UNDER the floor cleaner — a floor runs several of these at once and each of
+  // them runs for as long as the player is on it, which is the argument the
+  // generator's arcs already make — and the gain is high for a bed because the
+  // clip itself came back quiet, not because the belt is loud.
+  //
+  // That distinction is the whole reason the number is 1 and not 0.25. Beds are
+  // exempt from the level conditioning every one-shot gets (`bed` below), so a
+  // bed's gain IS its level: measured in half-second windows this clip runs a
+  // dead-flat 2.5-3.0 for all twelve seconds, against the floor cleaner's 22,
+  // and at a bed's usual quarter it would have been eighteen decibels down and
+  // simply inaudible. At 1 it mixes to 0.025 against the cleaner's 0.059, which
+  // is the 45% it was wanted at. Peak is 0.156, so there is no headroom
+  // question. Regenerate it louder and this comes back down.
+  conveyor: { gain: 1, pitch: 0, bed: true },
 
   'amb-office': { gain: 0.30, pitch: 0, bed: true },
   'amb-drone':  { gain: 0.22, pitch: 0, bed: true },
