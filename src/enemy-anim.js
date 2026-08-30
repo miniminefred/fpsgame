@@ -137,17 +137,18 @@ export function animate(e, dt, audio) {
   e.walkPhase += dt * (moving ? 9 : 1.4);
 
   // One footfall per half stride cycle, taken off the leg animation itself so
-  // the sound lands with the foot rather than on a timer of its own.
+  // the sound lands with the foot rather than on a timer of its own. A wheel and
+  // a set of fans have no footfall to land: they are the two drives with nothing
+  // in the sound set, and silence is the honest answer rather than a step clip
+  // played at something that never lifts a foot.
   const stride = Math.floor(e.walkPhase / Math.PI);
   if (stride !== e.lastStep) {
     e.lastStep = stride;
-    if (moving) audio.enemyStep(e);
+    if (moving && (e.drive === 'legs' || e.drive === 'tracks')) audio.enemyStep(e);
   }
 
   const swing = moving ? Math.sin(e.walkPhase) * 0.6 : Math.sin(e.walkPhase) * 0.05;
-  e.legL.rotation.x = swing;
-  e.legR.rotation.x = -swing;
-  e.group.position.y = e.y + (moving ? Math.abs(Math.sin(e.walkPhase)) * 0.045 : 0);
+  drive(e, dt, moving, swing);
 
   // Weapon comes up as soon as they mean it. Melee types instead throw both
   // arms forward on the swing and drop them again.
@@ -174,11 +175,68 @@ export function animate(e, dt, audio) {
     const armX = aiming ? -1.45 : swing * -0.5;
     e.armL.rotation.x = lerp(e.armL.rotation.x, aiming ? -1.2 : -swing * 0.5, smoothTo(10, dt));
     e.armR.rotation.x = lerp(e.armR.rotation.x, armX, smoothTo(10, dt));
-    e.gun.position.set(0.3, aiming ? 1.32 : 1.1, aiming ? -0.55 : -0.3);
+    // Where the hand is, asked of the rig rather than written down here. These
+    // were the human's own two numbers, which held for every body in the
+    // building until one of them was a drone.
+    const at = aiming ? e.gunAim : e.gunRest;
+    e.gun.position.set(at[0], at[1], at[2]);
     e.gun.rotation.x = aiming ? 0 : 0.5;
   }
 
   tickFlash(e, dt);
+}
+
+// How fast a warning beacon goes round, and how far down it dips between
+// passes. Never to nothing: a lamp that goes fully dark reads as a broken lamp
+// rather than as a rotating one.
+const BEACON = 0xffa42c;
+const BEACON_RATE = 1.6;
+const BEACON_FLOOR = 0.34;
+
+/**
+ * The bottom half of a body: whatever it gets about on, plus the parts of a
+ * machine that are always moving.
+ *
+ * Four drives, and the split is what a chassis is FOR rather than a graphics
+ * setting — see CHASSIS in rigs.js. A leg swing on a wheel is a wheel waving,
+ * and a gun platform on tracks that bobs as it comes down a corridor is a gun
+ * platform with a limp.
+ */
+function drive(e, dt, moving, swing) {
+  switch (e.drive) {
+    case 'wheels':
+      // Rolled rather than swung, and off its own accumulator rather than off
+      // `walkPhase`: the phase carries an idle sway that everything with legs
+      // wants, and a wheel turning while the thing it is under is standing
+      // still is the one thing a wheel must never do.
+      e.legL.rotation.x += dt * (moving ? 7.5 : 0);
+      e.legR.rotation.x = e.legL.rotation.x;
+      e.group.position.y = e.y;
+      break;
+
+    case 'tracks':
+      // Nothing moves, and that is the point of it. It is the one thing on the
+      // floor that arrives at the same height it left at.
+      e.group.position.y = e.y;
+      break;
+
+    case 'hover':
+      // It is authored a metre and a quarter up (see the drone in CHASSIS), so
+      // flying is one sine on top of that and the rotors doing the arguing.
+      e.group.position.y = e.y + Math.sin(e.walkPhase * 0.55) * 0.05;
+      if (e.rotors) for (const r of e.rotors) r.rotation.y += dt * (moving ? 46 : 30);
+      break;
+
+    default:
+      e.legL.rotation.x = swing;
+      e.legR.rotation.x = -swing;
+      e.group.position.y = e.y + (moving ? Math.abs(Math.sin(e.walkPhase)) * 0.045 : 0);
+  }
+
+  if (e.beaconMat) {
+    const k = BEACON_FLOOR + (1 - BEACON_FLOOR) * Math.max(0, Math.sin(e.walkPhase * BEACON_RATE));
+    e.beaconMat.color.setHex(BEACON).multiplyScalar(k);
+  }
 }
 
 /**

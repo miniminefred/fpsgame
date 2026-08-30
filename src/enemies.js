@@ -1261,6 +1261,13 @@ export class Enemies {
       // and nothing else.
       rig: rig.rig, legs: rig.legs ?? null, tail: rig.tail ?? null,
       brush: rig.brush ?? null, motor: null,
+      // Machine parts. What it gets about on, where its hand is, and the two
+      // things on a chassis that never stop moving — all of it read off the rig
+      // rather than assumed, which is what lets a body on wheels go through
+      // every line below without one of them knowing. See CHASSIS in rigs.js.
+      drive: rig.drive ?? 'legs',
+      gunRest: rig.gunRest ?? null, gunAim: rig.gunAim ?? null,
+      rotors: rig.rotors ?? null, beaconMat: rig.beaconMat ?? null,
       type,
       // Position in `items`, which is this body's name on the wire. It is stable
       // because the roster is generated from the floor's seed and appended to in
