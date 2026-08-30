@@ -420,8 +420,16 @@ export class Enemies {
       this._add(spot.x, spot.z, rng, tuning, TYPES.rat);
     }
 
-    // And exactly one floor cleaner, which is the joke.
-    for (const spot of this._loose(layout, nav, rng, 1)) {
+    // And the floor cleaners. One is the joke — an office with a robot vacuum
+    // in it, bumping off a skirting board while a firefight goes on over its
+    // head. A theme may ask for a fleet instead (`cleaners` on THEMES), which
+    // is the same joke told about the building rather than about one machine:
+    // on a floor run by machines the cleaning is done by machines too, and
+    // several of them crossing a corridor is what says so before you have met
+    // anything that shoots. They are neutral and `offMap`, so a fleet costs
+    // the floor no difficulty and the minimap no clutter.
+    const [cleanMin, cleanMax] = this.theme.cleaners ?? [1, 1];
+    for (const spot of this._loose(layout, nav, rng, rng.int(cleanMin, cleanMax))) {
       this._add(spot.x, spot.z, rng, tuning, TYPES.roomba);
     }
 
