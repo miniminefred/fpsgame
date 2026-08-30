@@ -613,6 +613,36 @@ function cafeteria(sink, bounds, rng, room, doors) {
     ?? edgeProp(sink, bounds, 'servery', rng);
   const side = line ? line.side : facing;
 
+  // Where you stand to be served, and where the trays go back.
+  //
+  // The furnisher is the only thing that knows where the counter actually
+  // landed — it may have missed the wall it asked for entirely — so it is the
+  // only thing that can say where the queue is, exactly the argument
+  // `seatFacing` makes about a chair. They go down the same `sink.workstation`
+  // pipe under names of their own, so nothing that reads the desk pool or the
+  // table pool can ever see one: a serving hatch is not a job and it is not
+  // lunch, it is somewhere on the way to lunch. See _lunch in enemies.js.
+  if (line) {
+    const stand = footprintOf(sink, 'servery', side).d / 2 + 0.75;
+    const [ox, oz] = QUARTER[side](0, -stand);
+    // Facing the counter, which is a quarter turn round from the way the offset
+    // points — the same derivation the chairs below use, and for the same
+    // reason: written out by hand it is four coordinates and half of them come
+    // out backwards.
+    const face = (side + 2) & 3;
+    // Three places to be served, spread down the line rather than one point in
+    // the middle of it. A serving line is long on purpose (see `spanning` in
+    // gen/props.js) and four people queuing at the same tile is one body inside
+    // another; the tray rack takes the far end, which is where a till is anyway.
+    const reachAlong = Math.max(0, (line.span ?? footprintOf(sink, 'servery', side).w) / 2 - 0.9);
+    for (const t of [-reachAlong * 0.6, 0, reachAlong * 0.6]) {
+      const [ax, az] = QUARTER[side](t, 0);
+      sink.workstation(line.cx + ox + ax, line.cz + oz + az, face, 'servery');
+    }
+    const [rx, rz] = QUARTER[side](reachAlong, 0);
+    sink.workstation(line.cx + ox + rx, line.cz + oz + rz, face, 'trays');
+  }
+
   // The queue. Nothing is furnished into the strip in front of the counter: it
   // is where you stand to be served, and a table in it is a table that has to be
   // squeezed past to reach the one thing the room is for.
