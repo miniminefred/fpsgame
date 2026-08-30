@@ -77,7 +77,71 @@ const BLUNT = {
   stapler: { shaft: null, head: [0.09, 0.09, 0.26], headMat: 'metal', reach: 0.22 },
   monitor: { shaft: [0.05, 0.05, 0.16], head: [0.44, 0.30, 0.05], headMat: 'screen', reach: 0.30 },
   mug: { shaft: null, head: [0.11, 0.12, 0.11], headMat: 'paper', reach: 0.18 },
+
+  // The two the machines swing. Neither was picked up off a desk — they are
+  // fitted, which is the whole difference between a robot and a man with a
+  // stapler: an arm that ends in a tool was built to end in one, so both are
+  // short. Whatever reach a machine has, it has because it is big.
+  //
+  // The clamp is a pallet grab: a stubby ram with a wide jaw on the end of it,
+  // and the widest business end on the roster. It reads at a distance the way
+  // the mop does, which is what a two-metre loader needs — you have to be able
+  // to see the arc coming.
+  clamp: { shaft: [0.09, 0.09, 0.22], head: [0.30, 0.10, 0.20], headMat: 'metal', reach: 0.44 },
+  // ...and the welder's torch, which is the opposite: almost no reach at all,
+  // and the only melee weapon in the building with a lit end. `accent` is the
+  // red the fire extinguisher is painted, and here it is the arc — the one part
+  // of any of this the player is meant to notice before it is against them.
+  torch: { shaft: [0.05, 0.05, 0.26], head: [0.06, 0.06, 0.09], headMat: 'accent', reach: 0.34 },
 };
+
+// The palette a swung weapon is made of, and the reason it is a function: only
+// the melee half of the roster ever pays for these six materials, and both rigs
+// that swing anything need the same six. A machine's clamp and a man's mop are
+// the same three colours of metal, plastic and paint.
+function bluntMats() {
+  return {
+    plastic: new THREE.MeshStandardMaterial({ color: 0x33373c, roughness: 0.8 }),
+    metal: new THREE.MeshStandardMaterial({ color: 0x9aa0a6, roughness: 0.4, metalness: 0.5 }),
+    accent: new THREE.MeshStandardMaterial({ color: 0xb63b2c, roughness: 0.55 }),
+    screen: new THREE.MeshStandardMaterial({ color: 0x1d2833, roughness: 0.35 }),
+    paper: new THREE.MeshStandardMaterial({ color: 0xe8e4d8, roughness: 0.85 }),
+    mophead: new THREE.MeshStandardMaterial({ color: 0xe8c33a, roughness: 1 }),
+  };
+}
+
+/**
+ * A weapon from the BLUNT table, as a frame pointing along -Z with its grip at
+ * the origin — so whoever is holding it only has to say where the hand is.
+ *
+ * Geometry is per instance and goes on `ownGeo`, which is not laziness: the
+ * shaft and the head are both sized from the spec, and a floor holds one or two
+ * of any given weapon rather than the two hundred a chassis has to answer for.
+ */
+function bluntOf(spec, mats, ownGeo, at) {
+  const blunt = new THREE.Group();
+
+  if (spec.shaft) {
+    const [sw, sh, sl] = spec.shaft;
+    const geo = new THREE.BoxGeometry(sw, sh, sl);
+    ownGeo.push(geo);
+    const shaft = new THREE.Mesh(geo, mats.plastic);
+    shaft.position.z = -sl / 2;
+    shaft.castShadow = true;
+    blunt.add(shaft);
+  }
+
+  const [hw, hh, hl] = spec.head;
+  const headGeo = new THREE.BoxGeometry(hw, hh, hl);
+  ownGeo.push(headGeo);
+  const business = new THREE.Mesh(headGeo, mats[spec.headMat]);
+  business.position.z = -(spec.shaft ? spec.shaft[2] : 0) - hl / 2;
+  business.castShadow = true;
+  blunt.add(business);
+
+  blunt.position.set(at[0], at[1], at[2]);
+  return blunt;
+}
 
 /**
  * The lettering on a cap, drawn once per word and shared by everybody wearing
@@ -150,6 +214,9 @@ function capLabel(text, ink, cloth) {
 export function buildRig(type, rng) {
   if (type.rig === 'rat') return buildRat(type, rng);
   if (type.rig === 'roomba') return buildRoomba(type, rng);
+  // A type names its chassis rather than its rig, because there is one machine
+  // builder and six machines — see CHASSIS.
+  if (type.chassis) return buildRobot(type, rng);
   return buildHuman(type, rng);
 }
 
@@ -188,16 +255,7 @@ function buildHuman(type, rng) {
   }
 
   // Only melee staff need the junk-weapon palette, and only they pay for it.
-  if (type.melee) {
-    Object.assign(mats, {
-      plastic: new THREE.MeshStandardMaterial({ color: 0x33373c, roughness: 0.8 }),
-      metal: new THREE.MeshStandardMaterial({ color: 0x9aa0a6, roughness: 0.4, metalness: 0.5 }),
-      accent: new THREE.MeshStandardMaterial({ color: 0xb63b2c, roughness: 0.55 }),
-      screen: new THREE.MeshStandardMaterial({ color: 0x1d2833, roughness: 0.35 }),
-      paper: new THREE.MeshStandardMaterial({ color: 0xe8e4d8, roughness: 0.85 }),
-      mophead: new THREE.MeshStandardMaterial({ color: 0xe8c33a, roughness: 1 }),
-    });
-  }
+  if (type.melee) Object.assign(mats, bluntMats());
 
   const ownGeo = [];
   const mesh = part(group);
@@ -245,28 +303,8 @@ function buildHuman(type, rng) {
   let bluntSpec = null;
   if (type.melee) {
     bluntSpec = BLUNT[rng.pick(type.blunt)];
-    blunt = new THREE.Group();
-
-    if (bluntSpec.shaft) {
-      const [sw, sh, sl] = bluntSpec.shaft;
-      const geo = new THREE.BoxGeometry(sw, sh, sl);
-      ownGeo.push(geo);
-      const shaft = new THREE.Mesh(geo, mats.plastic);
-      shaft.position.z = -sl / 2;
-      shaft.castShadow = true;
-      blunt.add(shaft);
-    }
-
-    const [hw, hh, hl] = bluntSpec.head;
-    const headGeo = new THREE.BoxGeometry(hw, hh, hl);
-    ownGeo.push(headGeo);
-    const business = new THREE.Mesh(headGeo, mats[bluntSpec.headMat]);
-    business.position.z = -(bluntSpec.shaft ? bluntSpec.shaft[2] : 0) - hl / 2;
-    business.castShadow = true;
-    blunt.add(business);
-
     // Held in the right hand, which is what the swing animation drives.
-    blunt.position.set(0.32, 1.12, -0.16);
+    blunt = bluntOf(bluntSpec, mats, ownGeo, [0.32, 1.12, -0.16]);
     group.add(blunt);
   }
 
@@ -275,6 +313,12 @@ function buildHuman(type, rng) {
     armL, armR, legL, legR, gun, blunt,
     bluntReach: bluntSpec ? bluntSpec.reach : 0,
     bluntRest: bluntSpec?.rest ?? 0.5,
+    // Two legs, and where the sidearm is carried and comes up to. Both used to
+    // be written into the animator as constants, which was true of every body
+    // in the building right up until one of them was a metre off the floor on a
+    // pair of fans. A rig is the file that knows where a hand is.
+    drive: 'legs',
+    gunRest: [0.3, 1.1, -0.3], gunAim: [0.3, 1.32, -0.55],
     // What goes white when this one is shot. It has to be whatever they are
     // actually WEARING, not the one material that used to be everything: a
     // janitor's suit colour is a strip of collar, and flashing only that reads
@@ -446,6 +490,397 @@ function buildRoomba(type, rng) {
     // twenty times the narrowphase for a silhouette nobody is studying while it
     // is sliding under a desk.
     bones: [{ whole: true, size: [0.34, 0.1, 0.34], at: [0, 0.055, 0], mass: 3.5 }],
+  };
+}
+
+// --- the machines -----------------------------------------------------------
+//
+// An Automated floor is not staffed, it is WORKED — and "a machine" is not one
+// silhouette. The thing hauling pallets, the thing welding a rack and the thing
+// that used to sit at the desk are three different shapes doing three different
+// jobs, and a floor of one robot repeated is the floor of one enemy repeated
+// that `share` was written to avoid (see enemy-types.js). So this is one
+// builder and a table of chassis, exactly the way the staff are one rig and a
+// table of numbers.
+//
+// Every chassis hands back the SAME field names as a person — torso, head,
+// armL/armR, legL/legR, gun, blunt — and that is the whole trick: the state
+// machine, the six hit zones, the ragdoll and the walk cycle never learn that
+// this one is on wheels. Two things had to be told, and only two:
+//
+//   drive     what it gets about on, which is the one thing a leg swing cannot
+//             guess. See animate in enemy-anim.js.
+//   gunRest   where the weapon is carried, and where it comes up to. Those two
+//   gunAim    used to be written into the animator, which is fine while every
+//             body is the same height and wrong the moment one of them is a
+//             metre and a quarter off the floor on a pair of fans.
+//
+// Geometry is memoised PER CHASSIS rather than per body, unlike the rat and the
+// floor cleaner. Those are one to five a floor and can afford their own boxes;
+// a machine floor is a hundred and fifty Clerk Units, and fifteen fresh
+// BufferGeometries each is two thousand of them for six distinct shapes.
+const FRAME = 0x2a2e34;      // the dark frame under every machine's paint
+
+// How a chassis is put together. Sizes and heights are in unscaled rig space,
+// the way the human rig's are — `type.scale` is applied to the group by whoever
+// builds the body, so a spec here is the machine at 1.0.
+//
+// `mass` is the whole machine in kilograms and is split across the bones the
+// way a person's is, because a ragdoll does not need the real distribution and
+// one number per chassis is a number somebody will keep honest.
+const CHASSIS = {
+  // The office automaton: whatever used to sit at the desk. Human proportions
+  // on purpose — it works a building built for people, at their desks and
+  // through their doorways — so what says MACHINE is the head and the finish: a
+  // sensor pod with one lit band across it and no face behind it.
+  //
+  // The plainest of the six, and deliberately: it is the one there are a
+  // hundred of, so it is the silhouette the floor is made of, and the ones with
+  // forks and tanks and rotors have to read as exceptions to it.
+  clerk: {
+    drive: 'legs', mass: 95,
+    torso: { size: [0.42, 0.58, 0.32], y: 1.18 },
+    pod: { size: [0.24, 0.22, 0.26], y: 1.58 },
+    arm: { size: [0.11, 0.52, 0.11], x: 0.30, y: 1.16 },
+    leg: { size: [0.15, 0.80, 0.17], x: 0.12, y: 0.40 },
+    gun: { rest: [0.30, 1.12, -0.30], aim: [0.30, 1.30, -0.55] },
+  },
+
+  // Facilities' idea of a cost saving, and the only machine on this roster that
+  // was bought to fight rather than to work. Wide, low and on tracks — the one
+  // thing in the building with neither legs nor wheels, because a gun platform
+  // does not need to be quick, it needs to still be pointing at you.
+  sentry: {
+    drive: 'tracks', mass: 210,
+    torso: { size: [0.56, 0.60, 0.44], y: 1.02 },
+    pod: { size: [0.30, 0.20, 0.30], y: 1.44 },
+    arm: { size: [0.14, 0.48, 0.14], x: 0.35, y: 1.02 },
+    leg: { size: [0.19, 0.42, 0.62], x: 0.20, y: 0.21 },
+    gun: { rest: [0.34, 0.98, -0.34], aim: [0.34, 1.16, -0.62] },
+    collar: true,
+  },
+
+  // The one that moves the building's stock about. Three times a person's mass
+  // on two drive wheels, with a pallet grab on the arm and tines out front it
+  // never put down — the tines are what make it read as a loader from behind,
+  // which is the angle you meet one from while it is doing its job.
+  loader: {
+    drive: 'wheels', mass: 290,
+    torso: { size: [0.62, 0.64, 0.48], y: 0.92 },
+    pod: { size: [0.26, 0.18, 0.24], y: 1.34 },
+    arm: { size: [0.16, 0.54, 0.16], x: 0.39, y: 0.94 },
+    leg: { size: [0.14, 0.52, 0.52], x: 0.31, y: 0.26 },
+    gun: { rest: [0.39, 0.90, -0.30], aim: [0.39, 1.02, -0.52] },
+    forks: true, beacon: true,
+  },
+
+  // Spindly, quick, and carrying its own gas. Everything about it is thin
+  // except the bottle on its back, which is the tell: the narrowest silhouette
+  // on the floor, with one fat cylinder behind the shoulder.
+  welder: {
+    drive: 'legs', mass: 78,
+    torso: { size: [0.32, 0.46, 0.28], y: 1.12 },
+    pod: { size: [0.19, 0.16, 0.21], y: 1.44 },
+    arm: { size: [0.09, 0.56, 0.09], x: 0.25, y: 1.10 },
+    leg: { size: [0.10, 0.86, 0.12], x: 0.13, y: 0.43 },
+    gun: { rest: [0.25, 1.06, -0.28], aim: [0.25, 1.24, -0.52] },
+    tank: true,
+  },
+
+  // The surveyor: a small ducted-fan thing that never touches the floor. It is
+  // AUTHORED a metre and a quarter up rather than made to hover — a rig is
+  // placed at its body's feet, so a machine that flies is a machine whose parts
+  // are simply higher up, and nothing in the engine has to learn what flight
+  // is. The bob on top of that is the animator's.
+  //
+  // Its skids stand in for legs, so a limb hit lands on them. That is right: on
+  // something this size the underside is most of what you can see of it.
+  drone: {
+    drive: 'hover', mass: 26, whole: true,
+    torso: { size: [0.34, 0.24, 0.34], y: 1.30 },
+    pod: { size: [0.20, 0.15, 0.20], y: 1.51 },
+    arm: { size: [0.08, 0.32, 0.08], x: 0.23, y: 1.26 },
+    leg: { size: [0.05, 0.16, 0.30], x: 0.14, y: 1.10 },
+    gun: { rest: [0.23, 1.22, -0.26], aim: [0.23, 1.30, -0.42] },
+    rotors: true,
+  },
+
+  // Deliveries, and the only machine here with no opinion about you whatever.
+  // A flat deck on wheels with the floor's parcels on it, a short mast with one
+  // lamp on top, and two stub arms it loads itself with. Low and long, so what
+  // you see crossing the end of a corridor is a load going somewhere.
+  porter: {
+    drive: 'wheels', mass: 120, whole: true,
+    torso: { size: [0.48, 0.38, 0.62], y: 0.44 },
+    pod: { size: [0.16, 0.14, 0.16], y: 0.86 },
+    arm: { size: [0.09, 0.30, 0.09], x: 0.29, y: 0.50 },
+    leg: { size: [0.10, 0.36, 0.36], x: 0.25, y: 0.18 },
+    gun: { rest: [0.29, 0.44, -0.22], aim: [0.29, 0.52, -0.34] },
+    tray: true, beacon: true,
+  },
+};
+
+// How a machine's mass is divided between its bones — the human rig's own
+// split, normalised. A ragdoll does not need the real distribution of a loader;
+// what it needs is for the trunk to outweigh an arm by about eight to one, and
+// that is a fact about bodies rather than about people.
+const BONE_SHARE = [34, 5, 4, 4, 11, 11].map((m) => m / 69);
+
+// Built once per chassis and never disposed, exactly like GEO above: six shapes
+// serve every machine the game will ever build, and a floor holds a hundred and
+// fifty of them.
+const chassisGeo = new Map();
+
+function geoFor(key) {
+  const cached = chassisGeo.get(key);
+  if (cached) return cached;
+
+  const s = CHASSIS[key];
+  const box = (a) => new THREE.BoxGeometry(a[0], a[1], a[2]);
+  const [pw, ph, pd] = s.pod.size;
+  const [lw, lh] = s.leg.size;
+
+  const g = {
+    torso: box(s.torso.size),
+    pod: box(s.pod.size),
+    // The gap between the two, filled in. A pod floating over a chassis is the
+    // one thing that makes a robot read as a stack of boxes rather than a body.
+    neck: new THREE.BoxGeometry(pw * 0.45,
+      Math.max(0.04, (s.pod.y - ph / 2) - (s.torso.y + s.torso.size[1] / 2)), pd * 0.45),
+    // One lit band across the front of the pod. This is the rig's visor and it
+    // does the visor's whole job: hue says whether to shoot it, shade says which
+    // one it is, from the far end of a corridor.
+    visor: new THREE.BoxGeometry(pw * 0.78, ph * 0.26, 0.02),
+    arm: box(s.arm.size),
+    gun: new THREE.BoxGeometry(0.1, 0.13, 0.40),
+  };
+
+  // What it gets about on. A wheel is a cylinder with its axle baked along X —
+  // the quarter turn goes into the GEOMETRY rather than onto the mesh, because
+  // the mesh has to stay free to spin about that same axis, and it is a hit box
+  // and a ragdoll bone besides.
+  if (s.drive === 'wheels') {
+    const r = lh / 2;
+    g.leg = new THREE.CylinderGeometry(r, r, lw, 14).rotateZ(Math.PI / 2);
+    // A wheel is a solid of revolution, so nothing about it turning is visible
+    // without a mark on it. The spoke plate is the mark.
+    g.spoke = new THREE.BoxGeometry(lw + 0.012, r * 1.5, r * 0.34);
+  } else {
+    g.leg = box(s.leg.size);
+  }
+
+  if (s.collar) g.collar = new THREE.BoxGeometry(0.17, 0.11, s.torso.size[2] * 0.8);
+  if (s.forks) g.fork = new THREE.BoxGeometry(0.075, 0.055, 0.66);
+  if (s.tank) g.tank = new THREE.CylinderGeometry(0.085, 0.085, 0.32, 12);
+  if (s.rotors) {
+    g.boom = new THREE.BoxGeometry(0.06, 0.045, 0.06);
+    // Open-ended, which makes it a shroud rather than a drum: you have to be
+    // able to see the blade turning inside it or the whole thing is a hoop.
+    g.duct = new THREE.CylinderGeometry(0.15, 0.15, 0.05, 16, 1, true);
+    g.blade = new THREE.BoxGeometry(0.26, 0.008, 0.05);
+  }
+  if (s.tray) {
+    g.tray = new THREE.BoxGeometry(s.torso.size[0] + 0.08, 0.035, s.torso.size[2] + 0.06);
+    g.rail = new THREE.BoxGeometry(0.03, 0.10, s.torso.size[2] + 0.06);
+    g.parcel = new THREE.BoxGeometry(0.22, 0.18, 0.24);
+  }
+  if (s.beacon) {
+    g.mast = new THREE.BoxGeometry(0.035, 0.10, 0.035);
+    g.beacon = new THREE.CylinderGeometry(0.045, 0.045, 0.055, 10);
+  }
+
+  chassisGeo.set(key, g);
+  return g;
+}
+
+/**
+ * A machine. Same contract as a person, and the same six bones — see the note
+ * above CHASSIS for why that matters more than anything else in here.
+ */
+function buildRobot(type, rng) {
+  const s = CHASSIS[type.chassis];
+  const geo = geoFor(type.chassis);
+
+  const group = new THREE.Group();
+  group.rotation.y = rng.range(0, Math.PI * 2);
+  group.scale.setScalar(type.scale);
+
+  const mats = {
+    // `suit` is the painted shell and `shirt` the panels and trim — the same
+    // two-colour reading a person's suit and shirt give, under the same two
+    // names, so a type's palette means the same thing whichever rig wears it
+    // and the hit flash needs no special case.
+    suit: new THREE.MeshStandardMaterial({ color: type.suit, roughness: 0.42, metalness: 0.45 }),
+    shirt: new THREE.MeshStandardMaterial({ color: type.shirt, roughness: 0.55, metalness: 0.25 }),
+    // The frame everything is bolted to, standing in for `skin`. It is the one
+    // colour every machine on the floor shares: a chassis is a chassis whoever
+    // painted the panels over it.
+    skin: new THREE.MeshStandardMaterial({ color: FRAME, roughness: 0.5, metalness: 0.6 }),
+    visor: new THREE.MeshBasicMaterial({ color: type.visor }),
+    gun: new THREE.MeshStandardMaterial({ color: 0x24272b, roughness: 0.5, metalness: 0.4 }),
+  };
+  if (type.melee) Object.assign(mats, bluntMats());
+  if (s.tray) {
+    mats.parcel = new THREE.MeshStandardMaterial({ color: 0xb08a5a, roughness: 0.95 });
+  }
+  if (s.beacon) {
+    // Unlit, like the visor, and for the same reason: a lamp that goes dark
+    // with the room is not a lamp. The animator pulses it — see animate.
+    mats.beacon = new THREE.MeshBasicMaterial({ color: 0xffa42c });
+  }
+
+  const ownGeo = [];
+  const mesh = part(group);
+  const rotors = [];
+  let beacon = null;
+
+  const torso = mesh(geo.torso, mats.suit, 0, s.torso.y, 0);
+  mesh(geo.neck, mats.skin, 0,
+    (s.torso.y + s.torso.size[1] / 2 + s.pod.y - s.pod.size[1] / 2) / 2, 0);
+  const head = mesh(geo.pod, mats.shirt, 0, s.pod.y, 0);
+  const visor = mesh(geo.visor, mats.visor, 0, s.pod.y, -(s.pod.size[2] / 2 + 0.011));
+
+  const armL = mesh(geo.arm, mats.skin, -s.arm.x, s.arm.y, 0);
+  const armR = mesh(geo.arm, mats.skin, s.arm.x, s.arm.y, 0);
+  const legL = mesh(geo.leg, mats.skin, -s.leg.x, s.leg.y, 0);
+  const legR = mesh(geo.leg, mats.skin, s.leg.x, s.leg.y, 0);
+  const gun = mesh(geo.gun, mats.gun, s.gun.rest[0], s.gun.rest[1], s.gun.rest[2]);
+  gun.visible = !type.melee && !type.neutral;
+
+  // The spoke plates ride INSIDE the wheels, so the ragdoll takes them with the
+  // bone it re-parents and nothing has to list them twice.
+  if (geo.spoke) {
+    for (const wheel of [legL, legR]) {
+      const spoke = new THREE.Mesh(geo.spoke, mats.shirt);
+      spoke.castShadow = true;
+      wheel.add(spoke);
+    }
+  }
+
+  // --- and then whatever makes this one this one -----------------------------
+  // All of it is bolted to the chassis, so the trunk bone carries the lot.
+  const extra = [];
+
+  if (geo.collar) {
+    const y = s.torso.y + s.torso.size[1] / 2 - 0.04;
+    const x = s.torso.size[0] / 2 + 0.06;
+    extra.push(mesh(geo.collar, mats.shirt, -x, y, 0), mesh(geo.collar, mats.shirt, x, y, 0));
+  }
+  if (geo.fork) {
+    // Out front at ankle height, where a pallet is. Deliberately long: it is
+    // the half of a loader you see when it is walking away from you.
+    const y = s.leg.y - s.leg.size[1] * 0.18;
+    extra.push(mesh(geo.fork, mats.shirt, -0.19, y, -0.42),
+      mesh(geo.fork, mats.shirt, 0.19, y, -0.42));
+  }
+  if (geo.tank) {
+    const tank = mesh(geo.tank, mats.shirt, 0, s.torso.y + 0.02, s.torso.size[2] / 2 + 0.10);
+    tank.rotation.x = 0.12;
+    extra.push(tank);
+  }
+  if (geo.duct) {
+    for (const side of [-1, 1]) {
+      const x = side * (s.torso.size[0] / 2 + 0.17);
+      extra.push(mesh(geo.boom, mats.skin,
+        side * (s.torso.size[0] / 2 + 0.05), s.torso.y + 0.09, 0));
+      extra.push(mesh(geo.duct, mats.suit, x, s.torso.y + 0.10, 0));
+      const blade = mesh(geo.blade, mats.shirt, x, s.torso.y + 0.10, 0);
+      extra.push(blade);
+      rotors.push(blade);
+    }
+  }
+  if (geo.tray) {
+    const deck = s.torso.y + s.torso.size[1] / 2 + 0.018;
+    extra.push(mesh(geo.tray, mats.shirt, 0, deck, 0));
+    extra.push(mesh(geo.rail, mats.skin, -(s.torso.size[0] / 2 + 0.03), deck + 0.06, 0));
+    extra.push(mesh(geo.rail, mats.skin, s.torso.size[0] / 2 + 0.03, deck + 0.06, 0));
+    // One to three parcels, which is the whole reason this thing is on the
+    // floor. Rolled rather than fixed: a porter with nothing on it has finished
+    // its round, and a porter stacked three high is on its way out with one.
+    for (let i = rng.int(1, 3); i > 0; i--) {
+      const p = mesh(geo.parcel, mats.parcel, rng.range(-0.06, 0.06),
+        deck + 0.108, -0.17 + (i - 1) * 0.19);
+      p.rotation.y = rng.range(-0.25, 0.25);
+      extra.push(p);
+    }
+  }
+  if (geo.beacon) {
+    const y = s.pod.y + s.pod.size[1] / 2;
+    extra.push(mesh(geo.mast, mats.skin, 0, y + 0.05, 0));
+    beacon = mesh(geo.beacon, mats.beacon, 0, y + 0.128, 0);
+    extra.push(beacon);
+  }
+
+  let blunt = null;
+  let bluntSpec = null;
+  if (type.melee) {
+    bluntSpec = BLUNT[rng.pick(type.blunt)];
+    // On the end of the right arm, the way the human rig holds one: the swing
+    // animation drives the arm and the tool rides it.
+    blunt = bluntOf(bluntSpec, mats, ownGeo,
+      [s.arm.x, s.arm.y - s.arm.size[1] * 0.08, -s.arm.size[2] * 0.6]);
+    group.add(blunt);
+  }
+
+  // A wheel is as deep as it is tall, which its spec cannot say — the spec
+  // gives a cylinder's width and diameter, and a bone wants a box.
+  const legBox = s.drive === 'wheels'
+    ? [s.leg.size[0], s.leg.size[1], s.leg.size[1]]
+    : s.leg.size;
+
+  return {
+    rig: 'robot', group, mats, ownGeo, torso, head,
+    armL, armR, legL, legR, gun, blunt,
+    bluntReach: bluntSpec ? bluntSpec.reach : 0,
+    bluntRest: bluntSpec?.rest ?? 0.5,
+    drive: s.drive,
+    gunRest: s.gun.rest, gunAim: s.gun.aim,
+    rotors: rotors.length ? rotors : null,
+    beaconMat: beacon ? mats.beacon : null,
+    flash: flashSet(mats),
+    bones: s.whole
+      // One solid piece as far as falling over goes. Six bones is six bones
+      // spent on something that weighs as much as a chair and was in the air
+      // when it stopped working; a porter is a deck on wheels, which is a box
+      // that rolls over. Both tumble, which is all either has ever needed to
+      // do — see the rat, which makes the same trade for the same reason.
+      ? [{
+        whole: true, mass: s.mass,
+        size: [Math.max(s.torso.size[0], s.leg.x * 2 + s.leg.size[0]),
+          s.pod.y + s.pod.size[1] / 2, s.torso.size[2] + (s.tray ? 0.1 : 0)],
+        at: [0, (s.pod.y + s.pod.size[1] / 2) / 2, 0],
+      }]
+      : [
+        {
+          parts: [torso, ...extra], size: s.torso.size, at: [0, s.torso.y, 0],
+          mass: s.mass * BONE_SHARE[0],
+        },
+        {
+          parts: [head, visor], size: s.pod.size, at: [0, s.pod.y, 0],
+          mass: s.mass * BONE_SHARE[1],
+          joint: { to: 0, at: [0, s.pod.y - s.pod.size[1] / 2, 0], angle: 0.5, twist: 0.4 },
+        },
+        {
+          parts: [armL], size: s.arm.size, at: [-s.arm.x, s.arm.y, 0],
+          mass: s.mass * BONE_SHARE[2],
+          joint: { to: 0, at: [-s.arm.x, s.arm.y + s.arm.size[1] / 2, 0], angle: 1.2, twist: 0.6 },
+        },
+        {
+          parts: [armR, gun, blunt], size: s.arm.size, at: [s.arm.x, s.arm.y, 0],
+          mass: s.mass * BONE_SHARE[3],
+          joint: { to: 0, at: [s.arm.x, s.arm.y + s.arm.size[1] / 2, 0], angle: 1.2, twist: 0.6 },
+        },
+        {
+          parts: [legL], size: legBox, at: [-s.leg.x, s.leg.y, 0],
+          mass: s.mass * BONE_SHARE[4],
+          joint: { to: 0, at: [-s.leg.x, s.leg.y + s.leg.size[1] / 2, 0], angle: 0.6, twist: 0.2 },
+        },
+        {
+          parts: [legR], size: legBox, at: [s.leg.x, s.leg.y, 0],
+          mass: s.mass * BONE_SHARE[5],
+          joint: { to: 0, at: [s.leg.x, s.leg.y + s.leg.size[1] / 2, 0], angle: 0.6, twist: 0.2 },
+        },
+      ],
   };
 }
 
