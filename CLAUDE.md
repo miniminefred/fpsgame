@@ -239,6 +239,7 @@ src/
   keycards.js     Card catalogue, the wallet, and the cards on the carpet
   doors.js        Sliding panels, proximity sensors, and the badged ones
   cameras.js      Wall cameras and laser tripwires, and the alarm they raise
+  conveyors.js    Parcel lines on the corridor walls, and the stock on them
   net.js          Co-op's wire: a code, a peer-to-peer channel, a message pump
   netplay.js      ...and its protocol: who decides what, and what crosses
   remote-player.js  The other player as a body, posed from their packets
@@ -1408,12 +1409,17 @@ a few seconds — the same wander loop, quicker, with destinations filtered to s
 further from you — then goes back to its day. They show yellow on the minimap, because "do
 I have to shoot this" needs answering from the far end of a corridor.
 
-Visors answer that same question first and identity second. Every hostile human wears a
-**grey** — one ramp from near-white (Intern) to near-black (Sentry Unit), brightest for
-what dies to a look and darkest for what does not — and the Reanimated wear green. The
-harmless staff are the only ones in an actual colour: white for the Panicking Staffer,
-brown for the Night Cleaner, yellow for the Courier, blue for the Staff on Break. So hue
-says threat, shade says which one, and no two types share a visor.
+Visors answer that same question first and identity second. Every hostile wears a **grey**
+— one ramp from near-white (Survey Drone, then Intern) to near-black (Sentry Unit),
+brightest for what dies to a look and darkest for what does not — and the Reanimated wear
+green. The harmless are the only ones in an actual colour: white for the Panicking Staffer,
+brown for the Night Cleaner, yellow for the Courier, blue for the Staff on Break, violet for
+the Porter Unit. So hue says threat, shade says which one, and no two types share a visor.
+
+**The machines are on that same ramp rather than beside it**, and that is a rule being kept
+rather than a palette being copied: neither question changes because the thing at the end of
+the corridor has wheels. A Survey Drone is the brightest visor in the building and a Loader
+Unit is nearly the darkest, for exactly the reasons an Intern and a Manager are.
 
 **And none of them is holding a gun, which they all were.** `rigs.js` hid the sidearm on a
 melee type and on nobody else, so every neutral in the building was walking about with a
@@ -1462,6 +1468,68 @@ by everyone wearing that word. The hit flash follows whatever they are actually 
 
 Gunfire spread is sampled as a real angle and converted into a miss distance at your range,
 so backing off genuinely makes you harder to hit.
+
+### The machines (`chassis` in `rigs.js` + `drive` in `enemy-anim.js`)
+The Automated floor is not staffed, it is **worked**, and that is the whole of what the
+theme is now: **nine in ten** of what is on it is a machine and the tenth is whoever is left
+to maintain them. It used to be three Sentry Units in four and a name — a floor named after
+machines, with an ordinary office around them.
+
+**A `chassis` is a rig, and there are six of them.** One builder plus a table, exactly the
+way `TYPES` is one rig plus a table of numbers, because a floor that is 90% one robot is the
+floor of one enemy repeated that `share` exists to prevent — and it would be that twice
+over here, since the point of the shift is that the building is being worked. So the share
+is split across the JOBS: a hundred Clerk Units at the desks (0.34), Sentry Units in the
+corridors (0.20), Loader Units shifting stock (0.14), Welder Units on the racks (0.13) and
+Survey Drones over all of it (0.09). Measured over 200k draws at floors 2, 3, 4, 6, 12 and
+30: machines 89.9–90.2% throughout and every type within 0.2 of its share.
+
+Four of them are `weight: 0`, and that is how the theme stays a place rather than a tint:
+outside an Automated floor none of them is ever rolled, so meeting a Loader Unit means you
+are on the floor that has loaders on it. The **Sentry Unit** is the exception and always
+was — Facilities bought it to watch a corridor in a building full of people, so it turns up
+in one, and it is the reason `themeUsable` still holds Automated back to floor 2.
+
+**A chassis hands back the SAME field names as a person** — `torso`, `head`, `armL`/`armR`,
+`legL`/`legR`, `gun`, `blunt` — and that is the trick the whole thing rests on: the state
+machine, the six hit zones, the ragdoll, the seating rule and the walk cycle never learn
+that this one is on wheels. Exactly two things had to be told:
+
+- **`drive`**, what it gets about on, which a leg swing cannot guess. Legs swing and bob as
+  they always have; wheels roll off their own accumulator rather than off `walkPhase`,
+  because the phase carries the idle sway everything with legs wants and *a wheel turning
+  under a body standing still is the one thing a wheel must never do*; tracks do not move at
+  all, which is most of what makes a Sentry Unit read as heavier than the thing beside it;
+  and a hover rig floats on one sine with its rotors doing the arguing. Footfalls are gated
+  on the two drives that have a foot — a wheel and a set of fans have nothing in the sound
+  set, and silence is the honest answer rather than a step clip played at something that
+  never lifts one.
+- **`gunRest`/`gunAim`**, where the weapon is carried and where it comes up to. Those were
+  constants inside `animate`, which was true of every body in the building right up until
+  one of them was a metre and a quarter off the floor. The human rig now declares its own
+  two, unchanged.
+
+Three smaller things are worth knowing. Geometry is memoised **per chassis** rather than per
+body, unlike the rat and the floor cleaner — those are one to five a floor, and a machine
+floor is a hundred and fifty of one shape. The drone and the porter ragdoll `whole`, for the
+rat's reason: six bones spent on something the weight of a chair that was in the air when it
+stopped working. And the drone **is authored a metre and a quarter up** rather than made to
+hover — a rig is placed at its body's feet, so a machine that flies is a machine whose parts
+are simply higher up, and nothing in the engine has to learn what flight is.
+
+The Loader Unit is the one machine painted a **colour** rather than a shade, which is right
+(hi-vis is what plant is painted, and the hardest single hit in the building should be
+legible from the end of a corridor) and was not enough on its own: two thirds of a metre of
+flat yellow reads as a crate. A dark hazard band across the front and down each flank is
+what turns it back into a machine, off the same second material the forks and the mast
+already use.
+
+**`bystanders` on a theme** is the same argument for the corridors. The harmless traffic is a
+Night Cleaner and a Courier unless a theme names its own, and here it is the **Porter Unit** —
+the courier joke told about the building instead of about a man, a parcel deck on wheels with
+a beacon on a mast. The toilet guy is deliberately *not* on that list: he is a flat one or
+two on every floor there has ever been, and the last human on a floor of robots running for a
+lavatory is the joke landing harder rather than a joke out of place.
 
 ### A chair means harmless (`workstations` in `gen/build.js` + `_takeDesk`/`animateWorking`)
 **Everything that sits down is a set piece for the room it is in, and nothing that was
@@ -1857,6 +1925,56 @@ or bullets pass straight through, and they carry blue if the floor has a blue lo
 because "security carries blue and nobody else does" has to stay true for the late
 arrivals too.
 
+### Parcel lines (`conveyors.js`)
+Belts along the corridor walls with the building's own stock moving on them. A floor run by
+machines should say so before anything on it has shot at you, and the staff are only half of
+that — the other half is that the **work is visible**. It is also the only piece of scenery
+in the game that is still moving when nothing else is.
+
+`conveyors` on a theme is its third lever on the **building** rather than on who is standing
+in it, alongside the tint and the floor units. Absent, a floor has none: measured across
+floors 1–8 of one seed, zero runs on all seven non-Automated floors and ten on the Automated
+one. Two decisions shape the module, and they pull against each other.
+
+- **It is fitted above everything.** `CLEAR_Y` is the larger of two clearances that both have
+  to hold — a body's own `BODY_H`, and the tallest thing in the furniture catalogue, because
+  a belt is fitted to a building that already has two-metre shelving standing in it. It is
+  written as that `max` rather than as the 2.11 that came out of it, so making the player
+  taller moves it. This is the whole reason a module may put geometry into a **finished**
+  floor without re-proving one invariant: it touches no nav tile, reserves no floor, and
+  cannot make a room unreachable however it lands.
+- **...and it is still solid.** Clearing a standing body is not the same as not being there:
+  a player who jumps against the wall under one has their head at 3.2 m, and a conveyor you
+  can put your eye inside is worse than no conveyor. So a run contributes **one collider with
+  a `base`**, the way the plant room's tall door header does, and `barrier` is what keeps it
+  from also becoming a kerb or a floor. Measured against the real `Player`: walking at the
+  wall under a belt closes to 0.18 m of its centre line, the same walk with the feet off the
+  ground is held at 0.40, and walking *along* underneath one is unobstructed — which is the
+  right answer both ways round, because a head scraping a belt does not stop you walking
+  forward under it.
+
+**The parcels are the destructible half and the belt is not.** A line is building services
+hung off the structure, like the suspended ceiling and the slab. A round takes a box off it,
+it falls, it bursts on the carpet, and the line sends another after six to fourteen seconds —
+that is stock being replaced, which is what a running line does. Measured end to end: shot at
+2.24 m, on the floor and hidden inside 0.7 s, back at the head of the belt when the timer runs
+out. A parcel waiting to be restocked is hidden **and** scaled to nothing, and neither is
+redundant: a `Raycaster` does not test `visible`, and an invisible box that still stops
+bullets is worse than no box.
+
+Three smaller things. Placement walks a shuffled list of corridor tiles with a wall beside
+them, like the cameras and for the same reason — a tile that survives every test is a few
+percent of a floor, so darts deliver three lines on one floor and nine on the next. A run
+extends along its wall for as long as the corridor continues *and* the wall stays solid, so a
+doorway is what ends it: a line across an opening has nothing to hang off and would be a line
+across an opening. And parcels scale up out of one drive head and down into the other
+(`EDGE`), which is the cheapest honest answer to a loop — a belt IS a loop, and the return leg
+is inside the housing.
+
+**The shift is now rolled in `game.js`** rather than inside `enemies.spawn`, because the
+building has to know it before the floor's colliders go to the solver. It is still the first
+draw off the floor's rng, exactly where it was, so nothing after it moved.
+
 ### Hit direction (`hud.js` + `#hitdirs`)
 Taking damage puts a red chevron on a ring around the crosshair pointing at whoever landed
 it. The wedge stores the attacker's **world** bearing, fixed at the moment of the hit, and
@@ -2089,6 +2207,13 @@ in `sfx.js` are the fix, and both are about the floor cleaner's motor:
   "audible within twelve metres" comes out as a hum that is merely quiet everywhere. Full level
   to 2.5 m, straight down, silent at 12 — and louder up close than it was, because making
   something local and not making it louder just makes it quiet.
+
+The parcel lines are the **second** positional loop in the set (`conveyor`, `startBelt`),
+and everything the `loopFalloff` note above says applies to them with one difference: there
+are several running at once on a floor rather than one following a body about, so the range
+is shorter still (10 m against the floor cleaner's 12) and a long run asks for a motor every
+nine metres of belt. A twenty metre line heard from one point is a machine in a corner rather
+than a line down a corridor.
 
 `/dev-sounds.html` measures the whole set and flags duds — a variant far quieter than
 its siblings is a clip to regenerate, not to amplify. Check it after generating anything;
