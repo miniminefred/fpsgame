@@ -1861,6 +1861,23 @@ in the middle. A **Welder Unit** takes a box off a storage rack, brings it out t
 corridor and hands it to a **Porter Unit**, which wheels it to a parcel line where a
 **Maintenance Worker** spends fifteen seconds fitting it, in sparks.
 
+**He puts the box DOWN to do it**, and that is most of what makes the last beat
+read (`animateFixing` in enemy-anim.js). The repair was a man standing perfectly
+still holding a crate in both hands, which is the clearest possible statement
+that he is *not* working — so the box goes on the floor at his feet, set at a
+slight angle because nothing anybody puts down lands square, and both arms go up
+into the machine on a work stroke with the two hands staggered (the desk pose's
+rule: both at once is applause). The reach is bounded by the rig rather than
+chosen: an arm is one box with no elbow, pivoting at 1.42 with its hand 0.54 out,
+so a hand reaches 1.96 m and no higher — a hair under the belt's own underside.
+That is luck, and it is also why the pose reads, because the arms end up at very
+nearly full extension and a body at full stretch looks like it is reaching for
+something rather than gesturing at it. `stand` puts the head back as well as the
+limbs, since this is the first thing in that file to move it, and clearing the
+flag goes through `setWorking` so that clearing it and restoring the pose stay one
+operation — the same bargain `_standUp` makes for a chair, and the same bug if
+they ever come apart.
+
 All three are **neutral**, and that is not incidental — it is what makes the thing
 watchable. The player is meant to be able to stand in a doorway and see it happen,
 which they cannot do if any of the three would rather be shooting them. It is also
@@ -1943,6 +1960,77 @@ already shootable, damageable and destructible, already collides with the player
 the staff off a collider `game.js` re-syncs every frame, and already puts water on the
 carpet, because the prop declares `spills: 'water'`.
 
+**Two modes, and the difference is one flag on the theme.** Everywhere, it kicks
+only when it is ON THE FLOOR — height *and* upward velocity, because either alone
+lets it kick on the way up through the band — so its height is bounded by
+construction. On an **Automated** floor (`washersFly`) it kicks whether or not it
+has landed, so the kicks accumulate and it climbs, spinning, up into the ceiling
+tiles. That is the fourth thing a theme does to the building, alongside the tint,
+the floor units and the parcel lines, and it is a thing a floor run by machines
+can have and an ordinary office cannot.
+
+**The flying started life as a bug, and the arithmetic is the lesson.** The first
+version kicked on a timer alone: `HOP` over the body's mass is 3.6 m/s of upward
+kick and gravity needs 0.37 s to cancel that, against a `HOP_GAP` of 0.14–0.30 s.
+So it never landed — it climbed until it saturated `MAX_LINEAR_SPEED` in
+physics.js and hung there against `MAX_ANGULAR_SPEED`. Those two are **ceilings,
+not brakes**, and anything that saturates both is being held rather than
+simulated. What makes this worth writing down is that a short measurement
+**passed** it: 0.9 s of sampling reported a healthy 0.33 m hop, because 0.9 s is
+not long enough for anything to accumulate. A 30-second sweep found it at once.
+The same trap caught the spin ceiling one step later — applied only on a kick it
+let a grounded machine reach 3.79 rad/s against a cap of 2.6, because most of what
+spins it is the collision response *between* kicks. It is applied every frame now.
+
+**A flying one's lid is derived from `CEIL_H`, not written down.** The first
+version's flat 1.75 on the centre put the machine's top at 2.92 m against a 3.0 m
+suspended ceiling — eight centimetres of margin, arrived at by accident, and gone
+the moment anybody raises a ceiling. `_ceiling` holds it under the tiles and
+**synthesises** that contact, because the suspended ceiling is geometry with no
+collider behind it (the solver's own lid is metres higher, up with the roof — see
+`GUARD_MARGIN`), so nothing would ever report the hit. That synthesised contact is
+where the marks on the ceiling come from.
+
+**And it hits things**, off cannon's own `collide` event — so it hears about
+walls, furniture and a ragdoll's shin without this module having to ask what any
+of them are, which is right, because the answer is the same for all of them.
+Three guards make it usable: the impact is measured **along the contact normal**,
+so a hard landing counts and a long slide down a wall does not; it is
+**rate-limited**, because a body resting against a wall fires that event every
+single step and without the cooldown a machine wedged in a corner is a hundred
+crashes a second; and the force is a 0–1 ramp that drives the damage, the mark
+size and the sound together.
+
+Each impact routes through **the same three calls an explosion uses** — static
+furniture damaged, loose furniture shoved, bodies hurt on a falloff — at a quarter
+of an extinguisher's radius. That is reuse rather than shortcut: those three
+already know how to reach a batched static prop, a loose one and a body, and a
+fourth way of doing it would be a fourth thing to get wrong. What makes it read as
+a collision rather than a bomb is the radius and the fact that it happens at the
+contact point.
+
+**Live enemies can never appear in a contact**, and that is the one thing here
+that needed knowing: the player and the staff are kinematic and have no physics
+body at all (see the Tech stack above), so the machine passes through them as far
+as the solver is concerned. The damage reaches them through `enemies.splash` like
+an explosion's, and the flesh thud comes off `enemies.anyNear` — which reads the
+per-frame bucket grid `_separate` maintains, so it is empty in any harness that
+steps this module without stepping `enemies.update`.
+
+Measured over 40 simulated seconds per mode, stepping physics and the module at a
+fixed 1/60 — necessary rather than tidy, because a backgrounded tab stops
+`requestAnimationFrame` and the machine simply freezes:
+
+- **grounded** — top of the machine 1.30 m, spin pinned at the 2.60 cap, peak
+  speed 3.6 m/s (one hop's worth, so nothing is accumulating), leash held at
+  0.55 m of 1.9.
+- **flying** — top 2.96 m against the 3.0 m ceiling, spin pinned at 5.5, and 26
+  impacts of which 4 were on the tiles.
+- **violence** — 26 crashes, 26 marks, 26 prop blasts and 26 body splashes in
+  40 s; the marks came out 12 floor, 7 wall, 4 ceiling; a body pinned beside one
+  took 48.8 damage in 25 s; and 9 of 14 crashes also voiced flesh with somebody
+  in reach.
+
 Which makes it **the only prop in the catalogue that is loose AND model-backed at
 once** — the split in `gen/models.js` says that does not happen. It gets both because
 it has to: batched geometry cannot hop, and the hopping is what this prop *is*. So
@@ -1980,6 +2068,14 @@ the clip measures 0.14 RMS — so 0.75 put a *continuous* sound at 0.108 against
 for as long as the player is on the floor, which is the `blackoutPanels` mistake in
 another key: something that never stops being asked for has to sit under the fight
 rather than in it.
+
+**`washer-crash` is four takes with the widest pitch jitter of any impact in the
+set**, and that is `generator-arc`'s argument in a different place: this is asked
+for several times a second while a machine is loose in a corridor, and what gives
+a repeated clip away is not its level, it is hearing the same take twice. Force
+drives **gain and rate together** rather than choosing between two clips — a big
+object makes a lower noise, so a hard hit comes out heavier as well as louder, and
+one clip that pitches is better than two clips that have to agree with each other.
 
 **And the loop has to stop when the machine does.** Killed at 3 m it dealt the player
 14.7 damage, removed itself from the list, and stopped its voice — that last one is the
