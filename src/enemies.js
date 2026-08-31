@@ -530,7 +530,23 @@ export class Enemies {
     // resolved here so a theme stays pure data.
     const kinds = this.theme.bystanders?.map((k) => TYPES[k]).filter(Boolean);
     const bystanders = kinds?.length ? kinds : BYSTANDERS;
-    for (let i = crowd; i > 0; i--) neutrals.push(rng.pick(bystanders));
+    // ONE OF EACH FIRST, and the rest of the crowd rolled.
+    //
+    // This is the same "set a floor of one" the security office and the broom
+    // closet both make, and it is here for the same kind of reason rather than
+    // for tidiness. A theme that names its own traffic is saying these are the
+    // people in its halls — so a floor that happens to roll none of one of them
+    // has quietly lost half of what the theme said, and on an Automated floor it
+    // loses a feature outright: a parcel run needs a Maintenance Worker to take
+    // the box at the belt, and with `rng.pick` alone a crowd of three or four
+    // draws zero workers often enough to matter. Found by trying to watch one —
+    // 3 porters, 0 workers, and jobs.js correctly refusing to cast a run it
+    // could not finish, which is silent by design and so says nothing.
+    //
+    // Capped at the crowd, so a small floor still gets a small crowd rather than
+    // one of everything on top of it.
+    for (let i = 0; i < Math.min(crowd, bystanders.length); i++) neutrals.push(bystanders[i]);
+    for (let i = crowd - bystanders.length; i > 0; i--) neutrals.push(rng.pick(bystanders));
 
     for (let i = 0; i < neutrals.length; i++) {
       // A few tries at somewhere nobody is already standing, and the last pick
