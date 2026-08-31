@@ -190,7 +190,11 @@ function breakRoom(sink, bounds, rng) {
 
 // Shelving in aisles, and the boxes that never made it onto a shelf.
 function storage(sink, bounds, rng) {
-  aisles(sink, bounds, 1.9, 2.0, 'shelving', rng);
+  // `'shelf'` is where the parcel runs start: a machine comes in here, takes a
+  // box off a rack and hands it to a porter. Only the STORAGE room offers them —
+  // `aisles` also ranks an archive's bookshelves and a server room's racks, and
+  // neither is somewhere the building's stock is kept. See jobs.js.
+  aisles(sink, bounds, 1.9, 2.0, 'shelving', rng, 'shelf');
   // Pallets and crates are static and a metre across; loose cartons are neither.
   // Only a room with floor to spare gets the heavy goods left out on it.
   scatter(sink, bounds, area(bounds) > 55
@@ -843,7 +847,7 @@ export const ROOM_ROLES = Object.keys(ROLES);
 // room's floor away from its own doorway.
 const GANGWAY = 0.9;   // metres — the player is 0.8 m across
 
-function aisles(sink, bounds, aislePitch, unitPitch, kind, rng) {
+function aisles(sink, bounds, aislePitch, unitPitch, kind, rng, station = null) {
   const { x0, z0, x1, z1 } = bounds;
   const alongX = (x1 - x0) >= (z1 - z0);
   const [a0, a1, b0, b1] = alongX ? [x0, x1, z0, z1] : [z0, z1, x0, x1];
@@ -861,13 +865,36 @@ function aisles(sink, bounds, aislePitch, unitPitch, kind, rng) {
   // axis, and a rank presents its depth along it whichever way round the room
   // is, which is why this asks in the prop's own frame.
   const half = footprintOf(sink, kind).d / 2;
+  // Where a body stands to take something off a rack, if this caller wants one.
+  // Same derivation and the same reasons as the servery's queue below: the
+  // furnisher is the only thing that knows where a rack actually landed, a prop
+  // is authored facing -Z so QUARTER turns its own depth into a direction, and
+  // the body faces back the other way — `(rot + 2) & 3`. Written out by hand
+  // this is four coordinates and half of them come out backwards.
+  //
+  // Offered on EVERY unit rather than a chosen few, and most of them are
+  // rubbish: the first rank of an aisle faces the wall it is nearest, so its
+  // spot is inside the plaster. That is fine and is why the offer goes down the
+  // `sink.workstation` pipe — `deskPool` in enemies.js drops any station a body
+  // cannot stand at, exactly as it already does for one canteen tray rack in ten.
+  const front = half + RACK_REACH;
+  const place = (cx, cz) => {
+    if (!tryPlace(sink, kind, cx, cz, rot, rng)) return;
+    if (!station) return;
+    const [ox, oz] = QUARTER[rot](0, -front);
+    sink.workstation(cx + ox, cz + oz, (rot + 2) & 3, station);
+  };
   for (let b = b0 + aislePitch * 0.3; b < b1 - half; b += aislePitch) {
     for (let a = a0 + GANGWAY + unitPitch / 2; a < a1 - GANGWAY - unitPitch / 2 + 0.05; a += unitPitch) {
-      if (alongX) tryPlace(sink, kind, a, b, rot, rng);
-      else tryPlace(sink, kind, b, a, rot, rng);
+      if (alongX) place(a, b);
+      else place(b, a);
     }
   }
 }
+
+// How far in front of a rack a body stands to reach it. Under storage's 1.9 m
+// aisle pitch, so the spot lands in the gangway rather than inside the next rank.
+const RACK_REACH = 0.65;
 
 const ALL_SIDES = [0, 1, 2, 3];
 

@@ -93,7 +93,7 @@ export class Game {
    * `physics` is the exception and stays guarded, because the solver really can
    * be absent and the game is meant to keep running without it.
    */
-  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, spills, doors, casings, keycards, wallet, ragdolls, cameras, conveyors }) {
+  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, spills, doors, casings, keycards, wallet, ragdolls, cameras, conveyors, jobs }) {
     this.player = player;
     this.weapons = weapons;
     this.shooting = shooting;
@@ -114,6 +114,7 @@ export class Game {
     this.ragdolls = ragdolls;
     this.cameras = cameras;
     this.conveyors = conveyors;
+    this.jobs = jobs;
 
     // Co-op. Wired after construction by main.js, because NetPlay needs a Game
     // and a Game would then need a NetPlay — and it is the third genuinely
@@ -481,6 +482,15 @@ export class Game {
     // off the same stream it always did.
     this.cameras.spawn(level.layout, level.nav, rng);
 
+    // The parcel runs, and they go LAST of the three because they are the only
+    // thing on the floor that needs two of the others to have finished: the
+    // shelves come out of the station pool `enemies.spawn` just built, and the
+    // belts out of the runs `conveyors.spawn` measured. It takes no dice of its
+    // own — whose turn it is to carry a box is a runtime decision, like whose
+    // turn it is at the lunch counter, so spending the floor's seeded stream on
+    // it would move every roll after it. See jobs.js.
+    this.jobs.spawn(level.nav, this.enemies, this.conveyors);
+
     // Bullets stop on this floor's geometry, this floor's occupants, and the
     // things on its walls looking at them.
     this.shooting.setHittables([
@@ -691,6 +701,11 @@ export class Game {
       this.cameras.update(dt, this.player);
       this.hud.setWatch(this.cameras.watch);
       this.conveyors.update(dt);
+      // After the enemies, because a run is walked out of `enemies.update` via
+      // the `jobTick` hook — this call only decides whether to START one, and a
+      // run cast against a roster that has not moved yet would be casting off
+      // last frame's positions.
+      this.jobs.update(dt);
 
       this._checkFloorState(dt, level);
       this._vitals(dt);

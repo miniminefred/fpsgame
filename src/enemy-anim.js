@@ -54,6 +54,11 @@ const MEAL_ARMS = 0.92;    // forearms on the table, either side of the tray
 const MEAL_REACH = 0.17;   // how far the eating hand goes out over it
 const MEAL_DIP = 0.13;     // and how far the body comes down to meet it
 
+// Where a crate sits if its rig never said. Nothing should reach this — every
+// rig in rigs.js declares `boxAt` — and it is a person's chest height so that if
+// anything ever does, it comes out carrying the box rather than wearing it.
+const BOX_FALLBACK = [0, 1.02, -0.34];
+
 // Lunch, carried. Both arms out in front and level, with the tray across them —
 // a tray is the one thing in the building held in two hands, which is most of
 // what makes somebody carrying one read as carrying one from across a room.
@@ -174,19 +179,35 @@ export function animate(e, dt, audio) {
   const aiming = e.state === 'fight';
   if (e.swing > 0) e.swing -= dt;
 
-  if (e.tray) {
-    // Carrying lunch, and it wins over both branches below rather than sitting
-    // beside them: a body on its break has put the sidearm away and stopped
-    // swinging whatever was on its desk (see _lunch in enemies.js), so there is
+  if (e.tray || e.carry) {
+    // Carrying something in both hands, and it wins over both branches below
+    // rather than sitting beside them: a body on its break has put the sidearm
+    // away and stopped swinging whatever was on its desk (see _lunch in
+    // enemies.js), and a body on a parcel run never had either out. So there is
     // nothing for the melee pose to be about.
+    //
+    // A crate rides the tray's pose because a crate is the other thing in this
+    // building held in two hands — except on a rig that carries it on a deck,
+    // which is what `boxArms` says.
     const k = smoothTo(10, dt);
-    e.armL.rotation.x = lerp(e.armL.rotation.x, TRAY_ARMS, k);
-    e.armR.rotation.x = lerp(e.armR.rotation.x, TRAY_ARMS, k);
-    e.tray.rotation.x = 0;
-    // Bobs with the stride, the way anything held does. Small: a tray carried
-    // by somebody who does not want to drop it does not swing.
-    e.tray.position.set(TRAY_CARRY[0], TRAY_CARRY[1] + Math.sin(e.walkPhase) * 0.012,
-      TRAY_CARRY[2]);
+    if (e.tray || e.boxArms !== false) {
+      e.armL.rotation.x = lerp(e.armL.rotation.x, TRAY_ARMS, k);
+      e.armR.rotation.x = lerp(e.armR.rotation.x, TRAY_ARMS, k);
+    }
+    if (e.carry) {
+      const at = e.boxAt ?? BOX_FALLBACK;
+      e.carry.rotation.x = 0;
+      // Bobs with the stride a shade harder than a tray does. A tray is carried
+      // by somebody who does not want to spill it; a box is just heavy.
+      e.carry.position.set(at[0], at[1] + Math.sin(e.walkPhase) * 0.015, at[2]);
+    }
+    if (e.tray) {
+      e.tray.rotation.x = 0;
+      // Bobs with the stride, the way anything held does. Small: a tray carried
+      // by somebody who does not want to drop it does not swing.
+      e.tray.position.set(TRAY_CARRY[0], TRAY_CARRY[1] + Math.sin(e.walkPhase) * 0.012,
+        TRAY_CARRY[2]);
+    }
   } else if (e.type.melee) {
     // Wind up behind the head, then bring it down hard. The weapon rides the
     // right arm so the two read as one motion.

@@ -447,7 +447,12 @@ export const BYSTANDERS = [TYPES.cleaner, TYPES.courier];
 // in that colour rather than as coloured bulbs in a beige office.
 // `bystanders` is the last one and it is about the corridors: the harmless
 // traffic is a night cleaner and a courier unless a theme names its own, and on
-// a floor run by machines the deliveries are done by one. The toilet guy is
+// a floor run by machines the deliveries are done by one — alongside the
+// maintenance staff, who are the tenth of the floor this theme's own comment
+// promises and who until now were only ever found in a generator room, on the
+// 3% of floors that have one. They are also the far end of a parcel run: a box
+// comes off a rack, a porter carries it, and one of these is who takes it. See
+// jobs.js. The toilet guy is
 // never on that list — he is a flat one or two on every floor there has ever
 // been, and the last human on a floor of robots running for a lavatory is the
 // joke landing harder rather than a joke out of place.
@@ -482,7 +487,7 @@ export const THEMES = [
   // still the fastest thing on the floor and the most heavily armoured thing on
   // the floor, which is most of what stops "harmless" reading as "scenery".
   { name: 'Automated', weight: 3, light: 0.72, tint: 0x7fb4ff,
-    rats: [0, 0], patrols: [0, 1], cleaners: [3, 5], bystanders: ['porter'],
+    rats: [0, 0], patrols: [0, 1], cleaners: [3, 5], bystanders: ['porter', 'worker'],
     conveyors: [5, 9],
     share: { clerk: 0.29, sentry: 0.15, legacy: 0.15, loader: 0.14, welder: 0.10, drone: 0.07 },
     boost: { sysadmin: 6, facilities: 3, reanimated: 0 } },

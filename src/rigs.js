@@ -326,6 +326,12 @@ function buildHuman(type, rng) {
     // pair of fans. A rig is the file that knows where a hand is.
     drive: 'legs',
     gunRest: [0.3, 1.1, -0.3], gunAim: [0.3, 1.32, -0.55],
+    // ...and where a carried BOX rides, which is the same lesson one object
+    // further along. A parcel run puts a crate in somebody's hands, and "in
+    // somebody's hands" is chest height on a person and a flat deck two thirds
+    // of a metre off the floor on a porter. `boxArms` is whether the arms come
+    // up to hold it at all.
+    boxAt: [0, 1.02, -0.34], boxArms: true,
     // What goes white when this one is shot. It has to be whatever they are
     // actually WEARING, not the one material that used to be everything: a
     // janitor's suit colour is a strip of collar, and flashing only that reads
@@ -774,6 +780,9 @@ function buildRobot(type, rng) {
   const mesh = part(group);
   const rotors = [];
   let beacon = null;
+  // Filled in by the tray block below if this chassis has a deck. Declared out
+  // here because `boxAt` at the bottom has to know whether it was.
+  let deckY = null;
 
   const torso = mesh(geo.torso, mats.suit, 0, s.torso.y, 0);
   mesh(geo.neck, mats.skin, 0,
@@ -838,7 +847,8 @@ function buildRobot(type, rng) {
     }
   }
   if (geo.tray) {
-    const deck = s.torso.y + s.torso.size[1] / 2 + 0.018;
+    deckY = s.torso.y + s.torso.size[1] / 2 + 0.018;
+    const deck = deckY;
     extra.push(mesh(geo.tray, mats.shirt, 0, deck, 0));
     extra.push(mesh(geo.rail, mats.skin, -(s.torso.size[0] / 2 + 0.03), deck + 0.06, 0));
     extra.push(mesh(geo.rail, mats.skin, s.torso.size[0] / 2 + 0.03, deck + 0.06, 0));
@@ -890,6 +900,17 @@ function buildRobot(type, rng) {
     ? [s.leg.size[0], s.leg.size[1], s.leg.size[1]]
     : s.leg.size;
 
+  // Where a parcel-run crate rides on this chassis. A machine with a DECK
+  // carries it on the deck and does not raise its arms — that is what a deck is,
+  // and lifting a box to the chest of a flat trolley is the one way to make a
+  // delivery robot look like it is struggling with the parcel. Everything else
+  // holds it out in front at its own arm height. Declared here for the reason
+  // `gunRest` is: the animator held these as constants, which was true of every
+  // body in the building until one of them was a trolley.
+  const boxAt = deckY !== null
+    ? [0, deckY + 0.145, 0.04]
+    : [0, s.arm.y + 0.16, -(s.torso.size[2] / 2 + 0.20)];
+
   return {
     rig: 'robot', group, mats, ownGeo, torso, head,
     armL, armR, legL, legR, gun, blunt,
@@ -897,6 +918,7 @@ function buildRobot(type, rng) {
     bluntRest: bluntSpec?.rest ?? 0.5,
     drive: s.drive,
     gunRest: s.gun.rest, gunAim: s.gun.aim,
+    boxAt, boxArms: deckY === null,
     rotors: rotors.length ? rotors : null,
     beaconMat: beacon ? mats.beacon : null,
     flash: flashSet(mats),
@@ -999,6 +1021,53 @@ export function buildTray() {
   put(geo.bowl, mat.bowl, -0.05, 0.035, -0.01);
   put(geo.food, mat.food, -0.05, 0.06, -0.01);
   put(geo.cup, mat.cup, 0.11, 0.055, 0.03);
+  return group;
+}
+
+let crateParts = null;
+
+/**
+ * The box a parcel run carries: off a storage rack, into a porter's arms, into
+ * whoever is fixing the belt. See jobs.js.
+ *
+ * Built exactly the way `buildTray` is and for the same two reasons. Geometry
+ * and materials are module-level and shared, so the twentieth box of a run costs
+ * nothing and there is nothing to dispose when one is put down — dropping the
+ * mesh is the whole of it. And it is authored around its own origin, so the
+ * animator can put it wherever that rig carries a box without knowing which rig
+ * it is (see `boxAt`).
+ *
+ * Cardboard, and deliberately close to the brown the carton prop is painted (see
+ * gen/props.js): a box being carried across a floor and a box lying on that
+ * floor's carpet are the same object as far as the player is concerned, and what
+ * would give this away is the carried one being a colour the building does not
+ * otherwise contain. The tape is the only detail on it and it earns its two
+ * triangles — an unbroken brown box at three metres reads as a brown block, and
+ * one pale line across the lid reads as a box.
+ */
+export function buildCrate() {
+  crateParts ??= {
+    geo: {
+      body: new THREE.BoxGeometry(0.34, 0.26, 0.30),
+      tape: new THREE.BoxGeometry(0.05, 0.006, 0.305),
+    },
+    mat: {
+      card: new THREE.MeshStandardMaterial({ color: 0x9c7a4e, roughness: 0.92 }),
+      tape: new THREE.MeshStandardMaterial({ color: 0xd8cdb4, roughness: 0.8 }),
+    },
+  };
+
+  const { geo, mat } = crateParts;
+  const group = new THREE.Group();
+  const put = (g, m, x, y, z) => {
+    const mesh = new THREE.Mesh(g, m);
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    group.add(mesh);
+  };
+
+  put(geo.body, mat.card, 0, 0, 0);
+  put(geo.tape, mat.tape, 0, 0.133, 0);
   return group;
 }
 

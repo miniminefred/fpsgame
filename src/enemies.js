@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BODY_RADIUS as RADIUS } from './nav.js';
 import { CORRIDOR, STAFF_ONLY, FIRST_CONTACT_GAP, worldX, worldZ } from './gen/layout.js';
-import { buildRig, buildTray } from './rigs.js';
+import { buildRig, buildTray, buildCrate } from './rigs.js';
 import { TYPES, BYSTANDERS, isMachine, pickType, pickTheme } from './enemy-types.js';
 import { DEATH_TIME, HIT_FLASH, SWING_TIME, animate, die, stand } from './enemy-anim.js';
 import { angleDelta, angleLerp, smoothTo } from './util.js';
@@ -41,6 +41,11 @@ const SNAP_STATES = ['idle', 'alert', 'chase', 'fight', 'wander'];
 const SNAP_SEAT = 8;
 const SNAP_BREAK = 16;
 const SNAP_TRAY = 32;
+// A parcel-run crate, for the tray's reason exactly: a body carrying a box is
+// doing something visible that it is not doing over there. Unlike the break
+// there is no visor in it — everybody on a run is neutral already and wearing
+// its own colour — so this is the box and nothing else. See jobs.js.
+const SNAP_BOX = 64;
 
 // How far from either player a body has to be before it is worth sending. Well
 // beyond SIGHT, because the joiner can watch somebody walk up a corridor long
@@ -372,6 +377,12 @@ export class Enemies {
     // applies a death it was TOLD about, and announcing that back would be a
     // death bouncing between two browsers for ever.
     this.onDamaged = null;
+    // A body on a parcel run is walked by jobs.js rather than by `_wander`, and
+    // has to be told when the run is off. Both are set by jobs.js if it is
+    // wired at all — with neither, nothing in this file starts a run and none of
+    // this costs a branch that matters.
+    this.jobTick = null;    // one frame of somebody's run
+    this.jobLost = null;    // ...and the run is over, however it ended
     // Where `snapshot` got to last time, so the roster is covered round-robin
     // rather than the first SNAP_CAP bodies being the only ones ever sent.
     this._snapCursor = 0;
@@ -457,6 +468,12 @@ export class Enemies {
     // are shared and never taken out of the pool: a serving hatch is somewhere
     // you stand for four seconds, not somewhere you sit for a minute.
     this.servery = deskPool(workstations, nav, rng, 'servery').get(layout.spawnRoom) ?? [];
+    // Where a box comes off a rack, for the parcel runs (see jobs.js). Flattened
+    // out of the by-room map the pool returns, because unlike a chair or a
+    // serving hatch it does not matter WHOSE storeroom it is — a run wants any
+    // rack anybody can walk to. Shared and never taken out of the pool, like the
+    // servery: it is somewhere a machine stands for two seconds.
+    this.shelves = [...deskPool(workstations, nav, rng, 'shelf').values()].flat();
     // ...and where they go back. Falling back to the counter itself is not a
     // fudge: a rack that a body cannot stand at is dropped like any other
     // station, and handing your tray back across the counter you took it from is
@@ -1488,6 +1505,11 @@ export class Enemies {
       drive: rig.drive ?? 'legs',
       gunRest: rig.gunRest ?? null, gunAim: rig.gunAim ?? null,
       rotors: rig.rotors ?? null, beaconMat: rig.beaconMat ?? null,
+      // Where this body carries a box and whether its arms come up to hold it.
+      // Same argument as the two above: a porter carries one on a deck.
+      boxAt: rig.boxAt ?? null, boxArms: rig.boxArms !== false,
+      // The crate, if this one is on a parcel run. See jobs.js.
+      carry: null, job: null, jobRole: null,
       type,
       // Position in `items`, which is this body's name on the wire. It is stable
       // because the roster is generated from the floor's seed and appended to in
@@ -1649,6 +1671,13 @@ export class Enemies {
     // fights — and neither branch has to know there was ever a tray.
     if (e.break) this._lunchEnd(e);
     // Being shot at is a reliable way to get someone's attention.
+    // The parcel run is off, for the reason the break is: whatever this body was
+    // doing, it is not doing it now. It goes before the branch below because it
+    // applies to a hostile on a run as much as to a neutral on one — and a run
+    // must not be left half-finished with a crate parented to somebody who has
+    // started running away, which is what the box hanging in the air would look
+    // like.
+    if (e.job) this.jobLost?.(e);
     if (e.neutral) {
       // They have nothing to fight you with and never did. Zeroing the timer
       // makes the next tick pick a destination away from you instead of
@@ -1685,6 +1714,11 @@ export class Enemies {
     // overwritten a few lines below for anything that ragdolls, which is right —
     // dead is a louder thing to say than off duty.
     if (e.break) this._lunchEnd(e);
+    // ...and a crate that would otherwise ride a ragdoll down. `jobLost` is what
+    // releases the other two bodies on the run as well, which matters more than
+    // the box: a porter waiting for a handoff from somebody who is dead waits
+    // out the whole stage cap.
+    if (e.job) this.jobLost?.(e);
     // A dead machine stops making machine noise. Nothing else clears this, and
     // the loop would otherwise run on out of a wreck for the rest of the floor.
     if (e.motor) { this.audio?.stopMotor(e.motor); e.motor = null; }
@@ -1863,6 +1897,12 @@ export class Enemies {
       if (!target) {
         e.contact += dt;
         if (e.break) { this._lunch(e, dt, audio); animate(e, dt, audio); continue; }
+        // On a parcel run, which is walked by jobs.js instead of by `_wander` —
+        // and it is checked BEFORE `neutral` rather than inside it because the
+        // run owns the body's whole movement for its duration. `animate` still
+        // runs here and nowhere else, so a body gets exactly one pose a frame
+        // however it is being driven.
+        if (e.job) { this.jobTick?.(e, dt, audio); animate(e, dt, audio); continue; }
         if (e.neutral) { this._wander(e, dt, audio); animate(e, dt, audio); continue; }
         this._think(e, dt, Infinity, false, false, null);
         this._move(e, dt, 0, 0, 1, false);
@@ -1913,6 +1953,7 @@ export class Enemies {
         // weapon. Seeing you and hearing you change nothing; being shot ends the
         // break, and `_damage` is where that happens.
         if (e.break) this._lunch(e, dt, audio);
+        else if (e.job) this.jobTick?.(e, dt, audio);
         else this._wander(e, dt, audio);
         animate(e, dt, audio);
         continue;
@@ -2394,63 +2435,113 @@ export class Enemies {
     }
   }
 
-  // Standing at the counter for a moment, turned to face it. The station's own
-  // quarter turn is converted the one way it can be — the same line `_seat` uses,
-  // because a body standing at a counter and a chair pulled up to a desk are
-  // facing what they are facing for the same reason.
-  _lunchStand(e, at, stage, span) {
+  /**
+   * ------------------------------------------------------------------------
+   * The errand primitives, shared by the lunch cycle and by jobs.js.
+   * ------------------------------------------------------------------------
+   *
+   * A break and a parcel run are the same shape of thing: a body that is out of
+   * the state machine entirely, walking a list of places and pausing at each.
+   * The WALKING half of that was written for lunch and is not about lunch, so it
+   * lives here under names that do not mention it and both callers drive it.
+   *
+   * An errand is any object carrying `{ at, timer }`. Stages belong to the
+   * caller, because that is the only part that differs — and deliberately so:
+   * one shared stage machine with two vocabularies in it is how the next thing
+   * that walks somewhere ends up with a `stage: 'eat'` in it.
+   */
+
+  // Stopped at a station and turned to face it. The station's own quarter turn
+  // is converted the one way it can be — the same line `_seat` uses, because a
+  // body standing at a counter and a chair pulled up to a desk are facing what
+  // they are facing for the same reason.
+  standAt(e, at) {
     e.state = 'idle';
     e.moving = false;
     e.yaw = -at.rot * Math.PI / 2;
     e.group.rotation.y = e.yaw;
-    e.break.stage = stage;
-    e.break.timer = span[0] + Math.random() * (span[1] - span[0]);
   }
 
-  // Points this one at somewhere and floods the field that walks them there. A
-  // failed flood leaves the timer negative, which every walking stage reads as
-  // "no route, give it up".
-  _lunchGo(e, to, stage) {
-    const b = e.break;
-    b.at = to;
-    b.stage = stage;
-    b.timer = LUNCH_STAGE_CAP;
+  /**
+   * Points this one at somewhere and floods the field that walks them there.
+   * False (and a spent timer, which every walking stage reads as "give it up")
+   * if there is no route.
+   *
+   * BOTH halves are checked and the second one is the whole of it: a flood that
+   * reaches the destination says nothing about whether it reached HERE. Most of
+   * the staff are behind a badged door, which is out of the nav grid entirely
+   * (see the note about hearing in the header), so before the player has taken a
+   * white card the only bodies that can get anywhere are the ones already in the
+   * corridors — and once one is taken, ~190 doors hand their openings back and
+   * the whole building can. Checked rather than assumed, because a body that
+   * sets off for somewhere it cannot reach spends the whole stage cap
+   * re-flooding the floor from a tile it is not standing on.
+   */
+  routeTo(e, errand, to, cap) {
+    errand.at = to;
+    errand.timer = cap;
     e.state = 'wander';
     e.stuck = 0;
     e.field ??= this.nav.makeField();
-    // Both halves, and the second one is the whole of it: a flood that reaches
-    // the counter says nothing about whether it reached HERE. Most of the staff
-    // are behind a badged door, which is out of the nav grid entirely (see the
-    // note about hearing in the header), so before the player has taken a white
-    // card the only people who can get to the canteen are the ones already in
-    // the corridors — and once one is taken, ~190 doors hand their openings back
-    // and the whole building can. Checked rather than assumed, because a body
-    // that sets off for a lunch it cannot reach spends the whole stage cap
-    // re-flooding the floor from a tile it is not standing on.
     if (!to || !this.nav.floodTo(e.field, to.x, to.z)
-      || !this.nav.descendOn(e.field, e.x, e.z, this._v)) b.timer = -1;
+      || !this.nav.descendOn(e.field, e.x, e.z, this._v)) {
+      errand.timer = -1;
+      return false;
+    }
+    return true;
   }
 
-  // One step of a walk with a destination. True once they are there.
-  _lunchWalk(e, dt, to) {
+  /** One step of a walk with a destination. True once they are there. */
+  advanceTo(e, errand, dt, to) {
     if (!to) return true;
     if (Math.hypot(to.x - e.x, to.z - e.z) < LUNCH_ARRIVE) return true;
 
-    // Unhurried on purpose. Somebody walking to their lunch at chase speed is
-    // somebody who has noticed you.
+    // Unhurried on purpose. Somebody walking to their lunch — or wheeling a box
+    // down a corridor — at chase speed is somebody who has noticed you.
     const speed = this.tuning.speed * e.type.speed * LUNCH_PACE;
     if (this._stroll(e, dt, speed) !== 'moved') {
       // Wedged, or off the field. Re-flooding is the only recovery there is —
       // the floor changes shape as furniture is destroyed — and it is done ONCE
       // and then checked, rather than retried every frame: a body that is not on
-      // the field will not be on the re-flooded one either, and left to try again
-      // it floods the whole floor thirty times a second for the length of the
-      // stage cap. `e.stuck` is reset so a sidestep gets its chance first.
+      // the field will not be on the re-flooded one either, and left to try
+      // again it floods the whole floor thirty times a second for the length of
+      // the stage cap. `e.stuck` is reset so a sidestep gets its chance first.
       e.stuck = 0;
       if (!this.nav.floodTo(e.field, to.x, to.z)
-        || !this.nav.descendOn(e.field, e.x, e.z, this._v)) e.break.timer = -1;
+        || !this.nav.descendOn(e.field, e.x, e.z, this._v)) errand.timer = -1;
     }
     return false;
+  }
+
+  /**
+   * The last stretch onto a station, walked in a straight line rather than on
+   * the field. True once they are on it.
+   *
+   * `_tryMove` rather than an assignment, so the same collision the rest of the
+   * walk uses still applies — and if it cannot make ground the caller settles
+   * anyway, because a body wedged beside the thing it was walking to for the
+   * length of the stage cap is the worse outcome.
+   */
+  closeOnto(e, dt, at) {
+    return this._settleOnto(e, dt, at);
+  }
+
+  // Standing at the counter for a moment, turned to face it.
+  _lunchStand(e, at, stage, span) {
+    this.standAt(e, at);
+    e.break.stage = stage;
+    e.break.timer = span[0] + Math.random() * (span[1] - span[0]);
+  }
+
+  // Points this one at their next stop. The stage is the lunch cycle's own; the
+  // routing is `routeTo` above.
+  _lunchGo(e, to, stage) {
+    e.break.stage = stage;
+    this.routeTo(e, e.break, to, LUNCH_STAGE_CAP);
+  }
+
+  _lunchWalk(e, dt, to) {
+    return this.advanceTo(e, e.break, dt, to);
   }
 
   /**
@@ -2511,6 +2602,26 @@ export class Enemies {
     // at the end of its lunch.
     if (e.gun) e.gun.visible = !on && !e.type.melee && !e.type.neutral;
     if (e.blunt) e.blunt.visible = !on;
+  }
+
+  /**
+   * The crate, on and off. Public because jobs.js is what hands it along the
+   * run, and the joiner's snapshot path uses the same two — a box appearing in
+   * somebody's hands has to happen exactly one way whoever decided it.
+   *
+   * Geometry and materials are shared and module-level (see buildCrate), so
+   * there is nothing here to dispose either.
+   */
+  giveCrate(e) {
+    if (e.carry) return;
+    e.carry = buildCrate();
+    e.group.add(e.carry);
+  }
+
+  takeCrate(e) {
+    if (!e.carry) return;
+    e.group.remove(e.carry);
+    e.carry = null;
   }
 
   _giveTray(e) {
@@ -2913,7 +3024,8 @@ export class Enemies {
       out[written++] = SNAP_STATES.indexOf(e.state)
         + (e.seat ? SNAP_SEAT : 0)
         + (e.break ? SNAP_BREAK : 0)
-        + (e.tray ? SNAP_TRAY : 0);
+        + (e.tray ? SNAP_TRAY : 0)
+        + (e.carry ? SNAP_BOX : 0);
     }
 
     this._snapCursor = i;
@@ -2955,6 +3067,13 @@ export class Enemies {
       }
       if (!!(packed & SNAP_TRAY) !== !!e.tray) {
         if (packed & SNAP_TRAY) this._giveTray(e); else this._takeTray(e);
+      }
+      // The crate, kept as the mesh alone and no run behind it. A joiner runs no
+      // part of a parcel run for the same reason it runs no part of a lunch: it
+      // only has to draw the body correctly, and half a stage machine is how it
+      // would end up trying to do more than that.
+      if (!!(packed & SNAP_BOX) !== !!e.carry) {
+        if (packed & SNAP_BOX) this.giveCrate(e); else this.takeCrate(e);
       }
       e.state = SNAP_STATES[packed & 7] ?? 'idle';
     }
@@ -3042,6 +3161,7 @@ export class Enemies {
     this.desks.clear();
     this.tables?.clear();
     this.servery = [];
+    this.shelves = [];
     this.trayRack = null;
   }
 
