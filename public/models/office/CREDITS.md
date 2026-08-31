@@ -1,14 +1,14 @@
 # Office prop credits
 
-74 models, all free to use, sourced from [Poly Pizza](https://poly.pizza) —
+75 models, all free to use, sourced from [Poly Pizza](https://poly.pizza) —
 the same library as this project's weapon viewmodels (see `../CREDITS.md`).
 
-License split: **CC-BY** 46, **CC0** 28.
+License split: **CC-BY** 46, **CC0** 29.
 CC-BY models are attributed per row below.
 
 ## Authors
 
-- **Quaternius** — 17 models
+- **Quaternius** — 18 models
 - **J-Toastie** — 13 models
 - **Zsky** — 11 models
 - **CreativeTrio** — 7 models
@@ -93,6 +93,7 @@ Thank you to all of them.
 | `sofa` | `furn_sofa.glb` | Couch Medium | Quaternius | CC0 | https://poly.pizza/m/mWgQ94zhDZ |
 | `stool` | `furn_stool.glb` | Stool | Quaternius | CC0 | https://poly.pizza/m/ngWUQ7Dt9u |
 | `tall_plant` | `furn_tall_plant.glb` | Houseplant | Quaternius | CC0 | https://poly.pizza/m/VtJh4Irl4w |
+| `washing_machine` | `furn_washing_machine.glb` | Washing Machine | Quaternius | CC0 | https://poly.pizza/m/UFxsKNSl8W |
 | `folder` | `store_folder.glb` | File Folder | Ryan Dewalt | CC-BY | https://poly.pizza/m/fDhOEadpKWA |
 | `fluorescent_panel` | `furn_fluorescent_panel.glb` | Ceiling Light | Ryan Donaldson | CC-BY | https://poly.pizza/m/3izH548dJnA |
 | `cubicle_partition` | `furn_cubicle_partition.glb` | Cubicle | Stephen Faett | CC-BY | https://poly.pizza/m/9oZP4harYcp |

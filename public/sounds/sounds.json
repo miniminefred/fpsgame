@@ -1149,6 +1149,20 @@
       "variants": 2
     },
     {
+      "name": "washer-burst",
+      "text": "washing machine exploding, sharp metallic bang as the drum tears loose, glass door shattering, a burst of water, torn sheet panels clattering onto a hard floor, close mic, dry, no music, no voices",
+      "duration": 3.0,
+      "influence": 0.72,
+      "variants": 3
+    },
+    {
+      "name": "washer-thrash",
+      "text": "commercial washing machine on a violent unbalanced spin cycle, heavy steel drum banging hard against the casing, metal side panels rattling and buzzing, machine feet hammering and skidding on a hard floor, relentless and at full intensity from the very first instant with no fade in, close mic, dry, no reverb, no music, no voices",
+      "duration": 12.0,
+      "influence": 0.65,
+      "loop": true
+    },
+    {
       "name": "water-drip",
       "text": "single drip of water falling into a shallow puddle on a hard floor, close mic, dry, no music, no voices",
       "duration": 0.7,

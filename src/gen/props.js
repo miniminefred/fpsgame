@@ -317,6 +317,58 @@ export const PROPS = {
     },
   },
 
+  washingMachine: {
+    // Nobody knows why there is one in the corridor and it is not answering
+    // questions. It is on an unbalanced spin cycle and losing the argument with
+    // its own drum — see washers.js for the thrashing, the racket and what
+    // happens when you shoot it.
+    //
+    // The only prop in the catalogue that is LOOSE and model-backed at once,
+    // which the split in gen/models.js says should not happen: a loose prop
+    // needs its own mesh so the solver can move it, and a model is one merged
+    // mesh per material. It gets both because it has to. A static one cannot
+    // hop — batched geometry does not move — and it is the hopping that this
+    // prop IS. So `endDynamic` in gen/build.js draws the model as the group's
+    // own meshes and keeps the boxes below as the pieces it breaks into, which
+    // is the same division of labour every model-backed prop already has,
+    // moved from the batch onto one free-standing group.
+    //
+    // 68 kg is a commercial machine with water in it and it matters twice over:
+    // it is what stops a burst of SMG fire shoving it down the corridor, and it
+    // is what the hop impulses in washers.js are sized against.
+    w: 0.83, d: 0.86, mass: 68, hp: 55, substance: 'metal', spills: 'water',
+    model: 'washing_machine',
+    // Read in gen/build.js and handed to the runtime on the dynamic record.
+    // washers.js finds its machines with it rather than by matching on the prop
+    // name, which is the same reason `crushable` and `spills` are flags.
+    washer: true,
+    // Authored in courses for the reason the water cooler is (see above): a prop
+    // comes apart into exactly the boxes it was drawn from, and this one is
+    // going to come apart in front of you at close range rather than quietly
+    // across a room, so two fragments the size of the machine would not do.
+    build(p) {
+      // The casing, in three courses, so the thing that is left on the carpet
+      // reads as a machine that burst rather than as a cupboard that fell over.
+      p.box('metal', -0.41, 0.06, -0.43, 0.41, 0.40, 0.43);
+      p.box('metal', -0.41, 0.40, -0.43, 0.41, 0.74, 0.43);
+      p.box('metalDark', -0.41, 0.74, -0.43, 0.41, 0.95, 0.43);
+      // The door. `screenOn` because it is the one lit-looking thing on it and
+      // the drum behind glass is what says which way the machine is facing.
+      p.box('screenOn', -0.30, 0.30, -0.45, 0.30, 0.66, -0.42);
+      // Dials and a little display, on the control deck.
+      p.box('plastic', 0.12, 0.79, -0.45, 0.34, 0.90, -0.42);
+      // Four feet, which are the parts this whole prop is about: they are what
+      // it is hammering the floor with.
+      for (const sx of [-1, 1]) {
+        for (const sz of [-1, 1]) {
+          p.box('metalDark', sx * 0.33 - 0.05, 0, sz * 0.35 - 0.05,
+            sx * 0.33 + 0.05, 0.06, sz * 0.35 + 0.05);
+        }
+      }
+      p.obstacle(-0.41, -0.43, 0.41, 0.43, 0.95);
+    },
+  },
+
   vending: {
     w: 1.04, d: 0.82, model: 'vending_machine', hp: 120, substance: 'electronic',
     build(p) {
@@ -1041,8 +1093,12 @@ export function tryPlace(sink, kind, cx, cz, rot, rng, span = 0) {
 
   if (spec.mass) {
     // Loose: its own rigid body, and its own mesh so physics can move it.
+    // `model` and `washer` join the two traits that were already here. This is
+    // the trap `hulk` documents further down: a prop only ever sees the placer,
+    // and a trait that is not forwarded is silently absent rather than an error.
     sink.beginDynamic(spec.mass, spec.hp, spec.substance,
-      { crushable: spec.crushable, spills: spec.spills });
+      { crushable: spec.crushable, spills: spec.spills,
+        model: spec.model, washer: spec.washer, rot });
     spec.build(placer(sink, cx, cz, rot), rng, drawW);
     sink.endDynamic();
   } else if (model) {

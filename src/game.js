@@ -93,7 +93,7 @@ export class Game {
    * `physics` is the exception and stays guarded, because the solver really can
    * be absent and the game is meant to keep running without it.
    */
-  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, spills, doors, casings, keycards, wallet, ragdolls, cameras, conveyors, jobs }) {
+  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, spills, doors, casings, keycards, wallet, ragdolls, cameras, conveyors, jobs, washers }) {
     this.player = player;
     this.weapons = weapons;
     this.shooting = shooting;
@@ -115,6 +115,7 @@ export class Game {
     this.cameras = cameras;
     this.conveyors = conveyors;
     this.jobs = jobs;
+    this.washers = washers;
 
     // Co-op. Wired after construction by main.js, because NetPlay needs a Game
     // and a Game would then need a NetPlay — and it is the third genuinely
@@ -491,6 +492,12 @@ export class Game {
     // it would move every roll after it. See jobs.js.
     this.jobs.spawn(level.nav, this.enemies, this.conveyors);
 
+    // The washing machines, adopted AFTER _initPhysics has given every loose
+    // prop a body: the thrashing is impulses on `dyn.handle`, and a machine
+    // adopted before there is one stands in the corridor in silence, which is
+    // the one way this prop fails without erroring. See washers.js.
+    this.washers.spawn(level);
+
     // Bullets stop on this floor's geometry, this floor's occupants, and the
     // things on its walls looking at them.
     this.shooting.setHittables([
@@ -706,6 +713,7 @@ export class Game {
       // run cast against a roster that has not moved yet would be casting off
       // last frame's positions.
       this.jobs.update(dt);
+      this.washers.update(dt);
 
       this._checkFloorState(dt, level);
       this._vitals(dt);

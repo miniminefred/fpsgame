@@ -107,6 +107,12 @@ const LIBRARY = {
   // back repetition, it is so the tenth floor of a run does not open the same
   // way the second one did.
   'generator-blast': { variants: 3, gain: 1.30, pitch: 0.05 },
+  // A washing machine coming apart. Under the generator's and about level with
+  // the extinguisher's: it is a domestic appliance rather than the floor's power
+  // plant, and the drum and the water are what make it read big rather than the
+  // level. Three takes because a floor can hold three machines and a player who
+  // finds them funny will shoot all of them.
+  'washer-burst': { variants: 3, gain: 1.15, pitch: 0.06 },
 
   // ...and the wreck it leaves, arcing for as long as the player is on the
   // floor. A low transformer buzz rather than a bright spark, which is a mix
@@ -221,6 +227,36 @@ const LIBRARY = {
   // question. Regenerate it louder and this comes back down.
   conveyor: { gain: 1, pitch: 0, bed: true },
 
+  // A washing machine on an unbalanced spin cycle, following the machine around
+  // the corridor (see washers.js). A `bed`, so it is exempt from the level
+  // conditioning every one-shot gets and this gain IS its level — the same
+  // argument the conveyor's 1 documents at length. Mixed above both the other
+  // positional loops on purpose: it is the loudest thing in the building that is
+  // not an event, and the whole design of the prop is that you hear it from down
+  // the corridor and go and look. Its range is the other half of that
+  // (WASHER_AUDIBLE), because a loud loop that also carries is a loop that sits
+  // under the entire floor.
+  //
+  // 0.55 rather than the 0.75 it was first given, and the number came off a
+  // measurement rather than off taste. A bed's gain IS its level, and the clip
+  // measures 0.14 RMS — so 0.75 put a CONTINUOUS sound at 0.108 against the
+  // 0.1495 every one-shot in the set is conditioned to, which is 72% of a
+  // gunshot playing for as long as the player is on the floor. That is the
+  // `blackoutPanels` mistake in a different key: something that never stops
+  // being asked for has to sit under the fight rather than in it. At 0.55 it
+  // mixes to 0.079 — 1.6x the floor cleaner, comfortably the loudest loop in the
+  // building, and about half a gunshot.
+  //
+  // It is also the one bed that needs no loop-window rescue, and that is worth
+  // recording because the floor cleaner's clip did (see loopWindow in sfx.js).
+  // Measured in half-second windows across all twelve seconds: RMS 12.0 to 15.6,
+  // worst window 77% of the best, no dead air anywhere. The roomba clip ran 8.7
+  // down to 0.7 over its first 2.4 seconds — a ratio of 0.03 — which is what
+  // switched the vacuum off for a third of every cycle. Asking the prompt for
+  // "full intensity from the very first instant with no fade in" is what bought
+  // that, and it is worth asking for on every bed.
+  'washer-thrash': { gain: 0.55, pitch: 0, bed: true },
+
   'amb-office': { gain: 0.30, pitch: 0, bed: true },
   'amb-drone':  { gain: 0.22, pitch: 0, bed: true },
 };
@@ -294,6 +330,13 @@ const MOTOR_AUDIBLE = 12;
 // floor rather than one following a body about, and a hum that carries is a hum
 // under everything else in the building.
 const BELT_AUDIBLE = 10;
+// ...and a washing machine destroying itself, which is the loudest of the three
+// and so the furthest-carrying. Still well short of the 26 m an EVENT carries,
+// for the reason ARC_AUDIBLE is: every other sound in this building is something
+// that just happened, so hearing one from the far end of the floor tells you
+// something, while a continuous noise that carries sits under the whole fight.
+// This one is meant to be a thing you walk toward.
+const WASHER_AUDIBLE = 15;
 
 // Roughly where a voice leaves a body, so a shout does not come from their shoes.
 const MOUTH_HEIGHT = 1.35;
@@ -520,6 +563,29 @@ export class GameAudio {
   startBelt(x, y, z) {
     if (!this.sfx.ready) return null;
     return this.sfx.loopAt('conveyor', { gain: 0.9, x, y, z, range: BELT_AUDIBLE });
+  }
+
+  /**
+   * A washing machine losing a fight with its own drum. Positional, moving, and
+   * mixed hot — it is the loudest continuous thing in the building and it is
+   * meant to be: the prop's whole job is that you hear it before you see it and
+   * go and look.
+   *
+   * It MOVES, so it is `moveMotor` that follows it, exactly like the floor
+   * cleaner. Everything the note above startMotor says about a positional loop
+   * applies: no occlusion, a linear falloff, and a named range, because inverse
+   * falloff never reaches zero and "audible within fifteen metres" would come
+   * out as a hum that is merely quiet everywhere.
+   */
+  startWasher(x, y, z) {
+    if (!this.sfx.ready) return null;
+    return this.sfx.loopAt('washer-thrash', {
+      gain: 1.15, x, y, z, range: WASHER_AUDIBLE });
+  }
+
+  /** ...and the end of it. Placed, so it points at whichever one you shot. */
+  washerBurst(point) {
+    this._placed('washer-burst', point);
   }
 
   enemyStep(enemy) {

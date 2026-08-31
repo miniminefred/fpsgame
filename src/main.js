@@ -24,6 +24,7 @@ import { Ragdolls } from './ragdolls.js';
 import { Cameras } from './cameras.js';
 import { Conveyors } from './conveyors.js';
 import { Jobs } from './jobs.js';
+import { Washers } from './washers.js';
 import { Net } from './net.js';
 import { createCoopMenu } from './mp-menu.js';
 import { NetPlay } from './netplay.js';
@@ -84,11 +85,14 @@ const conveyors = new Conveyors({ scene, audio });
 // onto them in its constructor (see jobs.js), and it needs the pooled flash and
 // the sound library for the one stage that is meant to be watched.
 const jobs = new Jobs({ enemies, effects, audio });
+// The washing machines. Needs the solver to shove them, destruction to blow up
+// the furniture round them, and the player to hurt. See washers.js.
+const washers = new Washers({ scene, audio, effects, physics, destruction, enemies, player, hud });
 
 const game = new Game({
   scene, camera, player, weapons, shooting, enemies,
   effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, spills, doors, casings,
-  keycards, wallet, ragdolls, cameras, conveyors, jobs,
+  keycards, wallet, ragdolls, cameras, conveyors, jobs, washers,
 });
 
 // Co-op. All three are live from load and none of them touches the game until a
@@ -130,6 +134,7 @@ if (import.meta.env.DEV) {
     scene, camera, weapons, renderer, audio, casings, keycards, wallet, ragdolls, cameras,
     conveyors,
     jobs,
+    washers,
     touch, net, netplay, coopMenu,
     // One frame of the world by hand, for measuring something without the
     // render loop moving underneath it — and for driving a tab that is not

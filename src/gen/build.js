@@ -124,6 +124,11 @@ export function buildLevel(scene, layout) {
     { colliders, occupied, dynamics, destructibles, fixtures }, rng);
   furnishRooms(layout, sink, rng, workstations);
   furnishCorridors(layout, sink, rng);
+  // After the ordinary corridor clutter, so a machine takes a tile the clutter
+  // did not want rather than the other way round: there are at most three of
+  // these and a hundred of that, and the one that should lose a contested tile
+  // is the one with plenty of other tiles to go to.
+  placeWashers(layout, sink, rng);
   const cow = placeCow(layout, sink, rng);
   // Last, and through sinks of their own: a level off the ground floor has its own
   // occupancy and its own nav layer. See furnishLevels.
@@ -1861,6 +1866,7 @@ function makeSink(layout, batcher, materials, masks) {
       const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2, cz = (minZ + maxZ) / 2;
       const group = new THREE.Group();
       group.position.set(cx, cy, cz);
+      const boxMeshes = [];
 
       // The parts list is kept in the group's local space so that breaking the
       // prop apart is just "re-emit each of these as its own body" — the boxes
@@ -1882,6 +1888,44 @@ function makeSink(layout, batcher, materials, masks) {
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         group.add(mesh);
+        boxMeshes.push(mesh);
+      }
+
+      // A loose prop drawn with its MODEL instead of its boxes, which is the one
+      // combination gen/models.js says does not happen — see `washingMachine` in
+      // gen/props.js for why this one has to have both. The boxes stay exactly
+      // as they are, in `parts`, because they are what the prop breaks into and
+      // what the collider is measured from; they are only taken out of the
+      // picture.
+      //
+      // Two transforms, and both are the documented model contract read
+      // backwards. A baked model sits centred in X/Z with its min Y at zero,
+      // while the group's origin is the CENTRE of the box bounds — so the model
+      // drops by exactly the distance from that centre down to the floor. And
+      // the prop's quarter turn is baked into the box coordinates by `placer`,
+      // so the model has to be turned by hand to match; it goes on a child group
+      // rather than on the group itself, because the group's rotation belongs to
+      // the physics body.
+      const template = p.traits?.model ? modelInfo(p.traits.model) : null;
+      if (template?.parts?.length) {
+        const skin = new THREE.Group();
+        skin.position.y = minY - cy;
+        skin.rotation.y = -(p.traits.rot ?? 0) * Math.PI / 2;
+        for (const part of template.parts) {
+          const mesh = new THREE.Mesh(part.geometry, part.material);
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          skin.add(mesh);
+        }
+        group.add(skin);
+        // Hidden rather than removed, so the fallback is one flag away if a GLB
+        // ever fails to load mid-session. `visible` is enough: these meshes are
+        // not in the raycast list (bullets test the group's children via
+        // `userData.dynamic`, which is set on all of them in game.js) — and a
+        // hidden mesh with a live collider is exactly what the parcels
+        // documented as worse than nothing, which is why the collider is
+        // measured from the BOXES either way and does not care.
+        for (const mesh of boxMeshes) mesh.visible = false;
       }
 
       dynamics.push({
@@ -1892,6 +1936,8 @@ function makeSink(layout, batcher, materials, masks) {
         substance: p.substance,
         crushable: !!p.traits?.crushable,
         spills: p.traits?.spills ?? null,
+        // Whose runtime this prop belongs to, if anybody's. See washers.js.
+        washer: !!p.traits?.washer,
         size: { x: maxX - minX, y: maxY - minY, z: maxZ - minZ },
         position: { x: cx, y: cy, z: cz },
       });
@@ -2192,6 +2238,52 @@ function furnishCorridors(layout, sink, rng) {
     }
   }
 }
+
+/**
+ * One to three washing machines, in the corridors.
+ *
+ * A pass of its own rather than another entry in `furnishCorridors`'s `kinds`
+ * list, because that pass walks a 7-tile grid at 40% and would deal a dozen of
+ * them to a big floor. This is a joke and the codebase already knows the rule
+ * for those — one per floor is a joke, two is a running joke, three is a fleet
+ * (see `roomba` in enemy-types.js) — so it is capped at three and scaled by how
+ * much building there is.
+ *
+ * A SHUFFLED LIST rather than darts, which is the lesson cameras.js and
+ * conveyors.js both paid for: a corridor tile that survives every test is a few
+ * percent of a floor, so throwing darts delivers one machine on this floor and
+ * five on the next. Spaced out too, because two of these in earshot of each
+ * other is one racket rather than two.
+ */
+function placeWashers(layout, sink, rng) {
+  const { W, H, tiles } = layout;
+  const want = Math.min(WASHER_MAX,
+    Math.max(1, Math.round(rng.int(1, WASHER_MAX) * (layout.areaRatio ?? 1))));
+
+  const spots = [];
+  for (let ty = 2; ty < H - 2; ty++) {
+    for (let tx = 2; tx < W - 2; tx++) {
+      if (tiles[ty * W + tx] !== CORRIDOR) continue;
+      spots.push([tx, ty]);
+    }
+  }
+  rng.shuffle(spots);
+
+  const placed = [];
+  for (const [tx, ty] of spots) {
+    if (placed.length >= want) break;
+    const x = worldX(layout, tx + 0.5);
+    const z = worldZ(layout, ty + 0.5);
+    if (placed.some((q) => Math.hypot(q.x - x, q.z - z) < WASHER_GAP)) continue;
+    if (tryPlace(sink, 'washingMachine', x, z, rng.int(0, 3), rng)) placed.push({ x, z });
+  }
+}
+
+// Three at the very most, and never nearer than this to each other — see the
+// note above. The gap is well past the clip's own audible range (WASHER_AUDIBLE
+// in audio.js), so two are never heard as one.
+const WASHER_MAX = 3;
+const WASHER_GAP = 26;
 
 // Doorways, the spawn point and the exit must never be furnished shut.
 function reserveClearances(layout, reserved) {

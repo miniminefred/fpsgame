@@ -232,5 +232,14 @@
     "license": "CC0",
     "source": "https://poly.pizza/m/pRMxaQQXha",
     "bytes": 22256
+  },
+  {
+    "key": "washing_machine",
+    "file": "furn_washing_machine.glb",
+    "title": "Washing Machine",
+    "author": "Quaternius",
+    "license": "CC0",
+    "source": "https://poly.pizza/m/UFxsKNSl8W",
+    "bytes": 16584
   }
 ]

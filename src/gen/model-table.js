@@ -630,6 +630,22 @@ export const MODEL_TABLE = {
     tags: ['ceiling', 'lamp'],
     mount: 'ceiling',
   },
+  washing_machine: {
+    file: 'furn_washing_machine.glb',
+    // Raw 1.292 x 1.470 x 1.324, normalized on HEIGHT to 0.95 m — a commercial
+    // machine rather than a domestic one, which is both what an office would
+    // have and what makes it worth looking at: the whole point of this prop is
+    // that it throws itself around, and 0.6 m of domestic washer is a box.
+    scale: 0.6461,
+    // The door and the control panel are on the +180 face of the raw GLB —
+    // checked in /dev-models.html?spin=washing_machine&mode=straight, which is
+    // the only way to settle facing, and 28 of the 71 models here needed it.
+    yaw: 3.1416,
+    foot: [0.83, 0.86],
+    height: 0.95,
+    tags: ['appliance'],
+    mount: 'floor',
+  },
   ceiling_fan: {
     file: 'furn_ceiling_fan.glb',
     scale: 1.0837,
