@@ -156,12 +156,17 @@ export const TYPES = {
   // exception and always was — it is Facilities' cost saving rather than the
   // plant's own fleet, and it turns up anywhere.
   //
-  // They wear greys off the same ramp as everybody else, and that is a rule
-  // being kept rather than a palette being copied: hue answers "do I shoot
-  // this" and shade answers "which one", and neither question changes because
-  // the thing in the corridor has wheels. A machine floor is a floor where the
-  // answer to the first one is nearly always yes, which is exactly why the
-  // second one has to keep working.
+  // The ones that fight wear greys off the same ramp as everybody else, and that
+  // is a rule being kept rather than a palette being copied: hue answers "do I
+  // shoot this" and shade answers "which one", and neither question changes
+  // because the thing in the corridor has wheels.
+  //
+  // Four of the fleet answer the first one yes — the Clerk, the Legacy, the
+  // Loader and the Drone — and the Sentry, the Welder and the Porter answer it
+  // no, so they are off the ramp entirely and wearing colours of their own. A
+  // machine floor is therefore no longer a floor where everything moving is
+  // coming for you, which is what makes the ramp worth keeping: the greys down
+  // here are a shortlist rather than a description of the room.
   clerk: {
     // Whatever used to sit at the desk. The baseline machine and the one there
     // are a hundred of, so its numbers are deliberately near an Analyst's: a
@@ -187,13 +192,24 @@ export const TYPES = {
     suit: 0xd8a12a, shirt: 0x3d4149, visor: 0x454a51, unlockFloor: 1, weight: 0,
   },
   welder: {
-    // The quick one. Half a Loader's damage and twice its pace, with almost no
-    // reach at all — it has to be against you, which is the trade for being the
-    // fastest thing on the floor that can hurt you.
-    name: 'Welder Unit', hp: 1.3, speed: 1.35, damage: 1.25, rate: 0.95, spread: 1,
-    range: 2.1, melee: true, scale: 0.98, blunt: ['torch'],
-    chassis: 'welder', voice: 'robot',
-    suit: 0x2f6f5e, shirt: 0x9aa0a6, visor: 0x6e757d, unlockFloor: 1, weight: 0,
+    // On the racks, and getting on with it. The quickest chassis on the floor —
+    // it kept the pace it had when it was the thing that ran at you, which is
+    // most of what makes it worth having here: something moving that fast is
+    // read as a threat before it is read as anything, so it is the one neutral
+    // whose visor has the most work to do.
+    //
+    // The torch went with the fight. A harmless thing holding a cutting torch
+    // has already answered the question its visor is there to answer, and that
+    // is the same argument that took the sidearms off the rest of the neutrals
+    // — see gun.visible in rigs.js, which asks about `neutral` for this reason.
+    name: 'Welder Unit', hp: 1.3, speed: 1.35, damage: 0, rate: 99, spread: 1,
+    range: 0, melee: false, scale: 0.98, neutral: true,
+    chassis: 'welder', voice: 'robot', screams: 'robot-alert',
+    // Teal, which nothing else in the building wears — and it is the colour the
+    // machine is already painted, so this is the one neutral whose visor and its
+    // own shell agree. Clear of the Reanimated's lime and of the floor unit's
+    // cyan at the range you first see one down a corridor.
+    suit: 0x2f6f5e, shirt: 0x9aa0a6, visor: 0x35d6a8, unlockFloor: 1, weight: 0,
   },
   drone: {
     // Survey. Fast, fragile and inaccurate — the machine floor's answer to the
@@ -266,9 +282,15 @@ export const TYPES = {
   // from the far end of a corridor, not once it is already swinging at you.
   // Unlike the hostiles they do not share one colour: three harmless people in
   // identical visors read as one repeated joke, and the toilet guy in
-  // particular has to be recognisable before he is close enough to hear. All
-  // are placed by hand rather than rolled (see spawn), which is why the weights
-  // are zero.
+  // particular has to be recognisable before he is close enough to hear.
+  //
+  // Everybody in THIS block is placed by hand rather than rolled (see spawn),
+  // which is why the weights are zero — but "neutral" and "hand-placed" stopped
+  // being the same fact when the Sentry Unit went harmless. It is filed with the
+  // staff below because it keeps its weight and is still dealt as part of a
+  // floor's shift; it is only listed apart from these because of where it comes
+  // from, not because of what it does. Anything counting harmless bodies has to
+  // read `neutral`, never this block's membership.
   panicker: {
     // Has one problem, and it is not you: he is looking for a toilet and
     // announcing it. Fast, and dies to a look.
@@ -345,23 +367,38 @@ export const TYPES = {
     suit: 0x2b2f36, shirt: 0x9aa3ab, visor: 0x63d6ff, unlockFloor: 1, weight: 0,
   },
   sentry: {
-    // Facilities' idea of a cost saving. Armoured and slow, accurate at range,
-    // and it never gets bored — the darkest visor on the floor is the one that
-    // means the thing looking at you is not going to wander off.
+    // Facilities' idea of a cost saving, and it turned out to be one: it watches
+    // the corridor it was bought to watch and it has no opinion about you. Still
+    // armoured, still slow, still on tracks — and still the only thing in the
+    // building that arrives at the height it left at.
     //
-    // The one machine on the roster that is rolled rather than placed by a
+    // The one machine on the roster that is ROLLED rather than placed by a
     // theme, which is why it is filed with the staff and not with the fleet
     // below: it was bought in to watch a corridor in a building full of people,
-    // so it turns up in one. On tracks, and the only thing in the building that
-    // arrives at the height it left at.
-    name: 'Sentry Unit', hp: 3.2, speed: 0.78, damage: 1.45, rate: 1.35, spread: 0.7,
-    range: 17, melee: false, scale: 1.18, chassis: 'sentry',
-    // Quickest onto a target in the building, and the one that should be: it was
-    // bought to watch a corridor, it is not carrying anything it has to put down,
-    // and the darkest visor on the floor ought to mean the thing wearing it is
-    // the one you cannot walk out in front of.
-    aimMul: 0.65,
-    suit: 0x474d55, shirt: 0x9aa3ab, visor: 0x3a4048, voice: 'robot',
+    // so it turns up in one.
+    //
+    // Which makes it the one neutral in the game with a WEIGHT, and that is
+    // worth knowing before tuning anything. Every other harmless thing here is
+    // hand-placed background traffic on top of the shift; this is part of the
+    // shift itself, so a slice of every floor's dealt staff is now something you
+    // do not have to shoot, and `hostileCount` is smaller than the headcount by
+    // that slice. Zeroing the weight instead would have deleted it from six of
+    // the seven themes (and from Night shift's `sentry: 4` boost, which
+    // multiplies a weight and so cannot resurrect a zero) — it is meant to go on
+    // turning up everywhere, harmlessly.
+    name: 'Sentry Unit', hp: 3.2, speed: 0.78, damage: 0, rate: 99, spread: 1,
+    range: 0, melee: false, scale: 1.18, chassis: 'sentry', neutral: true,
+    voice: 'robot', screams: 'robot-alert',
+    // Magenta, and it is the last hue this roster had left: white, brown,
+    // yellow, blue, hi-vis orange, violet, the rat's rose and the floor unit's
+    // cyan are all spoken for, the grey ramp is every hostile human and green is
+    // the Reanimated. It reads as a startling colour for three hundred kilograms
+    // of armour, and that IS the job — the darkest visor in the building used to
+    // mean the thing you cannot walk out in front of, so leaving it near-black
+    // on something harmless is the exact lie the palette exists to prevent.
+    // `unlockFloor` stays at 2, because themeUsable reads it off every share and
+    // it is what holds Automated back a floor (see themeUsable).
+    suit: 0x474d55, shirt: 0x9aa3ab, visor: 0xff5cc4,
     unlockFloor: 2, weight: 3,
   },
 };
@@ -426,6 +463,15 @@ export const THEMES = [
   // corridors, loaders shifting stock, welders on the racks, a few drones over
   // all of it — and the Legacy Units, which have no job at all beyond being the
   // generation before the rest and the only machine here shaped like a person.
+  //
+  // Two of those jobs are no longer a fight. The sentry's 0.17 and the welder's
+  // 0.11 are neutral now, so the floor is still nine tenths machines and only
+  // about six tenths hostile — the shares are deliberately NOT redistributed,
+  // because a building being worked by machines that are merely working is the
+  // honest version of what this theme was always describing. The consequence to
+  // know is that an Automated floor clears on fewer kills than its headcount
+  // suggests, and that the harmless quarter of it is the fastest thing on the
+  // floor and the most heavily armoured thing on the floor.
   { name: 'Automated', weight: 3, light: 0.72, tint: 0x7fb4ff,
     rats: [0, 0], patrols: [0, 1], cleaners: [3, 5], bystanders: ['porter'],
     conveyors: [5, 9],

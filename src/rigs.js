@@ -93,6 +93,12 @@ const BLUNT = {
   // and the only melee weapon in the building with a lit end. `accent` is the
   // red the fire extinguisher is painted, and here it is the arc — the one part
   // of any of this the player is meant to notice before it is against them.
+  //
+  // NOTHING CARRIES IT at the moment: the Welder Unit went neutral, and a
+  // harmless thing holding a cutting torch answers the question its visor is
+  // there to answer. Kept rather than deleted because it is authored geometry
+  // for a machine that still exists and still has a torch's job — but do not go
+  // looking for the caller, there is not one.
   torch: { shaft: [0.05, 0.05, 0.26], head: [0.06, 0.06, 0.09], headMat: 'accent', reach: 0.34 },
 };
 
