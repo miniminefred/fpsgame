@@ -496,7 +496,10 @@ export class Game {
     // prop a body: the thrashing is impulses on `dyn.handle`, and a machine
     // adopted before there is one stands in the corridor in silence, which is
     // the one way this prop fails without erroring. See washers.js.
-    this.washers.spawn(level);
+    // The theme as well as the floor, because whether a washing machine gets off
+    // the ground is the theme's call (`washersFly`) — see washers.js. Read off
+    // `enemies.theme` rather than the local, so a dev-pinned shift is honoured.
+    this.washers.spawn(level, this.enemies.theme);
 
     // Bullets stop on this floor's geometry, this floor's occupants, and the
     // things on its walls looking at them.

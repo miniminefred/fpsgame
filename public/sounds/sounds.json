@@ -1156,6 +1156,13 @@
       "variants": 3
     },
     {
+      "name": "washer-crash",
+      "text": "heavy steel washing machine slamming hard into a wall, deep metallic boom with sheet panel rattle and a short scraping shudder, single impact, close mic, dry, no reverb, no music, no voices",
+      "duration": 1.5,
+      "influence": 0.7,
+      "variants": 4
+    },
+    {
       "name": "washer-thrash",
       "text": "commercial washing machine on a violent unbalanced spin cycle, heavy steel drum banging hard against the casing, metal side panels rattling and buzzing, machine feet hammering and skidding on a hard floor, relentless and at full intensity from the very first instant with no fade in, close mic, dry, no reverb, no music, no voices",
       "duration": 12.0,

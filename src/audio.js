@@ -113,6 +113,12 @@ const LIBRARY = {
   // level. Three takes because a floor can hold three machines and a player who
   // finds them funny will shoot all of them.
   'washer-burst': { variants: 3, gain: 1.15, pitch: 0.06 },
+  // ...and it hitting things on the way, which it does constantly. Four takes
+  // and the widest pitch jitter of any impact in the set, because this is asked
+  // for several times a second while a machine is loose in a corridor — the same
+  // argument `generator-arc` makes, and the same answer: what gives a repeated
+  // clip away is not its level, it is hearing the same take twice.
+  'washer-crash': { variants: 4, gain: 0.95, pitch: 0.14 },
 
   // ...and the wreck it leaves, arcing for as long as the player is on the
   // floor. A low transformer buzz rather than a bright spark, which is a mix
@@ -586,6 +592,24 @@ export class GameAudio {
   /** ...and the end of it. Placed, so it points at whichever one you shot. */
   washerBurst(point) {
     this._placed('washer-burst', point);
+  }
+
+  /**
+   * A washing machine hitting something. `force` is 0..1 and drives the level
+   * rather than picking a different clip: a glancing knock and a full-speed slam
+   * into a wall are the same event at two intensities, and one clip with real
+   * pitch jitter reads better than two clips that have to agree with each other.
+   *
+   * Rate falls as force rises, which is the trick that makes a hard hit sound
+   * heavier than a soft one rather than just louder — a big object makes a lower
+   * noise, and the engine is already varying rate per play anyway.
+   */
+  washerCrash(point, force = 1) {
+    const f = Math.max(0, Math.min(1, force));
+    this._placed('washer-crash', point, {
+      gain: 0.45 + f * 0.9,
+      rate: 1.14 - f * 0.3,
+    });
   }
 
   enemyStep(enemy) {

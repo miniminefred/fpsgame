@@ -445,6 +445,15 @@ export const BYSTANDERS = [TYPES.cleaner, TYPES.courier];
 // it. A tint reaches the tubes, the pools they cast, the fill and the haze at
 // once (see setTint in lighting.js), which is what makes it read as a floor lit
 // in that colour rather than as coloured bulbs in a beige office.
+// `washersFly` is the fourth lever on the building, and it is the narrowest: a
+// washing machine hammers its way around a corridor on every floor there has
+// ever been (see washers.js), and on THIS one it gets off the ground altogether
+// — up into the ceiling tiles, spinning, which is a thing a machine floor can
+// have and an ordinary office cannot. Everywhere else the same prop stays down
+// and merely thrashes. It is one flag rather than two props for the reason
+// `tint` is one number: the difference is what the floor does to the thing, not
+// what the thing is.
+//
 // `bystanders` is the last one and it is about the corridors: the harmless
 // traffic is a night cleaner and a courier unless a theme names its own, and on
 // a floor run by machines the deliveries are done by one — alongside the
@@ -488,7 +497,7 @@ export const THEMES = [
   // the floor, which is most of what stops "harmless" reading as "scenery".
   { name: 'Automated', weight: 3, light: 0.72, tint: 0x7fb4ff,
     rats: [0, 0], patrols: [0, 1], cleaners: [3, 5], bystanders: ['porter', 'worker'],
-    conveyors: [5, 9],
+    conveyors: [5, 9], washersFly: true,
     share: { clerk: 0.29, sentry: 0.15, legacy: 0.15, loader: 0.14, welder: 0.10, drone: 0.07 },
     boost: { sysadmin: 6, facilities: 3, reanimated: 0 } },
   { name: 'Lockdown', weight: 2, light: 0.75, rats: [1, 1], patrols: [3, 4], boost: { security: 6, manager: 4 } },
