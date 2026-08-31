@@ -222,6 +222,7 @@ src/
                   walkability, and a second field for whoever can open a locked door
   enemies.js      Spawning, placement guarantees, the AI state machine, gunfire and melee
   jobs.js         Parcel runs: three bodies, one box, one errand across a floor
+  chores.js       The ordinary work: one body, one machine, six things to be doing
   washers.js      The washing machines, and the fact that they will not stand still
   enemy-types.js  The roster: types, bystanders, floor themes, and the pickers
   enemy-anim.js   Per-frame rig animation, and the toppling death fallback
@@ -242,6 +243,7 @@ src/
   doors.js        Sliding panels, proximity sensors, and the badged ones
   cameras.js      Wall cameras and laser tripwires, and the alarm they raise
   conveyors.js    Parcel lines on the corridor walls, and the stock on them
+  panels.js       Service openings: a hole in a corridor wall with the wiring out
   tech-textures.js  The finish on things that are made rather than fitted
   net.js          Co-op's wire: a code, a peer-to-peer channel, a message pump
   netplay.js      ...and its protocol: who decides what, and what crosses
@@ -1940,6 +1942,200 @@ arms at -1.24 against `TRAY_ARMS` -1.25, Maintenance Worker 1.01 m, Porter 0.78 
 arms resting at 0.23. On the wire it is one more bit in the snapshot's sixth slot
 (`SNAP_BOX`), for the tray's reason.
 
+### The ordinary work (`chores.js` + `CHORE_POSE` in `enemy-anim.js`)
+The building had two pieces of visible work in it and both were exceptional. A parcel
+run is three machines and a box, on the one floor in seven that runs parcel lines; lunch
+is one break per body per floor, in the one room the floor arrives in. Everywhere else
+an office of a hundred and seventy people was a hundred and seventy people standing in
+rooms waiting to be shot. Now somebody is at the copier, somebody is round the back of a
+rack with his arms in it, and somebody is getting a can out of the machine in the
+corridor.
+
+**Six jobs**, and the six are the design rather than a list that grew:
+
+| job | where | what it looks like |
+|-----|-------|--------------------|
+| `computer` | at the end of a desk | typing, standing |
+| `printer` | the copier | pressing it, then taking the paper out |
+| `vending` | the machine in the corridor | the keypad, then bending to the flap |
+| `server` | the front of a rack | hands up among the units |
+| `bench` | the IT bay | building something, in the odd shower of sparks |
+| `panel` | a hole in the wall | both arms into the wiring, in sparks |
+
+The last is the machine floor's alone (see the openings below); the other five are
+everywhere, because a copier is everywhere.
+
+**Nothing about the WALKING is new**, and that is most of why this is a small file.
+`routeTo` / `advanceTo` / `standAt` are the primitives lunch was written around and
+jobs.js renamed off it, and every hard-won thing in them applies unchanged: both halves
+of the reachability check, the once-only re-flood on a wedge, the unhurried pace. The
+seam into `enemies.js` is `choreTick` / `choreLost` and one field — a second pair rather
+than sharing the parcel runs', because a callback slot has one occupant and a second
+consumer of one is how the first quietly stops being called.
+
+**WHAT IS NEW IS WHO.** Lunch and the parcel runs are both walked by bodies that are out
+of the state machine — a neutral, or an employee whose visor has gone blue. These are
+walked by **anybody**, hostile included, and the hostile is the point: you round a corner
+and there is a man at the printer with his back to you, and he turns round and shoots.
+Three things make that safe to promise, and all three are the tells this game already
+keeps:
+
+- **Nobody sits down.** A chair means harmless and it is the one thing the game states
+  before anything is at stake. Every pose here is standing, which is a body that has made
+  no promise at all — and it is why "work on a computer" is somebody stood at the END of a
+  desk rather than somebody in its chair (`DESK_ASIDE` in `gen/rooms.js`, offered both
+  sides and filtered down to whichever the room has room for).
+- **The visor is untouched.** A break recolours the eyes because a break really does stop
+  somebody fighting you. This does not, so it must not.
+- **And they look up** (`_choreWork` in `enemies.js`). Sight, hearing, or you simply
+  getting close ends the job on the spot.
+
+That third one lives in `enemies.js` rather than here because it has to run **before**
+`_think`, and that is not tidiness: `_think` only ever promotes out of `idle`, and a body
+still walking to its machine is in `wander`, which that switch has no case for at all.
+Left to `_think` a body could be walked up to and shot in the back all the way across a
+floor.
+
+**Close range is its own trigger and skips the reaction delay** (`CHORE_STARTLE`, 4.5 m).
+Sight is not enough on its own here: a body at a machine has its back to the room and
+`losClear` samples a grid, so a player who has come through the doorway behind them can be
+inside arm's reach and unseen. Being spotted across a room costs them the ordinary
+`tuning.reaction`; being *found* costs nothing — straight into `alert` with a spent timer,
+which `_think` turns into `chase` on the caller's very next line. **It also zeroes
+`e.contact`**, and that was a real bug rather than a nicety: a body that has been standing
+at a machine has been out of contact for as long as it has been standing there, so
+`_think`'s own `GIVE_UP` test fired on the very next tick. Measured before the fix —
+startled at 2.6 m, `chase` for one frame, `idle` two seconds later, still 2.6 m away and no
+longer interested. After it: `chase`, then `fight`, and it stays there.
+
+**Humans only** (`rig === 'human'`, `!isMachine`, `!undead`, `!panic`). The rig test is
+about the pose — every joint in `CHORE_POSE` is a measurement off the human skeleton, so a
+chassis sent to a copier arrives with its arms hanging off it. `isMachine` is about the
+fiction and catches the Legacy Unit, which is built on the human rig precisely so that it
+reads as staff and is not. The Reanimated are off the payroll like they are at lunch, which
+is the right answer twice over: an Infestation floor is four fifths of them, and a floor
+that has been overrun is not a floor doing its filing.
+
+**Where somebody stands comes from the FURNISHER**, down the same `sink.workstation` pipe
+the chairs and the servery queue use, because it is the only thing that knows where a
+printer actually landed. `WORK_AT` in `gen/rooms.js` is a table read by `edgeProp`, not an
+argument threaded through its fifteen call sites — whether a printer is somewhere to stand
+is a fact about printers rather than about the copy room — so every vending machine,
+copier, bench and rack backed against a wall anywhere in the building offers a place to
+stand for free, and the useless ones are dropped at the other end.
+
+**And "the other end" needed a fix that is worth knowing about** (`standable` in
+`enemies.js`). `fits` is the walk grid eroded by a body's radius, and with a 0.5 m tile
+against a 0.4 m radius that erosion takes every tile *orthogonally adjacent* to a blocked
+one — so whether a body fits in front of a copier is not really a question about how far in
+front it is standing, it is a question about which tile that lands in. Measured on one
+floor: **every printer station and every vending station failed**, and moving the point
+0.2 m further out recovered all six vending machines and six of ten copiers. So a station
+that is a place to STAND may be nudged backwards, up to about a tile, and a station that is
+a CHAIR may not — the pose is drawn relative to the seat under it. The caller says which
+kind it is asking about, and the moved station is a copy, because the raw list is shared
+between every pool built off it.
+
+Two more things follow the shape of the lunch cycle exactly. **The office starts working
+once the office has been opened**: almost every machine is inside a room with a badged
+door, and a badged door is out of the nav grid entirely, so before the first white card the
+only people who can reach a copier are the ones already in the corridors. And **it is host
+only** — whose turn it is at the copier is a runtime decision. Nothing crosses the wire and
+nothing needs to: unlike a tray or a crate, a working pose is not a claim about what
+somebody is going to do, so a joiner seeing them standing where they are standing is being
+told the truth.
+
+Costs about 5 MB of distance fields on a busy floor — 28 of 83 bodies were holding one
+after two minutes — which is the same ceiling the lunch cycle already had, reached sooner.
+They go with the roster at teardown.
+
+#### The poses (`CHORE_POSE` in `enemy-anim.js`)
+Six jobs and one function, the way `TYPES` is one rig and a table of numbers. Every height
+in the table is a real measurement off the prop in `gen/props.js` — a copier's control
+panel at 1.0, a vending keypad at 0.9 to 1.5, a rack's units from 0.18 to 2.05, a bench top
+at 0.9, a desk at 0.75 — and the arm angle that reaches it is **solved** (`armAt`) rather
+than typed, so a prop that changes height moves the hands that work on it.
+
+Two things about the rig shape everything else. An arm here is one box with no elbow, so a
+standing body **cannot get its hands below 0.88 m** — shoulder minus arm, well above a
+0.75 m desk — which is why every pose that works at waist height carries a `stoop`, exactly
+as the seated pose carries `DESK_DROP`. And reaching forward and reaching down are the same
+motion, so a low pose has the hands tucked under the body whatever else it does; `forward`
+on `hinge` is what buys the rest, bringing the shoulders out over the work, which is what
+leaning over a bench actually is.
+
+Two of the six have a **second beat** (`then`), and it is what turns a machine you press
+into a machine that gives you something: the paper comes out of the copier, the can comes
+out of the vending machine. Without it both were a man standing at a box prodding it for
+twenty seconds.
+
+**`setChorePose` is the third time this file has made the same bargain.** Nothing but
+`stand` puts a hinged limb back, so clearing the pose and restoring it have to be one
+operation — `setWorking` for the belt repair and `_standUp` for a chair are the other two.
+Left as a field anybody may write, a man who stops working walks off the rest of the floor
+bent over a bench that is no longer in front of him. **`stand` now also restores the
+stoop**, which was a latent bug in the seated pose all along and only ever hidden by the
+fact that the two bodies who sit down get up and walk: nothing but the two walk loops was
+putting `group.position.y` back.
+
+Verified on a shot body, a killed body and a startled one: joints back to the rig's own
+(`legL` at 0.43/0, arms at 0, head and torso zeroed), the group back on the floor, the
+station handed back and `live` matching `busy` with no leak.
+
+### Service openings (`panels.js`)
+A hole in a corridor wall with the building's wiring pulled out of it, an access cover
+swung open beside it, and somebody stood in front with both arms in the wall. It is the
+**fifth** thing a theme does to the building rather than to who is standing in it,
+alongside the tint, the floor units, the parcel lines and a washing machine that gets off
+the ground — a floor being worked by machines is a floor with its covers off, and an
+ordinary office is not. It exists for one reason: the `panel` job above, which is the only
+thing that reads its `spots`.
+
+**The hole is painted on, and it has to be.** A wall is one merged box in a batched chunk
+and nothing at runtime may cut a piece out of it, so the dark that reads as an opening is a
+near-black plate standing a few millimetres proud of the plaster, and what sells the depth
+is the lip around it standing proud of *that*. Same trick the windows use one wall along,
+from the other side: the sky behind the glazing is a backdrop rather than a hole, because
+the shell is never cut either.
+
+Placement is the cameras' and the parcel lines' walk — a shuffled list of corridor tiles
+with a wall beside them, taken in order — for their reason: a tile that survives every test
+is a few percent of a floor, so darts deliver two on this floor and nine on the next. Being
+flat against the plaster is what makes it safe to cut into a finished floor at all: no nav
+tile, no reserved floor, no collider, and no way to make a room unreachable. The meshes are
+hittable even so, because a round that goes into the cables and marks the wall behind them
+is what makes it read as an object rather than as a decal.
+
+**Never the facade** (`outerWall`). `buildWindows` glazes the first solid a facade sees, up
+to seven tiles in, and a service riser cut into a window is two pieces of geometry in the
+same place. Asked of the wall rather than of a distance from the edge, because the glazing
+is not at a fixed depth — it follows the first open tile in each row, so one corridor can be
+facade at one end and not at the other. Measured before it was there: one panel in four
+landed on glass.
+
+Three bugs in this file were all the same bug — a sign — and all three are worth the
+warning:
+
+- **The frame was turned end for end.** A body at yaw `t` faces `(-sin t, -cos t)`, so out
+  of the wall is `atan2(wx, wz)` and not `atan2(-wx, -wz)`. With it backwards the black
+  plate is buried inside the plaster where nothing can see it and every wire hangs behind
+  the wall. What you get is a bare dark rectangle with no cables on it, which looks like a
+  deliberately plain prop rather than like a mistake.
+- **Both cover leaves swung the same way**, so the right-hand one went into the building.
+  `-hinge * SWING`, because a positive turn about Y takes the leaf toward -Z on one side of
+  the frame and +Z on the other.
+- **The wires were rotated onto the wrong axis.** Turning a cylinder's +Y by `a` about X
+  points it at `(0, cos a, sin a)` — note the sign — so a segment running along
+  `(0, -sin p, -cos p)` needs `a = -(PI/2 + p)`. The failure is not a wire at a funny angle:
+  every segment's position is chained onto the end of the last one from the direction, so an
+  axis that disagrees leaves each piece centred where it belongs and pointing somewhere
+  else. Out comes a hole in the wall with a dozen coloured sticks floating in front of it.
+  **Both wrong signs were tried before the right one, and from head-on both looked
+  plausible** — a wire coming straight at you is foreshortened to nothing. It reads only
+  from the side, and the check that settled it was numeric: the worst gap between one
+  segment's end and the next one's start, which is now 0.02 m and is the lateral drift by
+  design.
+
 ### The washing machine (`washers.js` + `washingMachine` in `gen/props.js`)
 There is no explanation for one being in the corridor of an office block and that is
 the joke. It is on an unbalanced spin cycle, it is losing, and it hammers its way
@@ -2397,7 +2593,8 @@ that — the other half is that the **work is visible**. It is also the only pie
 in the game that is still moving when nothing else is.
 
 `conveyors` on a theme is its third lever on the **building** rather than on who is standing
-in it, alongside the tint and the floor units. Absent, a floor has none: measured across
+in it, alongside the tint and the floor units — and `panels` is the fifth, after
+`washersFly`. See Service openings above. Absent, a floor has none: measured across
 floors 1–8 of one seed, zero runs on all seven non-Automated floors and ten on the Automated
 one. Two decisions shape the module, and they pull against each other.
 
