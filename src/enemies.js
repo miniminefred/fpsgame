@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BODY_RADIUS as RADIUS } from './nav.js';
-import { CORRIDOR, STAFF_ONLY, FIRST_CONTACT_GAP, worldX, worldZ } from './gen/layout.js';
+import { CORRIDOR, FACING, STAFF_ONLY, FIRST_CONTACT_GAP, worldX, worldZ } from './gen/layout.js';
 import { buildRig, buildTray, buildCrate } from './rigs.js';
 import { TYPES, BYSTANDERS, isMachine, pickType, pickTheme } from './enemy-types.js';
 import { DEATH_TIME, HIT_FLASH, SWING_TIME, animate, die, stand } from './enemy-anim.js';
@@ -159,6 +159,24 @@ const AIM_BANK = 1.6;
 const PREFERRED = 7;       // range a shooter tries to hold
 const TOO_CLOSE = 3.5;
 const GIVE_UP = 7;         // seconds of no contact before they settle down
+
+// How close you can get to somebody at work before they stop working.
+//
+// The one trigger in this file that is not about noticing, and it is here
+// because sight is not enough on its own: a body at a machine has its back to
+// the room, and `losClear` samples a grid, so a player who has come through the
+// doorway behind them or round the end of a rank of racks can be well inside
+// arm's reach and not have been seen. Wide enough to cover the room they are
+// standing in the middle of, short enough that walking past the far wall of a
+// long office does not set them off. See `_choreWork` and chores.js.
+const CHORE_STARTLE = 4.5;
+
+// How far back from a machine a body may be moved to find somewhere it fits, and
+// in what steps. See `standable`: about one tile, because the failure this
+// recovers from is landing on the wrong side of a tile boundary rather than
+// standing too close.
+const STAND_NUDGE = 0.5;
+const NUDGE_STEP = 0.125;
 // What an explosion is worth as a throw, at the seat of it. Above anything a gun
 // can do, which is the point of standing next to one. See splash.
 const BLAST_PUNCH = 3.5;
@@ -383,6 +401,13 @@ export class Enemies {
     // this costs a branch that matters.
     this.jobTick = null;    // one frame of somebody's run
     this.jobLost = null;    // ...and the run is over, however it ended
+    // The same seam a second time, for the ordinary work: a body with `e.chore`
+    // on it is walked by chores.js. Two pairs of hooks rather than one, because
+    // a slot has one occupant and a second consumer of a single-slot callback is
+    // how one of them quietly stops being called — the note `washers.js` makes
+    // about `onBreakProp`. See chores.js.
+    this.choreTick = null;
+    this.choreLost = null;
     // Where `snapshot` got to last time, so the roster is covered round-robin
     // rather than the first SNAP_CAP bodies being the only ones ever sent.
     this._snapCursor = 0;
@@ -394,6 +419,10 @@ export class Enemies {
     // Room -> the desks in it nobody has been sat at yet. Refilled per floor by
     // `spawn`, emptied as the roster is placed. See deskPool and _takeDesk.
     this.desks = new Map();
+    // ...and every other kind of place the furnisher said somebody could work,
+    // by station name. Shared rather than dealt out — a printer is somewhere a
+    // body stands for twenty seconds. See spawn, and chores.js.
+    this.stations = new Map();
   }
 
   // What the floor objective counts. The neutrals are alive and on the floor and
@@ -468,12 +497,25 @@ export class Enemies {
     // are shared and never taken out of the pool: a serving hatch is somewhere
     // you stand for four seconds, not somewhere you sit for a minute.
     this.servery = deskPool(workstations, nav, rng, 'servery').get(layout.spawnRoom) ?? [];
+    // Every OTHER kind of station the furnisher published, pooled by what it is
+    // a place to work at and flattened the same way — a printer is a printer
+    // whosever office it is in, so unlike a chair it does not matter which room
+    // it came out of. Built generically rather than one line per kind, so this
+    // file does not have to learn the vocabulary of the module that reads them:
+    // `chores.js` asks for what it wants by name and gets nothing if the floor
+    // has none.
+    this.stations = new Map();
+    for (const at of new Set(workstations.map((w) => w.at))) {
+      this.stations.set(at,
+        [...deskPool(workstations, nav, rng, at, STAND_NUDGE).values()].flat());
+    }
     // Where a box comes off a rack, for the parcel runs (see jobs.js). Flattened
-    // out of the by-room map the pool returns, because unlike a chair or a
-    // serving hatch it does not matter WHOSE storeroom it is — a run wants any
-    // rack anybody can walk to. Shared and never taken out of the pool, like the
-    // servery: it is somewhere a machine stands for two seconds.
-    this.shelves = [...deskPool(workstations, nav, rng, 'shelf').values()].flat();
+    // out of the by-room map, because unlike a chair or a serving hatch it does
+    // not matter WHOSE storeroom it is — a run wants any rack anybody can walk
+    // to. Shared and never taken out of the pool, like the servery: it is
+    // somewhere a machine stands for two seconds, and one of the pools above
+    // rather than a pool of its own because it is the same question.
+    this.shelves = this.stations.get('shelf') ?? [];
     // ...and where they go back. Falling back to the counter itself is not a
     // fudge: a rack that a body cannot stand at is dropped like any other
     // station, and handing your tray back across the counter you took it from is
@@ -1527,6 +1569,12 @@ export class Enemies {
       // The crate, if this one is on a parcel run, and whether they are up to
       // the elbows in a machine. See jobs.js.
       carry: null, job: null, jobRole: null, working: false,
+      // ...and the errand a body is on when it is doing the building's ordinary
+      // work rather than carrying a box across it: standing at a printer, a
+      // server rack, a bench. Unlike a parcel run this is walked by a HOSTILE as
+      // often as by a neutral, and it is abandoned the moment they notice you.
+      // See chores.js.
+      chore: null,
       type,
       // Position in `items`, which is this body's name on the wire. It is stable
       // because the roster is generated from the floor's seed and appended to in
@@ -1695,6 +1743,9 @@ export class Enemies {
     // started running away, which is what the box hanging in the air would look
     // like.
     if (e.job) this.jobLost?.(e);
+    // ...and the ordinary job, for exactly the same reason and in the same
+    // breath: nobody carries on typing while they are being shot at.
+    if (e.chore) this.choreLost?.(e);
     if (e.neutral) {
       // They have nothing to fight you with and never did. Zeroing the timer
       // makes the next tick pick a destination away from you instead of
@@ -1736,6 +1787,11 @@ export class Enemies {
     // the box: a porter waiting for a handoff from somebody who is dead waits
     // out the whole stage cap.
     if (e.job) this.jobLost?.(e);
+    // The pose as much as the station: `choreLost` goes through `setWorking`,
+    // which is the only thing that puts a hinged limb back, and a corpse that
+    // ragdolls out of a working pose does it with its arms already above its
+    // head. See chores.js.
+    if (e.chore) this.choreLost?.(e);
     // A dead machine stops making machine noise. Nothing else clears this, and
     // the loop would otherwise run on out of a wreck for the rest of the floor.
     if (e.motor) { this.audio?.stopMotor(e.motor); e.motor = null; }
@@ -1920,6 +1976,18 @@ export class Enemies {
         // runs here and nowhere else, so a body gets exactly one pose a frame
         // however it is being driven.
         if (e.job) { this.jobTick?.(e, dt, audio); animate(e, dt, audio); continue; }
+        // Working at a machine, with nobody on the floor to interrupt them. The
+        // hostile path below still runs its `_think` — there is nothing for it
+        // to notice — but `_move` is skipped, because the chore owns where this
+        // body is going for as long as it lasts.
+        if (e.chore) {
+          // Nobody to notice, so no startle test to make: `_choreWork`'s two
+          // arguments for it are both false by construction here.
+          this.choreTick?.(e, dt, audio);
+          animate(e, dt, audio);
+          if (!e.neutral) this._mutter(e, dt, audio);
+          continue;
+        }
         if (e.neutral) { this._wander(e, dt, audio); animate(e, dt, audio); continue; }
         this._think(e, dt, Infinity, false, false, null);
         this._move(e, dt, 0, 0, 1, false);
@@ -1971,8 +2039,27 @@ export class Enemies {
         // break, and `_damage` is where that happens.
         if (e.break) this._lunch(e, dt, audio);
         else if (e.job) this.jobTick?.(e, dt, audio);
+        // A neutral at work is not startled by you standing next to it — that
+        // is the whole of what neutral means here, and it is what makes a
+        // maintenance man on a wall panel something you can walk up to and
+        // watch. Being shot is the one thing that stops them, and `_damage` is
+        // where that happens.
+        else if (e.chore) this.choreTick?.(e, dt, audio);
         else this._wander(e, dt, audio);
         animate(e, dt, audio);
+        continue;
+      }
+
+      // Somebody at work, and still at it: chores.js owns where this body goes
+      // and none of the state machine runs. `_choreWork` is what decides, and it
+      // is checked BEFORE `_think` rather than after because `_think` cannot be
+      // what notices you here — it only ever promotes out of `idle`, and a body
+      // still walking to its machine is in `wander`, which that switch has no
+      // case for at all. When it hands the body back it has already dropped the
+      // job and pointed them at you, and the rest of this frame is ordinary.
+      if (e.chore && this._choreWork(e, dt, dist, sees, hears, target, audio)) {
+        animate(e, dt, audio);
+        this._mutter(e, dt, audio);
         continue;
       }
 
@@ -2306,6 +2393,7 @@ export class Enemies {
   _lunchOk(e) {
     return e.alive && !e.neutral && !e.behindLock && !e.break && !e.seat
       && !e.lunchDone              // one break a floor
+      && !e.chore                  // ...and nor is anybody already at a machine
       && !isMachine(e.type)        // a machine has nowhere to put it
       && !e.type.undead            // ...and this one is off the payroll
       && !e.keyed                  // an alarm response is not going for lunch
@@ -2658,6 +2746,22 @@ export class Enemies {
     if (!on && e.alive) stand(e);
   }
 
+  /**
+   * Which working pose a body at a machine is holding, or null for none.
+   *
+   * The same bargain `setWorking` makes one method up, and it is the third time
+   * this file has had to make it: nothing but `stand` puts a hinged limb back or
+   * lifts a stooped body out of the carpet, so clearing the pose and restoring
+   * it have to be ONE operation. Left as a field anybody may write, a man who
+   * stops working walks off the rest of the floor bent over a bench that is no
+   * longer in front of him. `_standUp` is the same promise for a chair.
+   */
+  setChorePose(e, pose) {
+    if (!e?.chore || e.chore.pose === (pose ?? null)) return;
+    e.chore.pose = pose ?? null;
+    if (!pose && e.alive) stand(e);
+  }
+
   _giveTray(e) {
     if (e.tray) return;
     e.tray = buildTray();
@@ -2693,6 +2797,60 @@ export class Enemies {
     if (e.voiceTimer > 0) return;
     e.voiceTimer = 7 + Math.random() * 11;
     if (e.state === 'idle') audio.enemyIdle(e);
+  }
+
+  /**
+   * One frame of somebody doing the building's ordinary work, and whether they
+   * are still doing it.
+   *
+   * This is the whole of what a hostile at a machine promises, and the promise
+   * is deliberately narrow: a chair in this building means harmless (see the
+   * note on workstations in CLAUDE.md), and nothing here sits anybody down. A
+   * body STANDING at a printer has made no such promise — it is somebody with
+   * their back to you who has not looked up yet, and the moment they do the job
+   * is off and they are an ordinary body in an ordinary fight.
+   *
+   * Three ways they look up, and the third is the one that needed writing:
+   * sight, hearing, and you being close enough to be at their elbow. Being seen
+   * is the ordinary one and costs them the usual reaction delay, because they
+   * spotted you across a room. Being FOUND does not — somebody who turns round
+   * into you does not take three quarters of a second to think about it — so a
+   * startle goes straight into `alert` with a spent timer, which `_think` on the
+   * caller's very next line turns into `chase` in the same frame.
+   *
+   * Returns true while the body is still at work, in which case the caller skips
+   * the state machine entirely: chores.js owns where this one is going.
+   */
+  _choreWork(e, dt, dist, sees, hears, target, audio) {
+    const startled = dist < CHORE_STARTLE;
+    if (!startled && !sees && !hears) {
+      this.choreTick?.(e, dt, audio);
+      return true;
+    }
+
+    // `choreLost` is what puts the arms back down and hands the station back —
+    // clearing the flag without it is the bug the chair documents at length.
+    this.choreLost?.(e);
+    if (startled) {
+      e.state = 'alert';
+      e.timer = 0;
+      e.lastSeen = { x: target.x, z: target.z };
+      // ...and they have just SEEN you, whatever the grid says about line of
+      // sight. Without this the chase is over the frame after it starts: a body
+      // that has been standing at a machine has been out of contact for as long
+      // as it has been standing there, so `_think`'s own GIVE_UP test fires on
+      // the very next tick and puts it straight back to idle. Measured: startled
+      // at 2.6 m, `chase` for one frame, `idle` two seconds later, still 2.6 m
+      // away and no longer interested.
+      e.contact = 0;
+      // Somebody who has just found you standing over them says so, on the same
+      // one-at-a-time budget the rest of the floor shouts on.
+      if (this.shoutTimer <= 0) {
+        this.shoutTimer = SHOUT_GAP;
+        this.audio?.enemyAlert(e);
+      }
+    }
+    return false;
   }
 
   _think(e, dt, dist, sees, hears, target) {
@@ -3194,6 +3352,7 @@ export class Enemies {
     // counter, which is the same fact one room along.
     this.desks.clear();
     this.tables?.clear();
+    this.stations?.clear();
     this.servery = [];
     this.shelves = [];
     this.trayRack = null;
@@ -3217,7 +3376,7 @@ export class Enemies {
  * the same floor from the same seed, so these are the same desks in the same
  * order on both ends and the two bodies that do sit down sit in the same chairs.
  */
-function deskPool(workstations, nav, rng, at) {
+function deskPool(workstations, nav, rng, at, nudge = 0) {
   const by = new Map();
   for (const w of workstations) {
     // Desks and canteen tables come through the same call and are pooled apart,
@@ -3252,13 +3411,53 @@ function deskPool(workstations, nav, rng, at) {
     // has always fed (the Manager, the guard on the cameras) get up to FIGHT
     // you, and one that cannot leave its desk is worse than one that never sat
     // at it.
-    if (!nav.fitsAt(nav.tx(w.x), nav.ty(w.z))) continue;
+    const spot = standable(w, nav, nudge);
+    if (!spot) continue;
     const list = by.get(w.room);
-    if (list) list.push(w);
-    else by.set(w.room, [w]);
+    if (list) list.push(spot);
+    else by.set(w.room, [spot]);
   }
   for (const list of by.values()) rng.shuffle(list);
   return by;
+}
+
+/**
+ * Where a body actually stands at this station, or null if it cannot stand there.
+ *
+ * A CHAIR may not move: the pose is drawn relative to the seat under it, so a
+ * station that fails is simply not a seat. A place to STAND may, and that is the
+ * whole of what `nudge` is — the caller says which kind it is asking about.
+ *
+ * It exists because of an off-by-a-tile that made two of the six jobs in
+ * chores.js impossible. `fits` is the walk grid eroded by a body's radius, and
+ * with a 0.5 m tile against a 0.4 m radius that erosion takes every tile
+ * ORTHOGONALLY ADJACENT to a blocked one — so whether a body fits in front of a
+ * copier is not really a question about how far in front it is standing, it is a
+ * question about which tile that lands in. Measured on one floor: every printer
+ * station and every vending station on it failed, and moving the point 0.2 m
+ * further out recovered all six vending machines and six of ten copiers. The
+ * four that never recover are machines in rooms with genuinely nowhere to stand,
+ * and dropping those is correct.
+ *
+ * Backwards, never sideways, and capped at NUDGE_MAX — about one tile. Backwards
+ * keeps the body square to the thing it came to use, which is what the pose is
+ * drawn for, and the cap is what stops "somewhere to stand at the copier" from
+ * quietly becoming "somewhere in the room".
+ *
+ * The moved station is a COPY. The raw list is shared between every pool built
+ * off it, and a desk whose chair sits somewhere else because a standing job
+ * nudged the record is the kind of bug that only shows up two features later.
+ */
+function standable(w, nav, nudge) {
+  if (nav.fitsAt(nav.tx(w.x), nav.ty(w.z))) return w;
+  if (nudge <= 0) return null;
+  const [fx, fz] = FACING[w.rot & 3];
+  for (let back = NUDGE_STEP; back <= nudge + 1e-6; back += NUDGE_STEP) {
+    const x = w.x - fx * back;
+    const z = w.z - fz * back;
+    if (nav.fitsAt(nav.tx(x), nav.ty(z))) return { ...w, x, z };
+  }
+  return null;
 }
 
 // Corridor waypoints for the panicking staffer. Sampled rather than exhaustive:
