@@ -221,6 +221,8 @@ src/
   nav.js          Tile navigation on TWO LEVELS: flow field, line of sight,
                   walkability, and a second field for whoever can open a locked door
   enemies.js      Spawning, placement guarantees, the AI state machine, gunfire and melee
+  jobs.js         Parcel runs: three bodies, one box, one errand across a floor
+  washers.js      The washing machines, and the fact that they will not stand still
   enemy-types.js  The roster: types, bystanders, floor themes, and the pickers
   enemy-anim.js   Per-frame rig animation, and the toppling death fallback
   input.js        Key state, pointer lock, and the fallback look mode when it is refused
@@ -1830,6 +1832,12 @@ carry a pattern that has to run the length of that particular line and a repeat 
 texture rather than on the material. `clone` shares the canvas underneath, so what is per run
 is two numbers.
 
+The walking half of this cycle is no longer the cycle's own: `_lunchGo`, `_lunchWalk`
+and `_lunchStand` are now thin wrappers over **`routeTo` / `advanceTo` / `standAt`**,
+which the parcel runs drive too. Nothing about lunch changed — the stages, the chairs
+and the tray are all still here — but a body walking a list of places and pausing at
+each is not a fact about lunch, and there are two of them now. See Parcel runs above.
+
 `_stroll` is the walk lifted out of `_wander` so both callers can have it, and it **returns
 what happened** rather than recovering itself — a neutral makes a whole new plan and somebody
 on their lunch re-floods to the same counter, and neither wants the other's answer.
@@ -1844,6 +1852,147 @@ rather than being derived from the break, because a body walks the first and las
 lunch without one — and the break bit is also what tells a joiner that the chair is a canteen
 table, since unlike every other seat in the building a chair somebody WALKED to did not come
 from the shared seed.
+
+### Parcel runs (`jobs.js`)
+An Automated floor said it was being worked by being full of machines, and that was
+the whole of the claim: a hundred and fifty bodies standing about, plus a belt on the
+wall with boxes on it that came from nowhere and went nowhere. Now there is a sentence
+in the middle. A **Welder Unit** takes a box off a storage rack, brings it out to the
+corridor and hands it to a **Porter Unit**, which wheels it to a parcel line where a
+**Maintenance Worker** spends fifteen seconds fitting it, in sparks.
+
+All three are **neutral**, and that is not incidental — it is what makes the thing
+watchable. The player is meant to be able to stand in a doorway and see it happen,
+which they cannot do if any of the three would rather be shooting them. It is also
+what makes it cheap to abort: damage to any of the three ends the whole run, so the
+first shot of a firefight stops the building working, which is the right thing for the
+first shot of a firefight to do.
+
+**It is its own file because the walking was not new.** `_lunchGo` / `_lunchWalk` /
+`_lunchStand` were lifted out from under the lunch cycle into **`routeTo` /
+`advanceTo` / `standAt`** on `Enemies` and renamed off it, because "flood a field to a
+point, walk down it, give up if there is no route" was never about lunch. Both callers
+now share every hard-won thing in them — both halves of the reachability check, the
+once-only re-flood on a wedge, the unhurried pace that keeps a body walking to a job
+from reading as a body that has noticed you. What jobs.js adds is the errand itself,
+and the seam back into `enemies.js` is two hooks (`jobTick`, `jobLost`) and two
+branches: a body with `e.job` on it is walked by jobs.js instead of by `_wander`.
+
+Three inputs are new. The furnisher publishes **`'shelf'`** stations in front of a
+storage room's racks, down the same `sink.workstation` pipe the servery and the chairs
+use and for the same reason — it is the only thing that knows where a rack actually
+landed. `conveyors.js`'s runs are turned into a place to stand by `_beltSpot`, derived
+from `wallSign` rather than stored, because conveyors.js has no business knowing anybody
+was going to stand there. And **Maintenance Workers now walk an Automated floor's
+corridors** (`bystanders`), which is the tenth of the floor that theme's own comment
+has always promised; they were previously only ever found in a generator room, on the
+3% of floors that have one.
+
+**Three bugs, and all three made the feature silently do nothing** — which is the thing
+to take from this section, because none of them errored:
+
+- **Casting by throwing darts at the roster.** `_sendToLunch` may do that because any
+  of seventy-nine employees will do. These three roles are *rare*: a porter and a
+  maintenance worker are hand-placed traffic, one to a handful each, so twenty-six
+  darts at two hundred bodies misses a two-body type about two thirds of the time.
+  Measured: six attempts in a row on a floor holding two welders, one porter and two
+  workers cast **not one role**. Candidates are filtered by type now.
+- **`descendOn` ends in `out.set(...)`**, so the scratch `{x, z}` threw rather than
+  answering.
+- **Proving only the FIRST leg.** Casting the fetcher against the rack alone picked the
+  only kind of welder that can reach a rack behind a shut door — one already locked
+  inside the storeroom — which walked to the rack, took the box, and could not get out
+  to hand it over. It died 4.7 simulated seconds in, every time. **Every stop is proved
+  before anything is committed**, and the first handoff moved out to the corridor so
+  only one of the three has to get inside at all.
+
+Measured end to end on a pinned Automated floor, driving the state machine at a fixed
+1/60: 35.4 s the welder reaches the rack, 37.3 s the box comes off it, 48.1 s handed to
+the porter in the hall, 83.5 s the porter reaches the belt, 84.8 s handed to the
+worker, 100.6 s fitted and the run closed with all three released and no crate left
+parented to anybody. **Runs need the storeroom open** — 0 of 4 attempts start cold, and
+they begin once a white card has opened the building, which is the same property the
+lunch cycle has and for the same reason.
+
+**`boxAt` / `boxArms` are declared per rig**, and that is the `gunRest`/`gunAim` lesson
+a third time: a crate rides a person's chest at 1.02 m with the arms up, and a Porter
+Unit carries one on the deck it already has at 0.79 m with its arms down, because
+lifting a box to the chest of a flat trolley is the one way to make a delivery robot
+look like it is struggling with the parcel. Verified numerically — Welder 1.26 m with
+arms at -1.24 against `TRAY_ARMS` -1.25, Maintenance Worker 1.01 m, Porter 0.78 m with
+arms resting at 0.23. On the wire it is one more bit in the snapshot's sixth slot
+(`SNAP_BOX`), for the tray's reason.
+
+### The washing machine (`washers.js` + `washingMachine` in `gen/props.js`)
+There is no explanation for one being in the corridor of an office block and that is
+the joke. It is on an unbalanced spin cycle, it is losing, and it hammers its way
+around the hallway making a noise you can hear from fifteen metres. Shoot it and it
+goes up.
+
+One to three a floor, on a **shuffled list** of corridor tiles at least 26 m apart —
+darts deliver one on this floor and five on the next, which is the lesson `cameras.js`
+and `conveyors.js` both paid for, and the gap is past the clip's own audible range so
+two are never heard as one. Measured over four floors: 1, 2, 2, 3 machines, spacing
+52–66 m.
+
+**It is a LOOSE prop, and that is what makes the whole thing cheap.** It gets a
+cannon-es body, so the thrashing is *real* rather than animated: this module only
+shoves, and where it ends up is the solver's business, which is why it skitters and
+rocks and wedges itself against a wall instead of doing a tidy sine hop in place. It is
+already shootable, damageable and destructible, already collides with the player and
+the staff off a collider `game.js` re-syncs every frame, and already puts water on the
+carpet, because the prop declares `spills: 'water'`.
+
+Which makes it **the only prop in the catalogue that is loose AND model-backed at
+once** — the split in `gen/models.js` says that does not happen. It gets both because
+it has to: batched geometry cannot hop, and the hopping is what this prop *is*. So
+`endDynamic` draws the model as the group's own meshes and hides the authored boxes,
+which stay on as the pieces it breaks into and as what the collider is measured from.
+That is the same division of labour every model-backed prop already has, moved off the
+batch onto one free-standing group.
+
+Three numbers were chosen by measuring rather than by looking:
+
+- **It hops 0.33 m clear of the floor** — well under its own 0.95 m, which is the
+  difference between reading as a machine jumping and reading as a prop being launched.
+- **It rocks to 23°**, because the impulse is applied off-centre on a random side. The
+  lever arm is kept well inside the body's radius: a kick at the very corner tips it
+  onto its side and it stops being a washing machine and becomes a fallen box.
+- **The leash holds it to 0.23 m** of where the floor put it, and it is a *soft bias*
+  added to the lateral kick rather than a clamp — at the home spot the kick is a pure
+  random walk, and the further out it has hammered the more of the kick points home. A
+  hard clamp on a physics body fights the solver, and what must not happen is a machine
+  that hammers its way into somebody's office and out of the corridor the racket is
+  meant to be in.
+
+**The racket is a positional bed that follows it** (`startWasher`, `WASHER_AUDIBLE`
+15 m), and it is the one bed in the set that needed **no loop-window rescue**: measured
+in half-second windows, RMS runs 12.0–15.6 across all twelve seconds, worst window 77%
+of the best, no dead air anywhere. The roomba clip ran 8.7 down to 0.7 over its first
+2.4 s — a ratio of 0.03 — which is what switched the vacuum off for a third of every
+cycle. Asking the prompt for *"full intensity from the very first instant with no fade
+in"* is what bought the difference, and it is worth asking for on every bed.
+
+Its gain came down from 0.75 to **0.55**, and off a measurement rather than taste. A
+bed's gain IS its level (beds are exempt from the conditioning every one-shot gets), and
+the clip measures 0.14 RMS — so 0.75 put a *continuous* sound at 0.108 against the
+0.1495 every one-shot in the set is conditioned to. That is 72% of a gunshot, playing
+for as long as the player is on the floor, which is the `blackoutPanels` mistake in
+another key: something that never stops being asked for has to sit under the fight
+rather than in it.
+
+**And the loop has to stop when the machine does.** Killed at 3 m it dealt the player
+14.7 damage, removed itself from the list, and stopped its voice — that last one is the
+check that matters, because a loop left running on a prop that no longer exists is a
+racket coming out of an empty corridor for the rest of the floor, and nothing else in
+the game would ever clear it. `clear()` does the same for a floor that ends with
+machines still on it.
+
+It watches **`dyn.broken`** rather than taking `onBreakProp`, which would be one frame
+earlier: `game.js` owns that slot for the co-op wire, and a second consumer of a
+single-slot callback is how one of them quietly stops being called. A sixtieth of a
+second is not visible, and this way the module needs nothing from `destruction.js` at
+all.
 
 ### Furniture models (`gen/models.js` + `gen/props.js`)
 Static props are drawn with downloaded CC0/CC-BY GLBs; loose props are not. The split is
