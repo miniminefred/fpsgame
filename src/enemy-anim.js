@@ -1,4 +1,4 @@
-import { lerp, smoothTo } from './util.js';
+import { clamp, lerp, smoothTo } from './util.js';
 
 // How a body moves while it is working, and how it falls over when it is not.
 //
@@ -126,9 +126,35 @@ const ARM_X = 0.32, ARM_Y = 1.15, ARM_HALF = 0.27;
  * `angle` is positive toward -Z, the way the body faces, because everything in
  * a seated pose is out in front of them.
  */
-function hinge(limb, x, y, half, angle) {
+function hinge(limb, x, y, half, angle, forward = 0) {
   limb.rotation.x = angle;
-  limb.position.set(x, y + half * (1 - Math.cos(angle)), -half * Math.sin(angle));
+  limb.position.set(x, y + half * (1 - Math.cos(angle)),
+    -half * Math.sin(angle) - forward);
+}
+
+/**
+ * The angle that puts a standing body's hand at a height.
+ *
+ * An arm here is ONE box with no elbow in it, hanging from a shoulder at
+ * ARM_Y + ARM_HALF and ARM_LEN long, so where the hand ends up is a single
+ * cosine and there is exactly one angle that reaches any given height. Two
+ * consequences worth knowing before writing a number into the table below:
+ *
+ *   - A standing body cannot get its hands below 0.88 m. That is shoulder minus
+ *     arm, and it is well above a 0.75 m desk — which is why every pose that
+ *     works at waist height carries a `stoop`, exactly as the seated pose
+ *     carries `DESK_DROP`. Stooping lowers the shoulder and the hand with it.
+ *   - Reaching FORWARD and reaching DOWN are the same motion. The hand is
+ *     furthest out at shoulder height and directly underneath at the bottom of
+ *     its arc, so a low pose has the hands tucked under the body whatever else
+ *     it does. `forward` on `hinge` is what buys the rest: the shoulders come
+ *     out over the work, which is what leaning over a bench actually is.
+ *
+ * Clamped rather than trusted, because a table entry a few centimetres outside
+ * the arc would otherwise come back NaN and put the arms somewhere unrenderable.
+ */
+function armAt(height, stoop) {
+  return Math.acos(clamp((ARM_Y + ARM_HALF - stoop - height) / (ARM_HALF * 2), -1, 1));
 }
 
 /**
@@ -147,6 +173,13 @@ function hinge(limb, x, y, half, angle) {
  */
 export function stand(e) {
   e.torso.rotation.x = 0;
+  // The stoop as well as the joints, and for the same reason: every pose that
+  // works below shoulder height drops the whole group (see `armAt`), and the
+  // only things that ever put it back are the two walks — so a body that stops
+  // working and then stands where it is spends the rest of the floor sunk into
+  // the carpet. It was already true of the seated pose's DESK_DROP and was only
+  // ever hidden by the fact that the two bodies who sit down get up and walk.
+  e.group.position.y = e.y;
   // The head too, since `animateFixing` tilts it to look at what it is doing and
   // nothing else in this file ever touches it. Same rule as the limbs: the walk
   // cycle rewrites rotations it owns every frame and recovers on its own, and a
@@ -206,6 +239,15 @@ export function animate(e, dt, audio) {
   // if a chassis is ever cast as the fixer it simply stands there as before,
   // which is wrong-looking rather than broken.
   if (e.working && e.armL && e.legL) return animateFixing(e, dt);
+
+  // ...and the ordinary work, at a printer or a bench or a rack (see chores.js).
+  // Same place in the order and the same guard, for the same two reasons: it is
+  // a body standing still doing something, and only the human roster has limbs
+  // whose joints these constants describe — a chassis's shoulder is not at
+  // 1.42 m, so a machine cast for one of these would come out with its arms
+  // hanging off it. `pose` is null while they are still walking there, which is
+  // what leaves the walk cycle in charge of the walk.
+  if (e.chore?.pose && e.rig === 'human') return animateChore(e, dt);
 
   const moving = e.state === 'chase' || e.state === 'fight' || e.state === 'wander';
   e.walkPhase += dt * (moving ? 9 : 1.4);
@@ -437,6 +479,137 @@ export function animateFixing(e, dt) {
   // (see gun.visible in rigs.js) but a hostile could in principle be doing this,
   // and a pistol floating where a standing hand used to be is the artefact the
   // lunch pose had to fix too.
+  if (e.gun) e.gun.position.set(0.26, 0.92, 0.05);
+  if (e.blunt) e.blunt.position.set(0.26, 0.92, 0.05);
+
+  tickFlash(e, dt);
+}
+
+/**
+ * ---------------------------------------------------------------------------
+ * The ordinary work: one body, standing at one machine. See chores.js.
+ * ---------------------------------------------------------------------------
+ *
+ * Six jobs and one function, the way `TYPES` is one rig and a table of numbers —
+ * because six hand-written poses is six places for the arms to end up somewhere
+ * nobody meant, and because what actually distinguishes a man at a printer from
+ * a man at a server rack is four numbers: how high his hands are, how far he is
+ * leaning into it, how fast he is working and whether he is looking up or down.
+ *
+ * THE POSES ARE ALL STANDING, and that is a rule rather than a coincidence. A
+ * chair in this building means harmless (see the note on workstations in
+ * CLAUDE.md) and these bodies are not: a hostile at a machine is somebody with
+ * their back to you who has not looked up yet, and the frame they do, the job is
+ * off (see `_choreWork` in enemies.js). Sitting one of them down would be making
+ * the one promise the game keeps and then breaking it.
+ *
+ * Every height below is a real measurement off the prop in gen/props.js — a
+ * copier's control panel at 1.0, a vending machine's keypad at 0.9 to 1.5, a
+ * rack's units from 0.18 to 2.05, a bench top at 0.9, a desk at 0.75 — and the
+ * angle that reaches it is SOLVED (`armAt`) rather than typed, so a prop that
+ * changes height moves the hands that work on it.
+ *
+ *   hands    where the hands go, in metres off the floor
+ *   stoop    how far the whole body drops to get them there. Anything under
+ *            0.88 m needs one: see `armAt`.
+ *   reach    how far the shoulders come forward over the work
+ *   lean     the torso, and `look` the head — positive is down
+ *   beat     the slow cycle: how much of the time they are working rather than
+ *            looking at what they did, off `duty`
+ *   rate     the fast one, which is the stroke itself, and `throw` its size
+ *   stagger  how far apart the two hands work. Both together is applause, which
+ *            is the note the typing pose and the belt pose both make.
+ *   rest     how far the arms fall between strokes
+ */
+const CHORE_POSE = {
+  // Standing at somebody's monitor. The fastest, smallest motion of the six —
+  // it is a keyboard — and the one that needs the deepest stoop, because a desk
+  // is the lowest thing in the building anybody works at.
+  computer: {
+    hands: 0.82, stoop: 0.12, reach: 0.16, lean: 0.20, look: 0.22,
+    beat: 0.42, duty: -0.35, rate: 12, throw: 0.055, stagger: 0.05, rest: 0.30,
+  },
+  // At the copier's control panel, which is a machine you press and then wait
+  // for: the slowest duty cycle here, and mostly one hand.
+  printer: {
+    hands: 1.06, stoop: 0, reach: 0.12, lean: 0.10, look: 0.20,
+    beat: 0.55, duty: 0.15, rate: 4.5, throw: 0.10, stagger: 0.34, rest: 0.55,
+  },
+  // ...and taking the paper out of the tray, which is the beat that says the
+  // machine did something. Down at 0.66 m, so the body goes down to meet it.
+  printerTake: {
+    hands: 0.80, stoop: 0.17, reach: 0.14, lean: 0.34, look: 0.42,
+    beat: 1.1, duty: -0.6, rate: 3, throw: 0.09, stagger: 0.30, rest: 0.12,
+  },
+  // A keypad at chest height, worked with one hand while the other stays down.
+  vending: {
+    hands: 1.30, stoop: 0, reach: 0.16, lean: 0.04, look: 0.10,
+    beat: 0.7, duty: 0, rate: 3.5, throw: 0.13, stagger: 0.62, rest: 0.45,
+  },
+  // ...and bending to the collection slot at 0.16 to 0.36, which is the whole
+  // joke of this one: whatever else the building is doing, somebody is getting a
+  // can of something out of a machine in the corridor.
+  vendingTake: {
+    hands: 0.56, stoop: 0.33, reach: 0.20, lean: 0.52, look: 0.50,
+    beat: 1.3, duty: -0.7, rate: 2.6, throw: 0.07, stagger: 0.24, rest: 0.10,
+  },
+  // At the front of a rack, hands up among the units. Head back a little,
+  // because everything worth looking at on a 2 m rack is above eye level.
+  server: {
+    hands: 1.45, stoop: 0, reach: 0.14, lean: -0.06, look: -0.16,
+    beat: 0.62, duty: -0.1, rate: 5, throw: 0.14, stagger: 0.26, rest: 0.50,
+  },
+  // Building something on the bench: the firmest stroke of the six, both hands
+  // in it, leaning over the work and looking straight down at it.
+  bench: {
+    hands: 0.98, stoop: 0.10, reach: 0.20, lean: 0.30, look: 0.40,
+    beat: 0.8, duty: -0.25, rate: 6.5, throw: 0.20, stagger: 0.22, rest: 0.34,
+  },
+  // Arms into a hole in the wall (see panels.js). The highest of the six and the
+  // nearest to the belt repair it is a sibling of — arms close to full
+  // extension, head up, watching what his hands are doing.
+  panel: {
+    hands: 1.62, stoop: 0, reach: 0.12, lean: -0.12, look: -0.34,
+    beat: 0.85, duty: -0.2, rate: 6, throw: 0.20, stagger: 0.30, rest: 0.42,
+  },
+};
+
+/**
+ * One frame of somebody at a machine.
+ *
+ * Structurally the same animation as `animateFixing` — a stroke off `walkPhase`
+ * so no body needs a clock of its own and no two of them are in step, `hinge` so
+ * a limb turns about a real joint, `stand` to put it all back — with the numbers
+ * that differ read off the table instead of written into the function.
+ *
+ * The pose key lives on `e.chore.pose` and is null while they are still walking
+ * to the machine, which is what leaves the walk cycle in charge of the walk.
+ */
+export function animateChore(e, dt) {
+  const p = CHORE_POSE[e.chore.pose] ?? CHORE_POSE.printer;
+  e.walkPhase += dt;
+
+  const working = Math.sin(e.walkPhase * p.beat) > p.duty;
+  // Eased rather than switched: the stroke is fast and the settle back between
+  // strokes is not, which is the difference between working and twitching.
+  const swing = working ? Math.sin(e.walkPhase * p.rate) * p.throw : -p.rest;
+  const breath = Math.sin(e.walkPhase * 1.6) * 0.02;
+  const arm = armAt(p.hands, p.stoop);
+
+  // Stooping is the body going down to the work, so it moves the whole group —
+  // the same thing DESK_DROP does for a chair, and `stand` is what puts it back.
+  e.group.position.y = e.y - p.stoop;
+  hinge(e.legL, -HIP_X, LEG_Y, LEG_HALF, 0);
+  hinge(e.legR, HIP_X, LEG_Y, LEG_HALF, 0);
+  hinge(e.armL, -ARM_X, ARM_Y, ARM_HALF, arm + swing + p.stagger, p.reach);
+  hinge(e.armR, ARM_X, ARM_Y, ARM_HALF, arm - swing, p.reach);
+  e.torso.rotation.x = p.lean + breath;
+  if (e.head) e.head.rotation.x = p.look;
+
+  // Nothing in his hands but the job. A neutral's sidearm is already hidden (see
+  // gun.visible in rigs.js) and a hostile's is not, and a pistol left floating
+  // where a standing hand used to be is the artefact both the lunch pose and the
+  // belt repair had to fix as well.
   if (e.gun) e.gun.position.set(0.26, 0.92, 0.05);
   if (e.blunt) e.blunt.position.set(0.26, 0.92, 0.05);
 
