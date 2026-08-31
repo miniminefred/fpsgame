@@ -464,18 +464,27 @@ export const THEMES = [
   // all of it — and the Legacy Units, which have no job at all beyond being the
   // generation before the rest and the only machine here shaped like a person.
   //
-  // Two of those jobs are no longer a fight. The sentry's 0.17 and the welder's
-  // 0.11 are neutral now, so the floor is still nine tenths machines and only
-  // about six tenths hostile — the shares are deliberately NOT redistributed,
-  // because a building being worked by machines that are merely working is the
-  // honest version of what this theme was always describing. The consequence to
-  // know is that an Automated floor clears on fewer kills than its headcount
-  // suggests, and that the harmless quarter of it is the fastest thing on the
-  // floor and the most heavily armoured thing on the floor.
+  // Two of those jobs are no longer a fight, and the split is tuned so that the
+  // floor still comes out THREE QUARTERS hostile. The arithmetic is worth
+  // writing down because it is the only thing holding that number: the shares
+  // are a fraction of the rolled staff, machines take 0.90 of it and the tenth
+  // that is still breathing is `boost`ed humans who all fight. So hostile =
+  // (the four fighting machines) + 0.10, and the four have to sum to 0.65 —
+  // clerk 0.29, legacy 0.15, loader 0.14, drone 0.07 — leaving 0.25 for the
+  // sentry and the welder. Retune any one of the six and that identity is what
+  // to re-check; nothing asserts it.
+  //
+  // It came out at six tenths when the sentry and the welder first went neutral,
+  // which is a thinner floor than this theme should be: an Automated floor
+  // clears on fewer kills than its headcount suggests either way, and the
+  // difference between a quarter of it being harmless and two fifths is the
+  // difference between traffic and an empty building. The harmless quarter is
+  // still the fastest thing on the floor and the most heavily armoured thing on
+  // the floor, which is most of what stops "harmless" reading as "scenery".
   { name: 'Automated', weight: 3, light: 0.72, tint: 0x7fb4ff,
     rats: [0, 0], patrols: [0, 1], cleaners: [3, 5], bystanders: ['porter'],
     conveyors: [5, 9],
-    share: { clerk: 0.28, sentry: 0.17, legacy: 0.14, loader: 0.13, welder: 0.11, drone: 0.07 },
+    share: { clerk: 0.29, sentry: 0.15, legacy: 0.15, loader: 0.14, welder: 0.10, drone: 0.07 },
     boost: { sysadmin: 6, facilities: 3, reanimated: 0 } },
   { name: 'Lockdown', weight: 2, light: 0.75, rats: [1, 1], patrols: [3, 4], boost: { security: 6, manager: 4 } },
   { name: 'Night shift', weight: 2, light: 0.5, rats: [2, 3], patrols: [1, 2], boost: { reanimated: 4, sentry: 4, facilities: 3 } },
