@@ -1367,8 +1367,9 @@ body that heard a shot two rooms ago stood in `chase` with its cooldown long exp
 fired the frame you crossed its door frame, with its back to you if that is how it happened
 to be standing. Rounding a corner into three of those is not a fight you lost, it is one you
 were never in. `tuning.aim` is now the beat before the first round: 0.85 s on floor 1 down to
-0.34 s deep, times the type's own `aimMul` — 0.65 for a Sentry Unit that was bought to watch
-a corridor, 1.25 for a Sysadmin who was doing a spreadsheet ninety seconds ago. Four things
+0.34 s deep, times the type's own `aimMul` — 0.65 for a Legacy Unit that was the first draft
+of a thing bought to watch a corridor, 1.25 for a Sysadmin who was doing a spreadsheet ninety
+seconds ago. Four things
 about it are the design rather than the tuning:
 
 - **Only time spent POINTING at you counts** (`AIM_CONE`, ~60°). Turning round is already a
@@ -1399,7 +1400,10 @@ colours; the visor colour tells you what is about to happen.
 
 A crowd of **neutrals** — the Panicking Staffer looking for a toilet, plus Night Cleaners and
 Couriers — are placed by hand in the corridors of every floor rather than rolled
-(`weight: 0`). The two halves of that are drawn deliberately differently (`HALL_PANICKERS`,
+(`weight: 0`). That `weight: 0` is true of this crowd and is **not** true of every harmless
+thing in the game: the Sentry Unit is neutral and keeps a weight of 3, so it is dealt as part
+of a floor's shift like any hostile (see the machines below). Read `neutral` to count
+harmless bodies, never the weight. The two halves of that are drawn deliberately differently (`HALL_PANICKERS`,
 `HALL_BYSTANDERS`): the toilet guy is a flat one or two whatever the floor is, because he is
 a joke and a joke lands twice and is a running gag by the sixth time, while the rest are the
 building's background traffic and so scale with `layout.areaRatio` — six people over a slab
@@ -1415,16 +1419,29 @@ further from you — then goes back to its day. They show yellow on the minimap,
 I have to shoot this" needs answering from the far end of a corridor.
 
 Visors answer that same question first and identity second. Every hostile wears a **grey**
-— one ramp from near-white (Survey Drone, then Intern) to near-black (Sentry Unit),
+— one ramp from near-white (Survey Drone, then Intern) to near-black (Legacy Unit),
 brightest for what dies to a look and darkest for what does not — and the Reanimated wear
 green. The harmless are the only ones in an actual colour: white for the Panicking Staffer,
 brown for the Night Cleaner, yellow for the Courier, blue for the Staff on Break, violet for
-the Porter Unit. So hue says threat, shade says which one, and no two types share a visor.
+the Porter Unit, teal for the Welder Unit and magenta for the Sentry Unit. So hue says
+threat, shade says which one, and no two types share a visor.
 
 **The machines are on that same ramp rather than beside it**, and that is a rule being kept
 rather than a palette being copied: neither question changes because the thing at the end of
 the corridor has wheels. A Survey Drone is the brightest visor in the building and a Loader
 Unit is nearly the darkest, for exactly the reasons an Intern and a Manager are.
+
+**And the two machines that stopped fighting had to come OFF that ramp**, which is the
+clearest thing this palette has ever been asked to prove. The Sentry Unit's near-black was
+documented right here as the shade that means the thing you cannot walk out in front of, so
+leaving it on something harmless is not an inconsistency — it is the one lie the whole
+scheme exists to prevent, and it costs the player a magazine on a machine that was only ever
+going to drive past. The Welder took **teal**, which is the colour its own shell is already
+painted, so it is the one neutral whose visor and its own paint agree. The Sentry took
+**magenta**, the last hue the roster had free once white, brown, yellow, blue, hi-vis orange,
+violet, the rat's rose and the floor unit's cyan were spoken for. Magenta on three hundred
+kilograms of armour reads as a startling choice, and that is the job: what it must not read
+as is grey.
 
 **And none of them is holding a gun, which they all were.** `rigs.js` hid the sidearm on a
 melee type and on nobody else, so every neutral in the building was walking about with a
@@ -1484,10 +1501,21 @@ machines, with an ordinary office around them.
 way `TYPES` is one rig plus a table of numbers, because a floor that is 90% one robot is the
 floor of one enemy repeated that `share` exists to prevent — and it would be that twice
 over here, since the point of the shift is that the building is being worked. So the share
-is split across the JOBS: a hundred Clerk Units at the desks (0.34), Sentry Units in the
-corridors (0.20), Loader Units shifting stock (0.14), Welder Units on the racks (0.13) and
-Survey Drones over all of it (0.09). Measured over 200k draws at floors 2, 3, 4, 6, 12 and
-30: machines 89.9–90.2% throughout and every type within 0.2 of its share.
+is split across the JOBS: a hundred Clerk Units at the desks (0.28), Sentry Units in the
+corridors (0.17), Legacy Units with no job at all (0.14), Loader Units shifting stock (0.13),
+Welder Units on the racks (0.11) and Survey Drones over all of it (0.07).
+
+**Only four of them fight you**, and the split deliberately does not follow the jobs: the
+Clerk, the Legacy, the Loader and the Drone are hostile, and the Sentry, the Welder and the
+Porter are neutral. So the floor is still nine tenths machines and about **six tenths
+hostile** — an Automated floor clears on fewer kills than its headcount suggests, and the
+harmless quarter of it happens to be the fastest thing on the floor and the most heavily
+armoured thing on the floor, which is most of what stops "harmless" reading as "scenery".
+The shares are **not** redistributed to win the hostile density back, and that is a decision
+rather than an omission: a building being worked by machines that are merely working is the
+honest version of what this theme was always describing. Measured on a pinned floor 10 —
+36 Sentries and 18 Welders, every one of them in the neutral wander loop, none armed, none
+ever in a fight state, against 159 hostiles holding idle.
 
 ...and a sixth that is on the roster for a different reason. The **Legacy Unit** IS the
 original Sentry Unit — the same numbers, the same grey shell over a pale under-layer, the
@@ -1495,7 +1523,10 @@ same near-black visor — kept because it is a silhouette the building already h
 does not have is a chassis, and that is its whole character: built on the human rig, it is
 the only machine on the floor shaped like the people it replaced, and at the far end of a
 corridor it reads as staff. Its visor sits a hair off the Sentry's, because no two types
-share one and these two are the same numbers under different bodies.
+share one and these two are the same numbers under different bodies — and now that the
+Sentry has gone neutral and taken a colour, the Legacy Unit is on its own at the dark end of
+the ramp. Which is the better home for it anyway: the darkest visor in the building belongs
+on the thing that is shaped like a person and is not one.
 
 Which is what `isMachine` is for, and it is a fix rather than a tidy: everywhere the game
 asked whether something was a machine it read the answer off `chassis`, which is a question
@@ -1507,6 +1538,21 @@ outside an Automated floor none is ever rolled, so meeting a Loader Unit means y
 the floor that has loaders on it. The **Sentry Unit** is the exception and always was —
 Facilities bought it to watch a corridor in a building full of people, so it turns up in
 one, and it is the reason `themeUsable` still holds Automated back to floor 2.
+
+**Which makes it the one neutral in the game with a weight**, and that is the fact to have in
+hand before tuning any floor. Every other harmless thing on the roster is hand-placed traffic
+laid on top of the shift; this one is part of the shift itself, so a slice of every floor's
+dealt staff is now something you do not have to shoot — measured at **1–17%** across
+six ordinary floors, the high end being the themes that boost it. `hostileCount` is smaller
+than the headcount by that slice, which is correct and is also a real difficulty change on
+floors that have nothing to do with machines. Zeroing the weight was the alternative and it
+is worse: it would delete the Sentry from six of the seven themes, and from Night shift's
+`sentry: 4` boost, which multiplies a weight and so cannot resurrect a zero.
+
+**And "neutral" and "hand-placed" stopped being the same fact** the day that happened, which
+is worth knowing because the roster's own comments used to state them as one. Anything
+counting harmless bodies has to read `neutral`; where a type sits in the file says only where
+it comes from.
 
 **A chassis hands back the SAME field names as a person** — `torso`, `head`, `armL`/`armR`,
 `legL`/`legR`, `gun`, `blunt` — and that is the trick the whole thing rests on: the state
