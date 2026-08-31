@@ -454,6 +454,13 @@ export const BYSTANDERS = [TYPES.cleaner, TYPES.courier];
 // `tint` is one number: the difference is what the floor does to the thing, not
 // what the thing is.
 //
+// `panels` is the fifth, and the narrowest after `washersFly`: how many
+// service openings are cut into this floor's corridor walls — an access hatch
+// swung open with the wiring pulled out of it, and somebody stood in front of it
+// with both arms in the wall (see panels.js and the `panel` job in chores.js).
+// A floor being worked by machines is a floor with its covers off, and an
+// ordinary office is not.
+//
 // `bystanders` is the last one and it is about the corridors: the harmless
 // traffic is a night cleaner and a courier unless a theme names its own, and on
 // a floor run by machines the deliveries are done by one — alongside the
@@ -497,7 +504,7 @@ export const THEMES = [
   // the floor, which is most of what stops "harmless" reading as "scenery".
   { name: 'Automated', weight: 3, light: 0.72, tint: 0x7fb4ff,
     rats: [0, 0], patrols: [0, 1], cleaners: [3, 5], bystanders: ['porter', 'worker'],
-    conveyors: [5, 9], washersFly: true,
+    conveyors: [5, 9], washersFly: true, panels: [3, 6],
     share: { clerk: 0.29, sentry: 0.15, legacy: 0.15, loader: 0.14, welder: 0.10, drone: 0.07 },
     boost: { sysadmin: 6, facilities: 3, reanimated: 0 } },
   { name: 'Lockdown', weight: 2, light: 0.75, rats: [1, 1], patrols: [3, 4], boost: { security: 6, manager: 4 } },
