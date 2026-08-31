@@ -34,7 +34,7 @@ import { planStairs } from './stairs.js';
 // has a file of its own.
 export {
   TILE, WALL_H, CEIL_H, DOOR_H, DOOR_CLEAR,
-  SOLID, ROOM, CORRIDOR, DOOR, isOpen,
+  SOLID, ROOM, CORRIDOR, DOOR, isOpen, FACING,
   worldX, worldZ, centreX, centreZ, tileX, tileY,
   bfs, slidePocketSide, slidePocketRun, doorSide,
 } from './tiles.js';

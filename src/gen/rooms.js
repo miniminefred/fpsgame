@@ -224,7 +224,7 @@ function copyRoom(sink, bounds, rng) {
 
 // Racks in ranks, tight enough that the aisles between them are the only floor.
 function serverRoom(sink, bounds, rng) {
-  aisles(sink, bounds, 2.2, 0.85, 'serverRack', rng);
+  aisles(sink, bounds, 2.2, 0.85, 'serverRack', rng, 'server');
   if (rng.chance(0.6)) edgeProp(sink, bounds, 'workbench', rng);
   edgeProp(sink, bounds, 'extinguisher', rng);
 }
@@ -480,6 +480,17 @@ function seatFacing(sink, kind, cx, cz, rot, rng, gap = 0.95) {
   if (!placed) return false;
 
   sink.workstation(x, z, seat);
+
+  // ...and the two places somebody can stand at this desk without standing in
+  // its chair. Offered on every desk in the building and mostly refused: they
+  // are what the standing "work on a computer" job is done at (see chores.js and
+  // DESK_ASIDE), and a chair that only just fits has no room either side of it.
+  // Nothing here reserves a tile — a workstation is an offer, and this one is
+  // taken up by at most one body at a time.
+  for (const aside of [DESK_ASIDE, -DESK_ASIDE]) {
+    const [ax, az] = QUARTER[rot & 3](aside, 0);
+    sink.workstation(x + ax, z + az, seat, 'computer');
+  }
   return true;
 }
 
@@ -976,6 +987,41 @@ function scatter(sink, bounds, kinds, perM2, rng) {
 // whether it did, and an object is as truthy as `true` — but a room that has to
 // put a chair in front of the thing it just placed has no other way to find out
 // which wall the die picked.
+// Which machines somebody can be found working AT, and what the station is
+// called when it goes down the `sink.workstation` pipe. See chores.js.
+//
+// A table read by `edgeProp` rather than an argument threaded through its
+// fifteen call sites, and that is the same argument `aisles` already makes about
+// a rack: whether a printer is somewhere to stand is a fact about printers, not
+// about the copy room. So every vending machine, printer, workbench and server
+// rack backed against a wall anywhere in the building offers a place to stand,
+// for free, and the ones that are no good are dropped at the other end —
+// `deskPool` in enemies.js refuses any station a whole body does not fit at,
+// exactly as it already does for one canteen tray rack in ten.
+const WORK_AT = {
+  vending: 'vending',
+  printer: 'printer',
+  workbench: 'bench',
+  serverRack: 'server',
+};
+
+// How far in front of a machine a body stands to use it. A shade under the
+// rack's 0.65 because these are reached with the hands rather than leaned into,
+// and a body standing a full arm's length off a vending machine reads as
+// somebody who has decided against it.
+const WORK_REACH = 0.58;
+
+// ...and how far to one side of a desk's own chair the standing job goes.
+//
+// A desk station is where the CHAIR is, and a body standing there is standing
+// in the chair. Offset along the desk instead and they are at the end of it,
+// still in front of the monitor and facing the same way — which is what
+// somebody who has come over to check something on your machine actually does,
+// and it is the only reading of "work on a computer" that does not sit a body
+// down. Both sides are offered; the nav filter keeps whichever the room has
+// room for, and a pod on a tight pitch loses both.
+const DESK_ASIDE = 0.62;
+
 function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES) {
   const { x0, z0, x1, z1 } = bounds;
   // Asked in the prop's OWN frame, where `d` is always the dimension that faces
@@ -999,7 +1045,18 @@ function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES) {
     if ((side === 1 || side === 3) && !alongZ) continue;
 
     const [cx, cz] = seatAt(side, x0, z0, x1, z1, standoff, margin, rng);
-    if (tryPlace(sink, kind, cx, cz, side, rng)) return { cx, cz, rot: side, side };
+    if (!tryPlace(sink, kind, cx, cz, side, rng)) continue;
+    // Somewhere to stand and use it, if it is that kind of machine. Derived the
+    // way the rack fronts and the servery queue are: a prop is authored facing
+    // -Z, so QUARTER turns its own depth into a direction, and the body faces
+    // back the other way. Written out by hand this is four coordinates and half
+    // of them come out backwards (see the note on sides above).
+    const at = WORK_AT[kind];
+    if (at) {
+      const [ox, oz] = QUARTER[side](0, -(standoff + WORK_REACH));
+      sink.workstation(cx + ox, cz + oz, (side + 2) & 3, at);
+    }
+    return { cx, cz, rot: side, side };
   }
   return null;
 }

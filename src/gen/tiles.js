@@ -32,6 +32,24 @@ export const DOOR = 3;
 
 export const isOpen = (t) => t !== SOLID;
 
+/**
+ * The four quarter turns, as the directions they face.
+ *
+ * Everything in this game that faces somewhere faces -Z at rotation 0 and turns
+ * toward +X — a prop authored in gen/props.js, a body whose yaw `standAt` sets
+ * from a station's `rot`, the `side` an `edgeProp` is backed against. This is
+ * that convention written down once as a table, because it is needed in the
+ * three files that have to turn a rotation back into a direction (enemies.js,
+ * chores.js, panels.js) and `edgeProp` in gen/rooms.js documents at length what
+ * happens when it is written out by hand at each site: it comes out as four
+ * pairs of coordinates and half of them are backwards.
+ *
+ * It is `QUARTER[rot](0, -1)` from gen/props.js, evaluated. Kept here rather
+ * than imported from there because the three callers have no other business
+ * with the furniture catalogue.
+ */
+export const FACING = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+
 // Tile <-> world helpers. The building is centred on the origin.
 //
 // There are two world positions for a tile and they are half a tile apart:
