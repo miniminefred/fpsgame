@@ -37,6 +37,42 @@ const TAP_THROW = 0.05;
 const WORK_BEAT = 0.41;
 const WORK_DUTY = -0.35;
 
+// Working on something OVERHEAD: the parcel line, at 2.16 m (see jobs.js).
+//
+// The reach is the whole pose and it is bounded by the rig rather than chosen. An
+// arm is one box with no elbow, pivoting at ARM_Y + ARM_HALF = 1.42, and its
+// hand is 2 * ARM_HALF = 0.54 from that pivot — so a hand can be got to 1.96 m
+// and no higher, which is a hair under the belt's own underside. That is lucky
+// and it is also why this reads: the arms are at very nearly full extension, so
+// the body looks like it is stretching for the thing rather than gesturing at it.
+//
+// `hinge`'s angle is positive toward -Z, so PI is straight up and this is a
+// little past three quarters of the way there: hands at 1.87 m and 0.30 m
+// forward, which is up and INTO the machine rather than up in the air.
+const FIX_ARMS = 2.55;
+// The two hands never work together, for the reason the typing pose gives: both
+// at once is applause. One is holding whatever is being fitted while the other
+// works at it, so the offset is bigger here than a typist's wrist flick.
+const FIX_STAGGER = 0.30;
+// The work stroke. Slower than typing — this is a spanner rather than a keyboard
+// — and `FIX_DUTY` is how much of the cycle is spent actually working, the rest
+// being spent looking at what it did. Off `walkPhase` like every other beat in
+// this file, so no body needs a clock of its own and no two are in step.
+const FIX_BEAT = 0.9;
+const FIX_DUTY = -0.2;
+const FIX_THROW = 0.22;
+// Leaning back and looking up at it. Small on the torso for the reason the desk
+// pose is small: the torso is one box with a separate collar strip in front of
+// it, so a real lean opens a gap at the neck. The head can go further because it
+// is a box on its own.
+const FIX_LEAN = -0.13;
+const FIX_LOOK = -0.42;
+// Where the box goes while both hands are busy: on the floor, at his feet, off
+// to one side. Half its own height, so it rests ON the floor rather than in it.
+// This is most of what makes the pose legible — a body holding a box in both
+// hands is a body that is plainly NOT working, whatever its arms are doing.
+const FIX_BOX = [0.34, 0.13, -0.26];
+
 // Lunch, in the canteen the floor arrives in (see _diners in enemies.js). The
 // same SIT as a desk — a chair is a chair, and the hips and knees do not know
 // what is on the table — so only the arms and the torso differ, and the torso is
@@ -111,6 +147,11 @@ function hinge(limb, x, y, half, angle) {
  */
 export function stand(e) {
   e.torso.rotation.x = 0;
+  // The head too, since `animateFixing` tilts it to look at what it is doing and
+  // nothing else in this file ever touches it. Same rule as the limbs: the walk
+  // cycle rewrites rotations it owns every frame and recovers on its own, and a
+  // rotation nothing owns stays exactly where it was left.
+  if (e.head) e.head.rotation.x = 0;
   hinge(e.legL, -HIP_X, LEG_Y, LEG_HALF, 0);
   hinge(e.legR, HIP_X, LEG_Y, LEG_HALF, 0);
   hinge(e.armL, -ARM_X, ARM_Y, ARM_HALF, 0);
@@ -156,6 +197,15 @@ export function animate(e, dt, audio) {
   // is having their lunch at. Which one a body is in is `e.seat` — see _seat in
   // enemies.js — and it is the same pose from the hips down either way.
   if (e.seat) return e.seat === 'table' ? animateEating(e, dt) : animateWorking(e, dt);
+
+  // Working on the parcel line overhead (see jobs.js). Checked after the seats
+  // and before the walk cycle, because it is the same kind of thing as a seated
+  // pose — a body that is standing still doing something — and like those it
+  // returns rather than falling through, so the walk cycle never writes over the
+  // arms. Guarded on the rig because only the human roster has limbs to hinge:
+  // if a chassis is ever cast as the fixer it simply stands there as before,
+  // which is wrong-looking rather than broken.
+  if (e.working && e.armL && e.legL) return animateFixing(e, dt);
 
   const moving = e.state === 'chase' || e.state === 'fight' || e.state === 'wander';
   e.walkPhase += dt * (moving ? 9 : 1.4);
@@ -338,6 +388,57 @@ export function animateWorking(e, dt) {
     e.gun.position.set(0.3, 1.0, -0.08);
     e.gun.rotation.x = 1.25;
   }
+
+  tickFlash(e, dt);
+}
+
+/**
+ * Both hands up in a machine, fitting something into it.
+ *
+ * The pose is the answer to "he is just standing there holding a box", which is
+ * what the repair looked like before this existed: the crate stayed in his arms
+ * for the whole fifteen seconds, and a body carrying something in two hands is
+ * the clearest possible statement that it is NOT working. So the box goes down
+ * at his feet and the hands go up.
+ *
+ * Everything here is one of the two things this file already knows how to do —
+ * `hinge` for a real joint rotation (an arm swung on `rotation.x` alone turns
+ * about its own middle, which at this angle leaves a hand's width of daylight at
+ * the shoulder), and a beat read off `walkPhase` so no body needs a clock and no
+ * two of them are in step. `stand` puts the limbs back, and clearing `working`
+ * without calling it is the same bug the chair documents at length — which is
+ * why `setWorking` in enemies.js is the only thing that clears the flag.
+ */
+export function animateFixing(e, dt) {
+  e.walkPhase += dt;
+  const working = Math.sin(e.walkPhase * FIX_BEAT) > FIX_DUTY;
+  // Eased rather than switched, so the arms come down between strokes instead of
+  // snapping. The stroke itself is fast; the settle back is not.
+  const throwK = working ? Math.sin(e.walkPhase * 7) * FIX_THROW : -0.35;
+  const breath = Math.sin(e.walkPhase * 1.6) * 0.02;
+
+  hinge(e.legL, -HIP_X, LEG_Y, LEG_HALF, 0);
+  hinge(e.legR, HIP_X, LEG_Y, LEG_HALF, 0);
+  hinge(e.armL, -ARM_X, ARM_Y, ARM_HALF, FIX_ARMS + throwK + FIX_STAGGER);
+  hinge(e.armR, ARM_X, ARM_Y, ARM_HALF, FIX_ARMS - throwK);
+  e.torso.rotation.x = FIX_LEAN + breath;
+  // Looking at what his hands are doing, which is above and in front of him.
+  if (e.head) e.head.rotation.x = FIX_LOOK;
+
+  // The box, on the floor beside him. It was carried here; it is being fitted.
+  if (e.carry) {
+    e.carry.position.set(FIX_BOX[0], FIX_BOX[1], FIX_BOX[2]);
+    e.carry.rotation.x = 0;
+    // Set down at an angle, because nothing anybody puts down lands square.
+    e.carry.rotation.y = 0.22;
+  }
+
+  // Nothing in his hands but the job. A sidearm is already hidden on a neutral
+  // (see gun.visible in rigs.js) but a hostile could in principle be doing this,
+  // and a pistol floating where a standing hand used to be is the artefact the
+  // lunch pose had to fix too.
+  if (e.gun) e.gun.position.set(0.26, 0.92, 0.05);
+  if (e.blunt) e.blunt.position.set(0.26, 0.92, 0.05);
 
   tickFlash(e, dt);
 }

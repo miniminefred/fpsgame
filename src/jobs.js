@@ -79,7 +79,11 @@ const HANDOFF = 1.75;
 const TAKE_TIME = [1.4, 2.4];    // reaching it off the rack
 const PASS_TIME = [0.7, 1.3];    // ...and reaching it across to somebody
 const FIX_TIME = [10, 17];       // working on the belt
-const FIX_TICK = [0.45, 1.05];   // ...and how often that throws a spark
+// ...and how often that throws a spark. Tightened from [0.45, 1.05] once the
+// body had a work STROKE to go with it: at the old rate a spark landed about
+// every three strokes, so most of the motion made nothing happen and the two did
+// not read as the same event.
+const FIX_TICK = [0.30, 0.70];
 
 // Where the second body of a handoff stands: far enough off the first that they
 // are not inside one another, near enough that the pass fires.
@@ -536,6 +540,11 @@ export class Jobs {
       to.job.timer = STAGE_CAP;
       to.job.work = FIX_TIME[0] + Math.random() * (FIX_TIME[1] - FIX_TIME[0]);
       to.job.tick = 0;
+      // Both hands go up into the machine and the box goes down at his feet —
+      // see animateFixing in enemy-anim.js. Without this the repair was a man
+      // standing perfectly still holding a box for fifteen seconds, which is the
+      // clearest possible statement that he is NOT working.
+      this.enemies.setWorking(to, true);
     } else {
       this._go(to, chain.meetBelt, nextStage);
     }
@@ -570,9 +579,13 @@ export class Jobs {
     if (j.tick > 0) return;
     j.tick = FIX_TICK[0] + Math.random() * (FIX_TICK[1] - FIX_TICK[0]);
 
-    const at = j.chain.belt;
-    SPARK.x = at.x;
-    SPARK.z = at.z;
+    // At the BELT's own centre line rather than at the spot he is standing on,
+    // which is BELT_STANDOFF back from it: the sparks want to be where his hands
+    // are, and his hands are up and forward, in the machine. Off the run because
+    // that is the only thing that knows where the belt actually is.
+    const run = j.chain.belt.run;
+    SPARK.x = run ? run.midX : j.chain.belt.x;
+    SPARK.z = run ? run.midZ : j.chain.belt.z;
     this.effects?.impact(SPARK, DOWN, 0xfff0c0, 0.7);
     (audio ?? this.audio)?.generatorArc?.(SPARK);
   }
@@ -618,6 +631,10 @@ export class Jobs {
    */
   _release(e) {
     if (!e) return;
+    // Before the crate, because this is what puts the arms back down — and a
+    // body released mid-stroke would otherwise keep the pose for the rest of the
+    // floor. It is a no-op for the two who were never working.
+    this.enemies.setWorking(e, false);
     this.enemies.takeCrate(e);
     e.job = null;
     e.jobRole = null;

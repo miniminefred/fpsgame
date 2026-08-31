@@ -1524,8 +1524,9 @@ export class Enemies {
       // Where this body carries a box and whether its arms come up to hold it.
       // Same argument as the two above: a porter carries one on a deck.
       boxAt: rig.boxAt ?? null, boxArms: rig.boxArms !== false,
-      // The crate, if this one is on a parcel run. See jobs.js.
-      carry: null, job: null, jobRole: null,
+      // The crate, if this one is on a parcel run, and whether they are up to
+      // the elbows in a machine. See jobs.js.
+      carry: null, job: null, jobRole: null, working: false,
       type,
       // Position in `items`, which is this body's name on the wire. It is stable
       // because the roster is generated from the floor's seed and appended to in
@@ -2638,6 +2639,23 @@ export class Enemies {
     if (!e.carry) return;
     e.group.remove(e.carry);
     e.carry = null;
+  }
+
+  /**
+   * Up to the elbows in something overhead, or not — the pose `animateFixing`
+   * draws (see enemy-anim.js).
+   *
+   * Public because jobs.js is what decides it, and it is ONE call rather than a
+   * flag anybody may set because of the rule the chair paid for: nothing but
+   * `stand` puts a hinged limb back, so clearing the flag and restoring the pose
+   * have to be the same operation or the body walks off the rest of the floor
+   * with its arms above its head. `_standUp` makes the identical bargain for
+   * `e.seat` a few lines up.
+   */
+  setWorking(e, on) {
+    if (!e || !!e.working === !!on) return;
+    e.working = !!on;
+    if (!on && e.alive) stand(e);
   }
 
   _giveTray(e) {
