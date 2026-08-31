@@ -373,7 +373,7 @@ export class Jobs {
    * landing.
    */
   _free(e) {
-    return e.alive && e.neutral && !e.job && !e.break && !e.seat
+    return e.alive && e.neutral && !e.job && !e.chore && !e.break && !e.seat
       && !e.behindLock && !e.offMap
       && e.flee <= 0              // not somebody who has just been shot at
       && e.layer === 0;

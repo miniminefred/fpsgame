@@ -93,7 +93,7 @@ export class Game {
    * `physics` is the exception and stays guarded, because the solver really can
    * be absent and the game is meant to keep running without it.
    */
-  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, spills, doors, casings, keycards, wallet, ragdolls, cameras, conveyors, jobs, washers }) {
+  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, spills, doors, casings, keycards, wallet, ragdolls, cameras, conveyors, jobs, chores, panels, washers }) {
     this.player = player;
     this.weapons = weapons;
     this.shooting = shooting;
@@ -115,6 +115,8 @@ export class Game {
     this.cameras = cameras;
     this.conveyors = conveyors;
     this.jobs = jobs;
+    this.chores = chores;
+    this.panels = panels;
     this.washers = washers;
 
     // Co-op. Wired after construction by main.js, because NetPlay needs a Game
@@ -441,6 +443,12 @@ export class Game {
     // nav tile and reserves no floor: a belt is above everything, which is what
     // makes putting geometry into a finished floor safe at all. See conveyors.js.
     this.conveyors.spawn(level.layout, rng, theme, level.colliders);
+    // ...and the service openings, on the same terms and immediately after: a
+    // panel is flat against the plaster, contributes no collider and no nav
+    // tile, and so is as safe to cut into a finished floor as a belt is to hang
+    // above one. It takes `nav` because the whole placement rests on proving a
+    // body can stand in front of it. See panels.js.
+    this.panels.spawn(level.layout, level.nav, rng, theme);
 
     this._initPhysics(level);
     this.destruction.setLevel(level);
@@ -491,6 +499,13 @@ export class Game {
     // turn it is at the lunch counter, so spending the floor's seeded stream on
     // it would move every roll after it. See jobs.js.
     this.jobs.spawn(level.nav, this.enemies, this.conveyors);
+    // The ordinary work, last for the same reason and out of the same two
+    // places: the machines come out of the station pools `enemies.spawn` just
+    // built, and the wall openings out of the ones `panels.spawn` cut. It takes
+    // no dice of its own either — whose turn it is at the copier is a runtime
+    // decision, so spending the floor's seeded stream on it would move every
+    // roll after it. See chores.js.
+    this.chores.spawn(level.nav, this.enemies, this.panels);
 
     // The washing machines, adopted AFTER _initPhysics has given every loose
     // prop a body: the thrashing is impulses on `dyn.handle`, and a machine
@@ -505,7 +520,7 @@ export class Game {
     // things on its walls looking at them.
     this.shooting.setHittables([
       ...level.meshes, ...this.enemies.meshes, ...this.cameras.meshes,
-      ...this.conveyors.meshes,
+      ...this.conveyors.meshes, ...this.panels.meshes,
     ]);
     // Scorch marks are clipped to the building only — an enemy standing against
     // a wall is not part of that wall, however flush he is with it.
@@ -716,6 +731,7 @@ export class Game {
       // run cast against a roster that has not moved yet would be casting off
       // last frame's positions.
       this.jobs.update(dt);
+      this.chores.update(dt);
       this.washers.update(dt);
 
       this._checkFloorState(dt, level);

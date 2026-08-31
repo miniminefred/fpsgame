@@ -24,6 +24,8 @@ import { Ragdolls } from './ragdolls.js';
 import { Cameras } from './cameras.js';
 import { Conveyors } from './conveyors.js';
 import { Jobs } from './jobs.js';
+import { Chores } from './chores.js';
+import { Panels } from './panels.js';
 import { Washers } from './washers.js';
 import { Net } from './net.js';
 import { createCoopMenu } from './mp-menu.js';
@@ -85,6 +87,13 @@ const conveyors = new Conveyors({ scene, audio });
 // onto them in its constructor (see jobs.js), and it needs the pooled flash and
 // the sound library for the one stage that is meant to be watched.
 const jobs = new Jobs({ enemies, effects, audio });
+// The ordinary work at the machines already in the building, which is the same
+// two hooks a second time and needs the same two things for the same reason.
+const chores = new Chores({ enemies, effects, audio });
+// ...and the holes in the wall one of those jobs is done at. Scene only: a
+// service opening is geometry and nothing else, and where somebody stands to
+// work on it is the one thing it hands out. See panels.js.
+const panels = new Panels({ scene });
 // The washing machines. Needs the solver to shove them, destruction to blow up
 // the furniture round them, and the player to hurt. See washers.js.
 const washers = new Washers({ scene, audio, effects, physics, destruction, enemies, player, hud });
@@ -92,7 +101,7 @@ const washers = new Washers({ scene, audio, effects, physics, destruction, enemi
 const game = new Game({
   scene, camera, player, weapons, shooting, enemies,
   effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, spills, doors, casings,
-  keycards, wallet, ragdolls, cameras, conveyors, jobs, washers,
+  keycards, wallet, ragdolls, cameras, conveyors, jobs, chores, panels, washers,
 });
 
 // Co-op. All three are live from load and none of them touches the game until a
@@ -134,6 +143,8 @@ if (import.meta.env.DEV) {
     scene, camera, weapons, renderer, audio, casings, keycards, wallet, ragdolls, cameras,
     conveyors,
     jobs,
+    chores,
+    panels,
     washers,
     touch, net, netplay, coopMenu,
     // One frame of the world by hand, for measuring something without the
