@@ -175,6 +175,7 @@ const IDS = [
   ['11.stair-step', 'FAIL', `STAIRS        every riser is a step, not a wall (<= ${STEP_EPS} m)`],
   ['11.stair-meet', 'FAIL', 'STAIRS        the run arrives on the floor of its own level'],
   ['11.stair-foot', 'FAIL', 'STAIRS        floor at the bottom of the flight a body can stand on'],
+  ['11.under-floor', 'FAIL', 'STAIRS        nothing under the floor obstructs a body walking on it'],
 
   ['10.nav-lie', 'WARN', 'NAV GRID      no walkable tile is buried inside a static collider'],
   ['10.edge-standoff', 'WARN', 'EDGE PROPS    counter/vending sit within 0.35 m of a wall'],
@@ -457,6 +458,26 @@ function validate(seed, floorNumber) {
     if (!approachTiles(plan, W).some((i) => walk[i])) {
       check('11.stair-foot').fail(id, `nowhere to stand at the foot of a ${plan.room.role} flight`);
     }
+  }
+
+  // A storey BELOW the ground floor is under your feet, and has to behave like it.
+  // `barrier` defeats the step test at every height (`_moveHorizontal` in
+  // player.js) — that is the point of it on a wall you could otherwise walk up
+  // onto from a deck — so a box carrying it while topping out at or below y = 0 is
+  // a full-height obstruction to everybody UPSTAIRS. A basement's wall ring was
+  // exactly that: it ringed the room over it with an invisible fence one tile
+  // inside that room's own walls, and its doorway could not be walked through.
+  //
+  // Nothing else in this file can see it, and that is why the check is worth its
+  // line. Both grids here discard a collider whose top is at or below the floor by
+  // design (see buildGeomGrid: "a body walks under an attic and over a basement"),
+  // so the validator's model was right and the game disagreed with it — a sealed
+  // room swept green for as long as basements have existed. A model this file
+  // assumes about the player has to be asserted against the data, not assumed.
+  let fenced = 0;
+  for (const c of colliders) if (c.barrier && c.top <= EPS) fenced++;
+  if (fenced) {
+    check('11.under-floor').fail(id, `${fenced} colliders below the floor blocking the floor above`);
   }
 
   // ---- 1. furniture inside walls -----------------------------------------
