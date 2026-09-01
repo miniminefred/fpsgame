@@ -326,6 +326,14 @@ function buildHuman(type, rng) {
     // pair of fans. A rig is the file that knows where a hand is.
     drive: 'legs',
     gunRest: [0.3, 1.1, -0.3], gunAim: [0.3, 1.32, -0.55],
+    // Where the shoulders and hips ARE, which is the same lesson a third time.
+    // `hinge` turns a limb about a real joint and `armAt` solves the angle that
+    // puts a hand at a height, and both used to read module constants in
+    // enemy-anim.js — true of every body in the building until one of them was a
+    // trolley with stub arms half a metre up. A pose written against the wrong
+    // shoulder does not merely look off: `stand` puts a wheel back at a person's
+    // hip. See `joints` in the chassis builder for the machines' own numbers.
+    joints: { armX: 0.32, armY: 1.15, armHalf: 0.27, hipX: 0.12, legY: 0.43, legHalf: 0.43 },
     // ...and where a carried BOX rides, which is the same lesson one object
     // further along. A parcel run puts a crate in somebody's hands, and "in
     // somebody's hands" is chest height on a person and a flat deck two thirds
@@ -918,6 +926,12 @@ function buildRobot(type, rng) {
     bluntRest: bluntSpec?.rest ?? 0.5,
     drive: s.drive,
     gunRest: s.gun.rest, gunAim: s.gun.aim,
+    // Read straight off the chassis table, so a machine works a copier with its
+    // own shoulders rather than a person's. See `joints` on the human rig.
+    joints: {
+      armX: s.arm.x, armY: s.arm.y, armHalf: s.arm.size[1] / 2,
+      hipX: s.leg.x, legY: s.leg.y, legHalf: s.leg.size[1] / 2,
+    },
     boxAt, boxArms: deckY === null,
     rotors: rotors.length ? rotors : null,
     beaconMat: beacon ? mats.beacon : null,

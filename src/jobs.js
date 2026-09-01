@@ -373,7 +373,7 @@ export class Jobs {
    * landing.
    */
   _free(e) {
-    return e.alive && e.neutral && !e.job && !e.chore && !e.break && !e.seat
+    return e.alive && e.neutral && !e.job && !e.break && !e.seat
       && !e.behindLock && !e.offMap
       && e.flee <= 0              // not somebody who has just been shot at
       && e.layer === 0;
@@ -389,6 +389,21 @@ export class Jobs {
    * during the repair or stopped protecting the walks.
    */
   _give(e, chain, role, stage, to) {
+    // A RUN OUTRANKS A CHORE, and `_free` lets a body standing at a machine be
+    // cast for exactly this reason. The three roles a run needs are rare — a
+    // porter and a maintenance worker are one to a handful each — while chores
+    // will happily take every human on the floor, so with `!e.chore` in the
+    // filter the fitter was always already at a copier and no run could be cast
+    // at all. Measured on an Automated floor 6 with 24 welders, 2 porters and 3
+    // workers standing in it: 0 runs started in a minute, and 1 with chores
+    // switched off. A parcel run is the floor's one visible piece of work and
+    // somebody at a vending machine is not; the rare thing wins.
+    //
+    // Released rather than abandoned: `choreLost` goes through `setChorePose`,
+    // which is the only thing that puts a hinged limb back, and it hands the
+    // machine back to the pool. Skipping it walks a man to a storeroom still
+    // bent over the bench he left.
+    if (e.chore) this.enemies.choreLost?.(e);
     e.job = { chain, role, stage, at: null, timer: STAGE_CAP, work: 0, beat: 0, tick: 0 };
     e.jobRole = role;
     this.enemies.routeTo(e, e.job, to, STAGE_CAP);

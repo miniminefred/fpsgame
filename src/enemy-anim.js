@@ -111,6 +111,19 @@ const TRAY_TABLE = [0, 1.03, -0.46];
 const HIP_X = 0.12, LEG_Y = 0.43, LEG_HALF = 0.43;
 const ARM_X = 0.32, ARM_Y = 1.15, ARM_HALF = 0.27;
 
+// ...and the same six numbers as a record, for the two poses that are struck on
+// EVERY rig rather than only on people. A machine works a copier now, and a
+// chassis is not a person: a porter's shoulder is at 0.50 m with a 0.15 m arm
+// where a person's is at 1.15 with 0.27, and its legs are wheels. Posing one off
+// the constants above does not merely look wrong — `stand` would put a drive
+// wheel where a hip belongs. Every rig declares its own set (`joints` in
+// rigs.js); this is the human one, and the fallback for anything that has not.
+const HUMAN_JOINTS = {
+  armX: ARM_X, armY: ARM_Y, armHalf: ARM_HALF,
+  hipX: HIP_X, legY: LEG_Y, legHalf: LEG_HALF,
+};
+const jointsOf = (e) => e.joints ?? HUMAN_JOINTS;
+
 /**
  * Swings a limb about its JOINT rather than about its own middle.
  *
@@ -153,8 +166,8 @@ function hinge(limb, x, y, half, angle, forward = 0) {
  * Clamped rather than trusted, because a table entry a few centimetres outside
  * the arc would otherwise come back NaN and put the arms somewhere unrenderable.
  */
-function armAt(height, stoop) {
-  return Math.acos(clamp((ARM_Y + ARM_HALF - stoop - height) / (ARM_HALF * 2), -1, 1));
+function armAt(j, height, stoop) {
+  return Math.acos(clamp((j.armY + j.armHalf - stoop - height) / (j.armHalf * 2), -1, 1));
 }
 
 /**
@@ -185,10 +198,14 @@ export function stand(e) {
   // cycle rewrites rotations it owns every frame and recovers on its own, and a
   // rotation nothing owns stays exactly where it was left.
   if (e.head) e.head.rotation.x = 0;
-  hinge(e.legL, -HIP_X, LEG_Y, LEG_HALF, 0);
-  hinge(e.legR, HIP_X, LEG_Y, LEG_HALF, 0);
-  hinge(e.armL, -ARM_X, ARM_Y, ARM_HALF, 0);
-  hinge(e.armR, ARM_X, ARM_Y, ARM_HALF, 0);
+  // The rig's OWN joints, not a person's: this is called on machines now (a
+  // chore ending, a parcel run ending) and putting a loader's drive wheels back
+  // where a pair of hips would be is not a subtle artefact.
+  const j = jointsOf(e);
+  hinge(e.legL, -j.hipX, j.legY, j.legHalf, 0);
+  hinge(e.legR, j.hipX, j.legY, j.legHalf, 0);
+  hinge(e.armL, -j.armX, j.armY, j.armHalf, 0);
+  hinge(e.armR, j.armX, j.armY, j.armHalf, 0);
 }
 
 export const DEATH_TIME = 2.2;
@@ -241,13 +258,20 @@ export function animate(e, dt, audio) {
   if (e.working && e.armL && e.legL) return animateFixing(e, dt);
 
   // ...and the ordinary work, at a printer or a bench or a rack (see chores.js).
-  // Same place in the order and the same guard, for the same two reasons: it is
-  // a body standing still doing something, and only the human roster has limbs
-  // whose joints these constants describe — a chassis's shoulder is not at
-  // 1.42 m, so a machine cast for one of these would come out with its arms
-  // hanging off it. `pose` is null while they are still walking there, which is
-  // what leaves the walk cycle in charge of the walk.
-  if (e.chore?.pose && e.rig === 'human') return animateChore(e, dt);
+  // Same place in the order and for the same reason: it is a body standing still
+  // doing something, so it returns rather than falling through and the walk cycle
+  // never writes over the arms. `pose` is null while they are still walking
+  // there, which is what leaves that walk to the walk cycle.
+  //
+  // NOT guarded on the rig any more. It was `e.rig === 'human'`, because the
+  // pose solved its angles against a person's shoulder and a chassis cast for
+  // one came out with its arms hanging off it — but there is no such thing as a
+  // human job and a robot job in this building, and the fix was to stop the
+  // pose knowing what shape it is posing. Every rig declares its own `joints`
+  // (rigs.js) and `animateChore` reads them. What is still required is a body
+  // with limbs at all: the rat and the floor cleaner return above this line, and
+  // a rig with no arms would have nothing to hinge.
+  if (e.chore?.pose && e.armL && e.legL) return animateChore(e, dt);
 
   const moving = e.state === 'chase' || e.state === 'fight' || e.state === 'wander';
   e.walkPhase += dt * (moving ? 9 : 1.4);
@@ -594,15 +618,21 @@ export function animateChore(e, dt) {
   // strokes is not, which is the difference between working and twitching.
   const swing = working ? Math.sin(e.walkPhase * p.rate) * p.throw : -p.rest;
   const breath = Math.sin(e.walkPhase * 1.6) * 0.02;
-  const arm = armAt(p.hands, p.stoop);
+  const j = jointsOf(e);
+  // The heights in the table are facts about the PROP — a copier's panel is at
+  // 1.0 m whoever is standing at it — so they stay absolute and `armAt` solves
+  // each rig's own angle to them. A machine whose arm cannot reach that high
+  // ends up at full stretch, which is the honest picture of a porter at a wall
+  // panel: reaching, and not quite there.
+  const arm = armAt(j, p.hands, p.stoop);
 
   // Stooping is the body going down to the work, so it moves the whole group —
   // the same thing DESK_DROP does for a chair, and `stand` is what puts it back.
   e.group.position.y = e.y - p.stoop;
-  hinge(e.legL, -HIP_X, LEG_Y, LEG_HALF, 0);
-  hinge(e.legR, HIP_X, LEG_Y, LEG_HALF, 0);
-  hinge(e.armL, -ARM_X, ARM_Y, ARM_HALF, arm + swing + p.stagger, p.reach);
-  hinge(e.armR, ARM_X, ARM_Y, ARM_HALF, arm - swing, p.reach);
+  hinge(e.legL, -j.hipX, j.legY, j.legHalf, 0);
+  hinge(e.legR, j.hipX, j.legY, j.legHalf, 0);
+  hinge(e.armL, -j.armX, j.armY, j.armHalf, arm + swing + p.stagger, p.reach);
+  hinge(e.armR, j.armX, j.armY, j.armHalf, arm - swing, p.reach);
   e.torso.rotation.x = p.lean + breath;
   if (e.head) e.head.rotation.x = p.look;
 

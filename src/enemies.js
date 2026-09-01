@@ -1562,6 +1562,13 @@ export class Enemies {
       // every line below without one of them knowing. See CHASSIS in rigs.js.
       drive: rig.drive ?? 'legs',
       gunRest: rig.gunRest ?? null, gunAim: rig.gunAim ?? null,
+      // Where this rig's shoulders and hips are. The two poses struck on every
+      // body in the building — a chore and `stand` — solve their angles against
+      // it, so a machine works a copier with its own arms. Copied here like
+      // everything else off the rig: the enemy is built field by field rather
+      // than spread, so a rig can grow a property and nothing downstream ever
+      // sees it, which is exactly what happened the first time this was added.
+      joints: rig.joints ?? null,
       rotors: rig.rotors ?? null, beaconMat: rig.beaconMat ?? null,
       // Where this body carries a box and whether its arms come up to hold it.
       // Same argument as the two above: a porter carries one on a deck.

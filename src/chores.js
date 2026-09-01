@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { isMachine } from './enemy-types.js';
 import { FACING } from './gen/tiles.js';
 
 /**
@@ -375,26 +374,29 @@ export class Chores {
   /**
    * Whether this body is free to go and do something.
    *
-   * HUMANS ONLY, and that is two rules in one test. `rig === 'human'` is about
-   * the pose: every joint in CHORE_POSE is a measurement off the human rig, so a
-   * chassis sent to a copier would arrive with its arms hanging off it — the
-   * same guard `animateFixing` carries. `isMachine` is about the fiction, and it
-   * catches the Legacy Unit, which is built on the human rig precisely so that
-   * it reads as staff from the far end of a corridor and is not: a robot getting
-   * a can out of a vending machine is `_lunchOk` sending one to the canteen,
-   * which is the bug that put `isMachine` in the game in the first place.
+   * ANYBODY WHO WORKS HERE, and that now means the machines too. There is no
+   * such thing as a human job or a robot job: a Clerk Unit uses the copier and a
+   * Sysadmin works the rack, because the building does not have two sets of
+   * machines in it. What used to stand in the way was `rig === 'human'`, and it
+   * was a real obstacle rather than a policy — every joint in CHORE_POSE is a
+   * height, and the angle that reaches it was solved against a PERSON's shoulder,
+   * so a chassis sent to a copier arrived with its arms hanging off it and
+   * `stand` put its drive wheels where a pair of hips would be. Every rig
+   * declares its own `joints` now (rigs.js) and the pose is struck against those,
+   * which is the `gunRest` lesson for the third time. The heights themselves stay
+   * absolute, because they are facts about the prop.
    *
-   * The other two exclusions are `_lunchOk`'s as well. The Reanimated are off
-   * the payroll, and an Infestation floor is four fifths of them — which is the
-   * right answer twice over: a floor that has been overrun is not a floor doing
-   * its filing. And the toilet guy is a running gag with somewhere to be.
+   * Two exclusions are left and both are `_lunchOk`'s. The Reanimated are off the
+   * payroll, and an Infestation floor is four fifths of them — a floor that has
+   * been overrun is not a floor doing its filing. And the toilet guy is a running
+   * gag with somewhere to be.
    *
    * The state test is what keeps this out of a fight. `idle` is a hostile
    * standing in its room and `wander` is a neutral walking the corridors; every
    * other state means they are already dealing with you.
    */
   _eligible(e) {
-    return e.alive && e.rig === 'human' && !isMachine(e.type)
+    return e.alive
       && !e.type.panic             // the toilet guy has a bit, and this is not it
       && !e.type.undead            // ...and this one is off the payroll
       && !e.chore && !e.job && !e.break && !e.seat
