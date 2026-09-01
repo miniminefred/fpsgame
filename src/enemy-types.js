@@ -14,6 +14,12 @@
 export const GUARD = {
   suit: 0x14161a, shirt: 0x2e63b4, pants: 0x14161a, cap: 0x14161a,
   capText: 'SECURITY', visor: 0x7d7973, guard: true,
+  // What a guard does when nothing is happening. `works` is the list of jobs a
+  // type may be given (chores.js); absent, a body does the general work of the
+  // building — a copier, a rack, a bench. There is no such thing as a human job
+  // and a robot job here, but there is such a thing as a guard's job, and it is
+  // not standing at the photocopier: he walks the corridors and holds a post.
+  works: ['patrol'],
 };
 
 // Staff. Every type is the same rig with different numbers and a different
@@ -131,6 +137,11 @@ export const TYPES = {
     // rounds, and two more sitting in the broom closet. See _janitors.
     name: 'Janitor', hp: 1.6, speed: 1.08, damage: 1.35, rate: 1.3, spread: 1,
     range: 2.6, melee: true, scale: 1.03, blunt: ['mop'],
+    // He washes the floor, and that is the whole of the job. See `works` on
+    // GUARD above — and note the mop is what he is already carrying, so the one
+    // job on the floor that is not at a machine is also the only one whose tool
+    // the worker brings with him.
+    works: ['mop'],
     suit: 0x2f4d8a, shirt: 0xf2c93c, pants: 0x2f4d8a, cap: 0x2f4d8a,
     visor: 0xb9bec4, unlockFloor: 1, weight: 0,
   },

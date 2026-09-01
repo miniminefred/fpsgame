@@ -197,7 +197,12 @@ export function stand(e) {
   // nothing else in this file ever touches it. Same rule as the limbs: the walk
   // cycle rewrites rotations it owns every frame and recovers on its own, and a
   // rotation nothing owns stays exactly where it was left.
-  if (e.head) e.head.rotation.x = 0;
+  if (e.head) { e.head.rotation.x = 0; e.head.rotation.y = 0; }
+  // ...and the head's YAW, which the patrol pose sweeps and nothing else in this
+  // file has ever touched. Same rule as every rotation here: the walk cycle
+  // rewrites what it owns and recovers on its own, and what it does not own
+  // stays exactly where it was left — a guard who stopped his post would have
+  // spent the rest of the floor looking over his shoulder.
   // The rig's OWN joints, not a person's: this is called on machines now (a
   // chore ending, a parcel run ending) and putting a loader's drive wheels back
   // where a pair of hips would be is not a subtle artefact.
@@ -596,6 +601,43 @@ const CHORE_POSE = {
     hands: 1.62, stoop: 0, reach: 0.12, lean: -0.12, look: -0.34,
     beat: 0.85, duty: -0.2, rate: 6, throw: 0.20, stagger: 0.30, rest: 0.42,
   },
+  // Washing the floor: the janitor's job and the only one on this table that is
+  // not at a machine. A patch of corridor, and the mop he was already carrying.
+  //
+  // The stroke needs nothing new, which is the nice part — a mop is pushed and
+  // pulled, and a push and a pull is exactly what `swing` already is. What it
+  // does need is the mop itself: `hold` puts it in front of the body instead of
+  // parked at the hip, `holdRot` lays it down (negative is toward the floor —
+  // see `rest: -1.15` on BLUNT.mop in rigs.js, which is this same angle for a
+  // mop being dragged), and `holdSwing` works it back and forth with the arms.
+  mop: {
+    // `armsDown` rather than a height, and this one is worth the warning because
+    // the first version got it exactly backwards. `armAt` solves the angle that
+    // puts a hand AT a height — and a hand cannot go below shoulder minus arm
+    // (0.88 m on a person), so asking for the 1.0 m a mop handle is gripped at
+    // rotates the arms UP: out from the shoulders, horizontal, a man holding a
+    // mop at arm's length in front of him like a divining rod. Mopping is done
+    // with the arms hanging and the shoulders over the work, which is an angle
+    // near zero plus `lean` and `reach` — the same thing leaning over a bench is.
+    // The `stagger` is one hand further up the handle than the other.
+    armsDown: true, hands: 0, stoop: 0.06, reach: 0.24, lean: 0.30, look: 0.34,
+    beat: 0.5, duty: -0.8, rate: 2.6, throw: 0.26, stagger: 0.30, rest: 0.14,
+    hold: [0.14, 0.98, -0.30], holdRot: -1.32, holdSwing: 0.26,
+  },
+  // Standing a post, which is what security does when nothing is happening.
+  //
+  // The odd one out twice over. Its hands are not AT anything — a guard is
+  // watching a corridor, not working a machine — so `armsDown` skips `armAt`
+  // entirely and hangs the arms at zero, which is the only way to say "down" for
+  // every rig at once: a height would be a different pose on every shoulder.
+  // And what moves is the head rather than the arms (`sweep`), because a man
+  // standing still with his arms by his sides is a man who has stopped, and the
+  // slow look either way is the whole difference between that and a man on duty.
+  patrol: {
+    hands: 0, armsDown: true, stoop: 0, reach: 0, lean: 0.02, look: 0.03,
+    beat: 1, duty: -2, rate: 0.6, throw: 0.045, stagger: 0.02, rest: 0.04,
+    sweep: 0.6, sweepRate: 0.42,
+  },
 };
 
 /**
@@ -624,7 +666,10 @@ export function animateChore(e, dt) {
   // each rig's own angle to them. A machine whose arm cannot reach that high
   // ends up at full stretch, which is the honest picture of a porter at a wall
   // panel: reaching, and not quite there.
-  const arm = armAt(j, p.hands, p.stoop);
+  // `armsDown` is an angle rather than a height, and it has to be: "arms by your
+  // sides" is zero on every rig, where the height that means it is a different
+  // number for a person, a clerk and a porter.
+  const arm = p.armsDown ? 0 : armAt(j, p.hands, p.stoop);
 
   // Stooping is the body going down to the work, so it moves the whole group —
   // the same thing DESK_DROP does for a chair, and `stand` is what puts it back.
@@ -634,14 +679,28 @@ export function animateChore(e, dt) {
   hinge(e.armL, -j.armX, j.armY, j.armHalf, arm + swing + p.stagger, p.reach);
   hinge(e.armR, j.armX, j.armY, j.armHalf, arm - swing, p.reach);
   e.torso.rotation.x = p.lean + breath;
-  if (e.head) e.head.rotation.x = p.look;
+  if (e.head) {
+    e.head.rotation.x = p.look;
+    // Looking about, for the one pose whose whole job is looking about.
+    e.head.rotation.y = p.sweep ? Math.sin(e.walkPhase * p.sweepRate) * p.sweep : 0;
+  }
 
   // Nothing in his hands but the job. A neutral's sidearm is already hidden (see
   // gun.visible in rigs.js) and a hostile's is not, and a pistol left floating
   // where a standing hand used to be is the artefact both the lunch pose and the
   // belt repair had to fix as well.
   if (e.gun) e.gun.position.set(0.26, 0.92, 0.05);
-  if (e.blunt) e.blunt.position.set(0.26, 0.92, 0.05);
+  if (e.blunt) {
+    // ...unless the job IS the thing in his hands. A mop parked at the hip while
+    // its owner mops is the same artefact one step worse: the tool of the trade
+    // stowed through the whole of the trade being plied.
+    if (p.hold) {
+      e.blunt.position.set(p.hold[0], p.hold[1] - p.stoop, p.hold[2]);
+      e.blunt.rotation.x = p.holdRot + swing * (p.holdSwing ?? 0) / (p.throw || 1);
+    } else {
+      e.blunt.position.set(0.26, 0.92, 0.05);
+    }
+  }
 
   tickFlash(e, dt);
 }

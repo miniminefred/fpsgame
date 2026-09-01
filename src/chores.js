@@ -102,8 +102,25 @@ const CHORES = {
     at: 'panel', pose: 'panel', time: [16, 34], weight: 4, stay: [2, 5],
     spark: { y: 1.55, out: 0.6, tick: [0.45, 1.1] },
   },
+  // The two that belong to a trade rather than to a machine. Both stand on a
+  // patch of corridor (`hall`) rather than at a prop, and both are weighted low
+  // because only a handful of bodies on the floor may take them — a weight here
+  // is how often the KIND comes up, and a kind nobody can do is a wasted turn.
+  mop: { at: 'hall', pose: 'mop', time: [12, 24], weight: 2, stay: [2, 5] },
+  patrol: { at: 'hall', pose: 'patrol', time: [5, 11], weight: 3, stay: [2, 4] },
 };
 const KINDS = Object.keys(CHORES);
+
+// What a body with no trade does: the ordinary work of an office, and it is
+// everything on the table that is not somebody's job in particular.
+//
+// A type may name its own list instead (`works` in enemy-types.js) — a janitor
+// washes the floor and a guard walks the corridors, and neither of them does it
+// as well as the filing. Note what this is NOT: a split between people and
+// machines. A Clerk Unit uses the copier and a Sysadmin works the rack, because
+// the building does not have two sets of machines in it and a job is a job.
+const GENERAL = KINDS.filter((k) => k !== 'mop' && k !== 'patrol');
+const worksFor = (e) => e.type.works ?? GENERAL;
 
 // How long before the first job of a floor, and how often somebody else is put
 // to work after that.
@@ -203,9 +220,19 @@ export class Chores {
     this.nav = nav;
     this._field = null;
 
+    // Somewhere to mop, and somewhere to stand a post. Neither is furniture, so
+    // neither comes down the workstation pipe — it is a patch of floor, and the
+    // only list of those the game keeps is the corridor sample enemies.js
+    // already walks to place the hall traffic. ONE array shared by both kinds,
+    // deliberately: `busy` holds the station itself, so a guard and a janitor
+    // can never be dealt the same tile.
+    const hall = (enemies.corridors ?? []).map((c, i) => ({ x: c.x, z: c.z, rot: i & 3 }));
+
     for (const kind of KINDS) {
       const at = CHORES[kind].at;
-      const from = at === 'panel' ? (panels?.spots ?? []) : (enemies.stations?.get(at) ?? []);
+      const from = at === 'panel' ? (panels?.spots ?? [])
+        : at === 'hall' ? hall
+          : (enemies.stations?.get(at) ?? []);
       if (from.length) this.pools.set(kind, from);
     }
     // Nothing to do on a floor with no machines anybody can stand at, which is
@@ -264,12 +291,25 @@ export class Chores {
    * have and which nobody wrote either time.
    */
   _start() {
+    // A few goes at it rather than one, because a kind can now come up that
+    // nobody available is allowed to do: `mop` belongs to one to three janitors
+    // and `patrol` to a handful of guards, so a single pick that lands on one of
+    // those and finds nobody would give up the whole turn — and `update` reads a
+    // failed turn as "there is no work here" and sends somebody to lunch. Three
+    // floods at 0.06 ms each is not worth being cleverer about.
+    for (let tries = 0; tries < 3; tries++) {
+      if (this._try()) return true;
+    }
+    return false;
+  }
+
+  _try() {
     const kind = this._pickKind();
     if (!kind) return false;
     const station = this._pickStation(kind);
     if (!station) return false;
 
-    const worker = this._cast(station);
+    const worker = this._cast(station, kind);
     if (!worker) return false;
 
     this.busy.add(station);
@@ -351,7 +391,7 @@ export class Chores {
    * first, and the shuffled station pick above is what keeps that from always
    * being the same corner of the building.
    */
-  _cast(station) {
+  _cast(station, kind) {
     if (!this.nav) return null;
     this._field ??= this.nav.makeField();
     if (!this.nav.floodTo(this._field, station.x, station.z)) return null;
@@ -359,7 +399,7 @@ export class Chores {
     let best = null;
     let bestD = Infinity;
     for (const e of this.enemies.items) {
-      if (!this._eligible(e)) continue;
+      if (!this._eligible(e) || !worksFor(e).includes(kind)) continue;
       // `descendOn` is the reachability half and it is asked FIRST: a distance
       // can be read off a tile a body cannot actually set off from.
       if (!this.nav.descendOn(this._field, e.x, e.z, this._v)) continue;
