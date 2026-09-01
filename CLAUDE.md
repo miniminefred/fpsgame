@@ -2039,9 +2039,50 @@ corridor.
 | `server` | the front of a rack | hands up among the units |
 | `bench` | the IT bay | building something, in the odd shower of sparks |
 | `panel` | a hole in the wall | both arms into the wiring, in sparks |
+| `mop` | a patch of corridor | the janitor, washing the floor |
+| `patrol` | a corridor post | security, standing and watching |
 
-The last is the machine floor's alone (see the openings below); the other five are
-everywhere, because a copier is everywhere.
+`panel` is the machine floor's alone (see the openings below); the other five machine jobs
+are everywhere, because a copier is everywhere.
+
+**The last two belong to a TRADE rather than to a machine**, and they are the only ones
+that are not at a prop — a patch of corridor is where you mop and where you stand a post.
+A type may name the jobs it does (`works` in `enemy-types.js`); absent, a body does the
+general work of the building. The janitor washes the floor and does nothing else, and
+security walks the corridors and does nothing else, which is the difference between a floor
+where everybody is busy and a floor where everybody is busy *at the photocopier*. Measured
+on floor 7: 4 janitors, the 2 at work both mopping and nothing else; 28 security, the 16 at
+work all on patrol; and every other trade spread across the six.
+
+Both are weighted LOW (2 and 3 against the six's 4s and 3s) and that is arithmetic, not
+taste: a weight is how often the KIND comes up, only a handful of bodies on the floor may
+take either, and a kind nobody available can do is a wasted turn. `_start` also has three
+goes at picking rather than one, because `update` reads a failed turn as "there is no work
+here" and sends somebody for their lunch — one unlucky pick on `mop` should not empty the
+office into the canteen.
+
+Two things in the poses were learned by looking rather than by writing:
+
+- **`armsDown` is an angle, not a height, and the mop needed it.** Every other pose says
+  where the hands are and `armAt` solves for it — but a hand cannot go below shoulder minus
+  arm (0.88 m on a person), so asking for the metre a mop handle is gripped at rotates the
+  arms UP: out from the shoulders, horizontal, a man holding a mop in front of him like a
+  divining rod. It is exactly as odd as it sounds and it is what shipped in the first draft.
+  Mopping is arms hanging with the shoulders over the work, which is an angle near zero plus
+  `lean` and `reach` — the same thing leaning over a bench is. `patrol` uses it for the other
+  reason: "arms by your sides" is zero on every rig, where the height that means it is a
+  different number for a person, a clerk and a porter.
+- **`hold` puts the mop in the hands.** The pose parks a weapon at the hip, which is right
+  for a stapler somebody is not using and absurd for the one job whose tool the worker
+  brings with him. `holdRot` lays it down — negative is toward the floor, the same sign
+  `BLUNT.mop`'s own `rest: -1.15` uses for a mop being dragged — and `holdSwing` works it
+  with the stroke. A mop is pushed and pulled, which is what `swing` already was.
+- **`patrol` moves the HEAD, not the arms** (`sweep`). A man standing still with his arms
+  by his sides is a man who has stopped; the slow look either way is the whole difference
+  between that and a man on duty. `stand` had to learn to put `head.rotation.y` back — it
+  only ever zeroed the pitch, and nothing else in that file has ever touched the yaw, so a
+  guard who came off his post would have spent the rest of the floor looking over his
+  shoulder.
 
 **Nothing about the WALKING is new**, and that is most of why this is a small file.
 `routeTo` / `advanceTo` / `standAt` are the primitives lunch was written around and
@@ -2086,13 +2127,39 @@ at a machine has been out of contact for as long as it has been standing there, 
 startled at 2.6 m, `chase` for one frame, `idle` two seconds later, still 2.6 m away and no
 longer interested. After it: `chase`, then `fight`, and it stays there.
 
-**Humans only** (`rig === 'human'`, `!isMachine`, `!undead`, `!panic`). The rig test is
-about the pose — every joint in `CHORE_POSE` is a measurement off the human skeleton, so a
-chassis sent to a copier arrives with its arms hanging off it. `isMachine` is about the
-fiction and catches the Legacy Unit, which is built on the human rig precisely so that it
-reads as staff and is not. The Reanimated are off the payroll like they are at lunch, which
-is the right answer twice over: an Infestation floor is four fifths of them, and a floor
-that has been overrun is not a floor doing its filing.
+**There is no such thing as a human job and a robot job.** A Clerk Unit uses the copier and
+a Sysadmin works the rack, because the building does not have two sets of machines in it.
+This was `rig === 'human' && !isMachine` and that was a real obstacle rather than a policy:
+every joint in `CHORE_POSE` is a HEIGHT, and the angle that reaches it was solved against a
+person's shoulder — so a chassis sent to a copier arrived with its arms hanging off it, and
+`stand` put a loader's drive wheels where a pair of hips would be.
+
+The fix is the `gunRest` lesson for the third time, and the file's own comment had already
+stated it twice: **a rig is what knows where a hand is.** Every rig declares its own
+`joints` (`rigs.js`) — the six numbers `hinge` and `armAt` need — and the two poses struck
+on every body in the building, a chore and `stand`, read them off the body instead of off
+module constants. The chassis table already had all of it: `arm: {x, y, size}` and
+`leg: {x, y, size}` per machine. The heights in `CHORE_POSE` stay absolute, because a
+copier's panel is at 1.0 m whoever is standing at it, and a machine whose arm cannot reach
+that high ends up at full stretch — which is the honest picture of a porter at a wall panel.
+
+Measured on an Automated floor 6, every chassis at work with its own shoulders: a clerk
+solving 0.14 rad to a keyboard from a shoulder at 1.16, a loader solving 1.06 to the same
+keyboard from 0.94, a person 0.49 from 1.15 — and all six chassis putting every limb back
+exactly where `rigs.js` left it when the job ends.
+
+**Two exclusions are left**, and both are `_lunchOk`'s. The Reanimated are off the payroll —
+an Infestation floor is four fifths of them, and a floor that has been overrun is not a
+floor doing its filing. And the toilet guy is a running gag with somewhere to be.
+
+**A parcel run outranks a chore** (`_free` in `jobs.js`). Chores will happily take every
+human on the floor, and the three roles a run needs are rare — a porter and a maintenance
+worker are one to a handful each — so with `!e.chore` in the run's candidate filter the
+fitter was *always* already at a copier and no run could be cast at all. Measured on an
+Automated floor 6 with 24 welders, 2 porters and 3 workers standing in it: **0 runs in a
+minute, against 1 with chores switched off**, and 2 of 2 after the fix. The rare thing wins,
+and it is released through `choreLost` rather than abandoned, because that is the only thing
+that puts a hinged limb back and hands the machine back to the pool.
 
 **Where somebody stands comes from the FURNISHER**, down the same `sink.workstation` pipe
 the chairs and the servery queue use, because it is the only thing that knows where a
