@@ -378,6 +378,31 @@ they happen, and there is a fourth thing behind them that does not care how you 
   is set on the shell's walls (both heights) and on a storey's own `wall` parts, and it
   means never a kerb and never a floor. A `tread` and a `deck` must not have it, for
   opposite reasons.
+
+  **...and neither may a BASEMENT's wall ring, which is the fence this rule built by
+  accident.** `barrier` defeats the step test at *every* height — that is the point of it
+  on a wall you could otherwise walk up onto — so a box carrying it while topping out at
+  or below `y = 0` is a full-height obstruction to everybody UPSTAIRS. A basement's walls
+  run from its slab to exactly the ground floor (`wallTop` in `gen/stairs.js`), so their
+  top is not somewhere you might step onto, it IS the surface the building walks on: every
+  room standing over a basement came out ringed by an invisible wall one tile inside its
+  own, and its doorway could not be walked through. Measured at **13 impassable doorways
+  over 6 floors, on all 6** — and nobody had a way to see it, because the staff came and
+  going the whole time (nothing hands a storey's colliders to the nav grid) and
+  `buildGeomGrid` in `validate-props.mjs` has always discarded a collider whose top is at
+  or below the floor, "a body walks under an attic and over a basement". The validator's
+  model was right and the game disagreed with it, so a sealed room swept green for as long
+  as basements have existed. `11.under-floor` is that model asserted against the data
+  rather than assumed — it fails 10 of 12 floors on the old code — and the fix is one term
+  in `buildStairs`: `part === 'wall' && b.y1 > 0`. Nothing at any other height moved
+  (50,000 samples at feet 0, 1, 2.95, 3.2, 3.6 and 6.2: the only box class whose behaviour
+  changed is `base=-3.20 top=0.00`), a basement still holds a body walking into its walls,
+  and the containment sweep is unchanged at 1,331 m from the spawn and every attic deck.
+
+  The general trap is worth the line: **`barrier` is about a wall you could climb onto, so
+  a wall whose top IS a walkable surface must not have it.** The blanket alternative —
+  letting any barrier below the feet fall away — was measured and is much worse: at feet
+  3.6 it unblocks 98% of the floor, which is a body on the roof slab free to travel.
 - **A roof is never a floor** either, and this is the other half of the same fix. `ROOF_T`
   is already derived as `STEP_EPS + 0.15` so a roof cannot be stepped onto *from below* —
   but nothing said it could not be stood on by a body that had got above it another way,
@@ -2045,9 +2070,57 @@ nothing needs to: unlike a tray or a crate, a working pose is not a claim about 
 somebody is going to do, so a joiner seeing them standing where they are standing is being
 told the truth.
 
-Costs about 5 MB of distance fields on a busy floor — 28 of 83 bodies were holding one
-after two minutes — which is the same ceiling the lunch cycle already had, reached sooner.
-They go with the roster at teardown.
+**EVERYBODY WORKS, and the floor fills up.** It was eight at once, which is a light
+sprinkle over a hundred and seventy people and was defended as one — what makes an office
+read as worked is finding somebody at a machine in the room you walked into, not finding
+everybody at one. That is a fine thing to say about the other hundred and sixty two if they
+have something else to be doing, and they did not: measured on floor 8 after a minute,
+**182 of 194 were standing still**. Now anybody who can reach a free machine is sent to
+one, and whoever is left over goes for their break instead — so a body is doing one of the
+two, and standing about is the last resort rather than the default. Same floor, same
+minute: **160 of 194 at work or walking to it, 5 at lunch, and of the 29 left 6 are
+fighting the player, 5 are behind a lock, 1 is the toilet guy and 17 are between jobs.**
+The supply is there — 125, 109 and 246 stations against 30, 40 and 193 eligible bodies on
+floors 1, 4 and 8 — so the office runs out of people before it runs out of machines.
+
+Three things make that affordable, and the first two are the ones worth copying:
+
+- **A STAY, not a job.** Somebody has several goes at one machine before they leave it
+  (`stay` per kind; `vending` is 1, because you get your can and you go). This is
+  arithmetic rather than flavour: keeping N people at machines needs N / *visit length*
+  arrivals a second, and every arrival is a walk, so the number COMMUTING is that rate
+  times how long a walk takes. At a twenty-second visit, a floor of 194 at work means 62 of
+  them permanently in transit — measured, and it is both 45 MB of live routes and an office
+  where a third of the staff is walking somewhere. Lengthening one job would have fixed the
+  arithmetic and broken the job (a man printing one document for ninety seconds); several
+  goes at the same machine is the same arithmetic and the truth about offices. A repeat
+  costs nothing at all: no cast, no flood, no field, no walk.
+- **The NEAREST body is cast, not a random one.** `_cast` used to reservoir-sample
+  uniformly over everybody who could reach the machine, which is a fine way to pick one of
+  eight and a terrible way to pick a hundred and ninety: it sends people on 30-to-77 m
+  walks at errand pace, and it reads wrong at any speed — somebody marching the length of
+  the building past four free copiers to use the fifth. Measured before the change, 194
+  eligible bodies: the walkers pinned the valve and **three of them had arrived anywhere
+  after forty seconds.** The distance is free, because it is already sitting in the field
+  the reachability check floods (`distanceOn` in `nav.js`).
+- **A body that has stopped hands its route back** (`dropField` in `enemies.js`, `freeField`
+  in `nav.js`). A field is `Int32Array(WH * 2)` — **548 KB** on a deep floor — and a body
+  used to keep the one it was given for the rest of its life, which cost nothing while a
+  handful of people walked anywhere and would be over a hundred megabytes with everybody
+  working. It goes back in `standAt`, which is the one place every errand in the game comes
+  to rest, and on death. Peak measured at **30 MB** on floor 8 with 160 at work, against a
+  baseline of 18 MB that was still climbing.
+
+What is capped is the WALKING (`MAX_WALKING`), because that is the only stage that costs
+anything — so it is how fast the floor fills rather than how full it gets. Frame time is
+unchanged: 13.9 ms against a 14.3 ms baseline on floor 8, inside the noise.
+
+**Machines do nothing, and that is enforced in one place.** No chassis is ever cast and
+none goes to lunch — and neither does the **Legacy Unit**, which is built on the human rig
+precisely so that it reads as staff from the end of a corridor and is not. Measured on an
+Automated floor 10: 154 machines, **0 with a job, 0 on a break**, holding `idle` and their
+`wander` loops; of the 34 actual staff, 27 are at machines and every one of the other seven
+is deliberately excluded (5 behind a lock, the toilet guy, one on a break).
 
 #### The poses (`CHORE_POSE` in `enemy-anim.js`)
 Six jobs and one function, the way `TYPES` is one rig and a table of numbers. Every height
