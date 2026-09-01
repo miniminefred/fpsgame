@@ -53,6 +53,10 @@ export class NavGrid {
     const WH = this.W * this.H;
     this.WH = WH;
 
+    // Distance fields handed back by bodies that have stopped walking. See
+    // makeField / freeField.
+    this._spare = [];
+
     // Layer 0 is the ground floor and layer 1 is every attic and basement — see
     // the note at the top of the file for why one layer holds all of them.
     const levels = nav.levels ?? null;
@@ -442,9 +446,30 @@ export class NavGrid {
     return field[ty * this.W + tx] >= 0 || this.fitsAt(tx, ty);
   }
 
-  /** A field sized for this floor, for floodTo to fill. */
+  /**
+   * A field sized for this floor, for floodTo to fill.
+   *
+   * Taken from a free list rather than allocated, because a field is not small
+   * and there are now a lot of them: two layers of a 70,000-tile floor is 548 KB
+   * apiece, and an office where everybody has somewhere to be would hold one per
+   * body — 193 walkers on floor 8 is over a hundred megabytes of Int32Array that
+   * nothing ever hands back. Recycling is safe without clearing because `_flood`
+   * begins with `field.fill(-1)`; a field is never read before it is flooded.
+   */
   makeField() {
-    return new Int32Array(this.WH * 2);
+    return this._spare.pop() ?? new Int32Array(this.WH * 2);
+  }
+
+  /**
+   * ...and hands one back, for whoever walks somewhere next.
+   *
+   * Called when a body STOPS — `standAt` in enemies.js, which is the one place
+   * every errand in the game comes to rest. A route is only worth its memory
+   * while it is being walked: a man standing at a copier for half a minute is
+   * holding directions he has already followed.
+   */
+  freeField(field) {
+    if (field && field.length === this.WH * 2) this._spare.push(field);
   }
 
   /**
@@ -526,9 +551,23 @@ export class NavGrid {
   // already paid for it. Straight-line distance says an enemy on the far side of
   // a wall is close by; it is one metre away and a thirty metre walk.
   pathDistance(x, z, layer = 0) {
+    return this.distanceOn(this.field, x, z, layer);
+  }
+
+  /**
+   * The same, on any field: how far a body at (x, z) is from whatever that field
+   * was flooded from, walked rather than straight-line. -1 if it is not on it.
+   *
+   * `pathDistance` is this against the shared player field, and it was the only
+   * caller until chores.js needed to ask which of two hundred people is NEAREST
+   * a copier. That answer is already sitting in the field the reachability check
+   * floods — reading it is what stops somebody being sent across the whole floor
+   * to a machine with an idle body standing next to it.
+   */
+  distanceOn(field, x, z, layer = 0) {
     const tx = this.tx(x), ty = this.ty(z);
     if (!this.inBounds(tx, ty)) return -1;
-    const d = this.field[layer * this.WH + ty * this.W + tx];
+    const d = field[layer * this.WH + ty * this.W + tx];
     return d < 0 ? -1 : d * this.TILE;
   }
 

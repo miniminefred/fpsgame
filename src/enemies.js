@@ -1792,6 +1792,9 @@ export class Enemies {
     // ragdolls out of a working pose does it with its arms already above its
     // head. See chores.js.
     if (e.chore) this.choreLost?.(e);
+    // Nobody is walking anywhere now. Half a megabyte a corpse, on a floor that
+    // ends with two hundred of them.
+    this.dropField(e);
     // A dead machine stops making machine noise. Nothing else clears this, and
     // the loop would otherwise run on out of a wreck for the rest of the floor.
     if (e.motor) { this.audio?.stopMotor(e.motor); e.motor = null; }
@@ -2334,6 +2337,23 @@ export class Enemies {
   }
 
   /**
+   * Somebody decides it is lunchtime BECAUSE there is nothing else to do.
+   *
+   * chores.js calls this when it could not put anybody to work — every machine
+   * of every kind taken, or nobody left standing about who can reach one. That
+   * is the only difference from the clock below: the office empties into the
+   * canteen when the office is full, rather than only on the timer. Everything
+   * that bounds a break still bounds this one, and the chairs are the real
+   * bound — `_lunchStart` cannot start without one, so a floor never puts more
+   * people in the canteen than the canteen has seats, and anybody it turns away
+   * goes on standing where they were.
+   */
+  sendToBreak() {
+    if (this.puppet) return;
+    this._sendToLunch();
+  }
+
+  /**
    * Every so often, somebody decides it is lunchtime.
    *
    * Sampled rather than filtered: the roster is two hundred people and this runs
@@ -2565,6 +2585,27 @@ export class Enemies {
     e.moving = false;
     e.yaw = -at.rot * Math.PI / 2;
     e.group.rotation.y = e.yaw;
+    // Arrived, so the route is spent. Every errand in the game comes to rest
+    // here, which is why the field goes back here and nowhere else — see
+    // `dropField`.
+    this.dropField(e);
+  }
+
+  /**
+   * Hands this one's distance field back to nav.
+   *
+   * A field is 548 KB on a deep floor and a body keeps the one it was given for
+   * the rest of its life, which cost nothing while a handful of people were
+   * walking anywhere. Now that everybody has somewhere to be it is the difference
+   * between a few megabytes and a hundred: it is the WALKERS that need a route,
+   * and a man standing at a copier for half a minute is holding directions he
+   * has already followed. `??=` at every take site means the next walk simply
+   * draws another one out of the free list.
+   */
+  dropField(e) {
+    if (!e.field) return;
+    this.nav?.freeField(e.field);
+    e.field = null;
   }
 
   /**

@@ -74,6 +74,10 @@ import { FACING } from './gen/tiles.js';
 //          standing at a box prodding it for twenty seconds.
 //   spark  what comes off the work, if anything does, and how high
 //   weight how often this job is the one that gets picked
+//   stay   how many goes somebody has before they leave the machine. See below:
+//          it is the difference between an office and a corridor full of people
+//          on their way to one, and `vending` has it at 1 because you get your
+//          can and you go.
 //
 // Weighted rather than drawn from the pooled stations, and that is a fix rather
 // than a preference: a desk publishes TWO computer spots and a floor has forty
@@ -81,42 +85,76 @@ import { FACING } from './gen/tiles.js';
 // a keyboard against four at a bench. Weighting by JOB asks the question that
 // was meant — what is somebody doing — and then finds a machine for it.
 const CHORES = {
-  computer: { at: 'computer', pose: 'computer', time: [14, 30], weight: 4 },
+  computer: { at: 'computer', pose: 'computer', time: [14, 30], weight: 4, stay: [3, 7] },
   printer: {
-    at: 'printer', pose: 'printer', time: [8, 17], weight: 3,
+    at: 'printer', pose: 'printer', time: [8, 17], weight: 3, stay: [2, 4],
     then: { pose: 'printerTake', time: [2.2, 3.6] },
   },
   vending: {
-    at: 'vending', pose: 'vending', time: [3.5, 7], weight: 2,
+    at: 'vending', pose: 'vending', time: [3.5, 7], weight: 2, stay: [1, 1],
     then: { pose: 'vendingTake', time: [1.8, 3.2] },
   },
-  server: { at: 'server', pose: 'server', time: [12, 26], weight: 3 },
+  server: { at: 'server', pose: 'server', time: [12, 26], weight: 3, stay: [2, 5] },
   bench: {
-    at: 'bench', pose: 'bench', time: [16, 34], weight: 3,
+    at: 'bench', pose: 'bench', time: [16, 34], weight: 3, stay: [2, 5],
     spark: { y: 1.05, out: 0.55, tick: [0.9, 2.4] },
   },
   panel: {
-    at: 'panel', pose: 'panel', time: [16, 34], weight: 4,
+    at: 'panel', pose: 'panel', time: [16, 34], weight: 4, stay: [2, 5],
     spark: { y: 1.55, out: 0.6, tick: [0.45, 1.1] },
   },
 };
 const KINDS = Object.keys(CHORES);
 
-// How long before the first job of a floor, and between one and the next.
+// How long before the first job of a floor, and how often somebody else is put
+// to work after that.
 //
 // The first is short because this is the floor's ordinary state rather than an
 // event — an office where nobody starts working for a minute is an office that
-// was empty when you arrived. The gap is short for the same reason: unlike a
-// parcel run, one of these is not a thing the player is meant to be shown, it is
-// a thing the player is meant to keep coming across.
+// was empty when you arrived.
 const FIRST = 6;
-const GAP = [3.5, 9];
+const TICK = 0.35;
 
-// How many at once. Eight against a floor of a hundred and seventy is a light
-// sprinkle and is meant to be: what makes an office read as worked is finding
-// somebody at a machine in the room you just walked into, not finding everybody
-// at one. It is also bounded work — each of these carries a distance field.
-const MAX_AT_ONCE = 8;
+// EVERYBODY WORKS, and this is the valve rather than the cap.
+//
+// It was eight at once, which was a light sprinkle over a floor of a hundred and
+// seventy and was defended as one: what makes an office read as worked is
+// finding somebody at a machine in the room you walked into, not finding
+// everybody at one. That is a fine argument about the other hundred and sixty
+// two people if they have something else to be doing, and they did not — they
+// stood in their rooms waiting to be shot. So the floor now fills up: anybody
+// who can reach a free machine is sent to one, and whoever is left over takes
+// their break instead (see `update`). Nobody is idle who has a choice.
+//
+// The supply is there. Measured over floors 1, 4 and 8: 125, 109 and 246
+// stations against 30, 40 and 193 bodies eligible to stand at one, so the office
+// runs out of people before it runs out of machines.
+//
+// What is capped is the WALKING, because that is the only stage that costs
+// anything. A body en route holds a distance field — 548 KB on a deep floor —
+// and spends a flood to get it, while a body standing at a machine holds nothing
+// (`standAt` gives the field back, see `dropField` in enemies.js). So this is
+// how fast the floor fills, not how full it gets: at 24 walkers and a 15-second
+// walk it puts somebody new to work about every two thirds of a second, and the
+// floor is at work inside a couple of minutes without ever holding more than
+// ~13 MB of routes.
+// A STAY is several goes at one machine, and it is what makes the floor
+// affordable rather than what makes it look busy.
+//
+// Keeping N people at machines needs them to arrive at N / (time per visit), and
+// every one of those arrivals is a walk — so the number of people COMMUTING at
+// any moment is that rate times how long a walk takes. With a visit of twenty
+// seconds, keeping a floor of 194 at work means 62 of them are permanently in
+// transit: measured, and it is both 45 MB of live routes and an office where a
+// third of the staff is walking somewhere. Lengthening a single job would have
+// fixed the arithmetic and broken the jobs — a man printing one document for a
+// minute and a half. Several goes at the same machine is the same arithmetic and
+// the truth about offices: you do not go to the copier once.
+//
+// It costs nothing at all. A repeat is a new pose and a new clock at a station
+// the body is already standing at — no cast, no flood, no field, no walk.
+const MAX_WALKING = 28;
+const PER_TICK = 3;
 
 // The backstop on a walking stage. Generous for the reason lunch's is: a walk
 // from one end of a deep floor to the other took a body fifty seconds at errand
@@ -183,13 +221,33 @@ export class Chores {
     if (!this.enabled || this.enemies.puppet) return;
     this.timer -= dt;
     if (this.timer > 0) return;
-    this.timer = GAP[0] + Math.random() * (GAP[1] - GAP[0]);
-    if (this.live.length < MAX_AT_ONCE) this._start();
+    this.timer = TICK;
+
+    // Only the ones still on their way count against the valve — see MAX_WALKING.
+    let walking = 0;
+    for (const e of this.live) if (e.chore?.stage === 'to') walking++;
+
+    let room = Math.min(PER_TICK, MAX_WALKING - walking);
+    while (room-- > 0) {
+      if (this._start()) continue;
+      // Nothing could be cast, which means one of two things and the same answer
+      // serves both: every machine of its kind is taken, or nobody left standing
+      // about can reach one. Either way the person who would have worked has
+      // nothing to work at, and the honest thing for somebody with nothing to do
+      // in an office is to go and have their lunch. It is the canteen that bounds
+      // how many manage it — there are only so many chairs — and anybody it turns
+      // away goes on standing where they are, which is the old behaviour and now
+      // the last resort rather than the default.
+      this.enemies.sendToBreak?.();
+      break;
+    }
   }
 
   /**
    * Sends one body to one machine, or does not. Every failure is silent and
-   * costs nothing but this turn.
+   * costs nothing but this turn — and it is REPORTED, because `update` reads a
+   * failure as "there is no work here" and sends somebody for their break
+   * instead.
    *
    * The station is chosen before the body, exactly as a parcel run's stops are,
    * because the question "who can reach this" needs a this — and because it is
@@ -208,20 +266,23 @@ export class Chores {
    */
   _start() {
     const kind = this._pickKind();
-    if (!kind) return;
+    if (!kind) return false;
     const station = this._pickStation(kind);
-    if (!station) return;
+    if (!station) return false;
 
     const worker = this._cast(station);
-    if (!worker) return;
+    if (!worker) return false;
 
     this.busy.add(station);
     this.live.push(worker);
+    const stay = CHORES[kind].stay;
     worker.chore = {
       kind, station, stage: 'to', pose: null,
       timer: WALK_CAP, work: 0, tick: 0,
+      stay: stay[0] + ((Math.random() * (stay[1] - stay[0] + 1)) | 0),
     };
     this.enemies.routeTo(worker, worker.chore, station, WALK_CAP);
+    return true;
   }
 
   /** One of the six, by weight, out of whichever ones this floor can offer. */
@@ -268,31 +329,47 @@ export class Chores {
   }
 
   /**
-   * Somebody who could actually get there.
+   * The nearest body that could actually get there.
    *
    * One flood, then one pass over the roster reading it — never a flood per
    * candidate. BOTH halves are checked, which is the whole of it: a field that
    * reached the machine says nothing about whether it reached the body, and
    * before the first white card most of the roster is behind a door that is not
    * on the grid at all.
+   *
+   * NEAREST, and that turned out to matter far more than it sounds. This used to
+   * reservoir-sample one body uniformly out of everybody who could reach the
+   * machine, which is a fine way to pick one of eight and a terrible way to pick
+   * a hundred and ninety: a floor is 70 m across, so a uniform draw sends people
+   * on 30-to-77 m walks at errand pace and the office fills up at about one
+   * person every two and a half seconds. Measured on floor 8, 194 eligible
+   * bodies: the walkers pinned the valve at 24 and THREE of them had arrived
+   * anywhere after forty seconds. It also read wrong at any speed — somebody
+   * marching the length of the building past four free copiers to use the fifth.
+   *
+   * The distance is free: it is the value already sitting in the field under the
+   * body, which is why `distanceOn` exists in nav.js. Ties go to whoever is found
+   * first, and the shuffled station pick above is what keeps that from always
+   * being the same corner of the building.
    */
   _cast(station) {
     if (!this.nav) return null;
     this._field ??= this.nav.makeField();
     if (!this.nav.floodTo(this._field, station.x, station.z)) return null;
 
-    let pool = null;
-    let n = 0;
-    // Reservoir-sampled in the one pass rather than collected and then picked
-    // from, because the pool on a deep floor is most of two hundred bodies and
-    // all that is wanted out of it is one of them.
+    let best = null;
+    let bestD = Infinity;
     for (const e of this.enemies.items) {
       if (!this._eligible(e)) continue;
+      // `descendOn` is the reachability half and it is asked FIRST: a distance
+      // can be read off a tile a body cannot actually set off from.
       if (!this.nav.descendOn(this._field, e.x, e.z, this._v)) continue;
-      n++;
-      if (Math.random() * n < 1) pool = e;
+      const d = this.nav.distanceOn(this._field, e.x, e.z, e.layer);
+      if (d < 0 || d >= bestD) continue;
+      bestD = d;
+      best = e;
     }
-    return pool;
+    return best;
   }
 
   /**
@@ -363,16 +440,29 @@ export class Chores {
         // The beat that says the machine did something, for the two that have
         // one. Everything else is finished the moment its clock runs out.
         if (job.then) { this._begin(e, job.then.pose, job.then.time); c.stage = 'then'; return; }
-        this.lost(e);
+        this._done(e, job);
         return;
 
       case 'then':
-        if (c.work <= 0) this.lost(e);
+        if (c.work <= 0) this._done(e, job);
         return;
 
       default:
         this.lost(e);
     }
+  }
+
+  /**
+   * One go finished. Another one, or leave the machine.
+   *
+   * The repeat is free — the body is already standing there, so there is no
+   * cast, no flood and no walk — which is the whole reason it is here. See the
+   * note on `stay`.
+   */
+  _done(e, job) {
+    const c = e.chore;
+    if (--c.stay > 0) { c.stage = 'work'; this._begin(e, job.pose, job.time); return; }
+    this.lost(e);
   }
 
   /** Stop, face the machine, hold a pose, and take a while over it. */
