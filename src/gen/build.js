@@ -2053,7 +2053,31 @@ function buildStairs(layout, batcher, materials, masks, rng) {
         // it: a `tread` is the one thing here that MUST be a step, a `deck` is a
         // storey's own floor and is stood on top of, and a `lid` is the underside
         // of the plate a basement is roofed with.
-        barrier: b.part === 'wall' || b.part === 'roof',
+        //
+        // ...and neither can a BASEMENT's wall ring, which is why the test is not
+        // simply `part === 'wall'`. What `barrier` says is "never a kerb and never
+        // a floor", and the reason a wall wants it is that a body standing on a
+        // deck or a flight beside one must not step up onto its top. A basement's
+        // walls stand from its slab to y = 0 (`wallTop` in gen/stairs.js), so their
+        // top is not somewhere you might step onto — it IS the ground floor, the
+        // surface the whole building walks on. Barrier there does not fence off a
+        // wall top, it fences off the ROOM UPSTAIRS: `barrier` defeats the kerb
+        // test at every height, so a box lying entirely under the floor was a
+        // full-height obstruction to anyone above it, and every room standing over
+        // a basement was ringed by an invisible wall one tile inside its own. Its
+        // doorway could not be walked through, which is the whole of what that
+        // looks like from the corridor — measured at 23 impassable doorways over 12
+        // floors, on 11 of them. Nothing hands these boxes to the nav grid, so the
+        // staff walked in and out of the room the whole time, and `buildGeomGrid`
+        // in tools/validate-props.mjs has always discarded a collider whose top is
+        // at or below the floor ("a body walks under an attic and over a
+        // basement"), which is why npm test stayed green over a sealed room.
+        //
+        // It is still a wall to anyone DOWNSTAIRS without it: from the basement's
+        // own slab its top is a full storey up, decades past STEP_EPS, and the only
+        // way to feet within a step of y = 0 down there is the flight itself, whose
+        // treads land you on the ground floor because that is what they are for.
+        barrier: (b.part === 'wall' && b.y1 > 0) || b.part === 'roof',
       });
     }
 
