@@ -388,7 +388,7 @@ they happen, and there is a fourth thing behind them that does not care how you 
   room standing over a basement came out ringed by an invisible wall one tile inside its
   own, and its doorway could not be walked through. Measured at **13 impassable doorways
   over 6 floors, on all 6** — and nobody had a way to see it, because the staff came and
-  going the whole time (nothing hands a storey's colliders to the nav grid) and
+  went the whole time (nothing hands a storey's colliders to the nav grid) and
   `buildGeomGrid` in `validate-props.mjs` has always discarded a collider whose top is at
   or below the floor, "a body walks under an attic and over a basement". The validator's
   model was right and the game disagreed with it, so a sealed room swept green for as long
