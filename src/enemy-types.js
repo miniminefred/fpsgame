@@ -315,6 +315,11 @@ export const TYPES = {
     // about it. Wanders the rooms, mutters, ignores the firefight entirely.
     name: 'Night Cleaner', hp: 0.8, speed: 1.05, damage: 0, rate: 99, spread: 1,
     range: 0, melee: false, scale: 1.02, neutral: true,
+    // A mop, and the job that goes with it. He is the second body on the floor
+    // to wash it and the only one who is not also a hostile — `melee: false`
+    // with a `blunt` is the whole point of the pair being two fields rather than
+    // one (see the note in rigs.js): he carries it, he never swings it.
+    blunt: ['mop'], works: ['mop'],
     // The brown runs dark on purpose: a mid brown lands within a shade of the
     // skin tone and the visor stops reading as a visor at all.
     suit: 0x4a3a2c, shirt: 0xb98a55, visor: 0x8a4b18, unlockFloor: 1, weight: 0,

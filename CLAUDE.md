@@ -1555,6 +1555,16 @@ part-way through the swing, so you can back out of reach. A weapon declares how 
 carried when idle (`rest` in `BLUNT`), because a mop is not held out in front like a
 stapler — it is dragged, head on the floor.
 
+**...and what somebody CARRIES is not the same fact as what they do with it.** `blunt` is
+the declaration and `melee` is what the state machine does about it, and they were one test
+(`if (type.melee)` built the weapon) because until there was work to do they were the same
+thing: the only reason to hold a mop was to swing it at somebody. The Night Cleaner carries
+one to wash the floor with and never swings it at anything — and built off `melee` he came
+out empty-handed, miming the mop pose over a bare patch of carpet. The rig now builds a
+weapon for anybody who declares one. Safe in the swap because every one of the seven melee
+types on the roster declares its `blunt` on the same line as its `melee: true`, checked
+rather than assumed, and measured after: zero melee bodies unarmed on a swept floor.
+
 Two trades are in **uniform** rather than in a suit, and both are the only source of
 one keycard — see Keycards below. The **Janitor** is yellow shirt, blue trousers, blue
 cap and nearly a metre of mop. **Security** is black trousers, a blue shirt and a black
@@ -2039,7 +2049,7 @@ corridor.
 | `server` | the front of a rack | hands up among the units |
 | `bench` | the IT bay | building something, in the odd shower of sparks |
 | `panel` | a hole in the wall | both arms into the wiring, in sparks |
-| `mop` | a patch of corridor | the janitor, washing the floor |
+| `mop` | a patch of corridor | the janitor and the night cleaner, washing the floor |
 | `patrol` | a corridor post | security, standing and watching |
 
 `panel` is the machine floor's alone (see the openings below); the other five machine jobs
@@ -2050,7 +2060,10 @@ that are not at a prop — a patch of corridor is where you mop and where you st
 A type may name the jobs it does (`works` in `enemy-types.js`); absent, a body does the
 general work of the building. The janitor washes the floor and does nothing else, and
 security walks the corridors and does nothing else, which is the difference between a floor
-where everybody is busy and a floor where everybody is busy *at the photocopier*. Measured
+where everybody is busy and a floor where everybody is busy *at the photocopier*. The Night
+Cleaner mops too, and getting him there needed a mop first — see the note on `blunt` against
+`melee` in the roster above, which is the one place a body carries something it will never
+hit anybody with. Measured
 on floor 7: 4 janitors, the 2 at work both mopping and nothing else; 28 security, the 16 at
 work all on patrol; and every other trade spread across the six.
 

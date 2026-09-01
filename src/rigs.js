@@ -261,8 +261,10 @@ function buildHuman(type, rng) {
     });
   }
 
-  // Only melee staff need the junk-weapon palette, and only they pay for it.
-  if (type.melee) Object.assign(mats, bluntMats());
+  // Only whoever is carrying something needs the junk-weapon palette, and only
+  // they pay for it. `blunt` rather than `melee`, because those are two facts:
+  // see the note where the weapon itself is built, below.
+  if (type.blunt) Object.assign(mats, bluntMats());
 
   const ownGeo = [];
   const mesh = part(group);
@@ -308,7 +310,15 @@ function buildHuman(type, rng) {
   gun.visible = !type.melee && !type.neutral;
   let blunt = null;
   let bluntSpec = null;
-  if (type.melee) {
+  // WHAT SOMEBODY CARRIES AND WHAT THEY DO WITH IT ARE TWO FACTS, and this was
+  // `type.melee` because until there was work to do they were the same one: the
+  // only reason to be holding a mop was to swing it at somebody. A Night Cleaner
+  // carries one to wash the floor with (see `works` in enemy-types.js) and does
+  // not swing it at anything — and built off `melee` it came out empty-handed,
+  // miming the mop pose over a bare patch of carpet. `blunt` is the declaration
+  // and `melee` is what the state machine does about it; every melee type on the
+  // roster declares one, so nothing lost its weapon in the swap.
+  if (type.blunt) {
     bluntSpec = BLUNT[rng.pick(type.blunt)];
     // Held in the right hand, which is what the swing animation drives.
     blunt = bluntOf(bluntSpec, mats, ownGeo, [0.32, 1.12, -0.16]);
@@ -765,7 +775,7 @@ function buildRobot(type, rng) {
   // against, which is the whole reason the canvas is drawn near-white.
   mats.suit.map = tech.plate;
   mats.skin.map = tech.plate;
-  if (type.melee) Object.assign(mats, bluntMats());
+  if (type.blunt) Object.assign(mats, bluntMats());
   if (s.tray) {
     mats.parcel = new THREE.MeshStandardMaterial({ color: 0xb08a5a, roughness: 0.95 });
   }
@@ -893,7 +903,8 @@ function buildRobot(type, rng) {
 
   let blunt = null;
   let bluntSpec = null;
-  if (type.melee) {
+  // `blunt` rather than `melee` — see the note in the human builder above.
+  if (type.blunt) {
     bluntSpec = BLUNT[rng.pick(type.blunt)];
     // On the end of the right arm, the way the human rig holds one: the swing
     // animation drives the arm and the tool rides it.
