@@ -389,6 +389,18 @@ export class Cameras {
     const px = player.object.position.x;
     const pz = player.object.position.z;
     const feet = player.object.position.y - EYE;
+    // Nothing on the wall finds a player who is not there. Building security is
+    // not staff, so strictly this is outside what `hidden` promises (see
+    // player.js) — but what a camera DOES is send four men after you, and being
+    // invisible to the floor and then hunted by it because a lens found you is
+    // the toggle failing to mean anything.
+    //
+    // The pass still RUNS, which is the part that matters: skipping it would
+    // freeze every lamp amber and leave a half-full counter on the HUD for the
+    // rest of the floor. Denying the sighting instead sends all of it down the
+    // path that already exists for stepping out of shot — the count drains, the
+    // lamp goes back to idle, and the lens returns to its sweep.
+    const unseen = !!player.hidden;
 
     for (const cam of this.items) {
       if (cam.dead) continue;
@@ -398,7 +410,7 @@ export class Cameras {
         // No cone, no aiming, no patience. Either the beam is unbroken or the
         // alarm is already going.
         const across = segmentDistance(px, pz, cam.x, cam.z, cam.endX, cam.endZ);
-        cam.seen = across < BEAM_R && feet < BEAM_Y && feet + EYE > BEAM_Y;
+        cam.seen = !unseen && across < BEAM_R && feet < BEAM_Y && feet + EYE > BEAM_Y;
         // The beam brightens with the player's own footsteps, so a corridor
         // with one in it announces itself before you are on top of it.
         cam.beamMat.opacity = 0.4 + Math.sin(this._t * 3 + cam.phase) * 0.12;
@@ -409,7 +421,7 @@ export class Cameras {
         continue;
       }
 
-      this._look(cam, dt, px, pz);
+      this._look(cam, dt, px, pz, unseen);
       if (cam.seen && !was) this.onSpotted?.(cam);
 
       if (cam.seen && this.cooldown <= 0) cam.count = Math.min(ALARM_TIME, cam.count + dt);
@@ -434,14 +446,15 @@ export class Cameras {
   // against where the camera is ACTUALLY looking rather than where it would like
   // to be, which is what gives you the moment between walking into a corridor
   // and the thing swinging onto you.
-  _look(cam, dt, px, pz) {
+  _look(cam, dt, px, pz, unseen = false) {
     const dx = px - cam.x;
     const dz = pz - cam.z;
     const dist = Math.hypot(dx, dz) || 0.001;
 
     const fx = -Math.sin(cam.aim);
     const fz = -Math.cos(cam.aim);
-    cam.seen = dist < WATCH_RANGE
+    cam.seen = !unseen
+      && dist < WATCH_RANGE
       && (dx * fx + dz * fz) / dist > Math.cos(WATCH_CONE)
       && this.nav.losClear(cam.x, cam.z, px, pz);
 

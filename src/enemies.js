@@ -1929,7 +1929,16 @@ export class Enemies {
     for (const t of targets) t.layer = Math.abs(t.y - EYE) > STOREY_GAP ? 1 : 0;
     // A corpse is not chased. If everybody is down there is nothing to flood
     // from, and the bodies below simply lose contact and stand down.
-    const live = targets.filter((t) => !t.dead);
+    //
+    // ...and neither is somebody who is not there. `hidden` is the T toggle (see
+    // `hidden` in player.js) and it rides in on the same filter as `dead`
+    // deliberately: "there is nobody to chase" is a case this file already
+    // handles properly and has a whole branch for, so being unseen is not a new
+    // state for the roster to know about, it is an existing one reached another
+    // way. Every consequence falls out of it at once — the field is not flooded
+    // from you, so nobody hears a shot; `_pick` finds nothing, so nobody sights,
+    // aims or fires; and anybody mid-chase runs out `contact` and stands down.
+    const live = targets.filter((t) => !t.dead && !t.hidden);
     this.playerLayer = live[0]?.layer ?? 0;
 
     // Bodies move during the loop below, so this is a snapshot taken at the top

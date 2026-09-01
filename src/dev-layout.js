@@ -47,6 +47,11 @@ const PERSISTENT = [
   // Pinned to the same top-centre strip as the fullscreen button, which is the
   // only reason it is in this list: the two collided the day it was added.
   '#netrole',
+  // The UNSEEN line (T). It is a third line inside #mission, so what it really
+  // measures is #mission getting taller — and #netrole's narrow-screen rule
+  // drops to a hardcoded offset below #mission's bottom edge, which is exactly
+  // the sort of number a new line in that block invalidates.
+  '#unseen',
 ];
 const TRANSIENT = ['#toast', '#watch'];
 
@@ -95,6 +100,8 @@ function forceEventDriven(doc, on) {
   const toast = doc.getElementById('toast');
   const watch = doc.getElementById('watch');
   const role = doc.getElementById('netrole');
+  const unseen = doc.getElementById('unseen');
+  unseen?.classList.toggle('visible', on);
   if (toast) {
     toast.classList.toggle('show', on);
     if (on) toast.textContent = LONGEST_TOAST;
@@ -120,10 +127,26 @@ function rectsFor(doc, selectors) {
       if (style.display === 'none' || style.visibility === 'hidden') continue;
       const r = el.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) continue;
-      out.push({ sel, r });
+      out.push({ sel, r, el });
     }
   }
   return out;
+}
+
+/**
+ * Whether one of these two elements is inside the other.
+ *
+ * A parent's rect covers its in-flow children, so a nested pair overlaps by the
+ * whole of the smaller one and reads as the worst collision on the page — which
+ * is what `#unseen` did the moment it was added inside `#mission`: 12 of 12
+ * sizes red, on a HUD with nothing wrong with it. That is the same false alarm
+ * the duplicate-sweep bug produced, and it is worth being immune to rather than
+ * worth working around by keeping children off the list: what a child in the
+ * list really measures is its PARENT getting taller, and the parent should still
+ * be measured against everything else at that new size.
+ */
+function nested(a, b) {
+  return a.el !== b.el && (a.el.contains(b.el) || b.el.contains(a.el));
 }
 
 function shared(a, b) {
@@ -142,6 +165,7 @@ function check(doc, w, h) {
   // Everything permanent against everything permanent...
   for (let i = 0; i < persistent.length; i++) {
     for (let j = i + 1; j < persistent.length; j++) {
+      if (nested(persistent[i], persistent[j])) continue;
       const area = shared(persistent[i].r, persistent[j].r);
       if (area > MAX_SHARED) {
         fails.push(`overlap ${persistent[i].sel} / ${persistent[j].sel} — ${Math.round(area)} px²`);
@@ -153,6 +177,7 @@ function check(doc, w, h) {
   // never both up, and pinning them apart would be inventing a requirement.
   for (const t of transient) {
     for (const p of persistent) {
+      if (nested(t, p)) continue;
       const area = shared(t.r, p.r);
       if (area > MAX_SHARED) {
         fails.push(`overlap ${t.sel} / ${p.sel} — ${Math.round(area)} px²`);

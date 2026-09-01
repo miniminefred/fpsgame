@@ -113,7 +113,12 @@ export class RemotePlayer {
    * A position packet. `moving` and `dead` are theirs to declare; whether the
    * legs actually swing is decided here, off what the body on screen is doing.
    */
-  apply({ x, y, z, yaw, health, dead, firing }) {
+  apply({ x, y, z, yaw, health, dead, firing, hidden = false }) {
+    // Their T toggle, which only their own browser knows about. It has to cross
+    // or the host's roster goes on chasing a joiner who has been told they are
+    // invisible — the one end that decides what the staff do is not the end the
+    // key was pressed on. See `hidden` in player.js.
+    this.body.hidden = hidden;
     this.netX = x;
     this.netY = y;
     this.netZ = z;

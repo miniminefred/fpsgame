@@ -235,6 +235,24 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
   text-shadow: var(--shade);
 }
 
+/* Unseen (T). Inside #mission rather than in a corner of its own, because every
+   corner is taken and the top-centre strip is where the fullscreen button and
+   the co-op chip already collided once. It is a third line in a block that is
+   already a stack and is already width-bounded, so it costs no new anchor — it
+   just makes the block taller, which is what /dev-layout.html is for.
+
+   Loud on purpose. This is a switch the player threw that turns the whole floor
+   off, and the failure mode is forgetting it is on and concluding the game is
+   broken. */
+#unseen {
+  display: none;
+  margin-top: 5px;
+  font-size: 11px; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; color: #ffd479;
+  text-shadow: var(--shade);
+}
+#unseen.visible { display: block; }
+
 /* ------------------------------------------------ top right: map + score */
 #mapbox {
   position: absolute; right: calc(20px + var(--sa-r)); top: calc(18px + var(--sa-t));

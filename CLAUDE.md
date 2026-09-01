@@ -313,6 +313,7 @@ leave the build green and the harness silently broken.
 | Left click | Shoot |
 | R | Reload |
 | 1 - 5 | Switch weapon (light to heavy) |
+| T | Unseen: on and off the floor's books — see below |
 | Esc | Release the mouse |
 | Click | Grab the mouse / restart after dying |
 
@@ -325,6 +326,58 @@ On a touch device the same actions are on screen instead — see below.
 | FIRE / JUMP / RELOAD | Bottom right, under the right thumb |
 | 1 - 5 | Weapon chips above the buttons |
 | Top-centre button | Fullscreen |
+
+### Unseen (T)
+Press T and the floor stops knowing you are there: nobody sees you, nobody hears you, no
+camera finds you, and anybody already coming loses contact and stands down. Press it again
+and all of it comes straight back. Measured on floor 4 with the alarm raised — 15 hostiles
+hunting and 644 damage over fifteen seconds; hidden, that is 6 hunting and **0 damage**
+after fifteen and **0 hunting** after another twenty; released, 8 hunting and 907 damage.
+
+**It is one flag riding in on the filter that already existed.** `player.hidden` is read in
+exactly the two places `dead` is — `_soloTarget` in `game.js` and `targets()` in
+`netplay.js` — and `enemies.js` drops it in the same line: `targets.filter(t => !t.dead &&
+!t.hidden)`. That is the whole mechanism, and choosing it over a new state is the point:
+"there is nobody to chase" is a case this file already handles properly and has a whole
+branch for, so being unseen is not something the roster has to learn, it is an existing
+case reached another way. Every consequence falls out at once — the distance field is not
+flooded from you, so a gunshot is not heard; `_pick` finds nothing, so nobody sights, aims
+or fires; and a body mid-chase runs out `contact` and gives up.
+
+Three things about it are decisions rather than plumbing:
+
+- **The cameras are included, and they DRAIN rather than freeze.** A camera is building
+  security rather than a member of staff, so strictly it is outside what the flag promises
+  — but what a camera does is send four men after you, and being invisible to the floor and
+  then hunted by it because a lens found you is the toggle failing to mean anything. The
+  pass still runs (`unseen` in `cameras.js`): skipping it would leave every lamp stuck amber
+  and a half-full meter on the HUD for the rest of the floor, where denying the sighting
+  sends all of it down the path that already exists for stepping out of shot. Measured
+  standing in front of a watcher: count 2.47 and climbing, then 1.92 → 0 with no alarm, then
+  climbing again on release.
+- **It says so on the HUD the whole time it is on** (`#unseen`, a third line in `#mission`).
+  This is not decoration. A dev aid that is simply ON is how a spawn override put the player
+  inside the generator room on every floor of every dev build for weeks, and the version of
+  that mistake available here is worse: a floor where nothing reacts to you reads exactly
+  like a floor whose AI has broken. The toast says which way it just went; the line says
+  which way it still is. It is deliberately NOT on the start screen's control legend — that
+  list is the game's controls and this is a switch that turns the game off.
+- **It crosses the wire** (`h` in the `'p'` packet, beside `d`). The end that decides what
+  the staff do is the host, and the key is pressed on either end — so without the bit a
+  joiner presses T, is told they are invisible, and goes on being chased. `hidden` is not
+  cleared by `player.reset()`, for the same reason: a switch that quietly turned itself off
+  on death would be worse than one that stayed on.
+
+`/dev-layout.html` gained one thing for this and it is worth knowing about, because it
+produced a spectacular false alarm: a parent's rect covers its in-flow children, so
+`#unseen` inside `#mission` read as the worst collision on the page — **12 of 12 sizes red,
+on a HUD with nothing wrong with it.** `nested()` skips a pair where one element contains
+the other. Keeping children off the list would also have silenced it and would have been
+the wrong fix: what a child in that list really measures is its PARENT getting taller, and
+the parent still has to be measured against everything else at its new size — `#netrole`'s
+narrow-screen rule drops to a hardcoded offset below `#mission`'s bottom edge, which is
+exactly the sort of number a new line in that block invalidates. All 12 sizes clear with
+the co-op chip forced up alongside it.
 
 ## Key systems
 

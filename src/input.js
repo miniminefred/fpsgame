@@ -54,6 +54,20 @@ export function onDigitKeys(cb) {
   });
 }
 
+/**
+ * Fires cb() once per press of one key. For a toggle rather than a held control.
+ *
+ * `e.repeat` is the whole difference from the held keys above: holding a key
+ * down repeats keydown at the OS's own rate, and a toggle wired to that flickers
+ * on and off thirty times a second for as long as a finger is on it.
+ */
+export function onKeyPress(code, cb) {
+  addEventListener('keydown', (e) => {
+    if (e.repeat || typing(e) || e.code !== code) return;
+    cb();
+  });
+}
+
 // Whether this keystroke belongs to a text field rather than to the game.
 //
 // There is exactly one text field in the whole game — the co-op code box on the

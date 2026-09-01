@@ -59,6 +59,14 @@ export class Player {
     this.health = MAX_HEALTH;
     this.maxHealth = MAX_HEALTH;
     this.dead = false;
+    // Off the roster's books: nobody sees, hears or chases this body while it is
+    // set. It is a flag on the PLAYER rather than a mode on the game because
+    // that is what it is about — and because `dead` is the thing it works like,
+    // right down to where it is read (see `_soloTarget` in game.js and the
+    // `live` filter in enemies.js). Not cleared by `reset`, so it survives a
+    // death and the floors after it: it is a switch the player threw, and one
+    // that quietly turned itself off would be worse than one that stayed on.
+    this.hidden = false;
     this.sinceDamage = REGEN_DELAY;
     this.onDeath = null;
     // Fired instead of blocking when the thing in the way is loose furniture:

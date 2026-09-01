@@ -42,6 +42,9 @@ export class Hud {
     this.vignetteEl = $('vignette');
     this.toastEl = $('toast');
 
+    this.unseenEl = $('unseen');
+    this._unseen = null;   // last value written; see setUnseen
+
     this.watchEl = $('watch');
     this.watchFillEl = $('watch-fill');
     this.alarmEl = $('alarm-flash');
@@ -123,6 +126,19 @@ export class Hud {
    * value is unchanged on the overwhelming majority of frames — nothing is
    * looking at you — and three style writes a frame for that is three too many.
    */
+  /**
+   * The UNSEEN line, on while the player is invisible to the floor (T).
+   *
+   * Written only when it changes, like `setWatch` above and for its reason: this
+   * is called every frame and a class toggle that says the same thing sixty
+   * times a second is sixty style invalidations for nothing.
+   */
+  setUnseen(on) {
+    if (on === this._unseen) return;
+    this._unseen = on;
+    this.unseenEl?.classList.toggle('visible', on);
+  }
+
   setWatch(fraction) {
     // Snapped to nothing at the bottom of the range. The count decays rather
     // than resetting when a camera loses you (see cameras.js), so without this

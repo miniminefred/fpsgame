@@ -1,7 +1,7 @@
 import { Timer } from 'three';
 import { createRenderer, createScene, createCamera, handleResize } from './scene.js';
 import { createLighting } from './lighting.js';
-import { createInput, onDigitKeys } from './input.js';
+import { createInput, onDigitKeys, onKeyPress } from './input.js';
 import { createTouchControls } from './touch.js';
 import { Player } from './player.js';
 import { Weapons } from './weapons.js';
@@ -120,6 +120,22 @@ function selectWeapon(n) {
   shooting.onWeaponChange();
 }
 onDigitKeys(selectWeapon);
+
+// T: off the floor's books. Nobody sees you, nobody hears you, no camera finds
+// you, and anybody already coming gives up — see `hidden` in player.js for what
+// the flag does and where it is read.
+//
+// It says so on the HUD for as long as it is on (`#unseen`), and that is not
+// decoration. A dev aid that is simply ON is how a spawn override put the player
+// inside the generator room on every floor of every dev build for weeks; the
+// version of that mistake available here is worse, because a floor where nothing
+// reacts to you reads exactly like a floor whose AI has broken. The toast says
+// which way it just went and the line says which way it still is.
+onKeyPress('KeyT', () => {
+  player.hidden = !player.hidden;
+  hud.setUnseen(player.hidden);
+  hud.message(player.hidden ? 'UNSEEN' : 'SEEN AGAIN', 1100);
+});
 
 touch = createTouchControls({
   keys, camera, controls: player.controls, weapons, selectWeapon,

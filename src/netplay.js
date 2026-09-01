@@ -80,7 +80,7 @@ export class NetPlay {
     // frame rather than allocated, because the roster reads it two hundred times
     // a frame.
     this._remoteTarget = {
-      x: 0, y: 0, z: 0, layer: 0, dead: true,
+      x: 0, y: 0, z: 0, layer: 0, dead: true, hidden: false,
       hurt: (amount, sx, sz) => {
         // Over there, not here. All this end can do is say so.
         this.send({ t: 'hu', a: Math.round(amount * 10) / 10, x: r2(sx), z: r2(sz) });
@@ -91,7 +91,7 @@ export class NetPlay {
     // enemies.js has exactly one kind of thing to shoot at and never has to ask
     // which of the two it is dealing with.
     this._localTarget = {
-      x: 0, y: 0, z: 0, layer: 0, dead: false,
+      x: 0, y: 0, z: 0, layer: 0, dead: false, hidden: false,
       hurt: (amount, sx, sz) => {
         this.game.player.takeDamage(amount);
         this.game.hud.damage(Math.min(1, amount / 25), sx, sz);
@@ -120,6 +120,7 @@ export class NetPlay {
     const local = this._localTarget;
     local.x = p.x; local.y = p.y; local.z = p.z;
     local.dead = this.game.player.dead;
+    local.hidden = this.game.player.hidden;
 
     if (!this.online || !this.remote.fresh) {
       if (this._targets.length !== 1) this._targets = [local];
@@ -130,6 +131,7 @@ export class NetPlay {
     const t = this._remoteTarget;
     t.x = b.x; t.y = b.y + EYE; t.z = b.z;
     t.dead = !b.alive;
+    t.hidden = !!b.hidden;
     if (this._targets.length !== 2) this._targets = [local, t];
     return this._targets;
   }
@@ -175,6 +177,9 @@ export class NetPlay {
       r: r2(g.player.yaw),
       hp: Math.round(g.player.health),
       d: g.player.dead ? 1 : 0,
+      // Unseen, and it rides beside `d` because it does the same job: it is the
+      // other reason the roster over there must not be chasing this body.
+      h: g.player.hidden ? 1 : 0,
       // Whether the gun is up. Not "did I fire this instant" — that arrives as
       // its own message — but "am I in a fight", which is what decides the pose.
       g: g.shooting.cooldown > 0 || g.shooting.keys.fire ? 1 : 0,
@@ -372,7 +377,7 @@ export class NetPlay {
       case 'p':
         this.remote.apply({
           x: msg.x, y: msg.y, z: msg.z, yaw: msg.r,
-          health: msg.hp, dead: !!msg.d, firing: !!msg.g,
+          health: msg.hp, dead: !!msg.d, firing: !!msg.g, hidden: !!msg.h,
         });
         break;
       case 's': {

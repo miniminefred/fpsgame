@@ -725,6 +725,7 @@ export class Game {
       // from the player, off exactly that field.
       this.cameras.update(dt, this.player);
       this.hud.setWatch(this.cameras.watch);
+      this.hud.setUnseen(this.player.hidden);
       this.conveyors.update(dt);
       // After the enemies, because a run is walked out of `enemies.update` via
       // the `jobTick` hook — this call only decides whether to START one, and a
@@ -764,7 +765,7 @@ export class Game {
   _soloTarget() {
     const p = this.player.object.position;
     const t = this._solo ??= {
-      x: 0, y: 0, z: 0, layer: 0, dead: false,
+      x: 0, y: 0, z: 0, layer: 0, dead: false, hidden: false,
       hurt: (amount, sx, sz) => {
         this.player.takeDamage(amount);
         this.hud.damage(Math.min(1, amount / 25), sx, sz);
@@ -772,6 +773,7 @@ export class Game {
     };
     t.x = p.x; t.y = p.y; t.z = p.z;
     t.dead = this.player.dead;
+    t.hidden = this.player.hidden;
     return t;
   }
 
