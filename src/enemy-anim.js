@@ -599,8 +599,13 @@ export function animateFixing(e, dt) {
  * chair in this building means harmless (see the note on workstations in
  * CLAUDE.md) and these bodies are not: a hostile at a machine is somebody with
  * their back to you who has not looked up yet, and the frame they do, the job is
- * off (see `_choreWork` in enemies.js). Sitting one of them down would be making
- * the one promise the game keeps and then breaking it.
+ * off (see `_choreWork` in enemies.js).
+ *
+ * WHICH IS NOW WHAT A CHAIR MEANS TOO. The seated desk job (`deskWork` in
+ * chores.js) draws no pose from this table at all — a body with `e.seat` set is
+ * dispatched to `animateWorking` further up, which is the typing pose the
+ * Manager has always used — so what it needed was a knee (`sitLegs`) rather than
+ * an entry here. The rule that a chair meant harmless was retired with it.
  *
  * Every height below is a real measurement off the prop in gen/props.js — a
  * copier's control panel at 1.0, a vending machine's keypad at 0.9 to 1.5, a
@@ -633,6 +638,18 @@ const CHORE_POSE = {
   printer: {
     hands: 1.06, stoop: 0, reach: 0.12, lean: 0.10, look: 0.20,
     beat: 0.55, duty: 0.15, rate: 4.5, throw: 0.10, stagger: 0.34, rest: 0.55,
+  },
+  // Squaring the printout up and putting a band round it, which is what
+  // "packaged" means and is the beat that turns a stack of warm paper into a
+  // thing somebody can be seen carrying. Both hands, close together and close in
+  // — this is the one pose here that is not done AT a machine, it is done over
+  // whatever surface is in front of them, so the shoulders come forward and the
+  // hands nearly meet. `stagger` is deliberately the smallest on the table
+  // rather than zero: squaring a stack is both hands working together, which is
+  // the one job where the applause note is the right one.
+  package: {
+    hands: 0.94, stoop: 0.06, reach: 0.30, lean: 0.30, look: 0.44,
+    beat: 0.9, duty: -0.5, rate: 6.5, throw: 0.075, stagger: 0.03, rest: 0.20,
   },
   // ...and taking the paper out of the tray, which is the beat that says the
   // machine did something. Down at 0.66 m, so the body goes down to meet it.

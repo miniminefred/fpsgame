@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { FACING } from './gen/tiles.js';
+import { isMachine } from './enemy-types.js';
 
 /**
  * The ordinary work: one body, one machine, a few seconds of doing something.
@@ -13,14 +14,22 @@ import { FACING } from './gen/tiles.js';
  * at the copier. Somebody is round the back of a rack with his arms in it.
  * Somebody is getting a can out of the machine in the corridor.
  *
- * SIX JOBS, and the six are the whole design rather than a list that grew:
+ * ...AND SOME ERRANDS ARE MORE THAN ONE MACHINE. See ROUTINES below: a body
+ * writes something at its desk, prints it, squares it up and puts a band round
+ * it, carries it across the floor and files it on a rack. Same walking, same
+ * poses, same endings — a routine is a LIST of legs and each leg is an ordinary
+ * job that happens to have somewhere to go afterwards.
  *
- *   computer  standing at somebody's monitor, typing
+ * THE JOBS, and they are the whole design rather than a list that grew:
+ *
+ *   deskWork  sitting at a desk, typing
+ *   computer  standing at somebody else's monitor, typing
  *   printer   pressing the copier, then taking the paper out of it
  *   vending   pressing the keypad, then bending to the flap
  *   server    hands up among the units at the front of a rack
  *   bench     building something, in the odd shower of sparks
  *   panel     arms into a hole in the wall with the wiring hanging out of it
+ *   file      putting something away on a storage rack (a routine's last leg)
  *
  * The last one is the machine floor's, because a hole in the wall with the
  * building's wiring in it is a thing an Automated floor has and an ordinary
@@ -41,16 +50,24 @@ import { FACING } from './gen/tiles.js';
  * point: you round a corner and there is a man at the printer with his back to
  * you, and he turns round and shoots. Three things make that safe to promise:
  *
- *   - NOBODY SITS DOWN. A chair in this building means harmless and it is the
- *     one tell the game states before anything is at stake (see the note on
- *     workstations in CLAUDE.md). Every pose here is standing, which is a body
- *     that has made no promise at all — and it is why "work on a computer" is
- *     somebody stood at the end of a desk rather than somebody in its chair.
+ *   - THEY DO SIT DOWN, and A CHAIR NO LONGER MEANS HARMLESS. It used to: that
+ *     was the one tell the game stated before anything was at stake, and every
+ *     pose here was standing to keep it true. It was retired deliberately, and
+ *     what a chair means now is "this one has not noticed you yet" — which is a
+ *     weaker promise but still a real one, because the frame a body clocks you
+ *     the job is off and it is on its feet. An office of a hundred and seventy
+ *     people all standing up was the price of the stronger rule, and it was too
+ *     high. `deskWork` is the seated job; `computer` is what a machine does at a
+ *     desk instead, because a chassis has wheels where a pair of hips would be.
  *   - THE VISOR IS UNTOUCHED. A break recolours the eyes because a break really
- *     does stop somebody fighting you; this does not, so it must not.
+ *     does stop somebody fighting you; this does not, so it must not. That is
+ *     now the ONLY thing on a body that promises it will not shoot back, which
+ *     makes it more load-bearing than it was rather than less.
  *   - AND THEY LOOK UP. Sight, hearing, or you simply getting close ends the job
  *     on the spot — see `_choreWork` in enemies.js, which is the half of this
- *     feature that lives over there because it has to run before `_think`.
+ *     feature that lives over there because it has to run before `_think`. This
+ *     is what the chair's weaker promise rests on entirely, so it matters more
+ *     than it did too.
  *
  * HOST ONLY, like both of the others and for their reason: whose turn it is to
  * use the copier is a runtime decision, so two browsers deciding it would be two
@@ -84,7 +101,27 @@ import { FACING } from './gen/tiles.js';
 // a keyboard against four at a bench. Weighting by JOB asks the question that
 // was meant — what is somebody doing — and then finds a machine for it.
 const CHORES = {
-  computer: { at: 'computer', pose: 'computer', time: [14, 30], weight: 4, stay: [3, 7] },
+  // SITTING DOWN AT A DESK AND WORKING, which is what most of an office is
+  // doing most of the time and is now the commonest thing on the floor.
+  //
+  // `sit` is the whole of what makes it different, and it costs no animation:
+  // `animate` already dispatches a body with `e.seat` set to `animateWorking`,
+  // which is the typing pose the Manager and the guard on the cameras have always
+  // used. What it needed was a knee (see `sitLegs` in enemy-anim.js) and a chair
+  // to sit on — and the chair has to be the `desk` station itself rather than the
+  // `computer` one beside it, because a seated pose is drawn relative to the seat.
+  //
+  // `human` because a chassis has no business in a chair: a Clerk Unit's legs are
+  // drive wheels. It keeps `computer` below instead, which is the honest picture.
+  deskWork: {
+    at: 'chair', pose: null, sit: true, human: true,
+    time: [16, 34], weight: 5, stay: [2, 4],
+  },
+  // Standing at the END of somebody's desk, which is what it was for everybody
+  // before `deskWork` existed. Kept, and kept at a low weight, because it is a
+  // real thing that happens in an office — somebody has come over to look at
+  // your screen — and because it is what a machine does at a desk.
+  computer: { at: 'computer', pose: 'computer', time: [14, 30], weight: 1, stay: [3, 7] },
   printer: {
     at: 'printer', pose: 'printer', time: [8, 17], weight: 3, stay: [2, 4],
     then: { pose: 'printerTake', time: [2.2, 3.6] },
@@ -105,6 +142,11 @@ const CHORES = {
     then: { pose: 'vendingTake', time: [1.8, 3.2], gives: 'can' },
   },
   server: { at: 'server', pose: 'server', time: [12, 26], weight: 3, stay: [2, 5] },
+  // Putting something away on a storage rack. `weight: 0` — it is never the
+  // whole of what somebody is doing, only the last leg of a routine, because
+  // walking to a rack to file nothing is not a job. Same pose as working on a
+  // rack: it is the same motion at the same shelf heights.
+  file: { at: 'shelf', pose: 'server', time: [4, 9], weight: 0, stay: [1, 1] },
   bench: {
     at: 'bench', pose: 'bench', time: [16, 34], weight: 3, stay: [2, 5],
     spark: { y: 1.05, out: 0.55, tick: [0.9, 2.4] },
@@ -121,6 +163,64 @@ const CHORES = {
   patrol: { at: 'hall', pose: 'patrol', time: [5, 11], weight: 3, stay: [2, 4] },
 };
 const KINDS = Object.keys(CHORES);
+
+/**
+ * ...and the errands that are more than one machine.
+ *
+ * A chore is a body, a machine and a few seconds. That is most of an office and
+ * it is not all of it: the thing an office actually does is take a piece of work
+ * from one end of the building to the other, and the machines are the stops
+ * along the way. So a ROUTINE is a list of legs, walked in order by one body,
+ * with what they are carrying handed over between them.
+ *
+ * There is one, and it is the one everybody has watched happen: you write it,
+ * you print it, you square it up and put a band round it, and you file it. Which
+ * is also why it reads at all — every beat of it is a thing the player has done
+ * themselves, so a man standing at a rack holding a bundle of paper is legible
+ * without a word of explanation.
+ *
+ *   kind    the CHORES entry the leg is done as, so a leg is a normal job that
+ *           happens to have somewhere to go afterwards
+ *   stay    overrides the kind's own. Routine legs are mostly ONE go: you print
+ *           the thing once. The desk leg keeps a couple, because writing it is
+ *           the part that takes a while.
+ *   then    overrides the kind's second beat, and may be a LIST of them — which
+ *           is what "package it" needed, since the printer already had one beat
+ *           for taking the paper out and packaging is a third thing.
+ *   gives   what the body is holding after this beat, and `takes` what it puts
+ *           down. Both are checked against what it is actually holding, so a leg
+ *           that was skipped cannot leave a body filing a bundle it never
+ *           collected.
+ *
+ * WEIGHTED AGAINST THE SINGLE JOBS, not above them. A routine costs three
+ * floods to cast where a job costs one (every stop is proved before anything is
+ * committed — see `_castRoutine`, and see jobs.js for what it costs not to), so
+ * it is deliberately a minority of what the floor is doing.
+ */
+const ROUTINES = {
+  paperwork: {
+    weight: 4,
+    legs: [
+      { kind: 'deskWork', stay: [2, 3] },
+      {
+        kind: 'printer',
+        stay: [1, 1],
+        then: [
+          { pose: 'printerTake', time: [2.2, 3.6] },
+          { pose: 'package', time: [2.6, 4.6], gives: 'papers' },
+        ],
+      },
+      { kind: 'file', stay: [1, 1], takes: 'papers' },
+    ],
+  },
+};
+const ROUTINE_KINDS = Object.keys(ROUTINES);
+
+// How many routines may be running at once. The cap is about the CASTING rather
+// than the walking: three floods a cast against a job's one, and a routine holds
+// a field for three walks instead of one. Six of them on a floor of a hundred and
+// seventy is one visible errand per few rooms, which is what it is for.
+const MAX_ROUTINES = 6;
 
 // What a body with no trade does: the ordinary work of an office, and it is
 // everything on the table that is not somebody's job in particular.
@@ -243,11 +343,28 @@ export class Chores {
     // can never be dealt the same tile.
     const hall = (enemies.corridors ?? []).map((c, i) => ({ x: c.x, z: c.z, rot: i & 3 }));
 
+    // Somewhere to SIT, which is the one pool that is not `enemies.stations`.
+    //
+    // They are the same workstations and they are not interchangeable: the
+    // `stations` map is built with STAND_NUDGE, which may move a record up to a
+    // tile back from the furniture so that a body FITS in front of it — and a
+    // chair may never be moved, because the seated pose is drawn relative to the
+    // seat. `standable`'s own comment says exactly this, and this is the first
+    // caller for which it matters. `enemies.desks` is the un-nudged pool.
+    //
+    // A flat snapshot is safe because the pool is stable after `enemies.spawn`:
+    // the Manager, the guard on the cameras and the arrival diners all take their
+    // chairs during spawn, so they are already gone from it by the time this
+    // runs, and nothing takes a DESK chair at runtime (the lunch cycle draws from
+    // `tables`). Occupancy from there on is `busy`, like every other kind.
+    const chairs = [...(enemies.desks?.values() ?? [])].flat();
+
     for (const kind of KINDS) {
       const at = CHORES[kind].at;
       const from = at === 'panel' ? (panels?.spots ?? [])
         : at === 'hall' ? hall
-          : (enemies.stations?.get(at) ?? []);
+          : at === 'chair' ? chairs
+            : (enemies.stations?.get(at) ?? []);
       if (from.length) this.pools.set(kind, from);
     }
     // Nothing to do on a floor with no machines anybody can stand at, which is
@@ -319,6 +436,23 @@ export class Chores {
   }
 
   _try() {
+    // A routine or a single job, rolled against each other rather than routines
+    // being tried first: the mix is then one number instead of a priority. Held
+    // under a cap of its own because a routine costs three floods to cast and
+    // reserves three machines for as long as it runs.
+    const routineWeight = this._routinesLive() < MAX_ROUTINES
+      ? ROUTINE_KINDS.reduce((t, k) => t + ROUTINES[k].weight, 0)
+      : 0;
+    let total = routineWeight;
+    for (const kind of KINDS) if (this._free(kind)) total += CHORES[kind].weight;
+
+    if (total <= 0) return false;
+    if (Math.random() * total < routineWeight && this._tryRoutine()) return true;
+    // A failed routine falls through to a single job rather than giving up the
+    // turn. It fails often and legitimately — it wants three free machines and a
+    // body that can walk between all of them — and `update` reads a failed turn
+    // as "there is no work on this floor" and sends somebody to lunch instead.
+
     const kind = this._pickKind();
     if (!kind) return false;
     const station = this._pickStation(kind);
@@ -327,19 +461,120 @@ export class Chores {
     const worker = this._cast(station, kind);
     if (!worker) return false;
 
-    this.busy.add(station);
-    this.live.push(worker);
-    // Held on the job rather than looked up per frame, because a lookup that
-    // misses reads as the machine having gone — see `_propFor`.
-    const prop = this._propFor(station);
-    const stay = CHORES[kind].stay;
-    worker.chore = {
-      kind, station, prop, stage: 'to', pose: null,
-      timer: WALK_CAP, work: 0, tick: 0,
-      stay: stay[0] + ((Math.random() * (stay[1] - stay[0] + 1)) | 0),
-    };
-    this.enemies.routeTo(worker, worker.chore, station, WALK_CAP);
+    this._commit(worker, [{ kind, station }], null);
     return true;
+  }
+
+  /** How many of the live jobs are multi-leg errands. */
+  _routinesLive() {
+    let n = 0;
+    for (const e of this.live) if (e.chore?.legs?.length > 1) n++;
+    return n;
+  }
+
+  /**
+   * One body, three machines, and a piece of work that moves between them.
+   *
+   * EVERY STOP IS PROVED BEFORE ANYTHING IS COMMITTED, and that is a lesson
+   * jobs.js paid for rather than a precaution. Casting against the first leg
+   * alone picks whoever can reach a desk — which on this floor is very nearly
+   * anybody — and then discovers at the printer that the body it chose is shut
+   * in an office with no route out of it. The parcel run did exactly that and
+   * died 4.7 simulated seconds in, every time, silently, because a run that
+   * cannot be finished looks identical to a run that was never cast.
+   *
+   * So: reserve a machine for every leg, cast the nearest body that can reach
+   * the first, and then prove each HOP before a single field is handed out.
+   */
+  _tryRoutine() {
+    const name = ROUTINE_KINDS[(Math.random() * ROUTINE_KINDS.length) | 0];
+    const routine = ROUTINES[name];
+
+    // A machine per leg, held aside as we go so two legs can never be dealt the
+    // same station. Nothing is in `busy` yet, so a failure below costs nothing.
+    const legs = [];
+    const taken = [];
+    for (const leg of routine.legs) {
+      const station = this._pickStation(leg.kind, taken);
+      if (!station) return false;
+      taken.push(station);
+      legs.push({ ...leg, station });
+    }
+
+    const worker = this._cast(legs[0].station, legs[0].kind);
+    if (!worker) return false;
+
+    for (let i = 1; i < legs.length; i++) {
+      if (!this._hop(legs[i - 1].station, legs[i].station)) return false;
+    }
+
+    this._commit(worker, legs, name);
+    return true;
+  }
+
+  /**
+   * Whether a body standing at one station could get to the next.
+   *
+   * The same two-part question `_cast` asks, in the same order: flood to the
+   * destination, then check the ORIGIN is on the field. A distance can be read
+   * off a tile nothing can set off from, and most of this building is behind a
+   * badged door that is not on the nav grid at all — which is why a routine,
+   * like the lunch cycle and the parcel runs before it, only really starts
+   * happening once the player has opened the floor with a white card.
+   */
+  _hop(from, to) {
+    if (!this.nav) return false;
+    this._field ??= this.nav.makeField();
+    if (!this.nav.floodTo(this._field, to.x, to.z)) return false;
+    return !!this.nav.descendOn(this._field, from.x, from.z, this._v);
+  }
+
+  /** Puts a cast body on its first leg. One place, so both paths agree. */
+  _commit(worker, legs, routine) {
+    for (const leg of legs) this.busy.add(leg.station);
+    this.live.push(worker);
+    const first = legs[0];
+    worker.chore = {
+      routine, legs, leg: 0,
+      // WHICH MACHINES THIS ERRAND STILL HOLDS, which is not the same list as
+      // its legs and that difference was a real bug. A routine reserves all of
+      // its stations when it is cast and hands each one back as it leaves it —
+      // so by the time it reaches the filing rack, the desk it started at may
+      // well have been given to somebody else. Releasing `legs` on the way out
+      // then freed a machine another body was standing at, and the next cast
+      // sent a second person to it.
+      held: legs.map((leg) => leg.station),
+      kind: first.kind, station: first.station,
+      // Held on the job rather than looked up per frame, because a lookup that
+      // misses reads as the machine having gone — see `_propFor`.
+      prop: this._propFor(first.station),
+      stage: 'to', pose: null, beat: 0,
+      timer: WALK_CAP, work: 0, tick: 0,
+      stay: this._rollStay(this._specOf(first.kind, first)),
+    };
+    this.enemies.routeTo(worker, worker.chore, first.station, WALK_CAP);
+  }
+
+  /** The kind's own numbers, with this leg's overrides on top. */
+  _specOf(kind, leg) {
+    const base = CHORES[kind];
+    return leg ? { ...base, ...leg } : base;
+  }
+
+  /** ...and the one for the leg a body is on right now. */
+  _spec(c) {
+    return this._specOf(c.kind, c.legs?.[c.leg]);
+  }
+
+  _rollStay(spec) {
+    const [lo, hi] = spec.stay;
+    return lo + ((Math.random() * (hi - lo + 1)) | 0);
+  }
+
+  /** A job's second beats, always as a list: one, several, or none. */
+  _beats(spec) {
+    if (!spec.then) return null;
+    return Array.isArray(spec.then) ? spec.then : [spec.then];
   }
 
   /** One of the six, by weight, out of whichever ones this floor can offer. */
@@ -375,11 +610,16 @@ export class Chores {
    * the building would do all the work on the floor. Same argument `deskPool`
    * makes for shuffling a room's desks.
    */
-  _pickStation(kind) {
+  _pickStation(kind, skip = null) {
     const pool = this.pools.get(kind);
+    if (!pool) return null;
     const start = (Math.random() * pool.length) | 0;
     for (let i = 0; i < pool.length; i++) {
       const station = pool[(start + i) % pool.length];
+      // `skip` is the machines a routine has already claimed for its own other
+      // legs. They are not in `busy` yet — nothing is committed until every leg
+      // has one — so this is the only thing keeping two legs off one station.
+      if (skip?.includes(station)) continue;
       if (this._usable(station)) return station;
     }
     return null;
@@ -414,10 +654,17 @@ export class Chores {
     this._field ??= this.nav.makeField();
     if (!this.nav.floodTo(this._field, station.x, station.z)) return null;
 
+    // A job that puts somebody in a chair is a job for somebody with knees. A
+    // chassis has drive wheels where a pair of hips would be (see `sitLegs` in
+    // enemy-anim.js), and the honest picture of a Clerk Unit at a desk is the one
+    // it already has: standing at the end of it.
+    const humanOnly = !!CHORES[kind].human;
+
     let best = null;
     let bestD = Infinity;
     for (const e of this.enemies.items) {
       if (!this._eligible(e) || !worksFor(e).includes(kind)) continue;
+      if (humanOnly && (e.rig !== 'human' || isMachine(e.type))) continue;
       // `descendOn` is the reachability half and it is asked FIRST: a distance
       // can be read off a tile a body cannot actually set off from.
       if (!this.nav.descendOn(this._field, e.x, e.z, this._v)) continue;
@@ -496,7 +743,16 @@ export class Chores {
     if (c.timer < 0) { this.lost(e); return; }
     if (c.work > 0) c.work -= dt;
 
-    const job = CHORES[c.kind];
+    const job = this._spec(c);
+
+    // THE CHAIR WENT OUT FROM UNDER THEM. `_seatGone` in enemies.js stands up a
+    // body whose chair has been shot apart or shoved away, and it knows nothing
+    // about jobs — so without this the chore carries on running with a body that
+    // is no longer sitting in it, typing at a desk from a standing position.
+    // `c.prop` cannot catch it: that is the DESK in front of them, and the desk
+    // is still there.
+    if (job.sit && !e.seat && c.stage !== 'to') { this.lost(e); return; }
+
     switch (c.stage) {
       case 'to':
         if (!this.enemies.advanceTo(e, c, dt, c.station)) return;
@@ -505,36 +761,73 @@ export class Chores {
         // centres and a machine is not at one, so arriving "close enough" left
         // every body a metre from the thing it had come to use.
         if (!this.enemies.closeOnto(e, dt, c.station)) return;
-        this._begin(e, job.pose, job.time);
+        this._begin(e, job, job.pose, job.time);
         return;
 
-      case 'work':
+      case 'work': {
         if (job.spark) this._spark(e, dt, job.spark, audio);
         if (c.work > 0) return;
-        // The beat that says the machine did something, for the two that have
-        // one. Everything else is finished the moment its clock runs out.
-        if (job.then) { this._begin(e, job.then.pose, job.then.time); c.stage = 'then'; return; }
-        this._done(e, job);
-        return;
-
-      case 'then':
-        if (c.work > 0) return;
-        // Whatever the machine just handed over. Before `_done`, because `_done`
-        // may end the job outright and `lost` puts the body back to its day.
-        if (job.then.gives === 'can') {
-          // Keyed off the machine rather than rolled, so which hand it is in and
-          // what flavour it is are stable for the run and the same in both
-          // browsers of a co-op session — the same argument the eating hand
-          // makes. A station's coordinates are the floor's, and the floor came
-          // from a shared seed.
-          this.enemies.giveCan?.(e, Math.round((c.station.x + c.station.z) * 7) + 1);
+        // The beats that say the machine did something, for the jobs that have
+        // any. Everything else is finished the moment its clock runs out.
+        const beats = this._beats(job);
+        if (beats) {
+          c.beat = 0;
+          c.stage = 'then';
+          this._begin(e, job, beats[0].pose, beats[0].time);
+          return;
         }
-        this._done(e, job);
+        this._finishGo(e, job);
         return;
+      }
+
+      case 'then': {
+        if (c.work > 0) return;
+        const beats = this._beats(job);
+        const beat = beats?.[c.beat];
+        // Whatever that beat handed over, applied as the beat ENDS: the can
+        // appearing before the hand has got down to the flap is the machine
+        // dispensing into thin air.
+        this._hand(e, beat);
+        if (beats && c.beat + 1 < beats.length) {
+          c.beat++;
+          this._begin(e, job, beats[c.beat].pose, beats[c.beat].time);
+          return;
+        }
+        this._finishGo(e, job);
+        return;
+      }
 
       default:
         this.lost(e);
     }
+  }
+
+  /**
+   * What a beat puts into somebody's hands, or takes back out of them.
+   *
+   * Both are checked against what the body is ACTUALLY holding rather than
+   * against where it is in the errand, which is the same reason `_seatGone`
+   * treats a failed lookup as "do not check": a leg that ended early must not
+   * leave somebody filing a bundle of paper they never collected, and a body
+   * that lost its papers when it was shot at must not be given a second set.
+   */
+  _hand(e, beat) {
+    if (!beat) return;
+    if (beat.gives === 'can') {
+      // Keyed off the machine rather than rolled, so which hand it is in and
+      // what flavour it is are stable for the run and identical in both
+      // browsers of a co-op session — the same argument the eating hand makes.
+      // A station's coordinates are the floor's, and the floor came from a
+      // shared seed.
+      this.enemies.giveCan?.(e, this._key(e));
+    }
+    if (beat.gives === 'papers') this.enemies.givePapers?.(e, this._key(e));
+  }
+
+  /** A stable integer for this body at this machine. See `_hand`. */
+  _key(e) {
+    const c = e.chore;
+    return Math.round((c.station.x + c.station.z) * 7) + 1;
   }
 
   /**
@@ -544,20 +837,88 @@ export class Chores {
    * cast, no flood and no walk — which is the whole reason it is here. See the
    * note on `stay`.
    */
-  _done(e, job) {
+  _finishGo(e, job) {
     const c = e.chore;
-    if (--c.stay > 0) { c.stage = 'work'; this._begin(e, job.pose, job.time); return; }
+    if (--c.stay > 0) {
+      c.stage = 'work';
+      this._begin(e, job, job.pose, job.time);
+      return;
+    }
+    // The leg itself is over. Whatever it consumes is put down here rather than
+    // on a beat, because filing the paperwork IS the leg — there is no separate
+    // moment for it — and this is also the one place a routine's last leg
+    // reaches, so nothing can walk away still holding it.
+    if (job.takes === 'papers') this.enemies.takePapers?.(e);
+    if (c.legs && c.leg + 1 < c.legs.length) { this._nextLeg(e); return; }
     this.lost(e);
   }
 
+  /**
+   * On to the next machine.
+   *
+   * The station just left goes back into the pool immediately — somebody else
+   * may have the desk now — while the ones ahead stay reserved, because they
+   * were claimed for this errand when it was cast and proved reachable then.
+   *
+   * Standing up is the part that must not be skipped: `standUp` in enemies.js is
+   * what puts the hips, the knees and the leg boxes back, and a body that walked
+   * off a chair without it carries the chair's pose around the floor for the rest
+   * of the run.
+   */
+  _nextLeg(e) {
+    const c = e.chore;
+    this._release(c, c.station);
+    if (e.seat) this.enemies.standUp?.(e);
+    this.enemies.setChorePose(e, null);
+
+    c.leg++;
+    const leg = c.legs[c.leg];
+    c.kind = leg.kind;
+    c.station = leg.station;
+    c.prop = this._propFor(leg.station);
+    c.stage = 'to';
+    c.beat = 0;
+    c.timer = WALK_CAP;
+    c.work = 0;
+    c.tick = 0;
+    c.stay = this._rollStay(this._specOf(leg.kind, leg));
+    this.enemies.routeTo(e, c, leg.station, WALK_CAP);
+  }
+
+  /**
+   * Hands one machine back to the pool and stops counting it as ours.
+   *
+   * Both halves together, always: a station dropped from `held` but left in
+   * `busy` is a machine nothing will ever use again, and one removed from `busy`
+   * while still in `held` gets released a second time when the errand ends —
+   * and by then it may belong to somebody else.
+   */
+  _release(c, station) {
+    this.busy.delete(station);
+    const i = c.held?.indexOf(station) ?? -1;
+    if (i >= 0) c.held.splice(i, 1);
+  }
+
   /** Stop, face the machine, hold a pose, and take a while over it. */
-  _begin(e, pose, span) {
+  _begin(e, job, pose, span) {
     const c = e.chore;
     this.enemies.standAt(e, c.station);
     c.stage = c.stage === 'to' ? 'work' : c.stage;
     c.timer = WALK_CAP;
     c.work = span[0] + Math.random() * (span[1] - span[0]);
     c.tick = 0;
+    // SITTING DOWN, for the one job that does. There is no chore pose for it and
+    // that is the point: `animate` dispatches any body with `e.seat` set to
+    // `animateWorking`, which is the typing pose the Manager and the guard on the
+    // cameras have always used, so the whole of what this needed was a chair to
+    // sit on and a knee to bend. Going through `sitAt` rather than touching
+    // `e.seat` keeps sitting down and being posed one operation, exactly as
+    // `setChorePose` does for a standing job.
+    if (job.sit) {
+      if (!e.seat) this.enemies.sitAt?.(e, c.station);
+      this.enemies.setChorePose(e, null);
+      return;
+    }
     // Through `setChorePose` rather than by assignment, because clearing it has
     // to put the limbs and the stoop back and the two must be one operation.
     this.enemies.setChorePose(e, pose);
@@ -608,7 +969,24 @@ export class Chores {
     // body out of its stoop — a release that skipped it would leave somebody
     // walking the rest of the floor bent over a bench that is not there.
     this.enemies.setChorePose(e, null);
-    this.busy.delete(c.station);
+    // ...and out of the chair, which is the same bargain one joint lower: the
+    // hips, the knees and the squashed leg boxes all go back in `standUp` and
+    // nowhere else.
+    if (e.seat) this.enemies.standUp?.(e);
+    // EVERY station the errand is STILL holding, which is why `held` exists and
+    // is not simply `legs`. Two failures are being avoided at once: releasing
+    // only the current one leaks the machines further down the errand, so a man
+    // shot at his desk leaves a printer and a filing rack busy for the rest of
+    // the floor; and releasing all of `legs` frees the desk he has already
+    // walked away from, which by then belongs to somebody else — measured, that
+    // one put two bodies at one machine.
+    for (const station of c.held ?? [c.station]) this.busy.delete(station);
+    // Whatever they were carrying for it. The papers belong to the errand rather
+    // than to the body — see `givePapers` — so an errand that ends anywhere but
+    // the filing rack has to put them down, or somebody walks the rest of the
+    // floor holding a report they will never file. The CAN is deliberately not
+    // touched: that is a drink somebody bought, and it is theirs.
+    if (e.papers) this.enemies.takePapers?.(e);
     e.chore = null;
 
     const i = this.live.indexOf(e);

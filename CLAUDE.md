@@ -1716,16 +1716,39 @@ a beacon on a mast. The toilet guy is deliberately *not* on that list: he is a f
 two on every floor there has ever been, and the last human on a floor of robots running for a
 lavatory is the joke landing harder rather than a joke out of place.
 
-### A chair means harmless (`workstations` in `gen/build.js` + `_takeDesk`/`animateWorking`)
-**Nothing that is going to fight you is ever found sitting down.** That is the rule, it is
-the one tell in the building that is about behaviour rather than about identity, and
-everything below is in service of it.
+### A chair means "hasn't noticed you yet" (`workstations` in `gen/build.js` + `_takeDesk`/`animateWorking`)
+**This rule was retired on purpose, and it used to be the strongest one in the game.** It
+read: *nothing that is going to fight you is ever found sitting down* — the one tell in the
+building about behaviour rather than identity, stated in the cafeteria on the way in before
+anything was at stake. What it cost was an office of a hundred and seventy people standing
+in rooms, because a desk job that seats a body could not be given to anybody who fights, and
+that is most of the roster. The price was too high, so the staff sit down at their desks now
+(`deskWork` in `chores.js`) and a chair means **this one has not looked up yet**.
+
+That is a weaker promise and it is still a real one, resting entirely on `_choreWork` in
+`enemies.js`: sight, hearing, or the player simply getting inside `CHORE_STARTLE` ends the
+job on the frame it happens, and the body is on its feet from the next one. Two consequences
+worth holding on to:
+
+- **The visor is now the only thing in the building that promises somebody will not shoot
+  back.** It was one of two; it is the survivor, which makes the lunch cycle's recolouring
+  more load-bearing than it was rather than less. Nothing else may be given that meaning.
+- **The seated bodies below are unchanged.** The Manager, the guard on the cameras and
+  everybody at their lunch still sit for the reasons they always did — what changed is that
+  a chair no longer *rules out* the rest of the roster, not that those three stopped being
+  true.
+
+The machinery below is untouched by any of it: the furnisher still places every chair and
+faces it at its desk, the pose still hinges a real joint, and everybody who sits goes
+through the same path all twenty-three used to.
 
 Three kinds of body are in a chair, and the first is the one the rule is really for:
 
+- **Anybody at a desk, working** (`deskWork` in `chores.js`). The commonest thing on the
+  floor, and the one that retired the rule above — see the note on it there. Hostile or not,
+  and on its feet the frame it notices you.
 - **Anybody on their break**, at the tables in the canteen the floor arrives in. Harmless
-  while they are there, and the first bodies the player ever sees — so the tell is stated on
-  the way in, with nothing at stake, before the first chair that matters. This used to be a
+  while they are there, and the first bodies the player ever sees. This used to be a
   fixed cast of permanently-neutral diners; it is now a **cycle** that ordinary employees
   walk too, which is the next section.
 - **The Manager**, at his own desk behind the black door.
@@ -1742,15 +1765,39 @@ in two rooms and meant nothing in a third, which is worse than no tell at all. T
 their feet now, and `animateFloor` went with them (in git, if anything harmless is ever put
 in a cupboard).
 
-**What a rolled body may NOT do is sit at its desk**, and that is the part that was taken
-away. It used to be about 23 of a floor's ~175 bodies, found typing with their backs to the
-door, and it read beautifully — but it read as a promise the state machine does not keep. A
-body at a desk is `idle` like any other and is on its feet the frame it sees or hears you, so
-"somebody is sitting at that desk" was information the player could not act on. A body at
-LUNCH is different in the one way that matters: it is out of the state machine entirely, so
-the chair is telling the truth. The floor pays for the lost desks in atmosphere, which is a
-real cost and was accepted knowingly — an office of standing staff is less of a workplace
-than an office of typing ones.
+**A rolled body sitting at its desk was taken away once and has been put back**, and the
+round trip is the useful part. It was about 23 of a floor's ~175 bodies, found typing with
+their backs to the door; it was removed because "somebody is sitting at that desk" read as a
+promise the state machine does not keep — a body at a desk is `idle` like any other and is on
+its feet the frame it sees or hears you. The floor then paid for it in atmosphere, which was
+accepted knowingly at the time and turned out to be the wrong trade: an office of standing
+staff is not less of a workplace by a little, it is a hundred and seventy people waiting to
+be shot. So the desks are staffed again, and the promise the chair makes was written down
+correctly instead of being avoided — *not yet noticed you*, which is exactly what `idle` has
+always meant.
+
+**And a seated body bends its knees now** (`sitLegs` in `enemy-anim.js`), which the 23 never
+did. A leg in this rig is one box from the hip to the floor, so sitting stuck both of them
+out in front at 70° like a deckchair — invisible on a handful of bodies at the back of an
+office, and the first thing you see in a room where four people are at their desks. The fix
+is deliberately NOT a joint in the skeleton: splitting the leg means a seventh hit box, a
+sixth ragdoll bone, a new constraint and a walk cycle driving two segments, on all seven
+rigs. Instead the leg box is squashed to its top half for a thigh and a pair of **spare
+shins** — hidden for the whole life of a body that never sits, children of the group rather
+than of the leg — is shown below the knee. Three numbers, all derived: the thigh's own half
+length, where to hinge it so its top still lands on the hip `hinge` expects, and the angle
+that puts the **foot on the floor**, which is the one solution to `LEG_HALF -
+LEG_HALF·cos(a) = DESK_DROP`. It comes out at 1.24 rad against the 1.22 the old straight-leg
+pose was eyeballed at, which is a good sign about both. Measured: foot at 0.0000 m, knee at
+0.4300 m against a real office chair's ~0.45, hip joint exactly on 0.86.
+
+Being children of the **group** is the load-bearing part — a child of a mesh inherits its
+scale, so a shin parented to a leg squashed to half height is squashed with it, which is the
+deckchair again with an extra box in it. The costs of that choice are two, both paid
+explicitly: a raycast still meets the same thigh box it always did (so a seated body's shins
+do not stop rounds, which is honest enough for a leg under a desk), and `_die` has to hide
+them, because a ragdoll bone lists `legL` alone and would otherwise leave two shins standing
+where the chair was while the rest of the body falls out of it.
 
 What did NOT change is any of the machinery below. The furnisher still places every chair
 and still faces it at its desk, the pose still hinges a real joint, and everybody who does
@@ -1874,6 +1921,30 @@ Measured: a shot chair, a chair shoved 2.65 m, a shot table and the seated set p
 up with their joints restored to the rig's own, an untouched chair sits 0.009 m from its body
 and is still at 0.009 m ten seconds later against a 0.5 m tolerance, and four floors produced
 zero spontaneous stand-ups.
+
+**And a JOB ends when the machine it is being done at does** (`machineAhead` in `enemies.js`,
+`_gone` in `chores.js`). This is the same rule one room over from `_seatGone`, and it was a
+real bug rather than an omission: a copier can be shot apart, blown across a room by an
+extinguisher or caught in the generator's blackout while somebody is standing at it pressing
+it, and none of that used to reach the body. What you got was a man typing at empty carpet
+with his arms held at a keyboard that is now debris — and, worse, a station the pool went on
+handing out, so the next body walked across the floor to work at nothing too.
+
+The probe is `_surfaceAhead`'s with three differences, and each one is the difference between
+a chair and a machine. **The band is taller**, because a copier tops out at 1.13, a bench at
+0.9, a vending machine at 1.9 and a rack at 2.05, so a table's 1.4 m ceiling would silently
+miss half the catalogue — and the top of that band is what keeps the WALL out, since a
+machine is backed against one and a wall tops out far above anything that can be stood at.
+**Several depths are probed** outward from the body, because a station stands off a
+wall-backed machine by `WORK_REACH` and stands along a desk by `DESK_ASIDE` and no single
+number lands inside both. And **it looks in both lists**, because a machine can be fitted
+(the copier, the rack) or loose (a bench somebody shoved) where a chair is always loose and a
+table always fitted; both retire the same way, which is the whole reason one test serves both.
+
+`null` is an ordinary answer and means DO NOT CHECK, exactly as it does for a seat: a mop
+station is a patch of corridor and a wall panel has no collider at all by design. A probe
+that merely failed to attribute a prop must never read as the prop having gone, or every job
+on the floor ends on the frame it starts.
 
 **`stand` is exported for it**, because `animate` could no longer be the only thing that
 decides a body is out of a chair — its own rule is that `idle` and `alert` HOLD the pose, and
@@ -2063,12 +2134,14 @@ corridor.
 
 | job | where | what it looks like |
 |-----|-------|--------------------|
-| `computer` | at the end of a desk | typing, standing |
+| `deskWork` | in a desk's own chair | **sitting**, knees bent, typing |
+| `computer` | at the end of a desk | typing, standing — and what a machine does at a desk |
 | `printer` | the copier | pressing it, then taking the paper out |
 | `vending` | the machine in the corridor | the keypad, then bending to the flap |
 | `server` | the front of a rack | hands up among the units |
 | `bench` | the IT bay | building something, in the odd shower of sparks |
 | `panel` | a hole in the wall | both arms into the wiring, in sparks |
+| `file` | a storage rack | putting something away — a routine's last leg only |
 | `mop` | a patch of corridor | the janitor and the night cleaner, washing the floor |
 | `patrol` | a corridor post | security, standing and watching |
 
@@ -2132,11 +2205,14 @@ and there is a man at the printer with his back to you, and he turns round and s
 Three things make that safe to promise, and all three are the tells this game already
 keeps:
 
-- **Nobody sits down.** A chair means harmless and it is the one thing the game states
-  before anything is at stake. Every pose here is standing, which is a body that has made
-  no promise at all — and it is why "work on a computer" is somebody stood at the END of a
-  desk rather than somebody in its chair (`DESK_ASIDE` in `gen/rooms.js`, offered both
-  sides and filtered down to whichever the room has room for).
+- **They DO sit down, and that retired the chair tell** — see "A chair means hasn't noticed
+  you yet" above for why the trade was taken and what the chair promises now. `deskWork` is
+  the seated job and it is the commonest thing on the floor; `computer` is the standing
+  version, kept because somebody leaning over your machine is a real thing and because it
+  is what a **machine** does at a desk (`human` on the kind; a chassis has drive wheels
+  where a pair of hips would be). The standing pose is offset along the desk from its own
+  chair by `DESK_ASIDE` in `gen/rooms.js`, offered both sides and filtered down to whichever
+  the room has room for.
 - **The visor is untouched.** A break recolours the eyes because a break really does stop
   somebody fighting you. This does not, so it must not.
 - **And they look up** (`_choreWork` in `enemies.js`). Sight, hearing, or you simply
@@ -2238,6 +2314,31 @@ floors 1, 4 and 8 — so the office runs out of people before it runs out of mac
 
 Three things make that affordable, and the first two are the ones worth copying:
 
+- **YOU GET THE DRINK YOU PAID FOR.** The vending job was a man queueing at the machine,
+  pressing it, bending to the flap and standing up with nothing — the one job on the floor
+  that is supposed to give you something was the one job that visibly did not. `gives` on a
+  beat is the only thing on the chore table that outlives the job: everything else here is a
+  pose and a clock, and a can is a thing in somebody's hand for the next half minute, so
+  `giveCan` in `enemies.js` owns the clock. It arrives at the END of the second beat, because
+  that beat *is* bending to the flap.
+
+  **It is parented to the ARM, not to the body, and that is why it needs no pose.** A tray
+  and a crate are carried in both hands and have to fight the walk cycle for the arms; a can
+  hangs at somebody's side in one hand, which is exactly what an arm already does — so it is
+  a child of the arm mesh and inherits its swing, its hinge and the body's own scale for
+  free, and nothing in `enemy-anim.js` learns it exists. The offset comes off the rig's own
+  `joints.armHalf`, which is the `gunRest` lesson again: measured at 3 cm below the hand on a
+  person, a scaled Manager and a Porter Unit alike. Which hand and which of six flavours are
+  **hashed** off the machine rather than rolled, for the eating hand's reason — stable for
+  the run and identical in both browsers, so the wire carries one bit instead of a colour and
+  a side (`SNAP_CAN`). Released in `_die` and not in `_damage`: somebody merely being shot at
+  runs away with their drink, which is the truth about people.
+
+  The routine's bundle of paper (`SNAP_PAPERS`) rides the same primitive, with one
+  difference — it has no clock, because the errand that produced it is what takes it back. A
+  bundle left on a body after the job ended is somebody walking the floor holding a report
+  they have already filed.
+
 - **A STAY, not a job.** Somebody has several goes at one machine before they leave it
   (`stay` per kind; `vending` is 1, because you get your can and you go). This is
   arithmetic rather than flavour: keeping N people at machines needs N / *visit length*
@@ -2274,6 +2375,51 @@ precisely so that it reads as staff from the end of a corridor and is not. Measu
 Automated floor 10: 154 machines, **0 with a job, 0 on a break**, holding `idle` and their
 `wander` loops; of the 34 actual staff, 27 are at machines and every one of the other seven
 is deliberately excluded (5 behind a lock, the toilet guy, one on a break).
+
+#### Errands that are more than one machine (`ROUTINES` in `chores.js`)
+A chore is a body, a machine and a few seconds, and that is most of an office rather than
+all of it: what an office actually *does* is move a piece of work across the building, with
+the machines as the stops along the way. So a **routine** is a list of legs walked in order
+by one body, and each leg is an ordinary job that happens to have somewhere to go afterwards
+— same `routeTo`/`advanceTo`/`standAt` walking, same poses, same endings.
+
+There is one, and it is the one everybody has watched happen: **sit at a desk and write it →
+print it → take it out of the tray → square it up and put a band round it → carry it across
+the floor → file it on a rack.** Which is also why it reads without a word of explanation:
+every beat is something the player has done themselves, so a man at a storage rack holding a
+bundle of banded paper is legible on sight. Driven end to end at a fixed 1/30 with eight
+bodies competing for seven machines: 10.4 s sits down, 58.6 s stands up, 62.6 s at the
+copier, 71.3 s taking the paper out, 73.5 s packaging it, 77.6 s carrying it, 81.6 s at the
+rack, 87.2 s filed.
+
+Four things in it are decisions rather than plumbing:
+
+- **Every stop is proved before anything is committed**, which is the lesson `jobs.js` paid
+  for rather than a precaution. Casting against the first leg alone picks whoever can reach
+  a desk — very nearly anybody — and then discovers at the printer that the body it chose is
+  shut in an office with no route out. The parcel run did exactly that and died 4.7 simulated
+  seconds in, every time, *silently*, because a run that cannot be finished looks identical
+  to one that was never cast. So a machine is reserved for every leg, the nearest body that
+  can reach the first is cast, and then each **hop** is proved — `_hop`, which is `_cast`'s
+  own two-part question in the same order: flood to the destination, then check the origin is
+  on the field.
+- **`held` is not the same list as `legs`, and that difference was a real bug.** A routine
+  reserves all of its stations when it is cast and hands each one back as it leaves it, so by
+  the time it reaches the filing rack the desk it started at may belong to somebody else.
+  Releasing `legs` on the way out then freed a machine another body was standing at, and the
+  next cast sent a second person to it. Caught by asserting, every frame for 30,000 frames,
+  that every working body stands at a machine marked busy and no machine is claimed twice —
+  it showed up as **5 stations busy against 7 bodies working**, which is arithmetic that
+  cannot be true.
+- **A routine is a minority of what the floor does**, deliberately: three floods to cast
+  against a job's one, and three machines held while it runs. It is weighted against the
+  single jobs rather than tried first (so the mix is one number instead of a priority) and
+  capped at `MAX_ROUTINES`.
+- **A `then` may be a list.** The printer already had one second beat for taking the paper
+  out, and packaging is a third thing — so the second beat became beats, which is also what
+  lets a beat say what it hands over (`gives`) at the moment it ends rather than at its
+  start. The can appearing before the hand has got down to the flap is the machine
+  dispensing into thin air.
 
 #### The poses (`CHORE_POSE` in `enemy-anim.js`)
 Six jobs and one function, the way `TYPES` is one rig and a table of numbers. Every height
@@ -3155,10 +3301,45 @@ Host-only in a co-op session, like every other break: the message goes out throu
 `onBreakProp`. A joiner's `anyNear` finds nobody anyway, because the grid it reads is only
 rebuilt by the side running the AI.
 
-### Water on the floor (`spills.js`)
+### Liquid on the floor (`spills.js`)
 Shooting a water cooler used to leave plastic and a dry carpet, which is the same class of lie
 as a round through somebody's forearm that does not scratch them: the player did a thing, it
 had no consequence, and the tell is that they can see where the water should be.
+
+**There are two liquids now, and the second is what turned this from one prop's effect into a
+system.** A vending machine full of cans that is blown apart and leaves the carpet dry tells
+the identical lie, so `LIQUIDS` is the small table of what a spill looks like and how much of
+it there is — `wet` (the darkening layer), `sheen` (the additive one over it), `stream`, and
+`scale`. A drink is darker, warmer and there is much less of it: cola on grey carpet is a
+brown stain rather than a blue-grey one, and a machine holds maybe twenty cans against a
+cooler's whole 19-litre bottle, so a burst that matched the cooler's would read as the machine
+having been full of water. Measured: water bursts to 1.12 m of radius in `#23303a` under a
+`#6f9fb8` sheen, a drink to 0.616 m in `#2b1c10` under `#b46a24`. The **sheen** is where a
+liquid's colour actually reads, because the bottom layer is nearly black whatever it is tinted.
+
+One material trio per liquid rather than per puddle, built on first use — three materials
+times two liquids is the whole cost of the second one, where per-puddle would be sixty. The
+pool's meshes re-point their materials in `start`, which is the one thing a shared pool can
+get wrong: verified by wrapping the twenty-puddle ring and checking the recycled slot comes
+back as a drink rather than as the water that last used it.
+
+**A vending machine spills on the STATIC path, and burst-only.** It is model-backed, so it
+has no rigid body and `damageProp` never sees it — there is no such thing as a round that
+opens one, which is the honest reading anyway: the drinks are in sealed cans behind a steel
+door, so one round through the front does not make it leak and the machine coming apart lets
+go of all of them at once. `_spillStatic` in `destruction.js` is that path, and it is a
+separate method rather than a branch because the two have nothing in common but the call at
+the end — a loose prop is a group with a position and a size, a fitted one is a list of
+world-space boxes and no transform at all, so the centre and the floor are *measured* off the
+boxes. Which also makes it right for a machine standing in an attic, the same property
+`_spill` gets from reading the group's own underside. `spills` had to be threaded through
+`beginStatic`/`endStatic` to get there; 84 machines over six floors carry it, and 149 coolers
+still carry water.
+
+Worth knowing: the stream's opacity is written on a **shared** material, so two streams of
+the same liquid running at once fight over it and the last one updated wins. Pre-existing,
+and left alone — a stream lasts 2.2 s, the fade is the only thing at stake, and the
+alternative is a material per puddle.
 
 `spills: 'water'` on the prop is the whole of the wiring; `damageProp` reads it. **Two events,
 one system.** A round into the bottle OPENS it — a glug, a stream down the outside of the

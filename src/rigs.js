@@ -1138,6 +1138,53 @@ export function buildCan(tint = 0) {
   return group;
 }
 
+let paperParts = null;
+
+/**
+ * The sheaf of paper a routine carries from the printer to the filing rack.
+ *
+ * Built the way `buildTray`, `buildCrate` and `buildCan` are and for their two
+ * reasons: shared module-level geometry, so the fiftieth bundle of a floor costs
+ * a Group and three Meshes; and it lives here because this is the file that knows
+ * what a body is made of.
+ *
+ * Four sheets rather than one slab, splayed a couple of degrees apart. That is
+ * the whole of what makes it read as PAPER at the range you ever see one — a
+ * single white box in somebody's hand is a box, and the edges catching the light
+ * at slightly different angles are what say the thing is made of sheets. The
+ * wrap is what "packaged" means: a band across the middle, which is also the
+ * only part of it that is not white and so the only part that reads against a
+ * white shirt.
+ */
+export function buildPapers() {
+  paperParts ??= {
+    geo: {
+      // A4 is 0.21 x 0.297. Held in one hand, so it is carried on its long edge.
+      sheet: new THREE.BoxGeometry(0.21, 0.004, 0.297),
+      band: new THREE.BoxGeometry(0.045, 0.019, 0.30),
+    },
+    mat: {
+      paper: new THREE.MeshStandardMaterial({ color: 0xf2f3f0, roughness: 0.92 }),
+      band: new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 0.8 }),
+    },
+  };
+
+  const { geo, mat } = paperParts;
+  const group = new THREE.Group();
+  for (let i = 0; i < 4; i++) {
+    const sheet = new THREE.Mesh(geo.sheet, mat.paper);
+    sheet.position.y = i * 0.0045;
+    sheet.rotation.y = (i - 1.5) * 0.03;
+    sheet.castShadow = true;
+    group.add(sheet);
+  }
+  const band = new THREE.Mesh(geo.band, mat.band);
+  band.position.y = 0.008;
+  band.castShadow = true;
+  group.add(band);
+  return group;
+}
+
 let crateParts = null;
 
 /**

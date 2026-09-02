@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BODY_RADIUS as RADIUS } from './nav.js';
 import { CORRIDOR, FACING, STAFF_ONLY, FIRST_CONTACT_GAP, worldX, worldZ } from './gen/layout.js';
-import { buildRig, buildTray, buildCrate, buildCan } from './rigs.js';
+import { buildRig, buildTray, buildCrate, buildCan, buildPapers } from './rigs.js';
 import { TYPES, BYSTANDERS, isMachine, pickType, pickTheme } from './enemy-types.js';
 import { DEATH_TIME, HIT_FLASH, SWING_TIME, animate, die, stand } from './enemy-anim.js';
 import { angleDelta, angleLerp, smoothTo } from './util.js';
@@ -59,6 +59,12 @@ const SNAP_BOX = 64;
 // chores.js), so without this bit one browser has a man walking a corridor with
 // a drink and the other has him walking it empty-handed.
 const SNAP_CAN = 128;
+// ...and the sheaf of paper a routine carries from the printer to the filing
+// rack, for the can's reason exactly. It is the one thing on a body that says
+// the errand is halfway through rather than starting: a man walking a corridor
+// with a bundle of paper has been to the printer, and a joiner that cannot see
+// it is watching a different office.
+const SNAP_PAPERS = 256;
 
 // How far from either player a body has to be before it is worth sending. Well
 // beyond SIGHT, because the joiner can watch somebody walk up a corridor long
@@ -1748,6 +1754,9 @@ export class Enemies {
       // keep it. See `giveCan` — it outlives the chore that handed it over, so
       // the clock is on the BODY rather than on the job.
       can: null, canArm: null, canTimer: 0,
+      // ...and the paperwork a routine is carrying, which has no clock: the
+      // errand that made it is what takes it back. See `givePapers`.
+      papers: null, papersArm: null,
       // One break a floor, and this is what says so. Without it a body that has
       // just walked out of the canteen is `idle` again and eligible again, and
       // the same man queues twice while nobody else goes at all.
@@ -1900,6 +1909,7 @@ export class Enemies {
     // done in `_damage`: somebody who is merely being shot at runs away with
     // their drink, which is the truth about people.
     if (e.can) this.takeCan(e);
+    if (e.papers) this.takePapers(e);
     // The pose as much as the station: `choreLost` goes through `setWorking`,
     // which is the only thing that puts a hinged limb back, and a corpse that
     // ragdolls out of a working pose does it with its arms already above its
@@ -2955,17 +2965,67 @@ export class Enemies {
    */
   giveCan(e, key = 0) {
     if (e.can) return;
+    const held = this._inHand(e, buildCan(Math.abs(Math.round(key)) % 6 || 0), key);
+    if (!held) return;
+    e.can = held.mesh;
+    e.canArm = held.arm;
+    e.canTimer = CAN_TIME[0] + Math.random() * (CAN_TIME[1] - CAN_TIME[0]);
+  }
+
+  /**
+   * Puts something in one of a body's hands, and hands back which one.
+   *
+   * PARENTED TO THE ARM, not to the body, and that is the whole reason neither
+   * of the two things that use this needs a pose. A tray and a crate are carried
+   * in both hands and so have to fight the walk cycle for the arms (see
+   * `animate`); a can and a bundle of paper hang at somebody's side in one hand,
+   * which is exactly what an arm already does. So it is a child of the arm mesh
+   * and inherits its swing, its hinge and the body's own scale for free, and
+   * nothing in enemy-anim.js has to learn either exists.
+   *
+   * The hand is HASHED off the key rather than rolled, for the reason the eating
+   * hand is: it has to be stable for the run and identical in both browsers of a
+   * co-op session, and there is a wire bit for WHETHER the thing is held and
+   * nothing for which side it is on.
+   *
+   * `armHalf` comes off the rig's own joints, because a hand is not in the same
+   * place on a Porter Unit as on a person and this file has paid for that
+   * assumption three times already (see `gunRest`, `boxAt`, and `joints` in
+   * rigs.js).
+   */
+  _inHand(e, mesh, key = 0, drop = 0.03) {
     const hash = Math.abs(Math.round(key)) || 1;
     const arm = (hash & 1) ? e.armR : e.armL;
-    if (!arm) return;
-    e.can = buildCan(hash % 6);
-    // Down at the wrist end of the arm, and a shade in front of it so the can is
-    // not inside the hand it is held in.
+    if (!arm) return null;
     const half = e.joints?.armHalf ?? 0.27;
-    e.can.position.set(0, -half - 0.03, -0.035);
-    arm.add(e.can);
-    e.canArm = arm;
-    e.canTimer = CAN_TIME[0] + Math.random() * (CAN_TIME[1] - CAN_TIME[0]);
+    mesh.position.set(0, -half - drop, -0.035);
+    arm.add(mesh);
+    return { mesh, arm };
+  }
+
+  /**
+   * The paperwork, out of the printer and into a hand.
+   *
+   * Unlike the can this has no clock of its own: it is carried for exactly as
+   * long as the errand that produced it, and `chores.js` takes it back at the
+   * filing rack. A bundle left on a body after the job ended would be somebody
+   * walking the rest of the floor holding a report they have already filed.
+   */
+  givePapers(e, key = 0) {
+    if (e.papers) return;
+    // Held a little higher than a can and flat rather than upright: this is a
+    // stack of paper tucked against the hip, not something with a lid on it.
+    const held = this._inHand(e, buildPapers(), key, -0.02);
+    if (!held) return;
+    e.papers = held.mesh;
+    e.papersArm = held.arm;
+  }
+
+  takePapers(e) {
+    if (!e.papers) return;
+    (e.papersArm ?? e.group)?.remove(e.papers);
+    e.papers = null;
+    e.papersArm = null;
   }
 
   /**
@@ -3000,6 +3060,23 @@ export class Enemies {
 
   // A chair back into the pool it came out of. The room is the canteen's,
   // because that is the only room this pool ever holds.
+  /**
+   * Sits a body down at a chair it has walked to, and stands it back up.
+   *
+   * Thin wrappers, and they exist so `chores.js` never touches `e.seat` itself.
+   * That is the bargain `_standUp` already documents: clearing the seat and
+   * restoring the pose are ONE operation, and a caller that does the first
+   * without the second leaves a body walking the floor with its hips in a chair
+   * that is not there. Same rule as `setChorePose`, and the same bug.
+   */
+  sitAt(e, station) {
+    this._seat(e, station, 'desk');
+  }
+
+  standUp(e) {
+    this._standUp(e);
+  }
+
   _freeDesk(station) {
     const room = this.layout?.spawnRoom;
     const free = room && this.tables?.get(room);
@@ -3440,7 +3517,8 @@ export class Enemies {
         + (e.break ? SNAP_BREAK : 0)
         + (e.tray ? SNAP_TRAY : 0)
         + (e.carry ? SNAP_BOX : 0)
-        + (e.can ? SNAP_CAN : 0);
+        + (e.can ? SNAP_CAN : 0)
+        + (e.papers ? SNAP_PAPERS : 0);
     }
 
     this._snapCursor = i;
@@ -3498,6 +3576,9 @@ export class Enemies {
       // there, so the hash is the index, which both ends have.
       if (!!(packed & SNAP_CAN) !== !!e.can) {
         if (packed & SNAP_CAN) this.giveCan(e, e.index + 1); else this.takeCan(e);
+      }
+      if (!!(packed & SNAP_PAPERS) !== !!e.papers) {
+        if (packed & SNAP_PAPERS) this.givePapers(e, e.index + 1); else this.takePapers(e);
       }
       e.state = SNAP_STATES[packed & 7] ?? 'idle';
     }
