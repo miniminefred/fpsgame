@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { hexCss } from './util.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getTech } from './tech-textures.js';
 
 // What the things walking around a floor are made of.
@@ -1084,58 +1085,172 @@ export function buildTray() {
 }
 
 let canParts = null;
+const canLabels = new Map();
 
 // What comes out of the vending machine. Six of them, because a floor's staff
 // use the same machine all shift and a building where everybody drinks the same
 // thing is a building with one can in it — and because the flavour is the only
-// thing the player can read at the range they see one: a can is 6 cm across, so
-// it is a coloured dot in somebody's hand and the colour is the whole of it.
+// thing the player can read at the range they see one: the colour is the whole
+// of it until somebody is close enough to read the label.
 const CAN_TINTS = [0xc0392b, 0x2c6e49, 0x2b6cb0, 0xd68910, 0x6c3483, 0xb9bec4];
+
+// 9.4 cm across and 19.8 cm tall, which is not a can, it is a can and a half.
+//
+// A real 330 ml can is 6.6 x 11.5 and that is exactly what this was, on the
+// argument that it is never seen from closer than arm's length and never bigger
+// than a thumbnail on screen. Both halves of that were true and the conclusion
+// was wrong: a prop somebody carries for half a minute across a floor you are
+// walking down is a prop the player is LOOKING at, and at real scale it read as
+// a coloured peg by somebody's hip. Overscaled the way a game prop is
+// overscaled — held up where a hand can be seen holding it, and legible from
+// the other side of the room.
+const CAN_R = 0.047;
+const CAN_H = 0.198;
+
+/**
+ * The label, wrapped round the middle of the can.
+ *
+ * Per TINT rather than shared, which is what makes each flavour its own brand
+ * rather than one label in six colours: the wedge and the two rules take the
+ * drink's own colour, and only the slate ground and the wordmark are common.
+ * Six canvases at 256 x 96 is the whole cost, and they are built on first use,
+ * so a floor pays for the flavours somebody actually bought.
+ *
+ * The word is on there TWICE, half a turn apart, because a cylinder shows you
+ * rather less than half of itself and a label you have to walk round the body
+ * to read is a label nobody reads.
+ *
+ * A cylinder's u runs round the circumference and its v up the side, and both
+ * run the way you would draw them: for somebody standing outside the can, u
+ * increases to their right and the canvas's top edge is the top of the label.
+ * So the artwork goes on the canvas the right way round and comes out the right
+ * way round — the same assumption `capLabel` makes about the badge on a cap.
+ */
+function canLabel(tint) {
+  let tex = canLabels.get(tint);
+  if (tex) return tex;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 96;
+  const g = canvas.getContext('2d');
+  const ink = hexCss(CAN_TINTS[tint % CAN_TINTS.length]);
+
+  // Slate, which is what the rest of this building is painted. A pale can in a
+  // grey office is a drink somebody brought in; a dark one with the flavour
+  // striped across it is a drink the building sells you.
+  g.fillStyle = '#23272b';
+  g.fillRect(0, 0, 256, 96);
+  g.fillStyle = ink;
+  g.fillRect(0, 0, 256, 5);
+  g.fillRect(0, 91, 256, 5);
+
+  for (const ox of [0, 128]) {
+    g.save();
+    g.translate(ox, 0);
+    // A wedge rather than a swirl. This building is drawn in straight lines and
+    // right angles, and the machine in the corridor was stocked by whoever
+    // fitted the carpet.
+    g.fillStyle = ink;
+    g.beginPath();
+    g.moveTo(4, 72);
+    g.lineTo(124, 50);
+    g.lineTo(124, 66);
+    g.lineTo(4, 88);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#f4f2ec';
+    g.font = 'bold 38px system-ui, sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText('BUZZ', 64, 34, 112);
+    g.restore();
+  }
+
+  tex = new THREE.CanvasTexture(canvas);
+  tex.anisotropy = 4;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  canLabels.set(tint, tex);
+  return tex;
+}
 
 /**
  * A drink somebody bought, in their hand.
  *
- * Built exactly the way `buildTray` and `buildCrate` are and for their two
- * reasons: geometry and materials are module-level and shared, so the fortieth
- * can of a floor costs a Group and two Meshes rather than a mesh build; and it
- * is here rather than in enemies.js because this file is the one that knows what
- * a body is made of.
+ * Built the way `buildTray` and `buildCrate` are and for their two reasons:
+ * geometry and materials are module-level and shared, so the fortieth can of a
+ * floor costs one Mesh rather than a mesh build; and it lives here rather than
+ * in enemies.js because this file is the one that knows what a body is made of.
  *
- * `tint` indexes CAN_TINTS rather than being a colour, so the material is shared
- * between everybody drinking the same thing and the choice can be hashed rather
- * than rolled — which is what makes it identical in both browsers of a co-op
- * session without sending it. Same argument as the eating hand.
+ * ONE mesh, not one per piece, and that is what pays for the shape. A can is
+ * six parts now — a base that tucks in, a barrel, a shoulder, a rim, a lid and
+ * the tab on it — plus the label sleeve round its middle, and seven meshes
+ * apiece with forty cans on a floor is not a thing to do to the renderer. They
+ * are merged into one geometry with a material group each, so a can is one Mesh
+ * with three materials against the two meshes it cost as a coloured tube. The
+ * silhouette is what the extra parts buy: a cylinder with a flat top is a tin,
+ * and the tuck at both ends with the rim standing proud of the shoulder is the
+ * whole of what says "drinks can" before the label is close enough to read.
+ *
+ * `tint` indexes CAN_TINTS rather than being a colour, so the materials are
+ * shared between everybody drinking the same thing and the choice can be hashed
+ * rather than rolled — which is what makes it identical in both browsers of a
+ * co-op session without sending it. Same argument as the eating hand.
  */
 export function buildCan(tint = 0) {
-  canParts ??= {
-    geo: {
-      // 6.6 cm across and 12 cm tall, which is a real 330 ml can. Eight sides:
-      // it is never seen from closer than arm's length and never bigger than a
-      // thumbnail on screen.
-      body: new THREE.CylinderGeometry(0.033, 0.033, 0.115, 8),
-      // The lid, a shade narrower and a shade brighter, and it is what stops the
-      // can reading as a coloured peg — the one highlight on it catches the
-      // ceiling panels as the arm swings.
-      lid: new THREE.CylinderGeometry(0.030, 0.033, 0.012, 8),
-    },
-    mat: {
-      body: CAN_TINTS.map((color) => new THREE.MeshStandardMaterial({
+  canParts ??= (() => {
+    const seg = 14;
+    // Authored from the base up and shifted onto its own middle as it goes, so
+    // the numbers below read as the can's own elevation while the finished thing
+    // still hangs off its centre the way everything else in this file does.
+    const at = (geo, y) => geo.translate(0, y - CAN_H / 2, 0);
+    const shell = mergeGeometries([
+      at(new THREE.CylinderGeometry(CAN_R, CAN_R * 0.86, 0.020, seg), 0.010),
+      at(new THREE.CylinderGeometry(CAN_R, CAN_R, 0.130, seg), 0.085),
+      at(new THREE.CylinderGeometry(CAN_R * 0.76, CAN_R, 0.026, seg), 0.163),
+    ], false);
+    // Open-ended and a hair proud of the barrel: a sleeve round the middle with
+    // the flavour's own paint showing above and below it. Those two bands of
+    // bare colour are what still read from the end of a corridor once the
+    // artwork has gone to mush.
+    const label = at(
+      new THREE.CylinderGeometry(CAN_R * 1.012, CAN_R * 1.012, 0.088, seg, 1, true), 0.083);
+    const tab = new THREE.BoxGeometry(0.026, 0.004, 0.013);
+    tab.translate(0.008, 0.196 - CAN_H / 2, 0);
+    const metal = mergeGeometries([
+      at(new THREE.CylinderGeometry(CAN_R * 0.78, CAN_R * 0.76, 0.010, seg), 0.181),
+      at(new THREE.CylinderGeometry(CAN_R * 0.72, CAN_R * 0.78, 0.008, seg), 0.190),
+      tab,
+    ], false);
+
+    return {
+      // Group 0 the shell, 1 the label, 2 the metal, which is the order the
+      // material array is built in below. `mergeGeometries(…, true)` is what
+      // makes one group per input rather than one run of triangles.
+      geo: mergeGeometries([shell, label, metal], true),
+      shell: CAN_TINTS.map((color) => new THREE.MeshStandardMaterial({
         color, roughness: 0.34, metalness: 0.5,
       })),
-      lid: new THREE.MeshStandardMaterial({ color: 0xd8dde1, roughness: 0.3, metalness: 0.75 }),
-    },
-  };
+      label: new Map(),
+      // The rim and the lid, brighter and much shinier than the paint — the one
+      // highlight on the can, and what catches the ceiling panels as the arm
+      // swings.
+      metal: new THREE.MeshStandardMaterial({
+        color: 0xd8dde1, roughness: 0.3, metalness: 0.75,
+      }),
+    };
+  })();
 
-  const { geo, mat } = canParts;
-  const group = new THREE.Group();
-  const body = new THREE.Mesh(geo.body, mat.body[tint % mat.body.length]);
-  body.castShadow = true;
-  group.add(body);
-  const lid = new THREE.Mesh(geo.lid, mat.lid);
-  lid.position.y = 0.0635;
-  lid.castShadow = true;
-  group.add(lid);
-  return group;
+  const parts = canParts;
+  const i = tint % CAN_TINTS.length;
+  let label = parts.label.get(i);
+  if (!label) {
+    label = new THREE.MeshStandardMaterial({ map: canLabel(i), roughness: 0.5, metalness: 0.1 });
+    parts.label.set(i, label);
+  }
+  const can = new THREE.Mesh(parts.geo, [parts.shell[i], label, parts.metal]);
+  can.castShadow = true;
+  return can;
 }
 
 let paperParts = null;

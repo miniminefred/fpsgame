@@ -2965,7 +2965,20 @@ export class Enemies {
    */
   giveCan(e, key = 0) {
     if (e.can) return;
-    const held = this._inHand(e, buildCan(Math.abs(Math.round(key)) % 6 || 0), key);
+    // HELD, rather than hanging off the bottom of the hand. `drop` is negative,
+    // so the can's middle sits 2.6 cm ABOVE the point the hand is at and the
+    // fist closes round its lower third — which is how a can is actually
+    // carried, and the whole difference between somebody holding a drink and
+    // somebody with a drink stuck to their wrist. The 3 cm the default gives a
+    // bundle of paper is right for paper: that is tucked under an arm, and this
+    // stands up out of it.
+    //
+    // ...and further FORWARD, because it is now 9.4 cm across against an arm
+    // 14 cm deep. At the paper's 3.5 cm the can is more inside the forearm than
+    // outside it; at 7.2 the back of it is still buried in the hand, which is
+    // what makes it read as gripped rather than as balanced on top of a fist,
+    // and the rest of it stands proud where it can be seen.
+    const held = this._inHand(e, buildCan(Math.abs(Math.round(key)) % 6 || 0), key, -0.026, 0.072);
     if (!held) return;
     e.can = held.mesh;
     e.canArm = held.arm;
@@ -2993,12 +3006,12 @@ export class Enemies {
    * assumption three times already (see `gunRest`, `boxAt`, and `joints` in
    * rigs.js).
    */
-  _inHand(e, mesh, key = 0, drop = 0.03) {
+  _inHand(e, mesh, key = 0, drop = 0.03, forward = 0.035) {
     const hash = Math.abs(Math.round(key)) || 1;
     const arm = (hash & 1) ? e.armR : e.armL;
     if (!arm) return null;
     const half = e.joints?.armHalf ?? 0.27;
-    mesh.position.set(0, -half - drop, -0.035);
+    mesh.position.set(0, -half - drop, -forward);
     arm.add(mesh);
     return { mesh, arm };
   }
