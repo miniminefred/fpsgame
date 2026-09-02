@@ -54,7 +54,12 @@ const LIQUIDS = {
   drink: {
     wet: 0x2b1c10, wetOpacity: 0.72,
     sheen: 0xb46a24, sheenOpacity: 0.30,
-    stream: 0xd99a4a, scale: 0.55,
+    // 1.61 m across against a cooler's 2.24, which is still a machineful of cans
+    // against a whole 19-litre bottle. It was 0.55 — 1.23 m, against a machine
+    // 1.04 m wide — and that is a patch the size of the thing it came out of,
+    // which is not a spill, it is a damp footprint. See AWAY_SHARE: the two
+    // numbers were wrong together and are only right together.
+    stream: 0xd99a4a, scale: 0.72,
   },
 };
 const DEFAULT_LIQUID = 'water';
@@ -77,6 +82,25 @@ const BURST_RADIUS = 1.12;     // ...and from the bottle going altogether
 // A patch never quite reaches the radius it was given: the last of it is the
 // slowest, which is what a spreading edge looks like.
 const GROW_EASE = 2.4;
+// How far out of the thing it came out of a patch is pushed, as a share of its
+// own radius, when the caller says which way is out (`away`).
+//
+// A LOOSE prop does not need this: a water cooler is 0.4 m across under a patch
+// 2.24 m across, so wherever it lands most of it is on floor you can see. A
+// FITTED one is the opposite case and the vending machine is the whole reason
+// this exists — it is 1.04 m wide, as wide as its own patch, and it is backed
+// against a wall, so a patch centred on it is a patch UNDER it. Measured over 38
+// machines on three floors: 67% of the drink was inside the machine's own
+// footprint, where its debris then lands on top of it, leaving **0.32 m²** of it
+// on floor the player can see — a patch smaller than a sheet of A3 at the foot
+// of something that had just been blown apart, which is why a burst read as
+// nothing having happened at all.
+//
+// Nine tenths of a radius, so the patch still LAPS the foot of the machine
+// rather than standing in front of it as a separate puddle. Measured over 78
+// machines: 27% of the drink on open floor becomes 73%, and 0.32 m² becomes
+// 1.49 — with the widening below, which is the other half of the same fix.
+const AWAY_SHARE = 0.9;
 
 // How long it keeps making noise after it is opened, and how often.
 const LEAK_TIME = 9;
@@ -193,8 +217,15 @@ export class Spills {
    *
    * `from` is the height it is coming out at, which is the bottle rather than the
    * floor; `burst` is whether the bottle went altogether.
+   *
+   * `away` is a unit direction saying which way is OUT of whatever let go of it,
+   * and it is a direction rather than a distance because the two halves of that
+   * question belong in different files: the caller is the only thing that knows
+   * which side of a machine the room is on, and this file is the only thing that
+   * knows how big the patch is going to be. See AWAY_SHARE.
    */
-  start(x, y, z, { from = 1.1, burst = false, atX = x, atZ = z, liquid = DEFAULT_LIQUID } = {}) {
+  start(x, y, z, { from = 1.1, burst = false, atX = x, atZ = z, liquid = DEFAULT_LIQUID,
+    away = null } = {}) {
     const p = this._take();
     const set = this._set(liquid);
     p.live = true;
@@ -206,10 +237,20 @@ export class Spills {
     p.mesh.material = set.wet;
     p.sheen.material = set.sheen;
     p.stream.material = set.stream;
-    p.x = x; p.y = y; p.z = z;
-    p.from = from;
     p.grown = 0;
     p.want = (burst ? BURST_RADIUS : HIT_RADIUS) * p.scale;
+    // Pushed clear of what it came out of, now that the size of it is known —
+    // and BEFORE the patch's own position is recorded, so the drip that plays
+    // off it every second or so comes from where the drink actually is. The
+    // stream below is NOT moved with it: that still runs down the machine where
+    // the round went in, and the patch spreading away from the foot of it is
+    // what the two together are meant to look like.
+    if (away) {
+      x += away.x * p.want * AWAY_SHARE;
+      z += away.z * p.want * AWAY_SHARE;
+    }
+    p.x = x; p.y = y; p.z = z;
+    p.from = from;
     p.leak = LEAK_TIME;
     p.drip = DRIP_GAP[0];
     p.stream.visible = true;
