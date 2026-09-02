@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BODY_RADIUS as RADIUS } from './nav.js';
 import { CORRIDOR, FACING, STAFF_ONLY, FIRST_CONTACT_GAP, worldX, worldZ } from './gen/layout.js';
-import { buildRig, buildTray, buildCrate } from './rigs.js';
+import { buildRig, buildTray, buildCrate, buildCan } from './rigs.js';
 import { TYPES, BYSTANDERS, isMachine, pickType, pickTheme } from './enemy-types.js';
 import { DEATH_TIME, HIT_FLASH, SWING_TIME, animate, die, stand } from './enemy-anim.js';
 import { angleDelta, angleLerp, smoothTo } from './util.js';
@@ -41,11 +41,24 @@ const SNAP_STATES = ['idle', 'alert', 'chase', 'fight', 'wander'];
 const SNAP_SEAT = 8;
 const SNAP_BREAK = 16;
 const SNAP_TRAY = 32;
+// How long somebody keeps the drink they just bought, and it is the whole of the
+// can's lifetime — there is no `_lunchEnd` for a can and nothing else would ever
+// take it off them. Long enough to walk it back to wherever they were going,
+// which is the point of having bought it; not so long that a floor left alone
+// for five minutes is a floor where everybody is holding one.
+const CAN_TIME = [26, 52];
+
 // A parcel-run crate, for the tray's reason exactly: a body carrying a box is
 // doing something visible that it is not doing over there. Unlike the break
 // there is no visor in it — everybody on a run is neutral already and wearing
 // its own colour — so this is the box and nothing else. See jobs.js.
 const SNAP_BOX = 64;
+// ...and the can somebody bought out of the vending machine, for the crate's
+// reason: it is a visible thing in a body's hand that a joiner has no way to
+// derive. The chore that hands it out is host-only and crosses nothing (see
+// chores.js), so without this bit one browser has a man walking a corridor with
+// a drink and the other has him walking it empty-handed.
+const SNAP_CAN = 128;
 
 // How far from either player a body has to be before it is worth sending. Well
 // beyond SIGHT, because the joiner can watch somebody walk up a corridor long
@@ -1727,6 +1740,10 @@ export class Enemies {
       // of the time — see the block above _sendToLunch.
       break: null,
       tray: null,
+      // The can somebody bought, the arm it is parented to, and how long they
+      // keep it. See `giveCan` — it outlives the chore that handed it over, so
+      // the clock is on the BODY rather than on the job.
+      can: null, canArm: null, canTimer: 0,
       // One break a floor, and this is what says so. Without it a body that has
       // just walked out of the canteen is `idle` again and eligible again, and
       // the same man queues twice while nobody else goes at all.
@@ -1861,6 +1878,13 @@ export class Enemies {
     // the box: a porter waiting for a handoff from somebody who is dead waits
     // out the whole stage cap.
     if (e.job) this.jobLost?.(e);
+    // ...and the drink, for exactly the tray's reason: it is parented to an ARM,
+    // and an arm is about to become a ragdoll bone. A can riding a corpse across
+    // the carpet is funnier than it is right, and nothing would ever clear it —
+    // `canTimer` is only ticked for a body that is still alive. Deliberately not
+    // done in `_damage`: somebody who is merely being shot at runs away with
+    // their drink, which is the truth about people.
+    if (e.can) this.takeCan(e);
     // The pose as much as the station: `choreLost` goes through `setWorking`,
     // which is the only thing that puts a hinged limb back, and a corpse that
     // ragdolls out of a working pose does it with its arms already above its
@@ -2048,6 +2072,13 @@ export class Enemies {
       // Whatever they were sitting on can be shot apart or shoved out from under
       // them, and until this was here neither stood anybody up. See _seatGone.
       if (e.seat) this._seatGone(e);
+      // ...and the drink they bought, which is finished with eventually. Here
+      // rather than in chores.js because a can outlives the trip to the machine
+      // that produced it: they buy it, and then they walk off with it.
+      if (e.can) {
+        e.canTimer -= dt;
+        if (e.canTimer <= 0) this.takeCan(e);
+      }
 
       // Who this one is dealing with. Everything that follows is measured against
       // them, and a body with nobody left to deal with simply loses contact and
@@ -2886,6 +2917,58 @@ export class Enemies {
     if (!pose && e.alive) stand(e);
   }
 
+  /**
+   * The drink out of the machine, into the hand that pressed the button for it.
+   *
+   * PARENTED TO THE ARM, not to the body, and that is the whole of why there is
+   * no pose to go with it. A tray and a crate are carried in both hands and so
+   * have to fight the walk cycle for the arms (see `animate`); a can hangs at
+   * somebody's side in one hand, which is exactly what an arm already does. So
+   * the can is a child of the arm mesh and inherits its swing, its hinge and the
+   * body's own scale for free, and nothing in enemy-anim.js has to learn it
+   * exists.
+   *
+   * The hand is HASHED off where the machine is rather than rolled, for the
+   * reason the eating hand is: it has to be stable for the run and identical in
+   * both browsers of a co-op session, and the tint has to be too — so both come
+   * off the same integer, and the wire carries one bit rather than a colour and
+   * a side.
+   *
+   * `armHalf` off the rig's own joints, because a hand is not at the same place
+   * on a Porter Unit as on a person and this file has paid for that assumption
+   * three times (see `gunRest`, `boxAt`, and `joints` in rigs.js).
+   */
+  giveCan(e, key = 0) {
+    if (e.can) return;
+    const hash = Math.abs(Math.round(key)) || 1;
+    const arm = (hash & 1) ? e.armR : e.armL;
+    if (!arm) return;
+    e.can = buildCan(hash % 6);
+    // Down at the wrist end of the arm, and a shade in front of it so the can is
+    // not inside the hand it is held in.
+    const half = e.joints?.armHalf ?? 0.27;
+    e.can.position.set(0, -half - 0.03, -0.035);
+    arm.add(e.can);
+    e.canArm = arm;
+    e.canTimer = CAN_TIME[0] + Math.random() * (CAN_TIME[1] - CAN_TIME[0]);
+  }
+
+  /**
+   * Finished with. Geometry and materials are shared and module-level (see
+   * `buildCan`), so dropping the mesh is the whole of it.
+   *
+   * Removed from whatever it was parented to rather than from the group, because
+   * it never was on the group — a can that outlived its arm's reference would be
+   * a drink floating beside a corpse.
+   */
+  takeCan(e) {
+    if (!e.can) return;
+    (e.canArm ?? e.group)?.remove(e.can);
+    e.can = null;
+    e.canArm = null;
+    e.canTimer = 0;
+  }
+
   _giveTray(e) {
     if (e.tray) return;
     e.tray = buildTray();
@@ -3341,7 +3424,8 @@ export class Enemies {
         + (e.seat ? SNAP_SEAT : 0)
         + (e.break ? SNAP_BREAK : 0)
         + (e.tray ? SNAP_TRAY : 0)
-        + (e.carry ? SNAP_BOX : 0);
+        + (e.carry ? SNAP_BOX : 0)
+        + (e.can ? SNAP_CAN : 0);
     }
 
     this._snapCursor = i;
@@ -3390,6 +3474,15 @@ export class Enemies {
       // would end up trying to do more than that.
       if (!!(packed & SNAP_BOX) !== !!e.carry) {
         if (packed & SNAP_BOX) this.giveCrate(e); else this.takeCrate(e);
+      }
+      // The can, and the one place a derived value beats a sent one: which hand
+      // it is in and what flavour it is are both hashed off the body's index
+      // here rather than off the machine, because the joiner has no idea which
+      // machine it came out of — and it does not need to agree with the host on
+      // either. What it must not do is hold the drink in a hand that is not
+      // there, so the hash is the index, which both ends have.
+      if (!!(packed & SNAP_CAN) !== !!e.can) {
+        if (packed & SNAP_CAN) this.giveCan(e, e.index + 1); else this.takeCan(e);
       }
       e.state = SNAP_STATES[packed & 7] ?? 'idle';
     }

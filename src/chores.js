@@ -91,7 +91,18 @@ const CHORES = {
   },
   vending: {
     at: 'vending', pose: 'vending', time: [3.5, 7], weight: 2, stay: [1, 1],
-    then: { pose: 'vendingTake', time: [1.8, 3.2] },
+    // ...and they walk away WITH IT. `gives` is the only thing on this table
+    // that outlives the job: everything else here is a pose and a clock, and a
+    // can is a thing in somebody's hand for the next half minute (see `giveCan`
+    // in enemies.js, which owns the clock for exactly that reason).
+    //
+    // It arrives at the END of the second beat rather than at its start, because
+    // the second beat IS bending to the flap — the can appearing before the hand
+    // has got there is the machine dispensing into thin air. Which was the
+    // whole bug: a man queued at the machine, pressed it, bent down, and stood
+    // up with nothing, so the one job on the floor that is supposed to give you
+    // something was the one job that visibly did not.
+    then: { pose: 'vendingTake', time: [1.8, 3.2], gives: 'can' },
   },
   server: { at: 'server', pose: 'server', time: [12, 26], weight: 3, stay: [2, 5] },
   bench: {
@@ -507,7 +518,18 @@ export class Chores {
         return;
 
       case 'then':
-        if (c.work <= 0) this._done(e, job);
+        if (c.work > 0) return;
+        // Whatever the machine just handed over. Before `_done`, because `_done`
+        // may end the job outright and `lost` puts the body back to its day.
+        if (job.then.gives === 'can') {
+          // Keyed off the machine rather than rolled, so which hand it is in and
+          // what flavour it is are stable for the run and the same in both
+          // browsers of a co-op session — the same argument the eating hand
+          // makes. A station's coordinates are the floor's, and the floor came
+          // from a shared seed.
+          this.enemies.giveCan?.(e, Math.round((c.station.x + c.station.z) * 7) + 1);
+        }
+        this._done(e, job);
         return;
 
       default:

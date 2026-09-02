@@ -1049,6 +1049,61 @@ export function buildTray() {
   return group;
 }
 
+let canParts = null;
+
+// What comes out of the vending machine. Six of them, because a floor's staff
+// use the same machine all shift and a building where everybody drinks the same
+// thing is a building with one can in it — and because the flavour is the only
+// thing the player can read at the range they see one: a can is 6 cm across, so
+// it is a coloured dot in somebody's hand and the colour is the whole of it.
+const CAN_TINTS = [0xc0392b, 0x2c6e49, 0x2b6cb0, 0xd68910, 0x6c3483, 0xb9bec4];
+
+/**
+ * A drink somebody bought, in their hand.
+ *
+ * Built exactly the way `buildTray` and `buildCrate` are and for their two
+ * reasons: geometry and materials are module-level and shared, so the fortieth
+ * can of a floor costs a Group and two Meshes rather than a mesh build; and it
+ * is here rather than in enemies.js because this file is the one that knows what
+ * a body is made of.
+ *
+ * `tint` indexes CAN_TINTS rather than being a colour, so the material is shared
+ * between everybody drinking the same thing and the choice can be hashed rather
+ * than rolled — which is what makes it identical in both browsers of a co-op
+ * session without sending it. Same argument as the eating hand.
+ */
+export function buildCan(tint = 0) {
+  canParts ??= {
+    geo: {
+      // 6.6 cm across and 12 cm tall, which is a real 330 ml can. Eight sides:
+      // it is never seen from closer than arm's length and never bigger than a
+      // thumbnail on screen.
+      body: new THREE.CylinderGeometry(0.033, 0.033, 0.115, 8),
+      // The lid, a shade narrower and a shade brighter, and it is what stops the
+      // can reading as a coloured peg — the one highlight on it catches the
+      // ceiling panels as the arm swings.
+      lid: new THREE.CylinderGeometry(0.030, 0.033, 0.012, 8),
+    },
+    mat: {
+      body: CAN_TINTS.map((color) => new THREE.MeshStandardMaterial({
+        color, roughness: 0.34, metalness: 0.5,
+      })),
+      lid: new THREE.MeshStandardMaterial({ color: 0xd8dde1, roughness: 0.3, metalness: 0.75 }),
+    },
+  };
+
+  const { geo, mat } = canParts;
+  const group = new THREE.Group();
+  const body = new THREE.Mesh(geo.body, mat.body[tint % mat.body.length]);
+  body.castShadow = true;
+  group.add(body);
+  const lid = new THREE.Mesh(geo.lid, mat.lid);
+  lid.position.y = 0.0635;
+  lid.castShadow = true;
+  group.add(lid);
+  return group;
+}
+
 let crateParts = null;
 
 /**
