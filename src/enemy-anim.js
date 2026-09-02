@@ -109,6 +109,29 @@ const TRAY_TABLE = [0, 1.03, -0.46];
 // mop's rest positions the same way, and unlike those two these have a check on
 // them: a joint that has drifted shows up as a leg detached from its own hip.
 const HIP_X = 0.12, LEG_Y = 0.43, LEG_HALF = 0.43;
+// A SEATED LEG BENDS AT THE KNEE, and all three of these are derived rather than
+// chosen — see `sitLegs`. A leg is one box from hip to floor (see the note on the
+// shins in rigs.js), so sitting used to stick both of them out in front at
+// DESK_LEGS like a deckchair; the fix squashes the box to its top half for a
+// thigh and hangs a spare shin off the knee.
+//
+// SIT_THIGH is that half-box's own half-length. SIT_HIP_Y is where to hinge it so
+// its top still lands on the hip the standing leg hangs from — `hinge`'s whole
+// contract — which is the hip minus the NEW half rather than the old one. And
+// SIT_THIGH_A is the thigh angle that puts the FOOT ON THE FLOOR: the group drops
+// by DESK_DROP while seated, so the sole has to come back up by exactly that, and
+// solving `LEG_HALF - LEG_HALF*cos(a) = DESK_DROP` is the one angle that does it.
+// Retune the drop and the knee follows, which is the point of writing it this way
+// — and it comes out at 1.24 rad, a hair off the 1.22 the straight-leg pose was
+// eyeballed at, which is a good sign about both.
+const SIT_THIGH = LEG_HALF / 2;
+const SIT_HIP_Y = LEG_Y + LEG_HALF - SIT_THIGH;
+const SIT_THIGH_A = Math.acos(clamp((LEG_HALF - DESK_DROP) / LEG_HALF, -1, 1));
+// One knee a little further out than the other. Two legs at identical angles
+// read as a mannequin rather than as somebody sitting — the same reason the
+// straight-leg pose carried its own 0.08, and the same reason the two typing
+// hands never land together.
+const SIT_LEAD = 0.11;
 const ARM_X = 0.32, ARM_Y = 1.15, ARM_HALF = 0.27;
 
 // ...and the same six numbers as a record, for the two poses that are struck on
@@ -143,6 +166,47 @@ function hinge(limb, x, y, half, angle, forward = 0) {
   limb.rotation.x = angle;
   limb.position.set(x, y + half * (1 - Math.cos(angle)),
     -half * Math.sin(angle) - forward);
+}
+
+/**
+ * Both legs folded into a chair: knees bent, feet on the floor.
+ *
+ * The leg box is squashed to its top half and hinged from the hip as a THIGH,
+ * and the rig's spare shin is shown below the knee hanging straight down. Every
+ * number is derived above; the only thing chosen here is which knee leads.
+ *
+ * A rig with no shins — every chassis — gets the old straight-leg sit instead,
+ * and that is the right fallback rather than a stub: a Clerk Unit's legs are
+ * drive wheels, and bending a wheel at the knee is a worse picture than not
+ * bending it. Nothing sends a machine to a chair anyway (`_lunchOk` and the
+ * seated chore both test `isMachine`), so this is the belt to that braces.
+ *
+ * `stand` is what undoes it, and the SCALE is the part that must not be
+ * forgotten: a body that got out of a chair with its legs still at half height
+ * walks the rest of the floor on its knees. Same bargain the hinge and the stoop
+ * already make, and the same bug if they ever come apart.
+ */
+function sitLegs(e, lead = SIT_LEAD) {
+  if (!e.shinL || !e.shinR) {
+    hinge(e.legL, -HIP_X, LEG_Y, LEG_HALF, DESK_LEGS);
+    hinge(e.legR, HIP_X, LEG_Y, LEG_HALF, DESK_LEGS - 0.08);
+    return;
+  }
+
+  for (const [leg, shin, x, angle] of [
+    [e.legL, e.shinL, -HIP_X, SIT_THIGH_A],
+    [e.legR, e.shinR, HIP_X, SIT_THIGH_A - lead],
+  ]) {
+    leg.scale.y = 0.5;
+    hinge(leg, x, SIT_HIP_Y, SIT_THIGH, angle);
+    // The knee is the far end of the thigh: the hip, less a whole thigh's length
+    // along the angle it is being held at.
+    const kneeY = LEG_Y + LEG_HALF - LEG_HALF * Math.cos(angle);
+    const kneeZ = -LEG_HALF * Math.sin(angle);
+    shin.visible = true;
+    shin.rotation.x = 0;
+    shin.position.set(x, kneeY - SIT_THIGH, kneeZ);
+  }
 }
 
 /**
@@ -207,6 +271,13 @@ export function stand(e) {
   // chore ending, a parcel run ending) and putting a loader's drive wheels back
   // where a pair of hips would be is not a subtle artefact.
   const j = jointsOf(e);
+  // The knee, before the legs go back: the shins go away and the leg boxes come
+  // back to full height. Both halves are needed and the scale is the one that
+  // shows. See `sitLegs`.
+  if (e.shinL) e.shinL.visible = false;
+  if (e.shinR) e.shinR.visible = false;
+  e.legL.scale.y = 1;
+  e.legR.scale.y = 1;
   hinge(e.legL, -j.hipX, j.legY, j.legHalf, 0);
   hinge(e.legR, j.hipX, j.legY, j.legHalf, 0);
   hinge(e.armL, -j.armX, j.armY, j.armHalf, 0);
@@ -439,8 +510,7 @@ export function animateWorking(e, dt) {
   const arms = typing ? DESK_ARMS : DESK_IDLE_ARMS;
 
   e.group.position.y = e.y - DESK_DROP;
-  hinge(e.legL, -HIP_X, LEG_Y, LEG_HALF, DESK_LEGS);
-  hinge(e.legR, HIP_X, LEG_Y, LEG_HALF, DESK_LEGS - 0.08);
+  sitLegs(e);
   // The two hands never land together: one wrist up while the other is down is
   // typing, and both at once is applause.
   hinge(e.armL, -ARM_X, ARM_Y, ARM_HALF, arms + tap);
@@ -727,8 +797,7 @@ export function animateEating(e, dt) {
   const lefty = ((Math.abs(e.x) * 71 + Math.abs(e.z) * 131) | 0) % 2 === 0;
 
   e.group.position.y = e.y - DESK_DROP;
-  hinge(e.legL, -HIP_X, LEG_Y, LEG_HALF, DESK_LEGS);
-  hinge(e.legR, HIP_X, LEG_Y, LEG_HALF, DESK_LEGS - 0.08);
+  sitLegs(e);
   hinge(e.armL, -ARM_X, ARM_Y, ARM_HALF, MEAL_ARMS + (lefty ? dip * MEAL_REACH : 0));
   hinge(e.armR, ARM_X, ARM_Y, ARM_HALF, MEAL_ARMS + (lefty ? 0 : dip * MEAL_REACH));
   // Down to the food and back up to chew. Kept small for the reason the desk

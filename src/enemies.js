@@ -1630,6 +1630,10 @@ export class Enemies {
 
     const enemy = {
       group, mats, ownGeo, torso, head, armL, armR, legL, legR, gun,
+      // The spare shins the seated pose bends a knee with, on the human rig only
+      // (see rigs.js). Undefined everywhere else, and `sitLegs` and `stand` both
+      // test for them — a machine keeps its straight-legged sit.
+      shinL: rig.shinL ?? null, shinR: rig.shinR ?? null,
       blunt, bluntReach: rig.bluntReach, bluntRest: rig.bluntRest ?? 0.5,
       // Rat parts. Null on everything else, and the animation branches on the
       // rig rather than on the type, so a second four-legged thing costs a rig
@@ -1878,6 +1882,17 @@ export class Enemies {
     // the box: a porter waiting for a handoff from somebody who is dead waits
     // out the whole stage cap.
     if (e.job) this.jobLost?.(e);
+    // The knee, which is the one part of a seated pose the ragdoll cannot inherit:
+    // a bone lists `legL` alone, so the shins are left standing on the group
+    // exactly where the chair was while the rest of the body falls out of it.
+    // Hidden here rather than in `stand` because `stand` is deliberately skipped
+    // for a body that is already dead — a ragdoll should start from the pose you
+    // were looking at, and these two boxes are the only part of it that lies.
+    if (e.shinL) e.shinL.visible = false;
+    if (e.shinR) e.shinR.visible = false;
+    if (e.legL) e.legL.scale.y = 1;
+    if (e.legR) e.legR.scale.y = 1;
+
     // ...and the drink, for exactly the tray's reason: it is parented to an ARM,
     // and an arm is about to become a ragdoll bone. A can riding a corpse across
     // the carpet is funnier than it is right, and nothing would ever clear it —

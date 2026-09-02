@@ -25,6 +25,11 @@ const GEO = {
   visor: new THREE.BoxGeometry(0.22, 0.07, 0.02),
   arm: new THREE.BoxGeometry(0.14, 0.54, 0.14),
   leg: new THREE.BoxGeometry(0.17, 0.86, 0.19),
+  // The lower half of one, for the two poses that bend a knee. Its own geometry
+  // rather than a scaled leg because a scaled MESH would scale anything parented
+  // to it, and the whole point of the shin is that it hangs off nothing — see
+  // the note on it below.
+  shin: new THREE.BoxGeometry(0.17, 0.43, 0.19),
   gun: new THREE.BoxGeometry(0.1, 0.14, 0.42),
   // A soft cap: a crown and a peak over the eyes. The janitor and the guards
   // wear one, and it is doing the same job as a visor colour — it is what you
@@ -283,6 +288,31 @@ function buildHuman(type, rng) {
   const armR = mesh(GEO.arm, upper, 0.32, 1.15, 0);
   const legL = mesh(GEO.leg, lower, -0.12, 0.43, 0);
   const legR = mesh(GEO.leg, lower, 0.12, 0.43, 0);
+  // A KNEE, and it is deliberately not a joint in the skeleton.
+  //
+  // A leg here is one box from the hip to the floor, which is what makes the
+  // walk cycle, the six hit zones and the ragdoll's five constraints as cheap as
+  // they are — and it is also why a body sitting down used to stick both legs
+  // out in front of it at seventy degrees like a deckchair. Splitting the leg
+  // properly means a seventh hit box, a sixth bone, a new constraint and a walk
+  // cycle that has to drive two segments, on every one of the seven rigs.
+  //
+  // So the knee is a PAIR OF SPARE SHINS instead. They hang off the GROUP rather
+  // than off the leg, they are hidden for the whole life of a body that never
+  // sits down, and the seated pose is the only thing that ever shows them: it
+  // squashes the leg box to its top half and puts a shin below the knee. Nothing
+  // else in the engine learns they exist — a raycast still meets the same thigh
+  // box it always did, `bones` still lists `legL` alone, and a ragdoll takes the
+  // leg and leaves these behind (which is why `_die` hides them).
+  //
+  // Being children of the group and not of the leg is the load-bearing part: a
+  // child of a mesh inherits its scale, so a shin parented to a leg squashed to
+  // half height would be squashed with it, which is exactly the deckchair again
+  // with an extra box in it.
+  const shinL = mesh(GEO.shin, lower, -0.12, 0.215, 0);
+  const shinR = mesh(GEO.shin, lower, 0.12, 0.215, 0);
+  shinL.visible = false;
+  shinR.visible = false;
   const gun = mesh(GEO.gun, mats.gun, 0.3, 1.1, -0.3);
 
   // The cap, if this one wears one. Peak over the eyes, which is on the -z face
@@ -328,6 +358,10 @@ function buildHuman(type, rng) {
   return {
     rig: 'human', group, mats, ownGeo, torso, head,
     armL, armR, legL, legR, gun, blunt,
+    // Only the human rig has them. Everything that reads them tests for them
+    // first, so a machine sent to a desk simply keeps standing at it — which is
+    // the honest picture of a Clerk Unit on wheels anyway.
+    shinL, shinR,
     bluntReach: bluntSpec ? bluntSpec.reach : 0,
     bluntRest: bluntSpec?.rest ?? 0.5,
     // Two legs, and where the sidearm is carried and comes up to. Both used to
