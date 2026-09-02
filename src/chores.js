@@ -915,7 +915,22 @@ export class Chores {
     // `e.seat` keeps sitting down and being posed one operation, exactly as
     // `setChorePose` does for a standing job.
     if (job.sit) {
-      if (!e.seat) this.enemies.sitAt?.(e, c.station);
+      if (!e.seat) {
+        this.enemies.sitAt?.(e, c.station);
+        // A SEATED BODY HAS TO BE `idle`, and this is the one line that says so.
+        // `animate` stands up any seated body whose state is not idle or alert —
+        // which is right, and is how a body that has noticed you gets out of its
+        // chair — but a NEUTRAL's resting state is `wander`, so a courier sent to
+        // a desk would be stood up by the animator on the very next frame, ended
+        // by the guard at the top of `_tick`, and cast again. It churns rather
+        // than breaking, which is the worst way for it to be wrong.
+        //
+        // Exactly what `_wander` already does for every other seated neutral
+        // (see the note on `_lunchSeated` in enemies.js), and it costs nothing
+        // here because a body with `e.chore` has its movement owned by this file
+        // rather than by its state. `lost` puts `wander` back.
+        if (e.state === 'wander') e.state = 'idle';
+      }
       this.enemies.setChorePose(e, null);
       return;
     }
