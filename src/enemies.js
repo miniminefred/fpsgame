@@ -331,6 +331,14 @@ const SEAT_DRIFT = 0.5;
 const TABLE_AHEAD = 0.9;
 const TABLE_LOW = 0.35;
 const TABLE_HIGH = 1.4;
+// ...and the same three for a CHORE station's machine — see `machineAhead`. The
+// depths are probed outward from the body in order, because a station stands off
+// a wall-backed machine by WORK_REACH and stands along a desk by DESK_ASIDE, and
+// no one number lands inside both. The ceiling is under WALL_H so the wall the
+// machine is backed against can never be mistaken for the machine.
+const MACHINE_AHEAD = [0.55, 0.8, 1.05];
+const MACHINE_LOW = 0.3;
+const MACHINE_HIGH = 2.6;
 // Metres of the arrival point kept to yourself. The seats are outside it anyway
 // — no table is furnished into the square kept clear where the player
 // materialises — so this is only ever about the ones on their feet, who are
@@ -1538,6 +1546,65 @@ export class Enemies {
     for (const b of this.colliders ?? []) {
       if (b.top < TABLE_LOW || b.top > TABLE_HIGH) continue;
       if (x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ) return b;
+    }
+    return null;
+  }
+
+  /**
+   * The machine a chore station is a place to stand AT, or null.
+   *
+   * Same probe as `_surfaceAhead` one method up and the same reason for
+   * existing: a working pose is drawn relative to a prop, that prop can be shot
+   * apart, and nothing used to tell the body. A man goes on typing at a desk
+   * that is no longer there, pressing a copier that has been blown into the
+   * corridor — which is what a player reported, and it is `_seatGone`'s bug in
+   * the room next door.
+   *
+   * Three differences from the seat version, and each one is the difference
+   * between a chair and a machine:
+   *
+   *   - THE BAND IS TALLER, because the props are. A copier tops out at 1.13,
+   *     a bench at 0.9, a vending machine at 1.9 and a server rack at 2.05, so
+   *     a table's 1.4 ceiling would silently miss half the catalogue. The top of
+   *     it is what keeps the WALL out: a machine is backed against one, and a
+   *     wall's collider tops out at WALL_H — far above anything that can be
+   *     stood at, so excluding it costs nothing and including it would make
+   *     every station in the building indestructible.
+   *   - SEVERAL DEPTHS, not one. A seat is placed a known width from its table;
+   *     these come from two different offsets — `WORK_REACH` in front of a
+   *     wall-backed machine, `DESK_ASIDE` along a desk from its chair — so
+   *     there is no single number that lands inside every prop. The first hit
+   *     wins, and probing outward from the body means the near face of the
+   *     right prop is always met before anything behind it.
+   *   - IT LOOKS IN BOTH LISTS. A chair is always loose and a table always
+   *     fitted; a machine can be either — the copier and the rack are static,
+   *     and a bench somebody shoved is not. Both retire the same way (`top` goes
+   *     negative), which is the whole reason one test serves both.
+   *
+   * Null is an ordinary answer and means DO NOT CHECK, exactly as it does for a
+   * seat: a mop station is a patch of corridor and a wall panel has no collider
+   * at all by design (see panels.js). A probe that simply failed to attribute a
+   * prop must never read as the prop having gone, or every job on the floor ends
+   * on the frame it starts.
+   */
+  machineAhead(station) {
+    const [fx, fz] = FACING[station.rot & 3];
+    for (const ahead of MACHINE_AHEAD) {
+      const x = station.x + fx * ahead;
+      const z = station.z + fz * ahead;
+      const hit = this._boxAt(x, z, MACHINE_LOW, MACHINE_HIGH);
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  /** Whatever fitted or loose box is over this point inside a height band. */
+  _boxAt(x, z, low, high) {
+    for (const list of [this.colliders, this.loose]) {
+      for (const b of list ?? []) {
+        if (b.top < low || b.top > high) continue;
+        if (x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ) return b;
+      }
     }
     return null;
   }

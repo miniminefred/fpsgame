@@ -187,6 +187,10 @@ export class Chores {
 
     this.pools = new Map();   // kind -> the stations it can be done at
     this.busy = new Set();    // ...and the ones somebody is standing at
+    // ...and the prop each one is a place to stand AT, probed once and kept.
+    // `null` is a real entry and means there is nothing to watch, so this is
+    // read through `has` rather than through a falsy test — see `_propFor`.
+    this.props = new Map();
     this.live = [];           // bodies currently on one
     this.timer = FIRST;
     this.enabled = false;
@@ -314,9 +318,12 @@ export class Chores {
 
     this.busy.add(station);
     this.live.push(worker);
+    // Held on the job rather than looked up per frame, because a lookup that
+    // misses reads as the machine having gone — see `_propFor`.
+    const prop = this._propFor(station);
     const stay = CHORES[kind].stay;
     worker.chore = {
-      kind, station, stage: 'to', pose: null,
+      kind, station, prop, stage: 'to', pose: null,
       timer: WALK_CAP, work: 0, tick: 0,
       stay: stay[0] + ((Math.random() * (stay[1] - stay[0] + 1)) | 0),
     };
@@ -344,7 +351,7 @@ export class Chores {
   _free(kind) {
     const pool = this.pools.get(kind);
     if (!pool) return false;
-    for (const station of pool) if (!this.busy.has(station)) return true;
+    for (const station of pool) if (this._usable(station)) return true;
     return false;
   }
 
@@ -362,7 +369,7 @@ export class Chores {
     const start = (Math.random() * pool.length) | 0;
     for (let i = 0; i < pool.length; i++) {
       const station = pool[(start + i) % pool.length];
-      if (!this.busy.has(station)) return station;
+      if (this._usable(station)) return station;
     }
     return null;
   }
@@ -456,6 +463,20 @@ export class Chores {
   _tick(e, dt, audio) {
     const c = e.chore;
     if (!c) return;
+
+    // THE MACHINE WENT, and that ends the job wherever it happened — walking to
+    // it or standing at it. This is `_seatGone`'s rule about a chair applied to
+    // the thing a working pose is drawn against, and it was a real bug rather
+    // than an omission: a copier can be shot apart, blown across a room by an
+    // extinguisher or caught in the generator's blackout while somebody is
+    // pressing it, and none of that used to reach the body. What you got was a
+    // man typing at empty carpet, arms held at a keyboard that is now debris —
+    // and, worse, a station the pool went on handing out, so the next body
+    // walked across the floor to work at nothing too.
+    //
+    // Checked before the backstop and before the stage switch so no stage can
+    // skip it, exactly as the timer is.
+    if (c.prop && c.prop.top < 0) { this.lost(e); return; }
 
     // The backstop, in one place so no stage can forget it — and also how a
     // failed flood reports itself, since `routeTo` and `advanceTo` both spend
@@ -588,7 +609,48 @@ export class Chores {
     this.live.length = 0;
     this.pools.clear();
     this.busy.clear();
+    this.props.clear();
     this.enabled = false;
+  }
+
+  // ------------------------------------------------------- a machine that went
+
+  /**
+   * The prop a station is a place to stand at, probed once and remembered.
+   *
+   * Lazy rather than swept at spawn, because a deep floor publishes 246
+   * stations and the probe walks the collider list — one pass over all of them
+   * is work spent on the machines nobody will ever be sent to. Memoised on the
+   * first ask, which is the cast, so each station costs it at most once a floor.
+   *
+   * `null` is stored and meant: a mop station is a patch of corridor and a wall
+   * panel has no collider by design, so there is nothing to watch and that is
+   * the answer rather than a failure. Read through `has`.
+   */
+  _propFor(station) {
+    if (!this.props.has(station)) {
+      this.props.set(station, this.enemies.machineAhead?.(station) ?? null);
+    }
+    return this.props.get(station);
+  }
+
+  /**
+   * Whether the machine at this station has been destroyed.
+   *
+   * A prop retires by setting `top` negative — the one signal every destructible
+   * in the building sends, static and loose alike — so this is the same test
+   * `_seatGone` makes about a chair, and it is live for the same reason: the
+   * collider handed over here is the one the player collides against, not a copy
+   * of it, so a prop shot apart anywhere reaches this without an event.
+   */
+  _gone(station) {
+    const prop = this._propFor(station);
+    return !!prop && prop.top < 0;
+  }
+
+  /** Free to be sent to: nobody standing at it, and still actually there. */
+  _usable(station) {
+    return !this.busy.has(station) && !this._gone(station);
   }
 }
 
