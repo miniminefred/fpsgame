@@ -121,22 +121,6 @@ function selectWeapon(n) {
 }
 onDigitKeys(selectWeapon);
 
-// T: off the floor's books. Nobody sees you, nobody hears you, no camera finds
-// you, and anybody already coming gives up — see `hidden` in player.js for what
-// the flag does and where it is read.
-//
-// It says so on the HUD for as long as it is on (`#unseen`), and that is not
-// decoration. A dev aid that is simply ON is how a spawn override put the player
-// inside the generator room on every floor of every dev build for weeks; the
-// version of that mistake available here is worse, because a floor where nothing
-// reacts to you reads exactly like a floor whose AI has broken. The toast says
-// which way it just went and the line says which way it still is.
-onKeyPress('KeyT', () => {
-  player.hidden = !player.hidden;
-  hud.setUnseen(player.hidden);
-  hud.message(player.hidden ? 'UNSEEN' : 'SEEN AGAIN', 1100);
-});
-
 touch = createTouchControls({
   keys, camera, controls: player.controls, weapons, selectWeapon,
 });
@@ -154,6 +138,32 @@ addEventListener('mousedown', () => {
 // Dev-only handle for poking at a running floor from the console. Stripped from
 // production builds by the bundler.
 if (import.meta.env.DEV) {
+  // T: off the floor's books. Nobody sees you, nobody hears you, no camera finds
+  // you, and anybody already coming gives up — see `hidden` in player.js for what
+  // the flag does and where it is read.
+  //
+  // IT IS IN HERE, WITH `window.dev`, AND THAT IS THE POINT OF IT. Unseen is a
+  // workbench and not a mechanic: what it does is switch the game off, so a key
+  // that does that on the public build is a floor that stops being played the way
+  // it ships — available to anybody who leans on the wrong letter, and reading
+  // exactly like a floor whose AI has broken rather than like a switch somebody
+  // threw. Everything downstream of the flag stays exactly where it was: the two
+  // filters that read it (`_soloTarget` here, `targets()` in netplay.js), the
+  // camera pass, the HUD line and the bit on the wire. None of them costs
+  // anything with nothing to set the flag, and all of them have to go on working
+  // for the one build that can.
+  //
+  // It says so on the HUD for as long as it is on (`#unseen`), and that is not
+  // decoration even now. A dev aid that is simply ON is how a spawn override put
+  // the player inside the generator room on every floor of every dev build for
+  // weeks. The toast says which way it just went and the line says which way it
+  // still is.
+  onKeyPress('KeyT', () => {
+    player.hidden = !player.hidden;
+    hud.setUnseen(player.hidden);
+    hud.message(player.hidden ? 'UNSEEN' : 'SEEN AGAIN', 1100);
+  });
+
   window.dev = {
     game, player, enemies, shooting, keys, physics, destruction, extinguishers, doors, spills,
     scene, camera, weapons, renderer, audio, casings, keycards, wallet, ragdolls, cameras,

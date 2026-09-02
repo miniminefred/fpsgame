@@ -313,7 +313,7 @@ leave the build green and the harness silently broken.
 | Left click | Shoot |
 | R | Reload |
 | 1 - 5 | Switch weapon (light to heavy) |
-| T | Unseen: on and off the floor's books — see below |
+| T | Unseen: on and off the floor's books — **dev server only**, see below |
 | Esc | Release the mouse |
 | Click | Grab the mouse / restart after dying |
 
@@ -327,7 +327,24 @@ On a touch device the same actions are on screen instead — see below.
 | 1 - 5 | Weapon chips above the buttons |
 | Top-centre button | Fullscreen |
 
-### Unseen (T)
+### Unseen (T) — a workbench, not a control
+**The key is bound inside `main.js`'s `import.meta.env.DEV` block, beside `window.dev`**, so
+it exists on the dev server and is compiled out of the public build — `KeyT` and the toast
+string are both absent from `dist/`, which is the check. It is in the controls table above
+because it is a thing you can press while working, not because the game ships it. What it
+does is switch the game OFF, and a letter that does that on the deployed build is a floor
+that stops being played the way it ships, available to anybody who leans on the wrong key
+and reading exactly like an AI that has broken rather than like a switch somebody threw —
+which is the same argument `forceTheme` makes about itself one section down.
+
+**Everything downstream of the flag stayed exactly where it was**, and that is deliberate
+rather than lazy: the two filters that read it (`_soloTarget` in `game.js`, `targets()` in
+`netplay.js`), the camera pass, the HUD line and the bit on the wire all still work. None of
+them costs a thing with nothing left to set the flag — `player.hidden` is simply always
+false, and `setUnseen` early-returns on an unchanged value — and all of them have to go on
+working for the one build that can set it. Gating the flag's *readers* instead would be the
+mistake: it would make the dev build and the shipped build two different games.
+
 Press T and the floor stops knowing you are there: nobody sees you, nobody hears you, no
 camera finds you, and anybody already coming loses contact and stands down. Press it again
 and all of it comes straight back. Measured on floor 4 with the alarm raised — 15 hostiles
@@ -361,8 +378,11 @@ Three things about it are decisions rather than plumbing:
   that mistake available here is worse: a floor where nothing reacts to you reads exactly
   like a floor whose AI has broken. The toast says which way it just went; the line says
   which way it still is. It is deliberately NOT on the start screen's control legend — that
-  list is the game's controls and this is a switch that turns the game off.
-- **It crosses the wire** (`h` in the `'p'` packet, beside `d`). The end that decides what
+  list is the game's controls and this is a switch that turns the game off, which is the
+  same reasoning that has since moved the key itself behind the dev gate.
+- **It crosses the wire** (`h` in the `'p'` packet, beside `d`), and it still does now the
+  key is dev-only — a dev-server host and a joiner on the Pages build is an ordinary co-op
+  session, and it is the one that needs the bit most. The end that decides what
   the staff do is the host, and the key is pressed on either end — so without the bit a
   joiner presses T, is told they are invisible, and goes on being chased. `hidden` is not
   cleared by `player.reset()`, for the same reason: a switch that quietly turned itself off
