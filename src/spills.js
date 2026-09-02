@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { getFx } from './fx-textures.js';
 
-// Water on the floor, and the only liquid in the game.
+// Liquid on the floor.
 //
 // It exists for one prop. A water cooler is a bottle of water on a plastic
 // plinth, and until now shooting one broke it into plastic and left the carpet
@@ -23,6 +23,41 @@ import { getFx } from './fx-textures.js';
 //
 // Not synced in co-op, for the same reason brass and decals are not: it changes
 // nothing either player can do.
+//
+// IT USED TO BE WATER AND NOTHING ELSE, and the second liquid is what made the
+// difference between a system and one prop's effect. A vending machine full of
+// cans that is blown apart and leaves the carpet dry is the identical lie the
+// cooler used to tell — the player did a thing, the thing had no consequence —
+// and the fix is the same patch with a different colour in it. So the shape of a
+// spill (two layers, a stream, a spreading edge, a drip) is shared, and a LIQUID
+// is the small table of what it looks like and how much of it there is.
+
+// The liquids, and everything that differs between them.
+//
+//   wet     the darkening layer, which is what says "wet" on a pale floor
+//   sheen   the additive layer over it, which is what carries it on a dark one
+//   stream  the column leaving the prop
+//   scale   how much came out, against a water cooler's 19 litres
+//
+// A drink is DARKER and WARMER than water and there is much less of it. Both
+// halves matter: cola on grey carpet is a brown stain rather than a blue-grey
+// one, and a vending machine holds maybe twenty cans against a cooler's whole
+// bottle — so a burst that matched the cooler's would read as the machine having
+// been full of water. The sheen is where the colour actually reads, because the
+// darkening layer is nearly black whatever it is tinted.
+const LIQUIDS = {
+  water: {
+    wet: 0x23303a, wetOpacity: 0.66,
+    sheen: 0x6f9fb8, sheenOpacity: 0.24,
+    stream: 0xbfe4f2, scale: 1,
+  },
+  drink: {
+    wet: 0x2b1c10, wetOpacity: 0.72,
+    sheen: 0xb46a24, sheenOpacity: 0.30,
+    stream: 0xd99a4a, scale: 0.55,
+  },
+};
+const DEFAULT_LIQUID = 'water';
 
 const MAX_PUDDLES = 20;
 // How long a patch takes to reach its full size. Slow on purpose — the spread is
@@ -59,69 +94,97 @@ export class Spills {
     this.cursor = 0;
 
     const fx = getFx();
-    // One geometry and one material for every puddle: they differ only in
-    // transform and opacity, and a pool that allocates per spill is a pool that
-    // stutters when a firefight opens six coolers at once.
+    this.fx = fx;
+    // One geometry for every puddle: they differ only in transform, tint and
+    // opacity, and a pool that allocates per spill is a pool that stutters when
+    // a firefight opens six coolers at once.
     this.quad = new THREE.PlaneGeometry(1, 1);
-    this.material = new THREE.MeshBasicMaterial({
-      map: fx.puddle,
-      transparent: true,
-      depthWrite: false,
-      // Water on a grey carpet is darker than the carpet and slightly blue, and
-      // it is the DARKENING that reads as wet — an additive sheen reads as light.
-      color: 0x23303a,
-      opacity: 0.66,
-      side: THREE.DoubleSide,
-    });
-    // ...and a second, brighter layer over it. One layer cannot do this: a wet
-    // floor is DARKER than a dry one, which is what says "wet" on the pale vinyl
-    // of an office — and on the dark grey tile half this building is floored with,
-    // a dark patch is invisible. Looked at both: 0.85 of near-black on grey tile
-    // came out as a slightly grubby tile. So the darkening stays and an additive
-    // sheen goes on top of it, which is also what a shallow puddle does under a
-    // ceiling panel. It is the sheen that carries it on a dark floor and the
-    // darkening that carries it on a light one.
-    this.sheenMaterial = new THREE.MeshBasicMaterial({
-      map: fx.puddle,
-      transparent: true,
-      depthWrite: false,
-      color: 0x6f9fb8,
-      opacity: 0.24,
-      blending: THREE.AdditiveBlending,
-      side: THREE.DoubleSide,
-    });
-    this.streamMaterial = new THREE.MeshBasicMaterial({
-      map: fx.glow,
-      transparent: true,
-      depthWrite: false,
-      color: 0xbfe4f2,
-      opacity: 0.5,
-      blending: THREE.AdditiveBlending,
-      side: THREE.DoubleSide,
-    });
+    // ...and one material TRIO per liquid rather than per puddle, built on
+    // first use and kept for the life of the pool. Three materials times two
+    // liquids is the whole cost of the second liquid; making them per puddle
+    // would be sixty, and putting the tint on the mesh is not an option because
+    // a material is what carries a colour in three.
+    this.sets = new Map();
 
     for (let i = 0; i < MAX_PUDDLES; i++) {
-      const mesh = new THREE.Mesh(this.quad, this.material);
+      // Started on the default liquid's materials and re-pointed by `start`.
+      // A mesh must have SOME material to be added to a scene, and every puddle
+      // is invisible until it is taken anyway.
+      const set = this._set(DEFAULT_LIQUID);
+
+      const mesh = new THREE.Mesh(this.quad, set.wet);
       mesh.rotation.x = -Math.PI / 2;
       mesh.visible = false;
       mesh.renderOrder = 1;
       scene.add(mesh);
 
-      const sheen = new THREE.Mesh(this.quad, this.sheenMaterial);
+      const sheen = new THREE.Mesh(this.quad, set.sheen);
       sheen.rotation.x = -Math.PI / 2;
       sheen.visible = false;
       sheen.renderOrder = 2;
       scene.add(sheen);
 
-      const stream = new THREE.Mesh(this.quad, this.streamMaterial);
+      const stream = new THREE.Mesh(this.quad, set.stream);
       stream.visible = false;
       scene.add(stream);
 
       this.puddles.push({
         mesh, sheen, stream, live: false, grown: 0, want: 0, leak: 0, drip: 0,
         x: 0, y: 0, z: 0, from: 0, streamLeft: 0, sx: 0, sz: 0,
+        liquid: DEFAULT_LIQUID, scale: 1,
       });
     }
+  }
+
+  /**
+   * The three materials one liquid is drawn with, built once.
+   *
+   * TWO LAYERS, and one cannot do this. A wet floor is DARKER than a dry one,
+   * which is what says "wet" on the pale vinyl of an office — and on the dark
+   * grey tile half this building is floored with, a dark patch is invisible.
+   * Looked at both: 0.85 of near-black on grey tile came out as a slightly
+   * grubby tile. So the darkening stays and an additive sheen goes on top of it,
+   * which is also what a shallow puddle does under a ceiling panel. The sheen
+   * carries it on a dark floor and the darkening carries it on a light one —
+   * and the sheen is where a liquid's own colour actually reads, since the
+   * bottom layer is nearly black whatever it is tinted.
+   */
+  _set(name) {
+    let set = this.sets.get(name);
+    if (set) return set;
+    const spec = LIQUIDS[name] ?? LIQUIDS[DEFAULT_LIQUID];
+    const fx = this.fx;
+    set = {
+      spec,
+      wet: new THREE.MeshBasicMaterial({
+        map: fx.puddle,
+        transparent: true,
+        depthWrite: false,
+        color: spec.wet,
+        opacity: spec.wetOpacity,
+        side: THREE.DoubleSide,
+      }),
+      sheen: new THREE.MeshBasicMaterial({
+        map: fx.puddle,
+        transparent: true,
+        depthWrite: false,
+        color: spec.sheen,
+        opacity: spec.sheenOpacity,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+      }),
+      stream: new THREE.MeshBasicMaterial({
+        map: fx.glow,
+        transparent: true,
+        depthWrite: false,
+        color: spec.stream,
+        opacity: 0.5,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+      }),
+    };
+    this.sets.set(name, set);
+    return set;
   }
 
   /**
@@ -131,13 +194,22 @@ export class Spills {
    * `from` is the height it is coming out at, which is the bottle rather than the
    * floor; `burst` is whether the bottle went altogether.
    */
-  start(x, y, z, { from = 1.1, burst = false, atX = x, atZ = z } = {}) {
+  start(x, y, z, { from = 1.1, burst = false, atX = x, atZ = z, liquid = DEFAULT_LIQUID } = {}) {
     const p = this._take();
+    const set = this._set(liquid);
     p.live = true;
+    p.liquid = liquid;
+    // Kept on the puddle so `feed` widens it by the same measure it was made
+    // with. A second round into the same machine must not quietly promote a
+    // drink to a cooler's worth of it.
+    p.scale = set.spec.scale;
+    p.mesh.material = set.wet;
+    p.sheen.material = set.sheen;
+    p.stream.material = set.stream;
     p.x = x; p.y = y; p.z = z;
     p.from = from;
     p.grown = 0;
-    p.want = burst ? BURST_RADIUS : HIT_RADIUS;
+    p.want = (burst ? BURST_RADIUS : HIT_RADIUS) * p.scale;
     p.leak = LEAK_TIME;
     p.drip = DRIP_GAP[0];
     p.stream.visible = true;
@@ -165,7 +237,7 @@ export class Spills {
   /** Widens a patch that is already there — a second round into the same bottle. */
   feed(p, { burst = false } = {}) {
     if (!p?.live) return;
-    p.want = Math.max(p.want, burst ? BURST_RADIUS : HIT_RADIUS * 1.5);
+    p.want = Math.max(p.want, (burst ? BURST_RADIUS : HIT_RADIUS * 1.5) * (p.scale || 1));
     p.leak = Math.max(p.leak, LEAK_TIME * 0.6);
     p.streamLeft = Math.max(p.streamLeft, STREAM_TIME * 0.6);
     p.stream.visible = true;
@@ -196,6 +268,10 @@ export class Spills {
         p.stream.scale.set(STREAM_W, h, 1);
         // Billboarded the cheap way: it is a column of water, so only its yaw
         // matters and nothing about it changes if the player circles it.
+        // NOTE the opacity is written on a SHARED material, so two streams of the
+        // same liquid running at once fight over it and the last one updated
+        // wins. Pre-existing and left alone: a stream lasts 2.2 s, the fade is
+        // the only thing at stake, and the alternative is a material per puddle.
         p.stream.material.opacity = 0.5 * Math.min(1, p.streamLeft / STREAM_TIME);
         if (p.streamLeft <= 0) p.stream.visible = false;
       }
@@ -231,9 +307,12 @@ export class Spills {
       this.scene.remove(p.stream);
     }
     this.quad.dispose();
-    this.material.dispose();
-    this.sheenMaterial.dispose();
-    this.streamMaterial.dispose();
+    for (const set of this.sets.values()) {
+      set.wet.dispose();
+      set.sheen.dispose();
+      set.stream.dispose();
+    }
+    this.sets.clear();
     this.puddles.length = 0;
   }
 

@@ -864,7 +864,51 @@ export class Destruction {
       return;
     }
     dyn.puddle = this.spills.start(dyn.group.position.x, floor, dyn.group.position.z,
-      { from, burst, atX: point?.x ?? dyn.group.position.x, atZ: point?.z ?? dyn.group.position.z });
+      { from, burst, liquid: dyn.spills,
+        atX: point?.x ?? dyn.group.position.x, atZ: point?.z ?? dyn.group.position.z });
+  }
+
+  /**
+   * ...and out of a FITTED prop that had liquid in it, which is the vending
+   * machine and only it.
+   *
+   * A separate method rather than a branch in `_spill` because the two have
+   * nothing in common but the call at the end: a loose prop is a group with a
+   * position and a size, and a fitted one is a list of world-space boxes and no
+   * transform at all. So the centre and the floor are MEASURED off the boxes
+   * here, which also means they are right for a machine standing in an attic —
+   * the same property `_spill` gets from reading the group's own underside.
+   *
+   * Burst only, and that falls out rather than being decided: a static prop has
+   * no `damageProp` path, so there is no such thing as a round that opens one.
+   * Which is the honest reading anyway — the drinks in a vending machine are in
+   * sealed cans behind a steel door, so one round through the front does not
+   * make it leak, and the machine coming apart lets go of all of them at once.
+   */
+  _spillStatic(entry, point) {
+    if (!this.spills || !entry.spills) return;
+    let minX = Infinity, minY = Infinity, minZ = Infinity;
+    let maxX = -Infinity, maxZ = -Infinity, maxY = -Infinity;
+    for (const b of entry.parts ?? []) {
+      minX = Math.min(minX, b.x0); maxX = Math.max(maxX, b.x1);
+      minY = Math.min(minY, b.y0); maxY = Math.max(maxY, b.y1);
+      minZ = Math.min(minZ, b.z0); maxZ = Math.max(maxZ, b.z1);
+    }
+    // No boxes is not a case that should happen — endStatic refuses a prop with
+    // no spans — and it is cheap to be right about: a spill at the origin is a
+    // puddle in the corner of the building.
+    if (!Number.isFinite(minX)) return;
+
+    const cx = (minX + maxX) / 2;
+    const cz = (minZ + maxZ) / 2;
+    // Where it comes OUT of, clamped into the machine the way `_spill` clamps
+    // it: the collection slot is near the bottom of a vending machine, so the
+    // stream starts low whatever height the killing round landed at.
+    const from = Math.max(minY + 0.15, Math.min(point?.y ?? 0, maxY));
+    this.spills.start(cx, minY, cz, {
+      from, burst: true, liquid: entry.spills,
+      atX: point?.x ?? cx, atZ: point?.z ?? cz,
+    });
   }
 
   /**
@@ -965,6 +1009,12 @@ export class Destruction {
     // A volatile prop does not break where it stands. It takes its own boxes
     // with it and comes apart somewhere else, loudly — see extinguishers.js.
     if (entry.volatile && this.extinguishers?.launch(entry, dir, point)) return;
+
+    // Everything it was holding ends up on the floor. Before the debris, so the
+    // gush is under the sound of the cabinet rather than after it — the same
+    // ordering `_breakProp` uses, and for the same reason. Not for a wreck: a
+    // hulk is still standing, so nothing has been let go of.
+    if (!wrecked) this._spillStatic(entry, point);
 
     // Only what came OFF is thrown, which for a wreck is the bays the blast tore
     // out of it and nothing else — `_wreck` hands them back for exactly this.

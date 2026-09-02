@@ -370,7 +370,16 @@ export const PROPS = {
   },
 
   vending: {
+    // `spills` is the same flag the water cooler carries, and this is the one
+    // place the STATIC path reads it: a vending machine is model-backed, so it
+    // has no rigid body and cannot leak when it is merely shot. Destroying it
+    // bursts everything inside it at once, which is what twenty cans coming
+    // apart in a steel cabinet does — and a machine full of drinks that is blown
+    // across a corridor and leaves the carpet dry is the identical lie the
+    // cooler used to tell. See `_shatter` in destruction.js and LIQUIDS in
+    // spills.js for how much comes out and what colour it is.
     w: 1.04, d: 0.82, model: 'vending_machine', hp: 120, substance: 'electronic',
+    spills: 'drink',
     build(p) {
       p.box('metalDark', -0.5, 0, -0.39, 0.5, 1.92, 0.39);
       p.box('screenOn', -0.42, 0.5, -0.4, 0.16, 1.76, -0.38);   // lit display window
@@ -1113,7 +1122,7 @@ export function tryPlace(sink, kind, cx, cz, rot, rng, span = 0) {
     // colours rather than the palette the fallback boxes were authored in.
     const stamps = [{ key: spec.model, x: cx, y: 0, z: cz, yaw }];
 
-    sink.beginStatic(spec.hp, spec.substance, spec.volatile, spec.powerCore);
+    sink.beginStatic(spec.hp, spec.substance, spec.volatile, spec.powerCore, spec.spills);
     // `model()` says whether anything was actually stamped. It wasn't if the
     // GLB failed to fetch, or if there is no loader at all — which is every run
     // of the headless validators in tools/. Only the PICTURE falls back in that
@@ -1171,7 +1180,7 @@ export function tryPlace(sink, kind, cx, cz, rot, rng, span = 0) {
   } else {
     // Static boxes: the geometry it is drawn with is already the geometry it
     // falls apart into, so there is nothing to capture separately.
-    sink.beginStatic(spec.hp, spec.substance, spec.volatile, spec.powerCore);
+    sink.beginStatic(spec.hp, spec.substance, spec.volatile, spec.powerCore, spec.spills);
     spec.build(placer(sink, cx, cz, rot), rng, drawW);
     sink.endStatic();
   }

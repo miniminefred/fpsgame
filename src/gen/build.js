@@ -1785,11 +1785,11 @@ function makeSink(layout, batcher, materials, masks) {
 
     // --- static props ------------------------------------------------------
 
-    beginStatic(hp, substance, volatile = false, powerCore = false) {
+    beginStatic(hp, substance, volatile = false, powerCore = false, spills = null) {
       hulkOn = false;
       record = hp > 0
         ? {
-          hp, substance, volatile, powerCore,
+          hp, substance, volatile, powerCore, spills,
           boxes: [], colliders: [], navTiles: [], spans: batcher.beginSpans(),
         }
         : null;
@@ -1820,6 +1820,10 @@ function makeSink(layout, batcher, materials, masks) {
         // The one destructible that fans its own kill out floor-wide — see
         // destruction.js's _shatter and game.js's _onPowerCut.
         powerCore: r.powerCore,
+        // What is inside it, if anything pours out when it goes. The same trait
+        // a loose prop carries on `traits.spills` — a cooler is loose and a
+        // vending machine is not, and both have to answer the same question.
+        spills: r.spills,
         spans: r.spans,
         // Which of those spans belong to the hulk, aligned one-for-one because
         // box() records a span and a box on the same call. Only its PRESENCE is
