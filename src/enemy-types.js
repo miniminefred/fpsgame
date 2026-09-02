@@ -432,7 +432,15 @@ export const isMachine = (type) => !!type.chassis || !!type.machine;
 
 // The neutrals that are not the toilet guy. He is guaranteed on every floor;
 // these fill in around him so the harmless staff are not one repeated joke.
-export const BYSTANDERS = [TYPES.cleaner, TYPES.courier];
+//
+// The courier ALONE, because the Night Cleaner is the night shift's and nobody
+// else's. That is a lever on the building rather than a change to the roster: a
+// man mopping a corridor is the one piece of the background traffic that says
+// what TIME it is, and something that says so on every floor of every run says
+// nothing. He is named in Night shift's own `bystanders`, which is also what
+// guarantees him there — the one-of-each-first pass below takes the named kinds
+// in order — and being off this list is what makes him impossible anywhere else.
+export const BYSTANDERS = [TYPES.courier];
 
 // Who is working this floor tonight. Weights are relative, so a theme does not
 // replace the roster — it tilts it, and floors keep their own character without
@@ -478,8 +486,9 @@ export const BYSTANDERS = [TYPES.cleaner, TYPES.courier];
 // ordinary office is not.
 //
 // `bystanders` is the last one and it is about the corridors: the harmless
-// traffic is a night cleaner and a courier unless a theme names its own, and on
-// a floor run by machines the deliveries are done by one — alongside the
+// traffic is a courier unless a theme names its own. Two do — the Night Cleaner
+// is Night shift's alone, because a man mopping a corridor should say what time
+// it is, and on a floor run by machines the deliveries are done by a Porter — alongside the
 // maintenance staff, who are the tenth of the floor this theme's own comment
 // promises and who until now were only ever found in a generator room, on the
 // 3% of floors that have one. They are also the far end of a parcel run: a box
@@ -524,7 +533,13 @@ export const THEMES = [
     share: { clerk: 0.29, sentry: 0.15, legacy: 0.15, loader: 0.14, welder: 0.10, drone: 0.07 },
     boost: { sysadmin: 6, facilities: 3, reanimated: 0 } },
   { name: 'Lockdown', weight: 2, light: 0.75, rats: [1, 1], patrols: [3, 4], boost: { security: 6, manager: 4 } },
-  { name: 'Night shift', weight: 2, light: 0.5, rats: [2, 3], patrols: [1, 2], boost: { reanimated: 4, sentry: 4, facilities: 3 } },
+  // The one shift the Night Cleaner works — see BYSTANDERS. He is first in the
+  // list, so the one-of-each-first pass guarantees at least one of him even on
+  // the smallest slab, and the courier still walks these halls beside him:
+  // deliveries do not stop because the lights are down.
+  { name: 'Night shift', weight: 2, light: 0.5, rats: [2, 3], patrols: [1, 2],
+    bystanders: ['cleaner', 'courier'],
+    boost: { reanimated: 4, sentry: 4, facilities: 3 } },
   { name: 'All-hands', weight: 2, light: 1, rats: [1, 1], patrols: [2, 4], boost: { analyst: 6, intern: 5, manager: 3 } },
 ];
 
