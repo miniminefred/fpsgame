@@ -2324,15 +2324,67 @@ Three things make that affordable, and the first two are the ones worth copying:
 
   **It is parented to the ARM, not to the body, and that is why it needs no pose.** A tray
   and a crate are carried in both hands and have to fight the walk cycle for the arms; a can
-  hangs at somebody's side in one hand, which is exactly what an arm already does — so it is
-  a child of the arm mesh and inherits its swing, its hinge and the body's own scale for
-  free, and nothing in `enemy-anim.js` learns it exists. The offset comes off the rig's own
-  `joints.armHalf`, which is the `gunRest` lesson again: measured at 3 cm below the hand on a
-  person, a scaled Manager and a Porter Unit alike. Which hand and which of six flavours are
-  **hashed** off the machine rather than rolled, for the eating hand's reason — stable for
-  the run and identical in both browsers, so the wire carries one bit instead of a colour and
-  a side (`SNAP_CAN`). Released in `_die` and not in `_damage`: somebody merely being shot at
-  runs away with their drink, which is the truth about people.
+  is held in one, which is exactly what an arm already does — so it is a child of the arm
+  mesh and inherits its swing, its hinge and the body's own scale for free, and nothing in
+  `enemy-anim.js` learns it exists. The offset comes off the rig's own `joints.armHalf`,
+  which is the `gunRest` lesson again — verified across a person, a scaled Manager, a Clerk
+  Unit, a Loader Unit and a Welder Unit, every one of which stands the can up out of its own
+  hand. Which hand and which of six flavours are **hashed** off the machine rather than
+  rolled, for the eating hand's reason — stable for the run and identical in both browsers,
+  so the wire carries one bit instead of a colour and a side (`SNAP_CAN`). Released in `_die`
+  and not in `_damage`: somebody merely being shot at runs away with their drink, which is
+  the truth about people.
+
+  **AND IT IS OVERSCALED AND HELD UP, because at real scale nobody could see it.** It was a
+  real 330 ml can, 6.6 x 11.5 cm, hanging 3 cm BELOW the hand — sized and hung on the
+  argument that it is never seen from closer than arm's length and never bigger than a
+  thumbnail on screen. Both halves of that are true and the conclusion was wrong: a prop
+  somebody carries across a floor for half a minute is a prop the player is *looking at*, and
+  what they were looking at was a coloured peg by somebody's hip. A player reported it as the
+  drinks not being there at all — and they were: driven headlessly at a fixed 1/30 on floor 4,
+  the first can arrives at **19.2 s** and five are held at once on a roster of 88. Nothing was
+  missing, it just could not be seen.
+
+  So it is 9.4 x 19.8 cm — a can and a half — and `drop` is NEGATIVE, which puts its middle
+  2.6 cm above the hand and closes the fist round its lower third, the way a can is actually
+  carried. It also stands further out (`forward`, the second number `_inHand` grew for this):
+  at the bundle of paper's 3.5 cm a can this wide is more inside the forearm box than outside
+  it. Measured on every rig, human and chassis: 11–15 cm of can standing proud of the grip.
+
+  **The shape is what it costs, and it is paid for by merging.** A cylinder with a flat top is
+  a tin, so a can is six parts now — a base that tucks in, a barrel, a shoulder, a rim, a lid
+  and the tab — with a label sleeve round the middle. Seven meshes apiece with forty cans on a
+  floor is not a thing to do to the renderer, so they are merged into ONE geometry with a
+  material group each: one Mesh and 320 triangles, against the two meshes it cost as a
+  coloured tube. The barrel's own paint still shows above and below the sleeve, because that
+  band of bare colour is what reads from the end of a corridor once the artwork has gone to
+  mush.
+
+  **The machine stocks four things and one of them is dented** (`CAN_FLAVOURS`). FIZZ, OFFICE
+  SODA — the building's own brand, in the building's own blue, and somebody in procurement is
+  very pleased with it — KOLA, and GOOLI, which nobody knows the contents of. Named rather
+  than tinted, because a colour says "not that one" where a name says what it *is*, and a
+  floor's staff use the same machine all shift. The wordmark is a list of LINES, since OFFICE
+  SODA on one line at this size is a grey smear. No two colours are near each other on the
+  wheel, because the colour is what survives the range you actually see one at.
+
+  The label canvas is 340 x 100 and that is not arbitrary — it is the sleeve's own aspect, a
+  0.088 m band round a 0.299 m circumference. A squarer canvas is stretched horizontally onto
+  the cylinder and the tell is fat lettering, the wordmark being the one thing on the can with
+  a shape the eye already knows.
+
+  **And one can in twenty comes out of the machine already shot through** (`CAN_BROKEN`),
+  folded over on the hole with the round's entry on one side and a bigger tear on the other —
+  painted on rather than cut, the way the service openings in a corridor wall are. It is a
+  joke about the *building* rather than about the drink: this is a floor where firefights go
+  through the corridor the machine is standing in, and the stock is behind a glass front. Five
+  per cent is the whole of the tuning: rare enough that the first one is a surprise, common
+  enough to be seen at all, against a floor that hands out five or six cans.
+
+  **The hash it is drawn from has to be MIXED, and that was a real bug waiting.** Two things
+  come off one integer, and `seed % 4` and `seed % 20` are not independent — taken straight,
+  every shot can in the building is a KOLA. Measured over 20,000: 5.0% shot, spread 247 / 251
+  / 247 / 257 across the four.
 
   The routine's bundle of paper (`SNAP_PAPERS`) rides the same primitive, with one
   difference — it has no clock, because the errand that produced it is what takes it back. A
@@ -3314,8 +3366,46 @@ it there is — `wet` (the darkening layer), `sheen` (the additive one over it),
 brown stain rather than a blue-grey one, and a machine holds maybe twenty cans against a
 cooler's whole 19-litre bottle, so a burst that matched the cooler's would read as the machine
 having been full of water. Measured: water bursts to 1.12 m of radius in `#23303a` under a
-`#6f9fb8` sheen, a drink to 0.616 m in `#2b1c10` under `#b46a24`. The **sheen** is where a
+`#6f9fb8` sheen, a drink to 0.806 m in `#2b1c10` under `#b46a24`. The **sheen** is where a
 liquid's colour actually reads, because the bottom layer is nearly black whatever it is tinted.
+
+**A FITTED prop has to be poured clear of itself, and it took a player to notice.** A water
+cooler is 0.4 m across under a patch 2.24 m across, so wherever it lands most of it is on
+floor you can see; a vending machine is 1.04 m wide, as wide as its own patch, and it is
+backed against a wall. Centred on the machine the way a cooler's is centred on the cooler,
+**67%** of the drink was inside the machine's own footprint — under the debris that lands
+there a frame later — and **30%** was inside the wall, leaving 0.32 m² of it visible. That is
+a patch smaller than a sheet of A3 at the foot of something that has just been blown apart,
+which reads exactly like nothing having spilled at all, and is what was reported: *it doesn't
+spill anything, like it was never added.*
+
+So `start` takes an `away` — a unit direction saying which way is OUT — and it is a direction
+rather than a distance because the two halves of that question live in different files: the
+caller is the only thing that knows which side of a machine the room is on, and `spills.js` is
+the only thing that knows how big the patch will be (`AWAY_SHARE`, nine tenths of a radius, so
+the patch still LAPS the foot of the machine rather than standing in front of it as a separate
+puddle). The stream is deliberately NOT moved with it — that still runs down the machine where
+the round went in, and the patch spreading away from the foot of it is what the two together
+are meant to look like.
+
+`_roomSide` in `destruction.js` is what answers it, and it asks the FLOOR, the way `_wreck`
+asks the same question about the generator: the open side is the one a body can stand on. The
+hit point is only a preference between open sides — it is the side the player is standing on
+and looking at — and only ever a preference, because a prop caught in somebody else's
+explosion has its "hit point" somewhere inside itself. Two numbers in it were measured rather
+than chosen: a body's own 0.4 m of clearance at 0.4 m past the corner found an open side on
+only **31 of 78** machines, because a machine's nav footprint rounds outward to whole tiles
+and a disc that wide presses against its own blocked ground. What is being asked is "is the
+room this way", not "can somebody stand exactly here" — `SIDE_ROOM` is 0.25 m, which answers
+it on 76 of the 78 and still stays close enough in not to reach past the half-metre wall
+behind the machine and find the next room through it. Nothing open at all is an ordinary
+answer and means spill where you stand, as before.
+
+Widening it and moving it are ONE change, not two: 1.23 m of patch against a 1.04 m machine is
+not a spill, it is a damp footprint, and 1.61 m centred on the machine is still mostly under
+it. Together, over 78 machines on five floors, 27% of the drink on open floor becomes **73%**
+and 0.32 m² of it becomes **1.49**. The cooler is untouched and was checked for it — 2.24 m
+across, zero offset, on every floor swept.
 
 One material trio per liquid rather than per puddle, built on first use — three materials
 times two liquids is the whole cost of the second one, where per-puddle would be sixty. The

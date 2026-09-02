@@ -2978,7 +2978,7 @@ export class Enemies {
     // outside it; at 7.2 the back of it is still buried in the hand, which is
     // what makes it read as gripped rather than as balanced on top of a fist,
     // and the rest of it stands proud where it can be seen.
-    const held = this._inHand(e, buildCan(Math.abs(Math.round(key)) % 6 || 0), key, -0.026, 0.072);
+    const held = this._inHand(e, buildCan(key), key, -0.026, 0.072);
     if (!held) return;
     e.can = held.mesh;
     e.canArm = held.arm;
