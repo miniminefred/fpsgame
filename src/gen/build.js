@@ -7,7 +7,7 @@ import { furnish } from './rooms.js';
 import { modelInfo, stampModel, paintDebris } from './models.js';
 import {
   TILE, WALL_H, CEIL_H, DOOR_H, DOOR_CLEAR,
-  SOLID, ROOM, CORRIDOR, DOOR, isOpen, worldX, worldZ, tileX, tileY,
+  SOLID, ROOM, CORRIDOR, DOOR, isOpen, FACING, worldX, worldZ, tileX, tileY,
   slidePocketSide, slidePocketRun, doorSide, doorsOnRoom,
 } from './layout.js';
 import { CARDS, READER_LIT, READER_OPEN } from '../keycards.js';
@@ -113,6 +113,10 @@ export function buildLevel(scene, layout) {
   buildSlidingDoors(layout, scene, materials, doors, colliders, readers, rng);
   buildHallDoors(layout, scene, materials, doors, colliders, readers);
   readers.finish();
+  // The two cars, after the doors because they fit doors of their own, and
+  // before the furnishing for no reason at all — nothing they draw is on the
+  // tile grid the furnisher works against. See gen/lifts.js.
+  buildLifts(layout, batcher, materials, scene, doors, colliders, fixtures);
 
   const sink = makeSink(layout, batcher, materials,
     { blocked, occupied, reserved, colliders, dynamics, destructibles, workstations });
@@ -1288,8 +1292,11 @@ function buildSlidingDoors(layout, scene, materials, doors, colliders, readers, 
 
   for (const d of layout.doors) {
     // The ones across the corridors are hinged, not hung on a runner, and they
-    // are fitted below.
-    if (d.hall) continue;
+    // are fitted below. So are the lift cars', which are a pair of leaves that
+    // part in the middle — and which must never be one of the doorways that
+    // simply has no door in it, whatever the die says: a lift standing open to
+    // its shaft is not a lift.
+    if (d.hall || d.lift) continue;
     // Not every doorway has a door in it. Some were taken off their runners
     // years ago and nobody replaced them — but never the badged ones, and the
     // generator has already checked that every one of those can hold a panel.
@@ -1451,6 +1458,179 @@ function buildHallDoors(layout, scene, materials, doors, colliders, readers) {
       reader: d.lock ? readers.add(d, cx, cz, x1, z1) : null,
     });
   }
+}
+
+// --- the lift cars ----------------------------------------------------------
+
+const LINE_T = 0.04;           // how far the car's lining stands off its plaster
+const LINE_H = 2.45;           // and how far up it goes, leaving a band of wall
+const RAIL_Y = 0.92;           // the handrail, at the height a hand falls
+const RAIL_R = 0.035;
+const CAR_LAMP_INSET = 0.35;   // the lit ceiling panel, in from the car's walls
+const CAR_LAMP_Y = CEIL_H - 0.02;
+const SIGN_Y0 = DOOR_PANEL_H + 0.12;   // the floor indicator over the doors
+const SIGN_H = 0.16;
+const SIGN_W = 0.62;
+const SIGN_PROUD = 0.015;
+
+/**
+ * The fit-out of the two cars gen/lifts.js cut into the floorplan.
+ *
+ * Everything STRUCTURAL about a car is already standing before this runs — the
+ * shell built its walls out of SOLID tiles, the floor pass laid its floor, the
+ * ceiling pass covered it and buildDoorFrames put a frame and a header round its
+ * opening — so what is left is the four things that make a box with a hole in it
+ * read as a lift: a lining, a rail, a light of its own, and doors that part.
+ *
+ * Three of the four are batched, because they never move. The doors are meshes,
+ * for the reason every other door in the building is.
+ */
+function buildLifts(layout, batcher, materials, scene, doors, colliders, fixtures) {
+  for (const lift of [layout.lifts?.arrival, layout.lifts?.departure]) {
+    if (!lift) continue;
+    dressCar(layout, lift, batcher, materials, fixtures);
+    fitLiftDoors(layout, lift, scene, materials, doors, colliders);
+  }
+}
+
+// The inside of the car: brushed panel on the three walls you can see, a rail
+// across the back of it, and a lit ceiling.
+//
+// The light is the part that earns its place. A car is a sealed box in the
+// middle of a room, so the room's own ceiling fixtures are on the wrong side of
+// its walls and the pool that follows the player (see lighting.js) has nothing
+// in there to home onto — the floor opened on a black cupboard with a doorway in
+// it. One fixture inside, and it is also the only light in the building that is
+// GUARANTEED to be the first thing switched on, because the player is standing
+// under it before they have moved.
+function dressCar(layout, lift, batcher, materials, fixtures) {
+  const x0 = worldX(layout, lift.tx0), x1 = worldX(layout, lift.tx1);
+  const z0 = worldZ(layout, lift.ty0), z1 = worldZ(layout, lift.ty1);
+  const [ox, oz] = FACING[lift.facing];
+
+  // The three walls that are not the doors. Written as a direction rather than
+  // as named walls, because which of the four the doors are in is the whole of
+  // what varies between one car and the next.
+  for (const [dx, dz] of FACING) {
+    if (dx === ox && dz === oz) continue;
+    // No world UVs: `metal` is a flat colour with no map, so there is nothing
+    // for them to line up.
+    batcher.add('metal', materials.metal, dx
+      ? boxBetween(dx > 0 ? x1 - LINE_T : x0, 0, z0, dx > 0 ? x1 : x0 + LINE_T, LINE_H, z1)
+      : boxBetween(x0, 0, dz > 0 ? z1 - LINE_T : z0, x1, LINE_H, dz > 0 ? z1 : z0 + LINE_T),
+      { castShadow: false });
+  }
+
+  // The rail, across the wall the car backs onto — which is the one opposite the
+  // doors, so it is the wall you are facing when you turn round inside.
+  const back = ox
+    ? { a: ox > 0 ? x0 : x1 - LINE_T - RAIL_R * 2, b: 0 }
+    : { a: 0, b: oz > 0 ? z0 : z1 - LINE_T - RAIL_R * 2 };
+  batcher.add('metalDark', materials.metalDark, ox
+    ? boxBetween(back.a + LINE_T, RAIL_Y - RAIL_R, z0 + 0.2,
+      back.a + LINE_T + RAIL_R * 2, RAIL_Y + RAIL_R, z1 - 0.2)
+    : boxBetween(x0 + 0.2, RAIL_Y - RAIL_R, back.b + LINE_T,
+      x1 - 0.2, RAIL_Y + RAIL_R, back.b + LINE_T + RAIL_R * 2),
+    { castShadow: false });
+
+  batcher.add('panel', materials.panel, slab(
+    x0 + CAR_LAMP_INSET, z0 + CAR_LAMP_INSET,
+    x1 - CAR_LAMP_INSET, z1 - CAR_LAMP_INSET, CAR_LAMP_Y, false), { castShadow: false });
+  fixtures.push({
+    x: (x0 + x1) / 2, y: CAR_LAMP_Y - 0.1, z: (z0 + z1) / 2,
+    color: LAMP_COLD, intensity: 2.2, distance: 5,
+  });
+
+  // And the floor indicator over the doors, on the OUTSIDE. It is the one thing
+  // here that is for the player standing in the room rather than in the car, and
+  // it is what says "lift" from across a reception: a blank wall with a doorway
+  // in it is a cupboard, and a lit strip over that doorway is not. The
+  // departure car gets a second, louder tell of its own — see buildExit.
+  const d = lift.door;
+  const sx = ox ? worldX(layout, ox > 0 ? d.x1 : d.x0) : (worldX(layout, d.x0) + worldX(layout, d.x1)) / 2;
+  const sz = oz ? worldZ(layout, oz > 0 ? d.y1 : d.y0) : (worldZ(layout, d.y0) + worldZ(layout, d.y1)) / 2;
+  batcher.add('panel', materials.panel, ox
+    ? boxBetween(sx + ox * SIGN_PROUD - SIGN_PROUD, SIGN_Y0, sz - SIGN_W / 2,
+      sx + ox * SIGN_PROUD + SIGN_PROUD, SIGN_Y0 + SIGN_H, sz + SIGN_W / 2)
+    : boxBetween(sx - SIGN_W / 2, SIGN_Y0, sz + oz * SIGN_PROUD - SIGN_PROUD,
+      sx + SIGN_W / 2, SIGN_Y0 + SIGN_H, sz + oz * SIGN_PROUD + SIGN_PROUD),
+    { castShadow: false });
+}
+
+/**
+ * The doors: two leaves that part in the middle, one runner each.
+ *
+ * A third kind of door, and the arithmetic behind it is all in LIFT_DOOR_W in
+ * gen/lifts.js — each leaf is half the opening and retracts into the half tile
+ * of the car's own front beside it, which is why a car's opening is 1.0 m rather
+ * than the building's 1.5 m. Everything else is buildSlidingDoors': one collider
+ * for the closed opening, retired by dropping its `top` when the pair is more
+ * than half open, and the door tiles handed over so a shut car is opaque to
+ * sight as well as to walking.
+ *
+ * They share one entry in `doors` because they are one doorway — the same
+ * argument buildHallDoors makes about its two leaves, and for the same three
+ * reasons: one sensor, one sound, one collider.
+ */
+function fitLiftDoors(layout, lift, scene, materials, doors, colliders) {
+  const { W } = layout;
+  const d = lift.door;
+  const geo = new THREE.BoxGeometry(1, 1, 1);
+
+  const x0 = worldX(layout, d.x0), x1 = worldX(layout, d.x1);
+  const z0 = worldZ(layout, d.y0), z1 = worldZ(layout, d.y1);
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  const width = d.vertical ? z1 - z0 : x1 - x0;
+  const half = width / 2;
+
+  const root = new THREE.Group();
+  const panels = [];
+  for (const end of [-1, 1]) {
+    const mesh = new THREE.Mesh(geo, materials.doorPanel);
+    mesh.scale.set(d.vertical ? DOOR_T : half, DOOR_PANEL_H, d.vertical ? half : DOOR_T);
+    const px = d.vertical ? cx : cx + end * half / 2;
+    const pz = d.vertical ? cz + end * half / 2 : cz;
+    mesh.position.set(px, DOOR_PANEL_H / 2, pz);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    root.add(mesh);
+    panels.push({
+      mesh, baseX: px, baseZ: pz,
+      dirX: d.vertical ? 0 : end,
+      dirZ: d.vertical ? end : 0,
+      // Its own width, less the same hair `slidePocketRun` keeps: the pocket is
+      // exactly one leaf long, so travelling the full width would put the far
+      // face of the leaf flush with the far face of the jamb — which is a
+      // shimmering rectangle of door on the end of a wall.
+      travel: Math.max(0, half - POCKET_CLEAR),
+    });
+  }
+  scene.add(root);
+
+  const collider = {
+    minX: d.vertical ? cx - DOOR_T / 2 : x0,
+    maxX: d.vertical ? cx + DOOR_T / 2 : x1,
+    minZ: d.vertical ? z0 : cz - DOOR_T / 2,
+    maxZ: d.vertical ? z1 : cz + DOOR_T / 2,
+    top: DOOR_PANEL_H,
+    door: true,
+  };
+  colliders.push(collider);
+
+  const navTiles = [];
+  for (let ty = d.y0; ty < d.y1; ty++) {
+    for (let tx = d.x0; tx < d.x1; tx++) navTiles.push(ty * W + tx);
+  }
+
+  doors.push({
+    root, panels, collider,
+    x: cx, z: cz,
+    at: new THREE.Vector3(cx, 1.2, cz),
+    height: DOOR_PANEL_H,
+    lock: null,
+    navTiles,
+    reader: null,
+  });
 }
 
 // --- badge readers ----------------------------------------------------------

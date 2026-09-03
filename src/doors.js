@@ -302,6 +302,19 @@ export class Doors {
   _place(door) {
     if (door.leaves) {
       for (const leaf of door.leaves) leaf.pivot.rotation.y = leaf.angleTo * door.open;
+    } else if (door.panels) {
+      // A lift car: two leaves on runners rather than one, parting from the
+      // middle and each retracting into its own half of the car's front. It is
+      // the sliding case below with a list instead of a panel — same `open`, same
+      // travel along a fixed direction — because a lift door slides, it just
+      // slides in two directions at once.
+      for (const p of door.panels) {
+        const slide = p.travel * door.open;
+        p.mesh.position.set(
+          p.baseX + p.dirX * slide,
+          p.mesh.position.y,
+          p.baseZ + p.dirZ * slide);
+      }
     } else {
       const slide = door.travel * door.open;
       door.mesh.position.set(
