@@ -787,7 +787,7 @@ export class Game {
       this.floorsCleared++;
       // No longer competes with the black card: that now drops one kill earlier,
       // on the last hostile outside the manager's office.
-      this.hud.message('FLOOR CLEAR — FIND THE EXIT', 2200);
+      this.hud.message('FLOOR CLEAR — TAKE THE LIFT DOWN', 2200);
       this.audio.floorClear();
     }
     this._syncObjective(remaining);
@@ -852,7 +852,7 @@ export class Game {
 
   _syncObjective(remaining = this.enemies.hostileCount) {
     this.hud.setObjective(this.cleared
-      ? 'Find the exit'
+      ? 'Take the lift down'
       : `Clear the floor — ${remaining} left`);
   }
 
