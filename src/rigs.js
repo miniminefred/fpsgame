@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { hexCss } from './util.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getTech } from './tech-textures.js';
+import { CAN_FLAVOURS, CAN_R, CAN_H, drinkFrom } from './drinks.js';
 
 // What the things walking around a floor are made of.
 //
@@ -1087,44 +1088,6 @@ export function buildTray() {
 let canParts = null;
 const canLabels = new Map();
 
-// The drinks machine's stock list.
-//
-// FOUR of them and they are named, where it used to be six anonymous tints. The
-// difference is not decoration: a floor's staff use the same machine all shift,
-// so a building where everybody is holding the same thing is a building with one
-// can in it — and a colour alone says "not that one" where a name says what it
-// is. The wordmark is a list of lines because one of them is two words long, and
-// OFFICE SODA squeezed onto one line at this size is a grey smear.
-//
-// The colour is still doing the heavy lifting, because it is what survives the
-// range at which you actually see one: the label goes to mush a few metres out
-// and the bare paint above and below it does not. So no two are near each other
-// on the wheel.
-const CAN_FLAVOURS = [
-  { lines: ['FIZZ'], color: 0xd68910 },
-  // The building's own brand, in the building's own blue. Somebody in
-  // procurement is very pleased with it.
-  { lines: ['OFFICE', 'SODA'], color: 0x2b6cb0 },
-  { lines: ['KOLA'], color: 0xc0392b },
-  // Nobody knows what is in this one.
-  { lines: ['GOOLI'], color: 0x6c3483 },
-];
-
-// One can in twenty comes out of the machine already shot. See `buildCan`.
-const CAN_BROKEN = 20;
-
-// 9.4 cm across and 19.8 cm tall, which is not a can, it is a can and a half.
-//
-// A real 330 ml can is 6.6 x 11.5 and that is exactly what this was, on the
-// argument that it is never seen from closer than arm's length and never bigger
-// than a thumbnail on screen. Both halves of that were true and the conclusion
-// was wrong: a prop somebody carries for half a minute across a floor you are
-// walking down is a prop the player is LOOKING at, and at real scale it read as
-// a coloured peg by somebody's hip. Overscaled the way a game prop is
-// overscaled — held up where a hand can be seen holding it, and legible from
-// the other side of the room.
-const CAN_R = 0.047;
-const CAN_H = 0.198;
 
 /**
  * The label, wrapped round the middle of the can.
@@ -1305,26 +1268,17 @@ function canShapes() {
 }
 
 /**
- * A drink somebody bought, in their hand.
+ * A drink, in a hand or coming out of the machine it was standing in.
  *
  * Built the way `buildTray` and `buildCrate` are and for their two reasons:
  * geometry and materials are module-level and shared, so the fortieth can of a
  * floor costs one Mesh rather than a mesh build; and it lives here rather than
  * in enemies.js because this file is the one that knows what a body is made of.
  *
- * WHICH DRINK IS HASHED off `seed` rather than rolled, for the eating hand's
- * reason: it has to be the same can for as long as somebody is carrying it, and
- * a die drawn in a build method would hand them a different flavour every frame
- * the mesh was rebuilt. The hash is mixed rather than used raw because two
- * things are drawn from it and `seed % 4` and `seed % 20` are not independent —
- * taken straight, every shot can in the building would have been a KOLA.
- *
- * ONE IN TWENTY comes out of the machine already shot through and folded over on
- * the hole. It is a joke about the building rather than about the drink: this is
- * a floor where a firefight goes through the corridor the machine is standing
- * in, and the stock is behind a glass front. Five per cent is the whole of the
- * tuning — it has to be rare enough that the first one is a surprise and common
- * enough to be seen at all, and a floor hands out five or six cans.
+ * WHICH DRINK IT IS is `drinkFrom`'s answer and not this file's — see drinks.js
+ * for why it is hashed off the seed rather than rolled, and why the same seed
+ * has to come back with the same can in a hand, in a machine's window, and on
+ * the carpet in front of a machine that has just been blown apart.
  */
 export function buildCan(seed = 0) {
   canParts ??= {
@@ -1347,9 +1301,7 @@ export function buildCan(seed = 0) {
   };
 
   const parts = canParts;
-  const h = (Math.abs(Math.round(seed)) * 2654435761) >>> 0;
-  const flavour = h % CAN_FLAVOURS.length;
-  const shot = ((h >>> 9) % CAN_BROKEN) === 0;
+  const { flavour, shot } = drinkFrom(seed);
 
   let label = parts.label.get(flavour);
   if (!label) {
