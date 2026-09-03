@@ -189,10 +189,11 @@ the Ubuntu runner do not have the problem.
 
 ## The game
 
-**Office Descent** — an endless procedurally-generated office shooter. You arrive on a
-floor of a grey corporate building, clear the staff still working there, find the service
-hatch, and descend. The next floor is generated on the fly, usually a little bigger and
-always a little nastier. There is no ground floor.
+**Office Descent** — an endless procedurally-generated office shooter. The lift doors part
+on a floor of a grey corporate building; you cross the reception in front of you, go through
+the door at the far side of it, clear the staff still working there, find the second lift
+and take it down. The next floor is generated on the fly, usually a little bigger and always
+a little nastier. There is no ground floor.
 
 Two people can do it together, over the internet, off a six-character code read out loud.
 See **Co-op** below.
@@ -265,6 +266,7 @@ src/
                   tiles.js and locks.js, so the rest of the tree has one address
     locks.js      Badge readers: which door gets which card, and the proofs
     stairs.js     A staircase up a room's wall, and the sealed storey above it
+    lifts.js      The two cars a floor is entered and left by, cut into two rooms
     build.js      Floorplan -> meshes, colliders, nav grid, lights, windows
     props.js      Office furniture catalogue and the placement primitive
     rooms.js      Which props a room gets, and where they go against its walls
@@ -1089,11 +1091,117 @@ the deck at 3.2 m, and on the door wall they do it starting from inside the door
 the one-turn walk is the tested claim and not just the intended one. Each deck comes out
 with three to five desks on it.
 
-### The cafeteria, and arriving in it (`cafeteria` in `gen/rooms.js` + `pickCafeteria`)
-The floor's canteen, and the room you are standing in when the floor starts. It is the
-plant room's sibling — a big room composed around one thing — and it is deliberately the
-**common** one where the generator is the rare one: **577 of 600** swept floors get a
-cafeteria against 20 that get a plant room.
+### The two lifts (`gen/lifts.js` + `buildLifts`/`buildExit` in `gen/build.js`)
+A floor used to begin with the player standing in the middle of a room and end with a lit
+pad on the carpet. Both are PLACES rather than arrivals: nothing about either said you had
+come from the floor above or that there was one below. So a floor now opens the way an
+office opens — you are in a lift car, its doors part, the room in front of you is the
+reception that fronts the lifts, and the door out of that reception is the door into the
+building. The way down is the second car at the far end of the floor.
+
+**A car is a tiny room carved INTO a room**, and that is the whole reason `gen/lifts.js` is
+tile arithmetic rather than a mesh builder. Everything the shell already does for a room it
+does for the car for free: SOLID tiles become walls with colliders, the open tiles inside
+take flooring and a suspended ceiling, the DOOR tiles take a frame and a header, and nav
+blocks the walls and walks the opening without being told any of it exists. The interior is
+4 x 3 tiles — 2.0 x 1.5 m, a small office lift and not a goods one — and the block it
+occupies is that plus a side wall each side and a front wall it cuts its opening in. The
+BACK wall is the room's own perimeter: a lift shaft belongs in the fabric of a building, and
+a car standing off the wall with a strip of carpet behind it is a cupboard.
+
+**It runs LAST — after roles, locks and stairs — and that ordering is the whole of its
+safety.** Every pass that reasons about doors reads `layout.doors`: `assignLocks` would
+badge a lift door as an ordinary way into the exit room, `fitsGenerator` counts a room's
+doorways to decide what it can be, and `cafeteria` and `generatorRoom` are both composed
+around `doorsOnRoom(...)[0]`. A lift door is none of those things, and running after all of
+them is cheaper and far more certain than teaching each one to ignore it.
+
+**The opening is 1.0 m rather than the building's 1.5 m, and that is the pocket rather than
+the look.** A sliding panel retracts into the wall beside its opening and needs that wall to
+be there for the panel's whole length (`slidePocketSide`), and the only wall a car has
+beside its doors is the strip of its own front between the opening and the corner post. So
+the arithmetic has to close: the front is 6 tiles, the opening takes 2 out of the middle,
+and each of the two leaves that part in the middle is 1 tile wide and retracts into exactly
+1 tile of pocket. At the building's 1.5 m there would be a quarter of a tile a side, which
+is a pair of leaves standing out in the middle of the car when they are open. `doors.js`
+gained one branch for it — `panels`, a list of sliding leaves — because a lift door slides,
+it just slides in two directions at once.
+
+**Four refusals, and three of them were bugs first.** All four are quiet in the same way,
+which is why they are stated rather than left to the flood: the room stays reachable, the
+car stays reachable, and something else is wrong.
+
+- **Not over the room's own CENTRE TILE.** Half the generator uses `round(cx), round(cy)` as
+  the one tile that stands for a room — `assignLocks` asks whether a candidate is still
+  reachable there, the exit is ranked by the distance to it, and the layout sweep decides a
+  white room is stranded by flooding to it. A car walled over that tile makes all three
+  answer "unreachable" about a room that is fine. Five floors in six hundred reported a
+  white room cut off behind locks that had nothing to do with it.
+- **Nothing the block TOUCHES may be a doorway.** A car flush against the inside of a room's
+  own opening seals that opening from the room, and the connectivity proof sails through it
+  because the room has other doors. What is left is a door frame in a corridor wall with a
+  panel in it that opens onto plaster.
+- **No SLIVER down either flank.** A car pushed hard into a corner is the best place for it
+  and leaves no gap at all, so this is not a margin: nought is right and two tiles is right,
+  and the one thing that must not happen is ONE — half a metre between the car and the
+  room's wall, which the tile grid calls floor and a 0.8 m body cannot get down. The props
+  sweep found it as one exit room in three hundred with **1% of its own floor reachable from
+  its own door**, which is the geometric check catching what the tile flood cannot see.
+- **And then the flood anyway**, from a corridor tile, before and after: anything that was
+  reachable and is still open has to still be reachable. The same proof `goesRound` makes
+  before it dares badge a hall door, and for the same reason — this runs after connectivity
+  has been established and must not be able to undo it.
+
+Either car may come back null and a null car is an ordinary answer: the arrival falls back
+to standing in the middle of the room and the way down to the lit pad it has always been.
+Measured over 600 floors, **3 miss one**. A floor with no lift in it is a worse floor; a
+floor that fails to generate is not a floor.
+
+**The fit-out is four things** (`buildLifts`), and the light is the one that earns its place
+rather than decorating: a car is a sealed box in the middle of a room, so the room's own
+fixtures are on the wrong side of its walls and the pool that follows the player has nothing
+in there to home onto — the floor opened on a black cupboard with a doorway in it. One
+fixture inside, and it is also the only light in the building GUARANTEED to be the first one
+switched on, because the player is standing under it before they have moved. The other three
+are a brushed lining on the three walls you can see, a rail across the back, and a lit strip
+over the doors on the OUTSIDE — which is what says "lift" from across a reception, because a
+blank wall with a doorway in it is a cupboard.
+
+**The departure car wears that strip in the exit green instead** (`buildExit`, which owns
+everything on a floor that says *down* and owns the one-off materials it is painted in;
+`dressCar` skips the white one for that car, because two signs over one doorway means the
+one you read is the wrong one). The pad and the column of light are still there and are
+sized to the car — at the hatch's 1.1 m radius the pad was wider than the 1.5 m the car is
+deep and stood through both its walls. The marker no longer has to be legible from the far
+side of a dark floorplate, and that is the trade: a green strip over a lift is a sentence
+where a green glow on a far wall is a rumour.
+
+**Which room the floor arrives in is picked for that shape and nothing else**
+(`pickSpawnRoom`). It has to hold a car, it has to have a doorway onto a CORRIDOR — that is
+the door you go through to find the rest of the office, and it is also the part of the floor
+the prologue is measured over — and it should be neither the canteen nor a room the plant
+room could have had, both being rare set pieces that want the biggest rooms. Each
+requirement is dropped in turn if nothing survives it, rather than failing. `fitsLift` is
+exported and asked by both `pickSpawnRoom` and the exit ranking for the FIRST_CONTACT_GAP
+reason: the two asking slightly different questions is exactly how a floor ends up promising
+a lift it cannot build.
+
+**Nothing crosses the wire for any of it.** The carve draws no random numbers at all — it is
+a function of the finished floorplan — so both browsers in a co-op session cut the same two
+cars out of the same two rooms from the same seed.
+
+### The cafeteria (`cafeteria` in `gen/rooms.js` + `pickCafeteria`)
+The floor's canteen. It is the plant room's sibling — a big room composed around one thing
+— and it is deliberately the **common** one where the generator is the rare one: **577 of
+600** swept floors get a cafeteria against 20 that get a plant room.
+
+**It used to be the room the floor put you down in, and it is not any more.** The arrival
+is a lift car in a reception now (see The two lifts below), so `layout.cafeteriaRoom` and
+`layout.spawnRoom` are two different rooms with two different names — and everything in
+enemies.js that reaches for one of them had to be asked which it actually meant. The lunch
+cycle's counter, tray rack, tables and diners are the canteen's; "do not stand anybody
+here" is the arrival's. They were one field for as long as the cafeteria has existed, which
+is precisely why separating them was worth doing rather than threading a flag through.
 
 **The set piece is the servery, and it is `spanning` for exactly the reason the generator
 is.** It runs the wall opposite the door you come in by, corner to corner: a three-metre
@@ -1107,10 +1215,8 @@ true` on its collider like the generator, and for the same reason: a counter tha
 whole wall is well past the furniture caps in `validate-props.mjs`, which exist to catch a
 prop that has accidentally become a building.
 
-**Which room it picks is decided before anything else about the floor**, because it becomes
-the **spawn room** — and the exit's distance ranking, every lock, the prologue and where a
-staircase may go are all measured from the spawn. Three requirements, and the third is the
-load-bearing one:
+**Which room it picks is still decided before anything else about the floor**, because
+`pickSpawnRoom` has to be able to keep off it. Three requirements:
 
 - 85 m² and a short side of 12 tiles, or the rows behind the queue lane have nowhere to go.
 - Not a room the plant room could have had. `fitsGenerator` is named rather than written
@@ -1118,17 +1224,18 @@ load-bearing one:
   only ~3% of floors roll one at all, so a canteen claiming rooms by size alone would
   quietly cost the game its rarest set piece. Measured on the same seeds: **20/300 floors
   have a plant room before and after.**
-- **A doorway onto a CORRIDOR.** This is the room the player is standing in holding
-  nothing, so its way out has to be the part of the floor the prologue is measured over.
-  A big room whose only door opens into somebody's office starts the floor by walking
-  through a stranger's office to reach the building.
+- **A doorway onto a CORRIDOR**, so the building's own staff can walk to it. This used to
+  be the load-bearing one for a different reason — it was the room the player stood in
+  holding nothing, so its way out had to be the part of the floor the prologue is measured
+  over — and that argument has moved to the reception, where it now applies to a room the
+  player really is standing in.
 
 The pick is deterministic — the biggest room that qualifies — rather than a draw, and that
 is the argument `assignLocks` already makes: it runs before the floor's own rng has been
 spent on anything, so a die here would re-roll the contents of every room in the building
-off a number that has nothing to do with them. The 23 floors in 600 with nowhere suitable
-fall back to the lift lobby exactly as before, and `spawnRoom.role` is the only thing that
-says which happened.
+off a number that has nothing to do with them. A floor with nowhere suitable simply has no
+canteen and `layout.cafeteriaRoom` is null, which the lunch cycle already handles: an empty
+servery pool is a floor where nobody goes for lunch.
 
 **Three things about furnishing it were bugs first, and all three are the same shape: a
 room furnished AROUND the player is a case nothing in the furnisher had ever had to
@@ -1148,6 +1255,11 @@ handle.**
   to 12 m across, and 5.5 m of clear square through the middle plus the lane in front of
   the servery is the room's whole depth: **11 of 37 came out with nothing to sit at**. It
   is still 2 m to the nearest edge against the 1.5 m the props sweep holds both points to.
+  The canteen no longer carries that square at all — nobody arrives in it — but the number
+  stands, because the reception does and a reception is a small room. It is now stamped at
+  `layout.spawn` and `layout.exit` rather than at the middle of their rooms, which is the
+  same point on a floor with no lifts and a car hard against one wall on a floor with them:
+  off the room centre it left the reception's own desk free to be placed across the doors.
 - **A chair pulled up to a table needs `sink.lend`**, the same trap `seatFacing` documents
   one room type over: floor is claimed by whole tiles, so a table's claim reaches well past
   its own edge and every chair landed inside it — four tables in the room and not one chair
@@ -1158,19 +1270,20 @@ handle.**
 After all three: **median 4 tables and 8 chairs** per cafeteria, and none without seating.
 
 
-**And it is the one room on the floor with people in it who are not a fight** (`_diners`).
-Two to five staff at the tables with their lunch, plus a couple on their feet, all of them
-`neutral` — none counts toward clearing the floor, and walking past the lot of them is the
-intended way to leave. Nobody hostile is ever *placed* here (`_spawnPoints` skips the room
-the player arrives in), so this is the whole population it starts with — but it is no longer
-the whole population it ever has, because employees come down for lunch and go back up. See
-Lunch below; everything in this section is the beat that cycle opens on.
+**And it opens with people in it who are not a fight** (`_diners`). Two to five staff at
+the tables with their lunch, plus a couple on their feet, all of them `neutral` — none
+counts toward clearing the floor, and walking past the lot of them costs nothing. They are
+the beat the lunch cycle opens on rather than the whole population of the room: employees
+come down for lunch and go back up (see Lunch below), and now that the canteen is a room
+the player FINDS rather than the room they are put down in, it is also staffed like any
+other room. `_spawnPoints` skips the arrival room and nothing else.
 
-Which makes them a **tell** rather than a fight, and the tell is the chair: a body sitting
-down means a harmless one everywhere in this building, and the two exceptions are both
-behind a locked door. A floor now opens on four people at their lunch — the rule stated
-before anything is at stake, so the next chair the player sees already means something.
-Three things about them were learned by running it:
+That is the right way round. The version where nobody hostile was ever placed here needed
+everybody in the room to be harmless, because the player was standing in the middle of it
+holding nothing; a canteen you walk into is a room with its own staff in it and four people
+at their lunch among them. The **tell** survives either way and is what the diners are
+really for: a body sitting down means a harmless one, and the two exceptions are both
+behind a locked door. Three things about them were learned by running it:
 
 - **A seated neutral has to be told to stay seated.** Every neutral is spawned into
   `wander`, and the animator stands up any seated body whose state is not `idle`/`alert` —
@@ -1230,13 +1343,13 @@ the quarter turn naming which way the chair is offset, `(side + 2)` is what brin
 back round — and the same `QUARTER` rotates the offset along the table, so a table running
 north-south needs no second set of coordinates.
 
-**And nobody is staffed into it** — `_spawnPoints` in `enemies.js` now keys that off
-`layout.spawnRoom` rather than off the `'lobby'` role. A role name is a fact about how a
-room is FURNISHED, while "do not put anybody here" is a fact about where the player
-materialises; left as the role test, a cafeteria floor would have opened with a dozen
-people standing round the arrival point. The mid-sized `canteen` role is untouched and the
-two are meant to read differently: that one is somewhere on the floor to eat, this one is
-the canteen the floor is arranged around.
+**Nobody is staffed into the ARRIVAL room** — `_spawnPoints` in `enemies.js` keys that off
+`layout.spawnRoom` rather than off a role name. A role name is a fact about how a room is
+FURNISHED, while "do not put anybody here" is a fact about where the player materialises,
+and the two used to be the same room; keeping the test on `spawnRoom` is what made moving
+the arrival to the reception a one-line change rather than a hunt. The mid-sized `canteen`
+role is untouched and the two are meant to read differently: that one is somewhere on the
+floor to eat, this one is the canteen the floor is arranged around.
 
 ### What furniture is never allowed to close (`reserveClearances` in `gen/build.js`)
 A tile mask the furnisher may not place into, stamped before a single prop is put down —
@@ -1748,10 +1861,10 @@ Three kinds of body are in a chair, and the first is the one the rule is really 
 - **Anybody at a desk, working** (`deskWork` in `chores.js`). The commonest thing on the
   floor, and the one that retired the rule above — see the note on it there. Hostile or not,
   and on its feet the frame it notices you.
-- **Anybody on their break**, at the tables in the canteen the floor arrives in. Harmless
-  while they are there, and the first bodies the player ever sees. This used to be a
-  fixed cast of permanently-neutral diners; it is now a **cycle** that ordinary employees
-  walk too, which is the next section.
+- **Anybody on their break**, at the tables in the canteen. Harmless while they are there.
+  This used to be a fixed cast of permanently-neutral diners in the room the floor put you
+  down in; it is now a **cycle** that ordinary employees walk too, in a room you find, which
+  is the next section.
 - **The Manager**, at his own desk behind the black door.
 - **One guard**, on the cameras in the security office.
 
@@ -1873,10 +1986,10 @@ that never ends is a tableau, not a shift.
 
 So there is a **cycle**, and both halves of the canteen run the same one — walk in, queue at
 the counter, take a tray, find a seat, eat, take the tray back, walk out. The staff the floor
-opens on start half way through it, already seated and already eating, because that is the
-picture the arrival is for; they get a longer first sitting than anybody else (`EAT_FIRST`)
-for the same reason, since four people who file out inside a minute is the picture gone
-before the player has finished reading it.
+starts with begin half way through it, already seated and already eating, so that the first
+person to walk down for lunch is joining something rather than starting it; they get a longer
+first sitting than anybody else (`EAT_FIRST`) for the same reason, since four people who file
+out inside a minute is the picture gone before anybody has found the room.
 
 **What makes it more than scenery is who else joins.** An ordinary employee takes a break:
 they down tools, their visor goes to the canteen blue, they walk the whole cycle, and their
@@ -2125,7 +2238,7 @@ arms resting at 0.23. On the wire it is one more bit in the snapshot's sixth slo
 ### The ordinary work (`chores.js` + `CHORE_POSE` in `enemy-anim.js`)
 The building had two pieces of visible work in it and both were exceptional. A parcel
 run is three machines and a box, on the one floor in seven that runs parcel lines; lunch
-is one break per body per floor, in the one room the floor arrives in. Everywhere else
+is one break per body per floor, in the one room that has a canteen in it. Everywhere else
 an office of a hundred and seventy people was a hundred and seventy people standing in
 rooms waiting to be shot. Now somebody is at the copier, somebody is round the back of a
 rack with his arms in it, and somebody is getting a can out of the machine in the
