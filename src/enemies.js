@@ -523,7 +523,7 @@ export class Enemies {
     // actually landed (see `cafeteria` in gen/rooms.js). Unlike a chair these
     // are shared and never taken out of the pool: a serving hatch is somewhere
     // you stand for four seconds, not somewhere you sit for a minute.
-    this.servery = deskPool(workstations, nav, rng, 'servery').get(layout.spawnRoom) ?? [];
+    this.servery = deskPool(workstations, nav, rng, 'servery').get(layout.cafeteriaRoom) ?? [];
     // Every OTHER kind of station the furnisher published, pooled by what it is
     // a place to work at and flattened the same way — a printer is a printer
     // whosever office it is in, so unlike a chair it does not matter which room
@@ -549,7 +549,7 @@ export class Enemies {
     // what you would do in a canteen that has no rack. What it buys is that the
     // cycle can always be finished — a break with nowhere to put the tray down
     // is a body stuck holding it for the rest of the floor.
-    this.trayRack = (deskPool(workstations, nav, rng, 'trays').get(layout.spawnRoom) ?? [])[0]
+    this.trayRack = (deskPool(workstations, nav, rng, 'trays').get(layout.cafeteriaRoom) ?? [])[0]
       ?? this.servery[0] ?? null;
     this.lunchTimer = LUNCH_FIRST;
 
@@ -1064,26 +1064,27 @@ export class Enemies {
   }
 
   /**
-   * The staff on their break, in the canteen the floor puts you down in.
+   * The staff already on their break when the floor is generated.
    *
-   * The only people in the building you meet before you have taken a step, and
-   * the one room whose population is decided by what is IN it rather than by the
-   * difficulty curve: everybody here is harmless, none of them counts toward
-   * clearing the floor, and walking past the lot of them is the intended way to
-   * leave. Nobody hostile is ever placed in here — _spawnPoints skips the room
-   * the player arrives in — so this is the only thing that populates it at all.
+   * They are the beat the whole lunch cycle opens on: a canteen with people
+   * eating in it rather than an empty room with a counter, so the first person
+   * to walk down for lunch is joining something rather than starting it. All of
+   * them are harmless, none counts toward clearing the floor, and walking past
+   * the lot of them costs nothing.
    *
-   * Which makes them a tell rather than a fight, and the tell is the CHAIR. A
-   * body sitting down means a harmless one everywhere in this building; the two
-   * exceptions, the Manager and the guard on the cameras, are both behind a
-   * locked door and neither is the first thing anybody sees. So a floor now opens
-   * on four people sitting at their lunch: the rule stated on the way in, with
-   * nothing at stake, so that the next chair the player sees already means
-   * something.
+   * The canteen is no longer the room the floor arrives in — that is the
+   * reception outside the lifts now (see pickSpawnRoom in gen/layout.js) — so
+   * this is a room the player FINDS rather than one they are put down in, and
+   * the diners are no longer the only people in it: `_spawnPoints` skips the
+   * arrival room and nothing else, so the canteen is staffed like any other
+   * room. That is the right way round. A canteen you walk into is a room with
+   * its own staff in it and four people at their lunch among them; the version
+   * where it was the arrival needed everybody in it to be harmless because the
+   * player was standing in the middle of it holding nothing.
    */
   _diners(layout, nav, rng, tuning) {
-    const room = layout.spawnRoom;
-    if (room.role !== 'cafeteria') return;
+    const room = layout.cafeteriaRoom;
+    if (!room) return;
 
     // Seated first, and only into a chair a whole body fits in front of — the
     // pool has already dropped the ones nav cannot stand anybody at (see
@@ -2570,7 +2571,7 @@ export class Enemies {
    * by somebody still queueing, which is what a tray on a table means anyway.
    */
   _lunchStart(e, counter) {
-    const room = this.layout?.spawnRoom;
+    const room = this.layout?.cafeteriaRoom;
     if (!room) return false;
 
     // A chair that has been shot apart or shoved across the room is not a free
@@ -2691,7 +2692,7 @@ export class Enemies {
         // Back on the clock the moment they are out of the room, which is the
         // one thing about this that had to be true: the eyes change where the
         // player can see it happen, and never in the room they arrived in.
-        if (b.timer < 0 || !this._inRoom(this.layout.spawnRoom, e.x, e.z)) {
+        if (b.timer < 0 || !this._inRoom(this.layout.cafeteriaRoom, e.x, e.z)) {
           this._lunchEnd(e);
           return;
         }
@@ -3091,7 +3092,7 @@ export class Enemies {
   }
 
   _freeDesk(station) {
-    const room = this.layout?.spawnRoom;
+    const room = this.layout?.cafeteriaRoom;
     const free = room && this.tables?.get(room);
     if (free) free.push(station);
   }

@@ -1,12 +1,13 @@
 import { makeRng } from './rng.js';
 import { clamp } from '../util.js';
 import {
-  TILE, SOLID, ROOM, CORRIDOR, DOOR, isOpen, bfs, worldX, worldZ,
+  TILE, SOLID, ROOM, CORRIDOR, DOOR, isOpen, bfs, worldX, worldZ, doorSide,
 } from './tiles.js';
 import {
   assignLocks, lockedMask, prologueRegion, doorsOnRoom, opensOntoCorridor,
 } from './locks.js';
 import { planStairs } from './stairs.js';
+import { carveLift, fitsLift } from './lifts.js';
 
 // Procedural office floorplan.
 //
@@ -254,26 +255,50 @@ export function generateLayout(seed, floorNumber) {
     r.cy = (r.y0 + r.y1) / 2;
   }
 
-  // Where the floor puts you down. The staff canteen when the slab threw up a
-  // room big enough to hold one, and the lift lobby when it did not — see
-  // pickCafeteria for why that is a preference rather than a guarantee.
+  // Where the floor puts you down: the reception outside the lifts, and never
+  // anywhere else. The floor arrives the way a person arrives at an office —
+  // out of a lift car, into the reception in front of it, and through a door
+  // into the building — so the arrival room is picked for that shape and for
+  // nothing else. See pickSpawnRoom.
+  //
+  // The canteen is picked in the same breath and is no longer the same room.
+  // It used to BE the spawn, which is where the lunch cycle's counter, tables
+  // and diners all live, so the two are separated by name rather than by
+  // accident: `cafeteriaRoom` is where lunch happens and `spawnRoom` is where
+  // you come in, and enemies.js reads whichever of the two it actually means.
   const cafeteria = pickCafeteria(live, tiles, W, doors);
-  const spawnRoom = cafeteria ?? pickSpawnRoom(live, rng);
+  const spawnRoom = pickSpawnRoom(live, tiles, W, doors, cafeteria, rng);
   const dist = bfs(tiles, W, H, Math.round(spawnRoom.cx), Math.round(spawnRoom.cy));
 
   // The exit goes somewhere far, but not reliably in the opposite corner — the
   // strict furthest room makes every floor a diagonal march across the whole
   // slab. Picking from the furthest quarter keeps it a hike without making it
   // a chore.
+  //
+  // Ranked among the rooms that can hold the departure car first, and among all
+  // of them only if none can. The way down is a lift, so the room it is in has
+  // to have somewhere to put one — and asking here rather than discovering it at
+  // carve time is what keeps the fallback rare enough to stay a fallback.
   const ranked = live
     .map((r) => ({ r, d: dist[Math.round(r.cy) * W + Math.round(r.cx)] }))
-    .filter((e) => e.d >= 0)
+    .filter((e) => e.d >= 0 && e.r !== spawnRoom)
     .sort((a, b) => b.d - a.d);
-  const exitRoom = ranked.length
-    ? rng.pick(ranked.slice(0, Math.max(1, Math.ceil(ranked.length * 0.25)))).r
+  const roomy = ranked.filter((e) => fitsLift(e.r));
+  const pool = roomy.length ? roomy : ranked;
+  const exitRoom = pool.length
+    ? rng.pick(pool.slice(0, Math.max(1, Math.ceil(pool.length * 0.25)))).r
     : spawnRoom;
 
-  assignRoles(live, spawnRoom, exitRoom, doors, rng, cafeteria ? 'cafeteria' : 'lobby');
+  // The canteen only survives as one if neither of the two rooms the floor is
+  // built around took it. `pickSpawnRoom` and the exit ranking both prefer to
+  // leave it alone, but both fall back rather than fail, and a canteen that is
+  // also the reception is a canteen the lunch cycle would walk the whole floor
+  // to eat in with the player standing in it.
+  const cafeteriaRoom = (cafeteria && cafeteria !== spawnRoom && cafeteria !== exitRoom)
+    ? cafeteria
+    : null;
+
+  assignRoles(live, spawnRoom, exitRoom, cafeteriaRoom, doors, rng);
   // On its own stream, not the floor's. Everything downstream of here — the
   // furniture in every room on the floor — draws from `rng`, so spending a
   // variable number of numbers on picking locks would re-roll the contents of a
@@ -298,6 +323,10 @@ export function generateLayout(seed, floorNumber) {
     ox: -W * TILE / 2, oz: -H * TILE / 2,
     tiles, rooms: live, doors,
     spawnRoom, exitRoom,
+    // The room the lunch cycle is about, or null on the ~4% of floors with no
+    // room big enough to hold a canteen. NOT the spawn room, which it used to
+    // be — see the pick above.
+    cafeteriaRoom,
     locks,
     // The 0-2 rooms with a flight of stairs in them, and where in the room it
     // runs. Authored here rather than in the builder so the layout sweep sees it.
@@ -306,19 +335,80 @@ export function generateLayout(seed, floorNumber) {
     // over a floor — enemies, vermin — can keep out of rooms they would be
     // locked into. See enemies.js.
     locked: lockedMask(W, H, locks),
-    // And every tile they can reach on arrival with nothing in their pocket,
-    // which is a different question now that the corridors have readers on them
-    // too: it is where the FIRST white card has to be standing. See
-    // _cardOutside in enemies.js and hallLocks in gen/locks.js.
-    prologue: prologueRegion(tiles, W, H,
-      Math.round(spawnRoom.cx), Math.round(spawnRoom.cy), doors),
     rng,
   };
 
-  layout.spawn = { x: worldX(layout, spawnRoom.cx), z: worldZ(layout, spawnRoom.cy) };
-  layout.exit = { x: worldX(layout, exitRoom.cx), z: worldZ(layout, exitRoom.cy) };
+  // The two lift cars, cut in last — see the header of gen/lifts.js for why the
+  // ordering is the whole of their safety. Either may come back null, and a null
+  // one is an ordinary answer: the arrival falls back to standing in the middle
+  // of the room and the way down to the lit pad it has always been.
+  layout.lifts = carveLifts(layout, doors);
+
+  // Every tile they can reach on arrival with nothing in their pocket, which is
+  // a different question now that the corridors have readers on them too: it is
+  // where the FIRST white card has to be standing. See _cardOutside in
+  // enemies.js and hallLocks in gen/locks.js.
+  //
+  // After the carve rather than before it, and flooded from the CAR when there
+  // is one. A region listing tiles that have since become the wall of a lift
+  // shaft is a region with somewhere to stand that nobody can stand in.
+  const from = tileOf(layout, layout.lifts.arrival, spawnRoom);
+  layout.prologue = prologueRegion(tiles, W, H, from.x, from.y, doors);
+
+  layout.spawn = layout.lifts.arrival
+    ? { x: layout.lifts.arrival.x, z: layout.lifts.arrival.z }
+    : { x: worldX(layout, spawnRoom.cx), z: worldZ(layout, spawnRoom.cy) };
+  layout.exit = layout.lifts.departure
+    ? { x: layout.lifts.departure.x, z: layout.lifts.departure.z }
+    : { x: worldX(layout, exitRoom.cx), z: worldZ(layout, exitRoom.cy) };
 
   return layout;
+}
+
+// The tile a lift puts you down on, or the middle of the room when it has none.
+const tileOf = (layout, lift, room) => (lift
+  ? { x: (lift.tx0 + lift.tx1 - 1) >> 1, y: (lift.ty0 + lift.ty1 - 1) >> 1 }
+  : { x: Math.round(room.cx), y: Math.round(room.cy) });
+
+/**
+ * Cuts the arrival car into the spawn room and the departure car into the exit.
+ *
+ * Both go on the wall OPPOSITE the room's own doorway when that wall will take
+ * one, which is what makes the arrival read as a sequence rather than as a room:
+ * the doors part, the reception is in front of you, and the way into the
+ * building is across it and straight ahead. `carveLift` walks the other three
+ * walls itself when it has to.
+ *
+ * The connectivity proof inside `carveLift` is run from a CORRIDOR tile, which
+ * has to be outside whichever room is being cut into — the corridor network is
+ * connected by construction and every live room opens onto it, so one tile of it
+ * is a fixed point the whole floor can be measured from before and after.
+ */
+function carveLifts(layout, doors) {
+  const { tiles, W, H, spawnRoom, exitRoom } = layout;
+  let seed = null;
+  for (let i = 0; i < W * H && !seed; i++) {
+    if (tiles[i] === CORRIDOR) seed = { x: i % W, y: (i / W) | 0 };
+  }
+  if (!seed) return { arrival: null, departure: null };
+
+  const wall = (room) => {
+    // The doorway the player actually leaves by, which is the one onto a
+    // corridor where the room has one. `doorsOnRoom` rather than `room.doors`,
+    // for the reason generatorRoom gives: a room's own list holds only the doors
+    // IT cut, and the one that matters may have been cut by the room next door
+    // into a wall they share.
+    const onRoom = doorsOnRoom(doors, room);
+    const out = onRoom.find((d) => opensOntoCorridor(d, W, tiles)) ?? onRoom[0];
+    return out ? (doorSide(out, room) + 2) & 3 : 0;
+  };
+
+  return {
+    arrival: carveLift(layout, spawnRoom, doors, wall(spawnRoom), seed),
+    departure: exitRoom === spawnRoom
+      ? null
+      : carveLift(layout, exitRoom, doors, wall(exitRoom), seed),
+  };
 }
 
 // --- generation internals ---------------------------------------------------
@@ -636,10 +726,43 @@ function connectAll(tiles, W, H, rooms, doors, vBand, hBand, rng) {
   }
 }
 
-function pickSpawnRoom(rooms, rng) {
-  // A mid-sized room with a corridor door: reads as stepping out of a lift.
-  const good = rooms.filter((r) => r.areaM2 > 18 && r.areaM2 < 70);
-  return rng.pick(good.length ? good : rooms);
+// The biggest a reception is allowed to be. There is no floor to go with it:
+// what the room has to be able to hold is stated once, in `fitsLift`, and
+// restating it here in square metres is the FIRST_CONTACT_GAP failure in
+// miniature — a room that passes an area test and cannot hold a car is a floor
+// that arrives by standing in the middle of the carpet.
+const RECEPTION_MAX = 80;   // m²
+
+/**
+ * The room the floor arrives in: the reception that fronts the lifts.
+ *
+ * Three requirements, and only the last of them is about size:
+ *
+ *  - It can hold a lift car. Everything about the arrival is the car, so a room
+ *    that cannot take one is not a reception, it is a room.
+ *  - It has a doorway onto a CORRIDOR. This is the door you go through to find
+ *    the rest of the office, and it is also the part of the floor the prologue
+ *    is measured over — a reception whose only way out is somebody's office
+ *    starts the floor by walking through a stranger's office to reach the
+ *    building.
+ *  - It is not the canteen and not a room the plant room could have had. Both
+ *    are set pieces that want the biggest rooms on the floor and both are rare;
+ *    a reception is a modest room by nature, so it should never be the thing
+ *    that takes one of them away.
+ *
+ * Each requirement is dropped in turn if nothing survives it, rather than
+ * failing: a floor with an odd reception is a floor, and a floor with no arrival
+ * room is not.
+ */
+function pickSpawnRoom(rooms, tiles, W, doors, cafeteria, rng) {
+  const canHold = rooms.filter(fitsLift);
+  const onHall = canHold.filter((r) =>
+    doorsOnRoom(doors, r).some((d) => opensOntoCorridor(d, W, tiles)));
+  const spare = onHall.filter((r) =>
+    r !== cafeteria && r.areaM2 <= RECEPTION_MAX && !fitsGenerator(r, doors));
+
+  const pool = spare.length ? spare : (onHall.length ? onHall : (canHold.length ? canHold : rooms));
+  return rng.pick(pool);
 }
 
 // How big a room has to be before it is a canteen rather than a room with a
@@ -734,7 +857,7 @@ function fitsGenerator(r, doors) {
     && doorsOnRoom(doors, r).length === 1;
 }
 
-function assignRoles(rooms, spawnRoom, exitRoom, doors, rng, spawnRole) {
+function assignRoles(rooms, spawnRoom, exitRoom, cafeteria, doors, rng) {
   for (const r of rooms) r.role = rng.pick(ROLE_PICKS[roleBranch(r)]);
 
   // Guarantee the flavour rooms the floor is meant to have — but only in rooms
@@ -779,15 +902,25 @@ function assignRoles(rooms, spawnRoom, exitRoom, doors, rng, spawnRole) {
       ['reception', (r) => r.areaM2 > 25],
     ]).slice(0, 4),
   ];
-  const pool = rng.shuffle(rooms.filter((r) => r !== spawnRoom && r !== exitRoom));
+  const pool = rng.shuffle(rooms.filter(
+    (r) => r !== spawnRoom && r !== exitRoom && r !== cafeteria));
   for (const [role, fits] of wants) {
     const room = pool.find((r) => fits(r) && !r.forcedRole);
     if (room) { room.role = role; room.forcedRole = true; }
   }
 
-  // 'cafeteria' when the floor had a room worth arriving in and 'lobby' when it
-  // did not. Assigned last either way, so the shuffled draw above can never
-  // land a storeroom on the room the player is standing in.
-  spawnRoom.role = spawnRole;
+  // The three rooms the floor is composed around, assigned last so the shuffled
+  // draw above can never land a storeroom on one of them.
+  //
+  // The canteen is one of the three now and is no longer the same room as the
+  // arrival, which it was for as long as the cafeteria has existed. The
+  // reception is what the floor arrives in — see pickSpawnRoom — and the canteen
+  // is a room somewhere in the building that people go to at lunchtime, which is
+  // what the lunch cycle in enemies.js was always describing.
+  spawnRoom.role = 'reception';
   exitRoom.role = 'exit';
+  if (cafeteria && cafeteria !== spawnRoom && cafeteria !== exitRoom) {
+    cafeteria.role = 'cafeteria';
+    cafeteria.forcedRole = true;
+  }
 }

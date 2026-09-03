@@ -7,7 +7,8 @@ import { furnish } from './rooms.js';
 import { modelInfo, stampModel, paintDebris } from './models.js';
 import {
   TILE, WALL_H, CEIL_H, DOOR_H, DOOR_CLEAR,
-  SOLID, ROOM, CORRIDOR, DOOR, isOpen, worldX, worldZ, slidePocketSide, slidePocketRun, doorSide, doorsOnRoom,
+  SOLID, ROOM, CORRIDOR, DOOR, isOpen, worldX, worldZ, tileX, tileY,
+  slidePocketSide, slidePocketRun, doorSide, doorsOnRoom,
 } from './layout.js';
 import { CARDS, READER_LIT, READER_OPEN } from '../keycards.js';
 import { PLAYER_RADIUS } from '../metrics.js';
@@ -2390,11 +2391,25 @@ function reserveClearances(layout, reserved) {
   // It stays well clear of what it is for either way: the props sweep holds both
   // points to 1.5 m of clear floor (SPAWN/EXIT in tools/validate-props.mjs), and
   // this is 2 m to the nearest edge of the square.
+  //
+  // Measured from where the player ACTUALLY arrives rather than from the middle
+  // of the room, which is the same point on a floor with no lifts and is a car
+  // hard against one wall on a floor with them. Off the room centre it left the
+  // reception's own desk free to be placed across the lift doors.
   const ARRIVAL_CLEAR = 4;   // tiles from the centre tile, so a 9 x 9 square
-  for (const room of [layout.spawnRoom, layout.exitRoom]) {
-    const cx = Math.round(room.cx), cy = Math.round(room.cy);
+  for (const at of [layout.spawn, layout.exit]) {
+    const cx = tileX(layout, at.x), cy = tileY(layout, at.z);
     stampTiles(cx - ARRIVAL_CLEAR, cy - ARRIVAL_CLEAR,
       cx + ARRIVAL_CLEAR, cy + ARRIVAL_CLEAR);
+  }
+
+  // And the cars themselves, whole. The square above covers a car standing
+  // square to the axes it is measured on, but it is a square and a car is not:
+  // a corner of a 4 x 3 tile interior can fall outside it once the doorway apron
+  // has been stamped in a different direction, and a fire extinguisher in the
+  // corner of the lift you arrive in is the first thing on the floor.
+  for (const lift of [layout.lifts?.arrival, layout.lifts?.departure]) {
+    if (lift) stampTiles(lift.tx0, lift.ty0, lift.tx1 - 1, lift.ty1 - 1);
   }
 
   // Both of these are about a route rather than a spot, and both hang off the same

@@ -23,6 +23,10 @@ import {
 // gen/rooms.js is pure (it imports only gen/props.js), so it loads in plain Node
 // alongside layout.js with no DOM in the way.
 import { ROOM_ROLES } from '../src/gen/rooms.js';
+// The car's own dimensions, imported rather than restated for the reason DOOR_W
+// is: a sweep holding its own copy of the number it is checking has stopped
+// testing the generator and started asserting its own arithmetic back at it.
+import { CAR_W, CAR_D, LIFT_DOOR_W } from '../src/gen/lifts.js';
 
 const args = process.argv.slice(2);
 const argVal = (flag, dflt) => {
@@ -92,6 +96,15 @@ const IDS = [
   ['6.door-reachable', 'FAIL', 'DOOR          door tiles reachable from spawn'],
   ['6.door-corner', 'FAIL', 'DOOR          opening is not in a corner (wall at both ends)'],
   ['6.door-abut', 'FAIL', 'DOOR          no two doors merge into one wider opening'],
+  // The lift cars, which are the one thing in the building that is a room
+  // carved INTO a room — so the room checks above have to subtract them and
+  // these have to put back what those stopped proving. See gen/lifts.js.
+  ['9.lift-present', 'WARN', 'LIFT          the floor is arrived in and left by a car'],
+  ['9.lift-inroom', 'FAIL', 'LIFT          the car block lies inside its own room'],
+  ['9.lift-sealed', 'FAIL', 'LIFT          the car is walled on all four sides but its opening'],
+  ['9.lift-door', 'FAIL', `LIFT          the opening is ${LIFT_DOOR_W} tiles wide with a jamb each side`],
+  ['9.lift-reach', 'FAIL', 'LIFT          every tile inside the car is reachable from spawn'],
+  ['9.lift-interior', 'FAIL', `LIFT          the car is exactly ${CAR_W} x ${CAR_D} tiles of open floor`],
   // The keycard invariants. These are the ones that cost you a RUN rather than a
   // frame when they break, and none of them is visible from inside the game
   // until you are standing in front of a door you cannot open with the exit
@@ -225,9 +238,23 @@ function validate(seed, floorNumber) {
     stats.orphanTiles.push(orphan);
   }
 
+  // A room's rect is its own open floor EXCEPT where a lift car has been cut
+  // into it — three of a car's four walls are new plaster standing in the middle
+  // of a room, and its shell is deliberately not reachable and deliberately not
+  // ROOM. Subtracted here rather than loosened, because what those two checks
+  // are really for is a room the generator has walled off from itself, and the
+  // 9.lift-* checks below put back the part that stopped being proved.
+  const lifts = [L.lifts?.arrival, L.lifts?.departure].filter(Boolean);
+  const inLiftBlock = (x, y) => lifts.some(
+    (f) => x >= f.bx0 && x < f.bx1 && y >= f.by0 && y < f.by1);
+
   let unreachableRoomTiles = 0;
   for (const r of rooms) {
-    for (let y = r.y0; y < r.y1; y++) for (let x = r.x0; x < r.x1; x++) if (dist[idx(x, y)] < 0) unreachableRoomTiles++;
+    for (let y = r.y0; y < r.y1; y++) {
+      for (let x = r.x0; x < r.x1; x++) {
+        if (dist[idx(x, y)] < 0 && !inLiftBlock(x, y)) unreachableRoomTiles++;
+      }
+    }
   }
   if (unreachableRoomTiles) check('1.room-reach').fail(id, `${unreachableRoomTiles} room interior tiles unreachable`);
 
@@ -277,7 +304,12 @@ function validate(seed, floorNumber) {
       for (let x = r.x0; x < r.x1; x++) {
         const i = idx(x, y);
         if (owner[i] >= 0) overlap++; else owner[i] = ri;
-        if (tiles[i] !== ROOM) { badTiles++; if (tiles[i] === CORRIDOR) corridorOverlap++; }
+        // A lift car's shell and opening are inside its room's rect and are
+        // deliberately not ROOM — see inLiftBlock above.
+        if (tiles[i] !== ROOM && !inLiftBlock(x, y)) {
+          badTiles++;
+          if (tiles[i] === CORRIDOR) corridorOverlap++;
+        }
       }
     }
   });
@@ -318,7 +350,7 @@ function validate(seed, floorNumber) {
 
   // ---- 6. doors -----------------------------------------------------------
   let thick = 0, wrongW = 0, notDoor = 0, oneSided = 0, cornered = 0, unreach = 0, dead = 0;
-  let hallW = 0, hallSwing = 0;
+  let hallW = 0, hallSwing = 0, liftW = 0;
   for (const d of doors) {
     const w = d.x1 - d.x0, h = d.y1 - d.y0;
     stats.totalDoors++;
@@ -348,6 +380,12 @@ function validate(seed, floorNumber) {
         const b = d.vertical ? T(d.x0 + q, d.y1) : T(d.x1, d.y0 + q);
         if (isOpen(a) || isOpen(b)) { hallSwing++; break; }
       }
+    } else if (d.lift) {
+      // The third kind of door, and the only one narrower than the building's
+      // own: its leaves part in the middle and each retracts into a single tile
+      // of the car's own front. See LIFT_DOOR_W in gen/lifts.js for why the
+      // arithmetic has to close exactly.
+      if ((d.vertical ? h : w) !== LIFT_DOOR_W) liftW++;
     } else if ((d.vertical ? h : w) !== DOOR_W) wrongW++;
 
     let sideA = 0, sideB = 0, tilesOk = true, anyReach = false;
@@ -400,6 +438,7 @@ function validate(seed, floorNumber) {
   if (abut) check('6.door-abut').fail(id, `${abut} pairs of doors merged into one opening`);
   if (hallW) check('6.hall-width').fail(id, `${hallW} hall doors not spanning their corridor`);
   if (hallSwing) check('6.hall-swing').fail(id, `${hallSwing} hall doors with a leaf swinging into open floor`);
+  if (liftW) check('9.lift-door').fail(id, `${liftW} lift openings not ${LIFT_DOOR_W} tiles wide`);
 
   // ---- 8. keycard locks ---------------------------------------------------
   //
@@ -516,6 +555,11 @@ function validate(seed, floorNumber) {
     // door on it.
     let leaks = 0;
     for (const d of doors) {
+      // A lift door has the same room on both sides of it — it is a doorway
+      // INSIDE a room rather than a way into one, so it can no more breach that
+      // room's lock than the room's own carpet can. Left in, every white-locked
+      // exit room on every floor reported two openings past its own reader.
+      if (d.lift) continue;
       for (let y = d.y0; y < d.y1; y++) {
         for (let x = d.x0; x < d.x1; x++) {
           const ns = d.vertical ? [[x - 1, y], [x + 1, y]] : [[x, y - 1], [x, y + 1]];
@@ -539,6 +583,63 @@ function validate(seed, floorNumber) {
   if (missingTiers.length) check('8.lock-tiers').fail(id, `no ${missingTiers.join(',')} lock placed`);
   for (const l of locks) stats.lockTiers.set(l.tier, (stats.lockTiers.get(l.tier) || 0) + 1);
   stats.lockCounts.push(locks.length);
+
+  // ---- 9. the lift cars ---------------------------------------------------
+  //
+  // Everything here is what checks 1 and 5 stopped proving the moment a room was
+  // allowed to have a hole cut in it. A car is a tiny room inside a room, so it
+  // needs the same three things any room needs — it is inside its own walls, its
+  // shell is really shut, and you can get into it — asserted about the block
+  // rather than about the room it was taken out of.
+  if (!L.lifts?.arrival || !L.lifts?.departure) {
+    check('9.lift-present').fail(id,
+      `no ${!L.lifts?.arrival ? 'arrival' : 'departure'} car`);
+  }
+  for (const f of lifts) {
+    const r = f.room;
+    if (f.bx0 < r.x0 || f.by0 < r.y0 || f.bx1 > r.x1 || f.by1 > r.y1) {
+      check('9.lift-inroom').fail(id, `car block reaches outside its ${r.role}`);
+      continue;
+    }
+
+    // The shell: everything on the edge of the block is SOLID except the tiles
+    // of its one opening, and everything inside it is open floor. A car with a
+    // second way out is a lift shaft you can walk round the back of.
+    let holes = 0, blocked = 0, unreachable = 0, inside = 0;
+    for (let y = f.by0; y < f.by1; y++) {
+      for (let x = f.bx0; x < f.bx1; x++) {
+        const t = T(x, y);
+        const onDoor = x >= f.door.x0 && x < f.door.x1 && y >= f.door.y0 && y < f.door.y1;
+        const onEdge = x === f.bx0 || x === f.bx1 - 1 || y === f.by0 || y === f.by1 - 1;
+        // The wall the car backs onto is the room's own, and it is outside the
+        // block — so exactly one of the four edges is car interior rather than
+        // car wall, and that is the one the interior rect names.
+        const isInterior = x >= f.tx0 && x < f.tx1 && y >= f.ty0 && y < f.ty1;
+        if (isInterior) {
+          inside++;
+          if (!isOpen(t)) blocked++;
+          else if (dist[idx(x, y)] < 0) unreachable++;
+        } else if (onEdge || !isInterior) {
+          if (onDoor ? t !== DOOR : isOpen(t)) holes++;
+        }
+      }
+    }
+    if (holes) check('9.lift-sealed').fail(id, `${holes} tiles of car shell not solid`);
+    if (blocked) check('9.lift-interior').fail(id, `${blocked} tiles inside the car are not open`);
+    if (inside !== CAR_W * CAR_D) {
+      check('9.lift-interior').fail(id, `car interior is ${inside} tiles, not ${CAR_W * CAR_D}`);
+    }
+    if (unreachable) check('9.lift-reach').fail(id, `${unreachable} tiles inside the car unreachable`);
+
+    // A jamb each side of the opening, which is the pocket each leaf retracts
+    // into. Without it the two leaves stand out in the middle of the car.
+    const along = f.door.vertical ? 'y' : 'x';
+    const lo = along === 'x' ? [f.door.x0 - 1, f.door.y0] : [f.door.x0, f.door.y0 - 1];
+    const hi = along === 'x' ? [f.door.x1, f.door.y0] : [f.door.x0, f.door.y1];
+    if (isOpen(T(lo[0], lo[1])) || isOpen(T(hi[0], hi[1]))) {
+      check('9.lift-door').fail(id, 'lift opening has no jamb to pocket a leaf into');
+    }
+  }
 
   // ---- 7. degenerate ------------------------------------------------------
   if (rooms.length === 0) check('7.zero-rooms').fail(id, 'no rooms at all');
