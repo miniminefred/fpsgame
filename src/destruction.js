@@ -1,6 +1,12 @@
 import * as THREE from 'three';
 import { eraseSpan } from './gen/geom.js';
 import { BodyPool } from './body-pool.js';
+// The can a machine was stocked with. rigs.js because that is where the can was
+// already built for the hand of whoever bought one, and it is the same can: a
+// drink that comes out of a wrecked machine looking different from the one the
+// man at the keypad is holding is two drinks.
+import { buildCan } from './rigs.js';
+import { CAN_R, CAN_H } from './drinks.js';
 import { Arcs } from './arcs.js';
 
 // Everything on the floor coming apart.
@@ -26,6 +32,28 @@ import { Arcs } from './arcs.js';
 // over the runs on that mesh names the prop exactly. No spatial guessing, no
 // tolerance to tune, and it stays correct for a pane of glass sitting three
 // centimetres in front of a wall.
+
+// --- what a machine was holding ---------------------------------------------
+//
+// Stock gets a pool of its OWN rather than going in with the debris, and both
+// halves of that are requirements rather than tidiness.
+//
+// A can's geometry is shared and module-level (see `buildCan`), and the debris
+// pool disposes the geometry of whatever it retires — one can timing out in
+// there would take every can on the floor with it, and every machine that had
+// not been shot yet along with them. `ownGeometry: false` is the brass case,
+// which is exactly what this is.
+//
+// And stock must not compete for MAX_FRAGMENTS. `_scatter` keeps the biggest
+// pieces and drops the rest, so a full machine and an empty one would throw
+// different amounts of CABINET — the drinks crowding out the panels — while a
+// can is nowhere near the biggest thing in a vending machine, so most of them
+// would be dropped anyway.
+const CAN_MAX = 32;            // about two machines' worth loose at once
+const CAN_LIFETIME = 30;       // longer than a fragment: a can on the carpet is a mark
+const CAN_MASS = 0.38;         // 330 ml of drink and the aluminium round it
+const CAN_THROW = [1.4, 3.0];  // N.s per kg, well under a fragment's 2.2-4.6
+const CAN_SPIN = 0.6;          // how far off its own centre a can is hit, as a share of it
 
 const DEBRIS_LIFETIME = 16;    // seconds a fragment lies around before it fades
 const MAX_DEBRIS = 120;        // hard cap on live fragments, oldest recycled first
@@ -751,6 +779,12 @@ export class Destruction {
     this.debris = new BodyPool({
       scene, physics, max: MAX_DEBRIS, life: DEBRIS_LIFETIME, ownGeometry: true,
     });
+    // ...and what a machine was stocked with, which shares one geometry per
+    // shape with every other can in the building and so must NOT be disposed.
+    // See the CAN_* block above.
+    this.stock = new BodyPool({
+      scene, physics, max: CAN_MAX, life: CAN_LIFETIME, ownGeometry: false,
+    });
   }
 
   // Called once per floor, after the level's meshes exist. Indexes each
@@ -1071,6 +1105,21 @@ export class Destruction {
     // hulk is still standing, so nothing has been let go of.
     if (!wrecked) this._spillStatic(entry, point);
 
+    // ...and the solid half of what it was holding, which is the whole of what a
+    // drinks machine is for. Stock does not come APART with the cabinet, it comes
+    // OUT: as the drink it always was, from the slot it was standing in. So it is
+    // split off the fragment list here rather than filtered inside `_scatter` -
+    // these are two different lists, not one list with a flag on it. A hulked
+    // prop keeps its stock, for `_spillStatic`'s reason one line up: it is still
+    // standing, so it has not let go of anything.
+    // A number is a drink, 'trim' is the label on one, and neither is a
+    // fragment — so the two filters are not complements of each other, and the
+    // label band belongs to neither pass. See `stock` on the sink.
+    const held = entry.stock
+      ? entry.parts.filter((p) => typeof p.stock === 'number') : null;
+    const solid = entry.stock ? entry.parts.filter((p) => p.stock == null) : entry.parts;
+    if (held?.length && !wrecked) this._spillStock(held, dir, point);
+
     // Only what came OFF is thrown, which for a wreck is the bays the blast tore
     // out of it and nothing else — `_wreck` hands them back for exactly this.
     // Throwing anything still standing would have the hulk stand there while a
@@ -1078,7 +1127,7 @@ export class Destruction {
     // fragments, which is the housing and the plinth, so it would have been the
     // whole machine twice.
     this._scatter(
-      wrecked ? [...entry.parts.filter((p) => !p.hulk), ...wrecked] : entry.parts,
+      wrecked ? [...solid.filter((p) => !p.hulk), ...wrecked] : solid,
       null, dir, point,
     );
 
@@ -1687,17 +1736,76 @@ export class Destruction {
     }
   }
 
+  /**
+   * What a machine was stocked with, on the carpet.
+   *
+   * One real can per facing, at the facing's own position, so the drinks that
+   * come out are the drinks that were in the window and they come out of the
+   * slots they were standing in. `part.stock` is the seed the generator drew for
+   * that slot and `buildCan` is the only thing that reads it, which is what makes
+   * the two ends agree: the orange can behind the glass is an orange can on the
+   * floor, and the one in twenty that was already shot through comes out shot.
+   *
+   * Thrown much more gently than a fragment (see CAN_THROW). A cabinet panel is
+   * being torn off something while a can is merely being let go of — and a
+   * full-strength shove on 0.38 kg puts the whole shelf through the far wall,
+   * which reads as the machine having fired them rather than dropped them.
+   */
+  _spillStock(parts, dir, point) {
+    for (const part of parts) {
+      _local.set(
+        (part.x0 + part.x1) / 2, (part.y0 + part.y1) / 2, (part.z0 + part.z1) / 2);
+
+      // The facing is a shallow plate against the glass; the can it stands for
+      // is a whole can, so the body is sized off the CAN and not off the box.
+      const can = buildCan(part.stock);
+      can.position.copy(_local);
+      can.receiveShadow = true;
+      this.scene.add(can);
+
+      const handle = this.physics?.addBox({
+        size: { x: CAN_R * 2, y: CAN_H, z: CAN_R * 2 },
+        position: _local, mass: CAN_MASS,
+      });
+
+      if (handle) {
+        _away.copy(_local).sub(point);
+        if (_away.lengthSq() < 1e-6) _away.copy(dir);
+        _away.normalize();
+        _away.y += 0.55;
+        _away.normalize();
+
+        // Applied off the can's own centre, or two dozen cans leave the machine
+        // dead upright and in step, which reads as a shelf being slid out rather
+        // than as a cabinet coming apart. `impulse` clamps the lever arm to the
+        // body's own radius, so an off-centre point here cannot be made absurd.
+        _canAt.copy(_local);
+        _canAt.x += (Math.random() - 0.5) * CAN_R * 2 * CAN_SPIN;
+        _canAt.y += (Math.random() - 0.5) * CAN_H * CAN_SPIN;
+        _canAt.z += (Math.random() - 0.5) * CAN_R * 2 * CAN_SPIN;
+
+        this.physics.impulse(handle, _away,
+          CAN_MASS * (CAN_THROW[0] + Math.random() * (CAN_THROW[1] - CAN_THROW[0])),
+          _canAt);
+      }
+
+      this.stock.add(can, handle);
+    }
+  }
+
   // --- debris lifecycle -------------------------------------------------------
 
   update(dt) {
     this._drainBlackout(dt);
     this.debris.update(dt);
+    this.stock.update(dt);
     this.arcs?.update(dt);
   }
 
   // Must run while the physics world the handles belong to is still alive.
   clear() {
     this.debris.clear();
+    this.stock.clear();
     this._blackout = null;
     this.arcs?.dispose();
     this.arcs = null;
@@ -1731,6 +1839,9 @@ function longestSide(p) {
 }
 
 const _local = new THREE.Vector3();
+// Its own, and not a second use of _local: this file already documents a real
+// bug caused by two call sites sharing one scratch Vector3.
+const _canAt = new THREE.Vector3();
 const _away = new THREE.Vector3();
 const _up = new THREE.Vector3();
 const _blast = new THREE.Vector3();

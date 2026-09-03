@@ -58,6 +58,17 @@ const CAN_BROKEN = 20;
 export const CAN_R = 0.047;
 export const CAN_H = 0.198;
 
+// The label sleeve's own band up the can, and the one part of a drink that is
+// not the flavour's own paint.
+//
+// Shared because it is what says "can" rather than "coloured block" at the range
+// you meet one: rigs.js wraps the artwork round the barrel between these two
+// heights, and gen/props.js paints the same band across the facing standing in a
+// machine's window, where a plain rectangle of paint reads as a slab of plastic.
+// Two bands of bare colour above and below it, which is the same trick from the
+// other side — see canShapes.
+export const CAN_LABEL = { y0: 0.039, y1: 0.127 };
+
 /**
  * Which drink a seed is, and whether it is one of the shot ones.
  *
@@ -80,7 +91,16 @@ export const CAN_H = 0.198;
  * enough that the first one is a surprise, common enough to be seen at all.
  */
 export function drinkFrom(seed) {
-  const h = (Math.abs(Math.round(seed)) * 2654435761) >>> 0;
+  // Math.imul, and that is a FIX rather than a flourish. A plain `*` on 32-bit
+  // operands overflows a double's 53 bits of mantissa — 0xffffff times this
+  // constant is 4.4e16 against 9.0e15 — so the low bits of the product, which
+  // are the entire output of a multiplicative hash, are rounded away. Seeds
+  // drawn as a full 24-bit word came back 80% FIZZ (15942 of 20000), which is
+  // exactly what a machine stocked with one drink looks like. Identical to the
+  // old arithmetic for every seed small enough that the product was exact, so
+  // the can in a hand is the can it always was: 5000/5000/5000/5000 over the
+  // first 20000 integers, both ways.
+  const h = Math.imul(Math.abs(Math.round(seed)), 2654435761) >>> 0;
   return {
     flavour: h % CAN_FLAVOURS.length,
     shot: ((h >>> 9) % CAN_BROKEN) === 0,

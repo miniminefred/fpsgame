@@ -211,6 +211,7 @@ src/
   game.js         The run: floor progression and difficulty curves
   util.js         Scalar helpers everyone shares: clamp, lerp, angles, hex-to-CSS
   metrics.js      How big a body is and what it can do — the numbers that must agree
+  drinks.js       What is in the machine: the four drinks, and which one a seed is
   body-pool.js    The lifecycle of a loose body that times out (brass, debris)
   destruction.js  Everything coming apart: damage routing, debris, its lifecycle
   ragdolls.js     Jointed bodies for everything that dies, and their lifecycle
@@ -2386,6 +2387,12 @@ Three things make that affordable, and the first two are the ones worth copying:
   every shot can in the building is a KOLA. Measured over 20,000: 5.0% shot, spread 247 / 251
   / 247 / 257 across the four.
 
+  All of that now lives in `drinks.js` rather than in `rigs.js`, because the can in this hand
+  is the same object as the facing standing in a machine's window and as the can thrown out of
+  that slot when the machine is shot apart — see "What a machine is stocked with" below,
+  including the SECOND bug in that hash, which a machine's own seeds were large enough to hit
+  and this call site never was.
+
   The routine's bundle of paper (`SNAP_PAPERS`) rides the same primitive, with one
   difference — it has no clock, because the errand that produced it is what takes it back. A
   bundle left on a body after the job ended is somebody walking the floor holding a report
@@ -3461,6 +3468,106 @@ Pooled and bounded like brass and debris: 20 patches, oldest reused, nothing all
 event. Patches deliberately do **not** time out — a puddle is a mark on the floor like a
 scorch, and water that dried while you watched would be worse than no water at all. Not
 synced in co-op, for the same reason decals are not.
+
+### What a machine is stocked with (`canRack` in `gen/props.js` + `_spillStock` in `destruction.js`)
+A drinks machine you blow apart left a brown patch on the carpet, a heap of grey panels and
+**no drinks**. That is the same lie the dry carpet used to tell one revision earlier, and a
+player reported it in the same six words: the cans do not come with the destroyed vending
+machine. So the window is stocked with what is in there, and what is in there is what ends
+up on the floor.
+
+**The stock is drawn in FRONT of the glass, and it has to be.** The pane in
+`store_vending_machine.glb` is its own mesh but it shares one material with the entire
+bodywork, so there is no glass to see through and nothing that can be made transparent
+without dissolving the machine — and the interior does not exist to be seen into. What makes
+it work anyway is that the pane is **recessed 46 mm** behind the front skin: a facing 38 mm
+deep sits wholly inside that recess with 7 mm to spare, and the bezel around the window is
+what hides the trick. Painted on, exactly the way `panels.js` paints a hole in a corridor
+wall and `buildCan` paints the hole in a shot can.
+
+**Every number in `canRack` is measured off the GLB rather than eyeballed off a screenshot**,
+by parsing the file and transforming the Glass mesh through the same normalization
+`gen/models.js` applies: the window stands at x [-0.242, 0.442], y [0.744, 1.735], its front
+face at z -0.271 against a front skin at -0.317. Note it is **not centred on the machine** —
+the keypad takes the left third — so a rack centred on the prop puts half of itself inside
+the bodywork.
+
+Four rows of six, and **38% of the slots come out empty**. That is the honest way to bring
+the count down as well as what a used machine looks like: every can in that window is a can
+that comes out of it, so twenty-four full slots would be twenty-four rigid bodies out of one
+round. Median 15 on a floor's machines, measured 12–18.
+
+Three things about it are decisions rather than plumbing:
+
+- **A NUMBER is a drink and 'trim' is the label on one** (`stock` on the sink in
+  `gen/build.js`). The marker is `hulk`'s shape exactly, down to the placer-forwarding trap
+  `hulk` documents — and it has to be, because the label band is neither a drink of its own
+  (two cans out of one slot) nor a fragment of the machine (a label sailing across the room
+  out of the budget the cabinet panels are meant to have). The band is what turns a facing
+  from a rectangle of paint into a can: the flavour's own colour above and below a dark
+  sleeve is the whole silhouette of these drinks, and without it a stocked machine reads as
+  a rack of coloured blocks. Its two heights live in `drinks.js` beside `CAN_R`, because
+  `rigs.js` wraps the real artwork between them.
+- **The facing carries the drink's SEED, and `drinkFrom` is the only thing that reads it.**
+  So the orange can behind the glass is an orange can on the floor by construction rather
+  than by agreement — and the one in twenty that was already shot through comes out shot.
+  Measured on the machine that was actually shot: 13 facings, FIZZ 4 / GOOLI 4 / KOLA 4 /
+  SODA 1, and the 13 cans thrown were FIZZ 4 / GOOLI 4 / KOLA 4 / SODA 1.
+- **Stock gets a pool of its own** (`CAN_*` in `destruction.js`), and both halves of that are
+  requirements. A can's geometry is shared and module-level, and the debris pool disposes
+  what it retires — one can timing out in there takes every can in the building with it, so
+  this is `ownGeometry: false`, the brass case. And stock must not compete for
+  `MAX_FRAGMENTS`: `_scatter` keeps the biggest pieces, so a full machine and an empty one
+  would otherwise throw different amounts of CABINET.
+
+**`drinks.js` exists because three files have to agree about a drink** — the same argument
+`metrics.js` makes about a body's radius. `rigs.js` builds the can in a hand, `textures.js`
+paints the facing in the window, `gen/props.js` decides which drink stands in which slot.
+It is free of Three.js and of the DOM for `metrics.js`'s other reason: `gen/props.js` reaches
+it, and the headless validators reach `gen/props.js`.
+
+**`drinkFrom` had a real bug in it and this is what found it: 80% of every can in the
+building was FIZZ.** A plain `*` on 32-bit operands overflows a double's 53 bits of mantissa
+— 0xffffff times 2654435761 is 4.4e16 against 9.0e15 — so the low bits of the product, which
+are the entire output of a multiplicative hash, are rounded away. Measured over 20,000 24-bit
+seeds: **15942 FIZZ, 1006, 2023, 1029.** `Math.imul` is identical for every seed small enough
+that the product was exact (5000/5000/5000/5000 over the first 20,000 integers, both ways), so
+the can in a hand is the can it always was — it was only ever handed small seeds. A machine's
+slots are not, and a hash that quietly stops mixing looks exactly like a machine stocked with
+one drink.
+
+**And the cabinet had to be re-authored, which is the water cooler's lesson a second time.**
+A prop comes apart into exactly the boxes it was drawn from, so one box the size of the
+machine throws one fragment the size of the machine, and it lands where the machine was
+standing: a destroyed cooler looked like an intact cooler that had stopped being solid, and a
+destroyed drinks machine looked like a yellow slab leaning over its own stock — which is
+worse, because the stock is now the point of shooting it. It is sides, back, top, plinth and
+a front frame around the window, and **both sides and the back come off in halves**: full
+height they are 1.90 m sheets, and five of those land leaning against each other and read as
+flat-pack furniture stacked where the machine was rather than as a machine that has been
+blown apart. Two other things were wrong in those boxes and only ever showed in the wreckage
+— they were authored 1.0 m wide against the model's 1.286, with the window and the keypad
+MIRRORED onto the wrong sides, so the display panel flew out of the wrong side of a cabinet a
+quarter of a metre too narrow.
+
+**Nothing crosses the wire.** Both browsers generate the same floor from the same seed, so
+both hold the same facings carrying the same drink seeds, and `_shatter` is the same method on
+each end — a joiner's machine spills the same 16 cans in the same flavours with no protocol at
+all. Proved through `netShatter`, the co-op replay path, and called twice: still 16, because
+`_shatter` short-circuits on a prop already broken.
+
+The fallback is deliberately empty: the stock is drawn in `dress` and **not** in `build`,
+which is the opposite of what a storage rack does with its own. `parts` is the captured build
+boxes PLUS what dress drew, so a machine authoring its stock in both would hold two of every
+can. A machine whose GLB failed to fetch therefore has an empty window and nothing to spill,
+which is the same graceful nothing every other model-backed prop degrades to.
+
+Measured end to end, shooting one apart with the pistol: 13 facings in, 13 cans out, every
+flavour matching, all of them on the carpet (y 0.027–0.083, so lying down) within 1.4 m of the
+machine — a spill rather than a launch, which is what `CAN_THROW`'s 1.4–3.0 N·s/kg against a
+fragment's 2.2–4.6 is for. Four asleep inside a second and a half. The debris times out at 16 s
+and the cans at 30, so what the floor is left with is the brown patch with the drinks lying in
+it. Descending a floor clears the pool (16 on the next floor's machine, not 13+16).
 
 ### The solver's world is the building's (`GUARD_MARGIN` in `physics.js`)
 The two backstop planes — one under the floor, one over the roof — are **derived from the

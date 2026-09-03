@@ -10,6 +10,8 @@
 // This file is the catalogue and the placement primitive only. Which props a
 // room gets, and where they stand in it, lives in gen/rooms.js.
 
+import { CAN_FLAVOURS, CAN_R, CAN_H, CAN_LABEL, drinkFrom } from '../drinks.js';
+
 export const QUARTER = [
   (x, z) => [x, z],
   (x, z) => [-z, x],
@@ -44,6 +46,11 @@ function placer(sink, cx, cz, rot) {
     // correct, and every box came out unmarked because the two are not
     // introduced anywhere but here.
     hulk(on) { sink.hulk(on); },
+    // What the prop is HOLDING rather than what it is made of, carrying the
+    // seed that says which drink it is — see `stock` on the sink, and note the
+    // trap `hulk` documents one line up applies here in full: a marker that is
+    // not forwarded through this object reaches nothing, silently.
+    stock(seed) { sink.stock(seed); },
   };
 }
 
@@ -75,6 +82,88 @@ function stockRun(p, y, x0, x1, rng) {
       p.box(rng.chance(0.7) ? 'cardboard' : 'paper', x, y, -0.26, x + w, y + h, 0.26);
     }
     x += w + 0.04;
+  }
+}
+
+// The window of a drinks machine, and the stock standing in it.
+//
+// EVERY NUMBER HERE IS MEASURED OFF THE GLB, not eyeballed off a screenshot: the
+// glass pane is its own mesh in store_vending_machine.glb, and in the model's
+// normalized frame (which is the prop's own frame, since tryPlace stamps the
+// model at the placer's origin and yaw) it stands at these bounds. Note the
+// window is NOT centred on the machine — the keypad takes the left third — so a
+// rack centred on the prop would have half of it inside the bodywork.
+const WIN = { x0: -0.242, x1: 0.442, y0: 0.744, y1: 1.735 };
+// The pane's own front face, and the machine's front skin 46 mm ahead of it.
+// That recess is the whole reason this works: the stock is drawn as a FACING in
+// front of the glass rather than behind it, because the pane is opaque and
+// shares one material with the entire bodywork, so there is no glass to see
+// through and nothing that can be made transparent without dissolving the
+// machine. Painted on, exactly the way panels.js paints a hole in a wall and
+// buildCan paints the hole in a shot can — and the bezel around the window is
+// what hides the trick, since a facing 38 mm deep sits wholly inside the recess
+// with 7 mm to spare and reads as product pressed against the glass.
+const WIN_GLASS = -0.271;
+const FACE_D = 0.038;
+const WIN_INSET = 0.014;   // the bezel's inner lip, kept clear on all four sides
+const SHELF_T = 0.012;     // the plate a row of cans stands on
+const CAN_GAP = 0.012;     // between two cans across a row
+const ROW_GAP = 0.012;     // headroom over a row, under the shelf above it
+// How many slots have anything in them. Under one, because a machine with every
+// slot full is a machine nobody has used — and because it is the honest way to
+// bring the count down: every can in that window is a can that comes out of it
+// when the machine goes (see `_spillStock`), so twenty-four full slots would be
+// twenty-four rigid bodies out of one round. Six of the twenty-four come out
+// empty on average, which is a used machine AND a payload the solver can carry.
+const STOCKED = 0.62;
+
+function canRack(p, rng) {
+  const pitchX = CAN_R * 2 + CAN_GAP;
+  const pitchY = SHELF_T + CAN_H + ROW_GAP;
+  const cols = Math.floor((WIN.x1 - WIN.x0 - WIN_INSET * 2) / pitchX);
+  const rows = Math.floor((WIN.y1 - WIN.y0 - WIN_INSET * 2) / pitchY);
+  if (cols < 1 || rows < 1) return;
+
+  // Centred on what the columns actually came to rather than on the window, so
+  // the spare fraction of a slot is split between the two ends.
+  const left = (WIN.x0 + WIN.x1) / 2 - (cols * pitchX - CAN_GAP) / 2;
+  const z1 = WIN_GLASS - 0.001;
+  const z0 = z1 - FACE_D;
+
+  for (let row = 0; row < rows; row++) {
+    const shelf = WIN.y0 + WIN_INSET + row * pitchY;
+    p.box('metalDark',
+      WIN.x0 + WIN_INSET, shelf, z0, WIN.x1 - WIN_INSET, shelf + SHELF_T, z1);
+
+    for (let col = 0; col < cols; col++) {
+      if (!rng.chance(STOCKED)) continue;
+      // The seed is the drink, and it is drawn ONCE here and carried on the box:
+      // the facing's paint and the can that is thrown out of this slot are both
+      // `drinkFrom(seed)`, so they cannot disagree. See drinks.js.
+      const seed = rng.int(0, 0xffffff);
+      const x = left + col * pitchX;
+      const foot = shelf + SHELF_T;
+      p.stock(seed);
+      p.box(CAN_FLAVOURS[drinkFrom(seed).flavour].mat,
+        x, foot, z0, x + CAN_R * 2, foot + CAN_H, z1);
+      // The label round its middle, and it is what turns the facing from a
+      // rectangle of paint into a can — the flavour's own colour showing above
+      // and below a dark sleeve is the whole silhouette of these drinks (see
+      // canShapes in rigs.js), and without it a stocked machine reads as a rack
+      // of coloured blocks. A hair proud of the paint, the way the real sleeve
+      // stands off the barrel.
+      //
+      // Marked 'trim' rather than with the seed: it is part of THIS can and not
+      // a can of its own, so it must be neither thrown as a drink (two cans out
+      // of one slot) nor thrown as a fragment (a label sailing across the room
+      // out of the budget the cabinet panels are meant to have). Same
+      // distinction `hulk` draws between a machine's own mass and a fitting
+      // bolted to it, and for the same reason.
+      p.stock('trim');
+      p.box('plastic',
+        x, foot + CAN_LABEL.y0, z0 - 0.001, x + CAN_R * 2, foot + CAN_LABEL.y1, z1);
+    }
+    p.stock(null);
   }
 }
 
@@ -378,14 +467,71 @@ export const PROPS = {
     // across a corridor and leaves the carpet dry is the identical lie the
     // cooler used to tell. See `_shatter` in destruction.js and LIQUIDS in
     // spills.js for how much comes out and what colour it is.
-    w: 1.04, d: 0.82, model: 'vending_machine', hp: 120, substance: 'electronic',
+    w: 1.29, d: 0.64, model: 'vending_machine', hp: 120, substance: 'electronic',
     spills: 'drink',
+    // The stock, standing in the window where you can see what you are about to
+    // spill — and, when the machine goes, the cans that come out of it. See
+    // `canRack` above for why it is drawn in front of the glass rather than
+    // behind it, and `_spillStock` in destruction.js for what happens to it.
+    //
+    // Only here and NOT in `build` below, which is the opposite of what a
+    // storage rack does with its own stock, and deliberately: `parts` is the
+    // captured build boxes PLUS what dress drew, so a machine authoring its
+    // stock in both would be holding two of every can — one thrown as a
+    // coloured box out of the fragment budget and one as the drink itself. The
+    // cost is that a machine whose GLB failed to fetch has an empty window and
+    // nothing to spill, which is the same graceful nothing every other
+    // model-backed prop degrades to.
+    dress: canRack,
+    // The fallback picture, and the pieces it breaks into. Two things about it
+    // were wrong and both only showed in the wreckage, which is where nobody
+    // looks until the wreckage is the point of the prop.
+    //
+    // It is on the MODEL's own measured bounds now (1.286 x 0.64 x 1.90, with the
+    // window and the keypad where the GLB really has them). It had been authored
+    // 1.0 m wide with both MIRRORED onto the wrong sides, which is invisible
+    // while the machine is standing — the model is what you see — and is not
+    // invisible once it comes apart, because the display panel then flies out of
+    // the wrong side of a cabinet a quarter of a metre too narrow.
+    //
+    // And it is a CABINET rather than a solid, which is the water cooler's
+    // lesson (see its own entry): a prop comes apart into exactly the boxes it
+    // was drawn from, so one box the size of the machine throws one fragment the
+    // size of the machine, and it lands where the machine was standing. A
+    // destroyed cooler looked like an intact cooler that had stopped being
+    // solid; a destroyed drinks machine looked like a yellow slab leaning over
+    // its own stock, which is worse, because the stock is the whole point of
+    // shooting it. Sides, back, top, plinth and a front frame around the window
+    // is what a sheet-steel cabinet is actually made of, and panels are what a
+    // panel-goods filter (see MIN_FRAGMENT) is built to keep.
     build(p) {
-      p.box('metalDark', -0.5, 0, -0.39, 0.5, 1.92, 0.39);
-      p.box('screenOn', -0.42, 0.5, -0.4, 0.16, 1.76, -0.38);   // lit display window
-      p.box('plastic', 0.22, 0.9, -0.41, 0.44, 1.5, -0.38);     // keypad
-      p.box('metal', -0.38, 0.16, -0.41, 0.2, 0.36, -0.38);     // collection slot
-      p.obstacle(-0.5, -0.39, 0.5, 0.39, 1.92);
+      const T = 0.05;          // sheet steel, and the depth of the front frame
+      const X = 0.643, D = 0.32, H = 1.90;
+      const inner = X - T;     // where the side panels stop
+      const front = -D + T;    // ...and the back of the front frame
+      // Both sides and the back come off in HALVES, and that is about the size
+      // of a fragment rather than about the cabinet: full height they are
+      // 1.90 m sheets, and five of those land leaning against each other and
+      // read as flat-pack furniture stacked where the machine was standing
+      // rather than as a machine that has been blown apart. Cut at the bottom of
+      // the window, which is where the carcass has a seam anyway.
+      for (const sx of [-1, 1]) {
+        p.box('metalDark', sx * X, 0, -D, sx * inner, WIN.y0, D);      // sides
+        p.box('metalDark', sx * X, WIN.y0, -D, sx * inner, H, D);
+      }
+      p.box('metalDark', -X, 0, D - T, X, WIN.y0, D);                 // back
+      p.box('metalDark', -X, WIN.y0, D - T, X, H, D);
+      p.box('metalDark', -inner, H - T, -D, inner, H, D - T);         // top
+      p.box('metalDark', -inner, 0, -D, inner, 0.12, D - T);          // plinth
+      // The front frame: under the window, over it, and a jamb either side.
+      p.box('metalDark', -inner, 0.12, -D, inner, WIN.y0, front);
+      p.box('metalDark', -inner, WIN.y1, -D, inner, H - T, front);
+      p.box('metalDark', -inner, WIN.y0, -D, WIN.x0, WIN.y1, front);
+      p.box('metalDark', WIN.x1, WIN.y0, -D, inner, WIN.y1, front);
+      p.box('screenOn', WIN.x0, WIN.y0, WIN_GLASS, WIN.x1, WIN.y1, -0.195);
+      p.box('plastic', -0.515, 0.928, -D, -0.366, 1.283, -0.269);     // keypad
+      p.box('metal', -0.427, 0.39, -D, 0.432, 0.63, -0.28);           // collection tray
+      p.obstacle(-X, -D, X, D, H);
     },
   },
 

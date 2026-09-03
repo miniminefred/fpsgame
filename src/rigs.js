@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { hexCss } from './util.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getTech } from './tech-textures.js';
-import { CAN_FLAVOURS, CAN_R, CAN_H, drinkFrom } from './drinks.js';
+import { CAN_FLAVOURS, CAN_R, CAN_H, CAN_LABEL, drinkFrom } from './drinks.js';
 
 // What the things walking around a floor are made of.
 //
@@ -1201,7 +1201,8 @@ function canShapes() {
     // bare colour are what still read from the end of a corridor once the
     // artwork has gone to mush.
     const label = at(
-      new THREE.CylinderGeometry(CAN_R * 1.012, CAN_R * 1.012, 0.088, seg, 1, true), 0.083);
+      new THREE.CylinderGeometry(CAN_R * 1.012, CAN_R * 1.012,
+        CAN_LABEL.y1 - CAN_LABEL.y0, seg, 1, true), (CAN_LABEL.y0 + CAN_LABEL.y1) / 2);
     const tab = new THREE.BoxGeometry(0.026, 0.004, 0.013);
     tab.translate(0.008, 0.196 - CAN_H / 2, 0);
     const metal = mergeGeometries([

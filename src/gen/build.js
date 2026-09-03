@@ -1595,6 +1595,12 @@ function makeSink(layout, batcher, materials, masks) {
   // when the prop is destroyed; only the first says how big the machine is.
   // See `hulk` below.
   let hulkOn = false;
+  // What the boxes being drawn right now are STOCK for, or null: the drink seed
+  // for the can itself, or 'trim' for something drawn ON that can. A stock box is
+  // not one of the prop's fragments — it is a thing the prop is holding, and it
+  // leaves as itself rather than as a piece of the cabinet it was standing in.
+  // See `stock` below and `_spillStock` in destruction.js.
+  let stockOn = null;
 
   // Tile range covering a world-space AABB.
   const range = (x0, z0, x1, z1) => ({
@@ -1706,6 +1712,10 @@ function makeSink(layout, batcher, materials, masks) {
     box(key, x0, y0, z0, x1, y1, z1) {
       const b = { key, x0, y0: y0 + level, z0, x1, y1: y1 + level, z1 };
       if (hulkOn) b.hulk = hulkOn;
+      // Tested against null rather than for truth, because seed 0 is a drink
+      // like any other and `if (stockOn)` would quietly hand every twenty-
+      // thousandth can back to the fragment pile.
+      if (stockOn != null) b.stock = stockOn;
       if (capture) { capture.push(b); return; }
       if (pending) { pending.boxes.push(b); return; }
       batcher.add(key, materials[key], boxBetween(b.x0, b.y0, b.z0, b.x1, b.y1, b.z1));
@@ -1727,6 +1737,30 @@ function makeSink(layout, batcher, materials, masks) {
      * stack. Anything falsy ends the run.
      */
     hulk(grade) { hulkOn = grade || false; },
+
+    /**
+     * Marks what follows as STOCK: something the prop is holding rather than
+     * something it is made of. Pass null to end the run.
+     *
+     * The prop still draws it, and it is still erased with the rest of the
+     * prop's spans when the prop goes — what changes is what happens next.
+     * `_shatter` takes stock off the fragment list and throws the real thing
+     * from where the facing was standing, so the drink that was in the window
+     * is the drink now rolling across the carpet. Left unmarked, a machine's
+     * stock would be thrown twice: once as a coloured box out of the debris
+     * budget, and once as the can it actually is.
+     *
+     * A NUMBER is the drink itself, and it is the seed that says which drink
+     * (see drinks.js). 'trim' is something drawn on that can — its label
+     * band — which is neither a drink of its own nor a fragment of the machine,
+     * so it is thrown by neither pass and goes with the prop. Exactly the
+     * distinction `hulk` draws one method up between a machine's own mass and a
+     * fitting bolted to it.
+     *
+     * Same trap as `hulk` too: the placer in gen/props.js has to forward this or
+     * a prop marking its stock reaches nothing at all, silently.
+     */
+    stock(grade) { stockOn = grade == null ? null : grade; },
 
     obstacle(x0, z0, x1, z1, top, building) {
       // A dynamic prop's footprint moves, so it can't become a static collider
@@ -1787,6 +1821,7 @@ function makeSink(layout, batcher, materials, masks) {
 
     beginStatic(hp, substance, volatile = false, powerCore = false, spills = null) {
       hulkOn = false;
+      stockOn = null;
       record = hp > 0
         ? {
           hp, substance, volatile, powerCore, spills,
@@ -1805,6 +1840,7 @@ function makeSink(layout, batcher, materials, masks) {
       const r = record;
       record = null;
       hulkOn = false;
+      stockOn = null;
       if (!r) return;
       batcher.endSpans();
       if (!r.spans.length) return;
@@ -1831,6 +1867,12 @@ function makeSink(layout, batcher, materials, masks) {
         // a wreck" from "goes, like everything else on the floor". The grades
         // themselves travel on `parts`, which is what `_wreck` reads.
         hulkSpans: r.boxes.some((b) => b.hulk) ? r.boxes.map((b) => !!b.hulk) : null,
+        // Whether this prop is holding anything, asked once here rather than
+        // per destruction: `_shatter` runs for every desk and pane of glass on
+        // the floor, and it must not sift a parts list looking for stock that
+        // thirty of the thirty-one props in the catalogue never have. The stock
+        // itself travels on `parts`, one seed per facing.
+        stock: r.boxes.some((b) => typeof b.stock === 'number'),
         colliders: r.colliders,
         navTiles: r.navTiles,
         fixtures: [],

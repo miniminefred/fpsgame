@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { hexCss } from './util.js';
+import { CAN_FLAVOURS } from './drinks.js';
 
 // Every surface in the building is drawn with a canvas texture generated here —
 // no image assets. The palette is deliberately narrow: greys and off-whites for
@@ -92,6 +93,17 @@ function build() {
       screenOn: new THREE.MeshBasicMaterial({ color: 0x6fd3ff }),
       led: new THREE.MeshBasicMaterial({ color: 0x7dff9a }),
       hazard: flat(0xc8b23a, 0.8),
+
+      // --- the stock standing in a vending machine's window
+      //
+      // One paint per drink, off the same list rigs.js paints the can in a hand
+      // from and at the same roughness and metalness, because these two are the
+      // same object at two moments of its life: the facing in the window is the
+      // can that comes out of that slot when the machine is blown apart, and a
+      // drink that changes colour on the way out is worse than a machine with
+      // nothing in it. See drinks.js.
+      ...Object.fromEntries(CAN_FLAVOURS.map(
+        (f) => [f.mat, flat(f.color, 0.34, { metalness: 0.5 })])),
     },
   };
 }

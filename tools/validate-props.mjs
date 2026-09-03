@@ -251,6 +251,15 @@ function buildCatalogue() {
           g.z0 = Math.min(g.z0, z0); g.z1 = Math.max(g.z1, z1);
         },
         obstacle(x0, z0, x1, z1, top) { obs = { x0, z0, x1, z1, top }; },
+        // A prop is allowed to mark what follows as stock it is holding rather
+        // than structure it is made of (see `stock` on the sink in
+        // gen/build.js). It changes nothing here on purpose: a can facing
+        // standing in a machine's window is real geometry in the world, so it
+        // owes 10.geo-fit the same nesting as the cabinet around it. This is a
+        // no-op rather than an absent method because the alternative is the trap
+        // `hulk` documents — a marker the sink does not offer reaching nothing,
+        // and being called with `?.` so that it does it silently.
+        stock() {},
       };
       spec.build(p, rng);
       // Anything a model-backed prop draws on top of its model is real geometry
