@@ -470,7 +470,12 @@ export class Game {
     // rather than the lock list, because the doors are what will actually open
     // for them — see badgeTiles there and setBadgeTiles in nav.js.
     level.nav.setBadgeTiles(this.doors.badgeTiles());
-    this.player.placeAt(level.spawn.x, level.spawn.z);
+    // Facing out of the car, when there is a car. `-rot * PI/2` is the game's
+    // one conversion from a quarter turn to a yaw — the same line _seat in
+    // enemies.js uses to point a body at the desk its chair was placed against.
+    const car = level.layout.lifts?.arrival;
+    this.player.placeAt(level.spawn.x, level.spawn.z,
+      car ? -car.facing * Math.PI / 2 : null);
     // You step out of the lift with your sidearm out and everything loaded. The
     // arrival is the one moment in a floor where the game gets to put you
     // straight, and both halves of that are about starting from a known place:

@@ -6,6 +6,11 @@ import { smoothTo } from './util.js';
 // headless validators need the same numbers and used to keep their own copies.
 import { BODY_H, EYE, GRAVITY, JUMP_SPEED, PLAYER_RADIUS as RADIUS, STEP_EPS } from './metrics.js';
 
+// Scratch for placeAt's one write to the look. 'YXZ' because that is the order
+// applyLook in input.js reads and writes the camera in, and a quaternion built
+// in a different order is a view that snaps the first time the mouse moves.
+const placeEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+
 // Broadphase cell for the static collision boxes. 2 m is four tiles — big enough
 // that a wall lands in few cells, small enough that a query rejects most of a
 // floor. See setColliders.
@@ -183,9 +188,21 @@ export class Player {
     return out;
   }
 
-  // Drops the player onto a new floor, nudging out of anything they'd overlap.
-  placeAt(x, z) {
+  /**
+   * Drops the player onto a new floor, nudging out of anything they'd overlap.
+   *
+   * `yaw` is optional and is where they are LOOKING when they get there, level,
+   * with whatever pitch they arrived with thrown away. It exists because the
+   * floor now starts inside a lift car (see gen/lifts.js): the look is never
+   * touched by anything else, so a fresh run began facing -z whichever way the
+   * car happened to open, and a descent kept whatever angle the player was at
+   * when they stepped into the last one. Either way it is even money the first
+   * frame of a floor is the back wall of a lift, which is the one thing this
+   * whole arrival exists not to be.
+   */
+  placeAt(x, z, yaw = null) {
     this.object.position.set(x, EYE, z);
+    if (yaw !== null) this.object.quaternion.setFromEuler(placeEuler.set(0, yaw, 0));
     this.velocityY = 0;
     this._vel.set(0, 0, 0);
     // Arriving on a new floor is not a fall, and must not sound like one.
