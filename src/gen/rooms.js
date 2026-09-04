@@ -132,69 +132,123 @@ function meetingRoom(sink, bounds, rng) {
   const alongX = (x1 - x0) >= (z1 - z0);
   const rot = alongX ? 0 : 1;
 
+  // The board goes first and unconditionally, and both halves of that are the
+  // argument `securityOffice` makes about its camera desk. It is the FRONT of
+  // the room — the table is laid along it and every chair looks at it — so it
+  // has to get a wall before the clutter does. And it is where the person
+  // running the meeting stands (`meetings.js` reads the `board` station
+  // `edgeProp` publishes for it), so a room that rolled it away at 20% was one
+  // meeting room in five with nowhere to hold a meeting.
+  edgeProp(sink, bounds, 'whiteboard', rng);
+
   if (tryPlace(sink, 'meetingTable', cx, cz, rot, rng)) {
     // Half the table's real depth — measured across its short axis whichever
     // way round it went in, which is what `footprintOf` answers in the prop's
     // own frame — plus room for a chair to be pushed under it.
     const half = footprintOf(sink, 'meetingTable').d / 2 + 0.42;
     const seats = Math.max(2, Math.floor((alongX ? x1 - x0 : z1 - z0) / 0.85) - 1);
-    for (let i = 0; i < seats; i++) {
-      const t = (i - (seats - 1) / 2) * 0.85;
-      // Both long sides, each chair turned to face the table. Derived rather
-      // than written out, and it is a FIX rather than a tidy-up: written out it
-      // was four coordinates and four turns, and the two for a table running
-      // east-west were backwards — every meeting room on that half of the roll
-      // sat its whole meeting facing the walls. Measured off the geometry rather
-      // than argued about: the backrest of every chair was the box nearest the
-      // table. `side` is the quarter turn naming which way the chair is offset
-      // and (side + 2) is what brings its front back round, exactly as
-      // seatFacing has always done it for a desk.
-      for (const side of [rot, (rot + 2) & 3]) {
-        const [ox, oz] = QUARTER[side](0, -half);
-        const [ax, az] = QUARTER[side](t, 0);
-        tryPlace(sink, 'chair', cx + ox + ax, cz + oz + az, (side + 2) & 3, rng);
+    // Inside the table's own reservation, which is what `lend` is for and is not
+    // optional: floor is claimed by whole tiles, so a 1.32 m table's claim
+    // reaches a good way past its own edge and a chair pulled up to it lands
+    // inside that claim whatever the arithmetic says. It is the trap `seatFacing`
+    // and the cafeteria both document, and it was costing this room 1768 refused
+    // chairs against 1274 placed.
+    const { w: tw, d: td } = footprintOf(sink, 'meetingTable', rot);
+    sink.lend(cx - tw / 2, cz - td / 2, cx + tw / 2, cz + td / 2, () => {
+      for (let i = 0; i < seats; i++) {
+        const t = (i - (seats - 1) / 2) * 0.85;
+        // Both long sides, each chair turned to face the table. Derived rather
+        // than written out, and it is a FIX rather than a tidy-up: written out it
+        // was four coordinates and four turns, and the two for a table running
+        // east-west were backwards — every meeting room on that half of the roll
+        // sat its whole meeting facing the walls. Measured off the geometry rather
+        // than argued about: the backrest of every chair was the box nearest the
+        // table. `side` is the quarter turn naming which way the chair is offset
+        // and (side + 2) is what brings its front back round, exactly as
+        // seatFacing has always done it for a desk.
+        for (const side of [rot, (rot + 2) & 3]) {
+          const [ox, oz] = QUARTER[side](0, -half);
+          const [ax, az] = QUARTER[side](t, 0);
+          const x = cx + ox + ax, z = cz + oz + az;
+          const seat = (side + 2) & 3;
+          // Registered as somewhere to SIT IN A MEETING, which is neither a job
+          // nor lunch. A meeting chair in the desk pool would have this room
+          // dealt a shift of six people typing at a table with no desks on it,
+          // and in the canteen pool it would send people here for their break.
+          if (tryPlace(sink, 'chair', x, z, seat, rng)) {
+            sink.workstation(x, z, seat, 'meeting');
+          }
+        }
       }
-    }
-  } else {
-    tryPlace(sink, 'coffeeTable', cx, cz, rot, rng);
+    });
+  } else if (tryPlace(sink, 'coffeeTable', cx, cz, rot, rng)) {
+    // Too small for a real table, which is about one meeting room in ten: a low
+    // table with a few chairs round it, which is what a two-person meeting room
+    // actually is rather than a failure to furnish one.
+    const { w: tw, d: td } = footprintOf(sink, 'coffeeTable', rot);
+    sink.lend(cx - tw / 2, cz - td / 2, cx + tw / 2, cz + td / 2, () => {
+      for (const side of [0, 1, 2, 3]) {
+        const [ox, oz] = QUARTER[side](0, -0.92);
+        const seat = (side + 2) & 3;
+        if (tryPlace(sink, 'chair', cx + ox, cz + oz, seat, rng)) {
+          sink.workstation(cx + ox, cz + oz, seat, 'meeting');
+        }
+      }
+    });
   }
-
-  if (rng.chance(0.8)) edgeProp(sink, bounds, 'whiteboard', rng);
-  edgeProp(sink, bounds, 'plant', rng);
-  if (rng.chance(0.5)) edgeProp(sink, bounds, 'cabinet', rng);
 }
 
 function breakRoom(sink, bounds, rng) {
   const { x0, z0, x1, z1 } = bounds;
+
+  // Seating FIRST, and that ordering is the whole of whether this room has any.
+  // A sofa is 1.8 m and the machines below are 2.2, 1.29 and 0.4 — so by the
+  // time the counter, the vending machine and the cooler had taken their walls
+  // there was nowhere left to put one, and it showed: 279 sofas placed against
+  // 2184 refused, which is a break room with nothing to sit on six times in ten.
+  // An armchair is the fallback rather than a second choice; it is 1.25 m and
+  // fits where a sofa cannot.
+  const sofas = rng.chance(0.55) ? 2 : 1;
+  for (let i = 0; i < sofas; i++) {
+    if (!edgeProp(sink, bounds, 'sofa', rng)) edgeProp(sink, bounds, 'armchair', rng);
+  }
+  if (rng.chance(0.7)) edgeProp(sink, bounds, 'armchair', rng);
+
+  // What a break is made of. The counter is the coffee run, and the dock is for
+  // the half of the roster that does not drink it — see `charger` in props.js
+  // and the break cycle in enemies.js.
   edgeProp(sink, bounds, 'counter', rng);
   edgeProp(sink, bounds, 'vending', rng);
   edgeProp(sink, bounds, 'waterCooler', rng);
-  // The sofa goes against a wall. Dropped free-standing beside a coffee table
-  // it is a 1.8 m wall of its own, and in a 4.5 m room a sofa broadside between
-  // the vending machine and the counter shuts the far end of the room away.
-  if (rng.chance(0.6)) edgeProp(sink, bounds, 'sofa', rng);
+  edgeProp(sink, bounds, 'charger', rng);
 
-  // Coffee tables with seating scattered through the middle.
-  const tables = Math.max(1, Math.floor(((x1 - x0) * (z1 - z0)) / 9));
+  // Low tables through the middle with a stool or two pulled up to them. Stools
+  // rather than the office chairs that used to be here: a task chair in a break
+  // room is somebody who brought their work with them.
+  const tables = Math.max(1, Math.floor(((x1 - x0) * (z1 - z0)) / 11));
   for (let i = 0; i < tables; i++) {
     const cx = rng.range(x0 + 1.2, x1 - 1.2);
     const cz = rng.range(z0 + 1.2, z1 - 1.2);
     if (!tryPlace(sink, 'coffeeTable', cx, cz, rng.int(0, 3), rng)) continue;
-    if (rng.chance(0.8)) tryPlace(sink, 'chair', cx, cz - 1.0, 0, rng);
-    if (rng.chance(0.6)) tryPlace(sink, 'chair', cx, cz + 1.0, 2, rng);
-    if (rng.chance(0.5)) tryPlace(sink, 'stool', cx - 1.0, cz, 1, rng);
+    if (rng.chance(0.7)) tryPlace(sink, 'stool', cx, cz - 1.0, 0, rng);
+    if (rng.chance(0.5)) tryPlace(sink, 'stool', cx + 1.0, cz, 3, rng);
   }
-  if (rng.chance(0.6)) edgeProp(sink, bounds, 'plant', rng);
   wallClutter(sink, bounds, ['trashCan', 'recyclingBin'], 45, rng);
 }
 
-// Shelving in aisles, and the boxes that never made it onto a shelf.
+// Shelving in aisles, the cabinets the overflow goes in, and the boxes that
+// never made it onto either.
 function storage(sink, bounds, rng) {
-  // `'shelf'` is where the parcel runs start: a machine comes in here, takes a
-  // box off a rack and hands it to a porter. Only the STORAGE room offers them —
-  // `aisles` also ranks an archive's bookshelves and a server room's racks, and
-  // neither is somewhere the building's stock is kept. See jobs.js.
+  // `'shelf'` is where the parcel runs start and where the stocktaking routine
+  // takes a box off a rack: a machine comes in here, takes a box, and hands it
+  // to a porter (jobs.js) or carries it to another rack (chores.js). Only the
+  // STORAGE room offers them — `aisles` also ranks a server room's racks, and
+  // that is not somewhere the building's stock is kept. The archive's shelves
+  // are their own kind for the same reason; see there.
   aisles(sink, bounds, 1.9, 2.0, 'shelving', rng, 'shelf');
+  // The archive half of a storeroom: what will not go on a shelf goes in a
+  // cabinet against the wall.
+  for (let i = 0; i < 2; i++) edgeProp(sink, bounds, 'cabinet', rng);
   // Pallets and crates are static and a metre across; loose cartons are neither.
   // Only a room with floor to spare gets the heavy goods left out on it.
   scatter(sink, bounds, area(bounds) > 55
@@ -203,29 +257,72 @@ function storage(sink, bounds, rng) {
   if (rng.chance(0.5)) edgeProp(sink, bounds, 'extinguisher', rng);
 }
 
-// Paper, in every form the building keeps it: binders on shelves, box files on
-// the floor, and the cabinets nobody has opened this decade.
+// Paper, in every form the building keeps it: binders on shelves, the cabinets
+// nobody has opened this decade, and the bench where it is actually dealt with —
+// a small printer, a calculator and the trays it comes in and goes out of.
 function archive(sink, bounds, rng) {
-  aisles(sink, bounds, 1.7, 1.15, 'bookshelf', rng);
-  for (let i = 0; i < 2; i++) edgeProp(sink, bounds, 'cabinet', rng);
+  // `'files'` rather than `'shelf'`, and the difference is what a rack is FOR.
+  // A storeroom's shelving is where the building's stock lives, so a parcel run
+  // starts at one; an archive's shelves hold paperwork, and a porter fetching a
+  // ring binder to put it on a conveyor is not a thing that happens. The box
+  // errand in chores.js reads both, because taking something off a shelf and
+  // putting it back somewhere else is the same errand in either room.
+  // The bench first, and the copy room's shelf makes the same argument: an
+  // archive is long and thin and its walls are gone by the time three cabinets
+  // and a rank of bookshelves have been down them, so offered last a 1.6 m bench
+  // landed in fewer than half the rooms it is the point of. It is the only thing
+  // in here that is not storage — what makes the room read as one somebody works
+  // in rather than one nobody has been into since the nineties.
+  edgeProp(sink, bounds, 'sortingBench', rng);
+  if (rng.chance(0.45)) edgeProp(sink, bounds, 'printer', rng);
+  aisles(sink, bounds, 1.7, 1.15, 'bookshelf', rng, 'files');
+  for (let i = 0; i < 3; i++) edgeProp(sink, bounds, 'cabinet', rng);
+  edgeProp(sink, bounds, 'trashCan', rng);
+  wallClutter(sink, bounds, ['recyclingBin', 'trashCan'], 42, rng);
   scatter(sink, bounds, ['crateStack'], 16, rng);
-  if (rng.chance(0.5)) edgeProp(sink, bounds, 'trashCan', rng);
 }
 
+// Machines, and the paper going into and out of them.
 function copyRoom(sink, bounds, rng) {
   const { x0, z0, x1, z1 } = bounds;
-  const count = Math.max(1, Math.floor(Math.max(x1 - x0, z1 - z0) / 1.6));
+  // The shelf first, for the break room's reason: it is 1.96 m and the copiers
+  // are 1.13, so offered last it was refused nineteen times in twenty — 82
+  // shelving units across 470 copy rooms. The paper has to live somewhere.
+  edgeProp(sink, bounds, 'shelving', rng);
+  // ...and then as many copiers as the longest wall will take. A 1.3 m pitch
+  // rather than 1.6: a copy room is a row of machines, and two of them with a
+  // gap between is a room that happens to have copiers in it.
+  const count = Math.max(2, Math.floor(Math.max(x1 - x0, z1 - z0) / 1.3));
   for (let i = 0; i < count; i++) edgeProp(sink, bounds, 'printer', rng);
-  for (let i = 0; i < 2; i++) edgeProp(sink, bounds, 'cabinet', rng);
-  scatter(sink, bounds, ['crateStack'], 14, rng);
-  if (rng.chance(0.4)) edgeProp(sink, bounds, 'shelving', rng);
-  wallClutter(sink, bounds, ['trashCan', 'recyclingBin'], 40, rng);
+  if (rng.chance(0.5)) edgeProp(sink, bounds, 'cabinet', rng);
+  // Boxes of paper, stacked where the delivery was put down.
+  scatter(sink, bounds, ['crateStack', 'crateStack', 'carton'], 11, rng);
+  wallClutter(sink, bounds, ['recyclingBin', 'trashCan'], 40, rng);
 }
 
-// Racks in ranks, tight enough that the aisles between them are the only floor.
+// Racks in ranks, tight enough that the aisles between them are the only floor —
+// and one terminal, because somebody has to be able to sit down and talk to all
+// of this.
 function serverRoom(sink, bounds, rng) {
+  // The terminal first, before the ranks have taken the floor — the archive's
+  // bench lesson in a second room, and a sharper one here because a rack aisle
+  // eats the whole middle of a server room and a 1.84 m desk needs a wall with
+  // nothing already on it.
+  //
+  // A `desk` IS the catalogue's computer: it comes with a monitor and a keyboard
+  // on it, and `seatFacing` pulls a chair up to it and registers the job. So the
+  // room gets somebody sitting at a screen in among the racks rather than a
+  // machine room nobody has any reason to be in.
+  //
+  // "Maybe" a computer, and the roll is arithmetic rather than flavour: going in
+  // before the ranks is what gets the desk placed at all, and it costs the room
+  // a rank — measured at 3.4 racks a room without it and 2.5 with it in every
+  // room. Two rooms in three is a terminal you find often enough to expect one
+  // and a rack count that still reads as stacks of servers.
+  const desk = rng.chance(0.65) ? edgeProp(sink, bounds, 'desk', rng) : null;
+  if (desk) seatFacing(sink, 'desk', desk.cx, desk.cz, desk.rot, rng);
   aisles(sink, bounds, 2.2, 0.85, 'serverRack', rng, 'server');
-  if (rng.chance(0.6)) edgeProp(sink, bounds, 'workbench', rng);
+  if (rng.chance(0.5)) edgeProp(sink, bounds, 'workbench', rng);
   edgeProp(sink, bounds, 'extinguisher', rng);
 }
 
@@ -1003,6 +1100,13 @@ const WORK_AT = {
   printer: 'printer',
   workbench: 'bench',
   serverRack: 'server',
+  // The front of a room rather than a machine, and it is the same fact: a
+  // whiteboard is somewhere a body stands. Meetings hold their board here (see
+  // meetings.js) and a training room's board is where the person taking the
+  // session stands, which is what that room has always been drawn around.
+  whiteboard: 'board',
+  sortingBench: 'sorting',
+  charger: 'charge',
 };
 
 // How far in front of a machine a body stands to use it. A shade under the

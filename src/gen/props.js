@@ -1005,6 +1005,85 @@ export const PROPS = {
     },
   },
 
+  // The archive's own bench: where paper is dealt with rather than stored.
+  //
+  // Authored as boxes rather than model-backed, and the small printer on it is
+  // authored too, because `desktop` only stamps models onto a prop that IS a
+  // model (see tryPlace) — a bench of boxes carrying a GLB is a case the placer
+  // does not have. It costs nothing here: a desktop printer is a 24 cm block and
+  // a calculator is smaller than a keyboard, and authoring them means the bench
+  // comes apart into a bench, a printer and a calculator rather than into three
+  // pieces of bench.
+  sortingBench: {
+    w: 1.6, d: 0.7, hp: 80, substance: 'wood',
+    build(p, rng) {
+      const H = 0.78;
+      p.box('laminate', -0.8, H - 0.05, -0.35, 0.8, H, 0.35);
+      for (const sx of [-0.74, 0.74]) {
+        p.box('metal', sx - 0.04, 0, -0.32, sx + 0.04, H - 0.05, 0.32);
+      }
+      p.box('metal', -0.72, 0.22, -0.3, 0.72, 0.27, 0.3);            // lower shelf
+
+      // The small printer. Its own body, its paper tray and the sheet standing
+      // out of the back of it, which is the half of a printer anybody notices.
+      const px = rng.chance(0.5) ? -0.44 : 0.44;
+      p.box('plastic', px - 0.16, H, -0.13, px + 0.16, H + 0.19, 0.13);
+      p.box('metalDark', px - 0.14, H + 0.19, -0.11, px + 0.14, H + 0.21, 0.06);
+      p.box('paper', px - 0.1, H + 0.21, 0.0, px + 0.1, H + 0.22, 0.16);
+
+      // The calculator, on the other half of the top: a wedge with a keypad and
+      // a lit display. `screenOn` is the only unlit material in the catalogue
+      // that reads as a number showing at this size.
+      const cx = -px * 0.62;
+      p.box('plastic', cx - 0.07, H, -0.11, cx + 0.07, H + 0.02, 0.11);
+      p.box('plastic', cx - 0.07, H + 0.02, 0.0, cx + 0.07, H + 0.05, 0.11);
+      p.box('screenOn', cx - 0.05, H + 0.05, 0.02, cx + 0.05, H + 0.055, 0.09);
+
+      // Paperwork: a tray of it, and a couple of loose stacks.
+      p.box('metalDark', -0.18, H, -0.32, 0.18, H + 0.03, -0.06);
+      p.box('paper', -0.16, H + 0.03, -0.3, 0.16, H + 0.09, -0.08);
+      if (rng.chance(0.7)) p.box('paper', 0.2, H, 0.14, 0.44, H + 0.06, 0.32);
+      if (rng.chance(0.5)) p.box('paper', -0.62, 0.27, -0.24, -0.3, 0.34, 0.24);
+      p.obstacle(-0.8, -0.35, 0.8, 0.35, H);
+    },
+  },
+
+  // Where a machine goes on its break.
+  //
+  // The breakroom is the one room in the building that is about NOT working, and
+  // half the roster does not eat (see `_lunchOk` in enemies.js, which has always
+  // kept a chassis out of the canteen). A dock is what the same room offers them
+  // instead: somewhere to stand still with something visibly happening, which is
+  // the whole of what a break looks like from the outside.
+  //
+  // It is deliberately not a seat. A machine parked at a wall with its lamps
+  // cycling reads as charging; a machine sitting on a sofa reads as a bug.
+  charger: {
+    w: 0.9, d: 0.42, hp: 60, substance: 'metal',
+    build(p, rng) {
+      // The back panel, up the wall, with the status readout on it at the height
+      // a standing body's chest is — so a docked machine's own readout and the
+      // dock's line up, which is most of what makes the pair read as connected.
+      p.box('metalDark', -0.45, 0, 0.1, 0.45, 1.55, 0.21);
+      p.box('metal', -0.4, 0.05, 0.04, 0.4, 1.5, 0.1);
+      p.box('screen', -0.3, 1.02, 0.02, 0.3, 1.28, 0.045);
+      for (let i = 0; i < 5; i++) {
+        if (!rng.chance(0.75)) continue;
+        const y = 1.06 + i * 0.045;
+        p.box('screenOn', -0.26, y, 0.0, -0.26 + rng.range(0.1, 0.5), y + 0.022, 0.03);
+      }
+      // The plate it stands on, and the two contacts. Low enough to walk over —
+      // it carries no obstacle of its own above the plate, so a machine standing
+      // on it is standing on the floor as far as everything else is concerned.
+      p.box('hazard', -0.42, 0, -0.2, 0.42, 0.045, 0.11);
+      p.box('metalDark', -0.28, 0.045, -0.12, -0.16, 0.13, 0.02);
+      p.box('metalDark', 0.16, 0.045, -0.12, 0.28, 0.13, 0.02);
+      // Cable up the back.
+      p.box('plastic', 0.3, 0.13, 0.06, 0.36, 1.02, 0.11);
+      p.obstacle(-0.45, 0.02, 0.45, 0.21, 1.55);
+    },
+  },
+
   // The generator room's own centrepiece (see the `generator` role in
   // gen/rooms.js) — one per floor at most, and the only prop on the floor
   // that does anything when it dies: `powerCore` is read by destruction.js,
