@@ -302,6 +302,25 @@ const LUNCH_MAX = 4;
 const LUNCH_FIRST = 25;        // seconds before the first employee downs tools
 const LUNCH_GAP = [14, 34];    // ...and between one and the next
 const LUNCH_DARTS = 24;        // tries at finding a willing body — see _sendToLunch
+// How often a break is taken in a BREAK ROOM rather than the canteen.
+//
+// A little over half, and it is a coin rather than a preference for two reasons.
+// There are many more break rooms than canteens on a floor — measured at
+// fourteen against one — so a break room is the nearer of the two for almost
+// everybody, and weighting by distance would empty the canteen. And the two are
+// different lengths: lunch is a queue, a tray and a meal, where a rest is ten
+// minutes on a sofa, so an even-ish split is what keeps both rooms occupied.
+const REST_SHARE = 0.55;
+// How far out in front of a sofa the game will look for somewhere to step off
+// it. A little over two tiles, which is what the erosion in `fits` costs beside
+// anything fitted: the sofa's own tile is blocked and its neighbours are eroded,
+// so the first tile a body fits in is the second one out. See `sittable`.
+const LOUNGE_STEP = 1.3;
+// The height band a thing you can sit on tops out in: a stool at 0.45, a sofa at
+// 0.82, an armchair at 0.86. Wide enough to take all three and short enough that
+// a filing cabinet standing behind the sofa is not mistaken for it.
+const SEAT_LOW = 0.3;
+const SEAT_HIGH = 1.0;
 const LUNCH_PACE = 0.85;       // somebody walking to lunch has not noticed you
 const LUNCH_ARRIVE = 1.1;      // metres: near enough to a counter or a rack
 // ...but NOT near enough to a chair, and that is a different number for a
@@ -525,6 +544,11 @@ export class Enemies {
     // of it, and a chair may never be moved, because the seated pose is drawn
     // relative to the seat. See `standable`.
     this.meetingSeats = deskPool(workstations, nav, rng, 'meeting');
+    // ...and the fourth seat pool: the sofas, armchairs and stools in the
+    // building's break rooms. Kept by room like the meeting chairs, because a
+    // break taken here has to know which room to be out of before it counts as
+    // over (see the `leave` stage).
+    this.lounges = deskPool(workstations, nav, rng, 'lounge', 0, LOUNGE_STEP);
     // Where you queue and where the trays go back, both registered by the
     // furnisher because it is the only thing that knows where the counter
     // actually landed (see `cafeteria` in gen/rooms.js). Unlike a chair these
@@ -2514,8 +2538,91 @@ export class Enemies {
    * whose turn it is at the counter would move both.
    */
   _sendToLunch() {
-    if (!this.servery?.length || !this.trayRack) return;
     if (this._atLunch >= LUNCH_MAX) return;
+    // TWO PLACES TO TAKE A BREAK, and which one is a coin rather than a
+    // preference: a canteen is a meal and a break room is ten minutes on a sofa,
+    // and a floor where everybody does the same one is a floor with one of them
+    // standing empty. The break room is tried first when the coin says so and
+    // both fall through to the other, so a floor with no canteen still sends
+    // people for a break and a floor with no break room still feeds them.
+    const rest = this.lounges?.size && Math.random() < REST_SHARE;
+    if (rest && this._sendToRest()) return;
+    if (this._sendToCanteen()) return;
+    if (!rest) this._sendToRest();
+  }
+
+  /**
+   * A break in a break room: walk in, sit down, sit there, walk out.
+   *
+   * The same cycle as lunch with the counter and the tray taken out of it, which
+   * is why it is the same stage machine and not a second one — `toseat`, `eat`
+   * and `leave` are already exactly this, and every hard-won thing in them
+   * applies unchanged: the last metre walked straight onto the chair, the seat
+   * handed back the moment they stand, the visor, and `_seatGone` standing them
+   * up if somebody shoots the sofa.
+   *
+   * What it is NOT is a chore. A break means a specific thing in this game —
+   * the body stops being able to fight you and its visor says so — and that is
+   * as true of ten minutes on a sofa as it is of lunch. The machines' version of
+   * the same room is the dock, and that one IS a chore, for the opposite reason:
+   * see `charge` in chores.js.
+   */
+  _sendToRest() {
+    // One room, chosen first, because everybody in the field has to be able to
+    // reach the SAME sofa — the flood is to a point, not to a room.
+    const rooms = [...this.lounges.keys()];
+    if (!rooms.length) return false;
+    const room = rooms[(Math.random() * rooms.length) | 0];
+    const free = this.lounges.get(room);
+    if (!free?.length) return false;
+    const seat = free[(Math.random() * free.length) | 0];
+
+    // Flooded to where they get OFF the sofa rather than to the sofa, because a
+    // seat you sit on top of is a blocked tile and there is no route to one. The
+    // last half metre onto the cushion is `_settleOnto`'s, exactly as the last
+    // metre onto a canteen chair is.
+    const to = seat.step ?? seat;
+    this._lunchField ??= this.nav.makeField();
+    if (!this.nav.floodTo(this._lunchField, to.x, to.z)) return false;
+
+    const n = this.items.length;
+    for (let tries = 0; tries < LUNCH_DARTS && n; tries++) {
+      const e = this.items[(Math.random() * n) | 0];
+      if (!this._lunchOk(e)) continue;
+      if (!this.nav.descendOn(this._lunchField, e.x, e.z, this._v)) continue;
+      // Claimed here, for `_lunchStart`'s reason: two people dealt one sofa is
+      // two bodies sitting in each other.
+      // IS THE SOFA STILL THERE, and nothing else — which is two departures from
+      // the canteen's version of this test and both are about sitting ON a thing
+      // rather than at one.
+      //
+      // `_looseAt` is what a canteen chair is checked with, and a sofa is a
+      // FITTED prop, so it would never find one and every seat in the building
+      // would be refused. `_boxAt` asks both lists, which is what `machineAhead`
+      // already does for the same reason.
+      //
+      // And `nav.clear` is dropped. It asks whether a body can stand at this
+      // exact point, and the point is on top of a sofa — so it is false for every
+      // lounge seat there has ever been. What has to be walkable is where they
+      // get OFF, and `sittable` proved that when the pool was built.
+      const took = this._takeDesk(room,
+        (x, z) => !!this._boxAt(x, z, SEAT_LOW, SEAT_HIGH), this.lounges);
+      if (!took) return false;
+      e.break = { rest: true, stage: 'toseat', at: took, seat: took, room, timer: LUNCH_STAGE_CAP };
+      this._lunchLook(e, true);
+      // Walked to the step-off tile, not to the cushion: `routeTo` floods to the
+      // point it is given and there is no route to a tile inside a sofa. The
+      // last half metre onto the seat is `_settleOnto`'s, which is the same
+      // division of labour a canteen chair already has — the field gets you to
+      // the tile, the straight walk gets you onto the furniture.
+      this._lunchGo(e, took.step ?? took, 'toseat');
+      return true;
+    }
+    return false;
+  }
+
+  _sendToCanteen() {
+    if (!this.servery?.length || !this.trayRack) return false;
 
     // Can anybody get there, and who? Flooded ONCE from the counter into a
     // field of the module's own and then read for each candidate, rather than
@@ -2532,7 +2639,7 @@ export class Enemies {
     // the building has been opened, which is not a rule anybody wrote.
     const counter = this.servery[(Math.random() * this.servery.length) | 0];
     this._lunchField ??= this.nav.makeField();
-    if (!this.nav.floodTo(this._lunchField, counter.x, counter.z)) return;
+    if (!this.nav.floodTo(this._lunchField, counter.x, counter.z)) return false;
 
     const n = this.items.length;
     for (let tries = 0; tries < LUNCH_DARTS && n; tries++) {
@@ -2544,8 +2651,9 @@ export class Enemies {
       // and it would quietly take nine tenths of the floor out of the running
       // before the player had opened a single door.
       if (!this.nav.descendOn(this._lunchField, e.x, e.z, this._v)) continue;
-      if (this._lunchStart(e, counter)) return;
+      if (this._lunchStart(e, counter)) return true;
     }
+    return false;
   }
 
   /**
@@ -2653,8 +2761,21 @@ export class Enemies {
       case 'toseat':
         if (b.timer < 0) { this._lunchEnd(e); return; }
         // Two legs to it: the field to the chair, then the last metre onto it.
-        if (this._lunchWalk(e, dt, b.seat) && this._settleOnto(e, dt, b.seat)) {
-          this._seat(e, b.seat, 'table');
+        // `b.at` is where the WALK ends and `b.seat` is what they sit on, and for
+        // every seat but a sofa they are the same point (see `_sendToRest`).
+        //
+        // Both the field and the straight walk end at `b.at`, and that is not an
+        // oversight: a body is 0.8 m across and a sofa is 0.9 m deep, so a
+        // kinematic body can never occupy one — `_settleOnto` moves through
+        // `_tryMove`, which the sofa's own collider stops dead, and it would
+        // slide along the front of it until the stage cap ran out. Which is
+        // exactly what it did: eight rest breaks walked to a sofa and not one of
+        // them sat down. So the walk finishes on the floor in front and `_seat`
+        // closes the last half metre by putting them on the cushion, which is
+        // both what sitting down is and the one move in this file that is
+        // allowed to ignore a collider.
+        if (this._lunchWalk(e, dt, b.at) && this._settleOnto(e, dt, b.at)) {
+          this._seat(e, b.seat, b.rest ? 'lounge' : 'table');
           // `idle` is what keeps them in the chair: the animator stands up any
           // seated body whose state is anything else (see `animate` in
           // enemy-anim.js), which is the same trap `_wander` documents.
@@ -2672,8 +2793,16 @@ export class Enemies {
         // and shoulders back, and a body that left its chair any other way
         // carries the chair's joints around the floor for the rest of the run.
         e.state = 'wander';
-        this._freeDesk(b.seat);
+        this._stepOffSeat(e, b.seat);
+        this._freeDesk(b.seat, b.room);
         b.seat = null;
+        // A rest break has no tray to take back, so the two stages that are
+        // about one are skipped entirely and it goes straight out of the room.
+        if (b.rest) {
+          this._repick(e);
+          this._lunchGo(e, { x: e.wanderX, z: e.wanderZ }, 'leave');
+          return;
+        }
         this._lunchGo(e, this.trayRack, 'return');
         return;
 
@@ -2699,7 +2828,7 @@ export class Enemies {
         // Back on the clock the moment they are out of the room, which is the
         // one thing about this that had to be true: the eyes change where the
         // player can see it happen, and never in the room they arrived in.
-        if (b.timer < 0 || !this._inRoom(this.layout.cafeteriaRoom, e.x, e.z)) {
+        if (b.timer < 0 || !this._inRoom(b.room ?? this.layout.cafeteriaRoom, e.x, e.z)) {
           this._lunchEnd(e);
           return;
         }
@@ -2870,7 +2999,14 @@ export class Enemies {
   _lunchEnd(e) {
     if (!e.break) return;
     e.lunchDone = true;
-    if (e.break.seat) this._freeDesk(e.break.seat);
+    // Off the sofa before anything else looks at where they are. A break that
+    // ends early — shot at, or simply run out of time in the chair — leaves a
+    // body standing on a tile it cannot route away from, and the next thing that
+    // happens to it is a chase.
+    if (e.break.seat) {
+      this._stepOffSeat(e, e.break.seat);
+      this._freeDesk(e.break.seat, e.break.room);
+    }
     e.break = null;
     this._takeTray(e);
     this._lunchLook(e, false);
@@ -2883,6 +3019,26 @@ export class Enemies {
     // the state the animator holds the pose through.
     if (e.seat) { this._standUp(e); e.state = e.neutral ? 'wander' : 'idle'; }
     else if (e.state === 'wander' && !e.neutral) e.state = 'idle';
+  }
+
+  /**
+   * Off a seat that is sitting ON something, onto floor a body can walk from.
+   *
+   * Only a lounge seat carries a `step` — see `sittable`, which is what proved
+   * there is one — so this is a no-op for a chair, and that is right: a chair is
+   * loose, its own tile is walkable, and moving a body off one would be a foot
+   * of teleport nobody asked for.
+   *
+   * It is a step rather than a route because it is a step: half a metre out from
+   * a sofa a body has just stood up off, over floor `sittable` has already proved
+   * a body fits in.
+   */
+  _stepOffSeat(e, station) {
+    const step = station?.step;
+    if (!step) return;
+    e.x = step.x;
+    e.z = step.z;
+    e.group.position.set(e.x, e.y, e.z);
   }
 
   // Blue eyes and empty hands, or their own colour and whatever they carry.
@@ -3102,9 +3258,21 @@ export class Enemies {
     this._standUp(e);
   }
 
-  _freeDesk(station) {
-    const room = this.layout?.cafeteriaRoom;
-    const free = room && this.tables?.get(room);
+  /**
+   * A seat back into the pool it came out of.
+   *
+   * `room` says which: a break room's, or the canteen's when it is absent. It is
+   * passed rather than looked up off the station because the two pools are keyed
+   * by room and a lounge seat put back on the canteen's list would be a sofa
+   * somebody is sent across the floor to sit on in a room it is not in.
+   */
+  _freeDesk(station, room = null) {
+    if (room) {
+      this.lounges?.get(room)?.push(station);
+      return;
+    }
+    const canteen = this.layout?.cafeteriaRoom;
+    const free = canteen && this.tables?.get(canteen);
     if (free) free.push(station);
   }
 
@@ -3714,7 +3882,7 @@ export class Enemies {
  * the same floor from the same seed, so these are the same desks in the same
  * order on both ends and the two bodies that do sit down sit in the same chairs.
  */
-function deskPool(workstations, nav, rng, at, nudge = 0) {
+function deskPool(workstations, nav, rng, at, nudge = 0, onto = 0) {
   const by = new Map();
   for (const w of workstations) {
     // Desks and canteen tables come through the same call and are pooled apart,
@@ -3749,7 +3917,7 @@ function deskPool(workstations, nav, rng, at, nudge = 0) {
     // has always fed (the Manager, the guard on the cameras) get up to FIGHT
     // you, and one that cannot leave its desk is worse than one that never sat
     // at it.
-    const spot = standable(w, nav, nudge);
+    const spot = onto ? sittable(w, nav, onto) : standable(w, nav, nudge);
     if (!spot) continue;
     const list = by.get(w.room);
     if (list) list.push(spot);
@@ -3782,6 +3950,9 @@ function deskPool(workstations, nav, rng, at, nudge = 0) {
  * drawn for, and the cap is what stops "somewhere to stand at the copier" from
  * quietly becoming "somewhere in the room".
  *
+ * A third kind of station — one you sit ON TOP of rather than at — is
+ * `sittable` below, and `onto` is what asks for it.
+ *
  * The moved station is a COPY. The raw list is shared between every pool built
  * off it, and a desk whose chair sits somewhere else because a standing job
  * nudged the record is the kind of bug that only shows up two features later.
@@ -3794,6 +3965,35 @@ function standable(w, nav, nudge) {
     const x = w.x - fx * back;
     const z = w.z - fz * back;
     if (nav.fitsAt(nav.tx(x), nav.ty(z))) return { ...w, x, z };
+  }
+  return null;
+}
+
+/**
+ * Where a body gets OFF a seat it is sitting on top of, or null if it cannot.
+ *
+ * The seat pools have always asked `fitsAt` at the station itself, and for a
+ * chair that is exactly right: a chair is LOOSE, so it is not on the nav grid at
+ * all (see the note on cardboard in CLAUDE.md) and its own tile is ordinary
+ * walkable floor. A sofa is fitted. Its tile is blocked by construction, every
+ * tile orthogonally adjacent to it is eroded out of `fits`, and no amount of
+ * nudging along the cushion will ever find floor — measured, 5 of 85 lounge
+ * seats survived `standable`, and the five that did were stools, which are
+ * loose.
+ *
+ * So the question is asked the other way round. A seat on a sofa is usable if
+ * there is somewhere to STEP OFF IT, and the station carries that spot: the
+ * nearest tile out in front that a body fits in. The break's last act is to put
+ * the body there before handing it back to the state machine — because the tile
+ * it has been sitting on is one it cannot route away from, which is the canteen
+ * chair bug (`fitsAt` in deskPool) in a room with better furniture.
+ */
+function sittable(w, nav, reach) {
+  const [fx, fz] = FACING[w.rot & 3];
+  for (let out = NUDGE_STEP; out <= reach + 1e-6; out += NUDGE_STEP) {
+    const x = w.x + fx * out;
+    const z = w.z + fz * out;
+    if (nav.fitsAt(nav.tx(x), nav.ty(z))) return { ...w, step: { x, z } };
   }
   return null;
 }

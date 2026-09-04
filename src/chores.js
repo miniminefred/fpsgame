@@ -199,6 +199,27 @@ const CHORES = {
     at: 'meeting', pose: null, sit: true, seatAs: 'meeting', human: true,
     time: [17, 34], weight: 0, stay: [2, 4],
   },
+  // A MACHINE'S BREAK, and the only entry on this table that is not work.
+  //
+  // Half the roster does not eat: `_lunchOk` in enemies.js has kept a chassis
+  // out of the canteen since the day the lunch cycle existed, on the grounds
+  // that a machine has nowhere to put it. The dock in the break room is what the
+  // same room offers them instead (see `charger` in gen/props.js) — somewhere to
+  // stand still with something visibly happening, which is the whole of what a
+  // break looks like from the outside.
+  //
+  // It is a CHORE rather than a break, and that is a decision rather than an
+  // economy. A break in this game means a specific thing — the body stops being
+  // able to fight you and its visor turns blue to say so (see `_lunchLook`) —
+  // and a machine on charge has made no such promise: it is plugged into a wall,
+  // it can see you, and it will come off the dock when it does. Everything that
+  // follows from being a chore is the right answer for it, `_choreWork`'s
+  // startle first among them.
+  //
+  // `machine` is `human`'s opposite and the only place either flag is inverted:
+  // a person standing at a charging point is not on a break, they are somebody
+  // waiting for the kettle at the wrong appliance.
+  charge: { at: 'charge', pose: 'dock', time: [24, 48], weight: 2, stay: [1, 2], machine: true },
   // The two that belong to a trade rather than to a machine. Both stand on a
   // patch of corridor (`hall`) rather than at a prop, and both are weighted low
   // because only a handful of bodies on the floor may take them — a weight here
@@ -863,12 +884,14 @@ export class Chores {
     // enemy-anim.js), and the honest picture of a Clerk Unit at a desk is the one
     // it already has: standing at the end of it.
     const humanOnly = !!CHORES[kind].human;
+    const machineOnly = !!CHORES[kind].machine;
 
     let best = null;
     let bestD = Infinity;
     for (const e of this.enemies.items) {
       if (!this._eligible(e) || !worksFor(e).includes(kind)) continue;
       if (humanOnly && (e.rig !== 'human' || isMachine(e.type))) continue;
+      if (machineOnly && !isMachine(e.type)) continue;
       // `descendOn` is the reachability half and it is asked FIRST: a distance
       // can be read off a tile a body cannot actually set off from.
       if (!this.nav.descendOn(this._field, e.x, e.z, this._v)) continue;

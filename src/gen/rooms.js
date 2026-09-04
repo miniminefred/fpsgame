@@ -208,11 +208,18 @@ function breakRoom(sink, bounds, rng) {
   // 2184 refused, which is a break room with nothing to sit on six times in ten.
   // An armchair is the fallback rather than a second choice; it is 1.25 m and
   // fits where a sofa cannot.
+  //
+  // Every seat is published as a `lounge` station, which is what makes this room
+  // the second place on the floor somebody can take their break (see the break
+  // cycle in enemies.js). A sofa gets two, because it is 1.8 m and one body on
+  // it is somebody sitting alone on a sofa.
   const sofas = rng.chance(0.55) ? 2 : 1;
   for (let i = 0; i < sofas; i++) {
-    if (!edgeProp(sink, bounds, 'sofa', rng)) edgeProp(sink, bounds, 'armchair', rng);
+    const sofa = edgeProp(sink, bounds, 'sofa', rng);
+    if (sofa) lounge(sink, 'sofa', sofa, rng, 2);
+    else lounge(sink, 'armchair', edgeProp(sink, bounds, 'armchair', rng), rng, 1);
   }
-  if (rng.chance(0.7)) edgeProp(sink, bounds, 'armchair', rng);
+  if (rng.chance(0.7)) lounge(sink, 'armchair', edgeProp(sink, bounds, 'armchair', rng), rng, 1);
 
   // What a break is made of. The counter is the coffee run, and the dock is for
   // the half of the roster that does not drink it — see `charger` in props.js
@@ -230,8 +237,15 @@ function breakRoom(sink, bounds, rng) {
     const cx = rng.range(x0 + 1.2, x1 - 1.2);
     const cz = rng.range(z0 + 1.2, z1 - 1.2);
     if (!tryPlace(sink, 'coffeeTable', cx, cz, rng.int(0, 3), rng)) continue;
-    if (rng.chance(0.7)) tryPlace(sink, 'stool', cx, cz - 1.0, 0, rng);
-    if (rng.chance(0.5)) tryPlace(sink, 'stool', cx + 1.0, cz, 3, rng);
+    // A stool round a low table is somewhere to sit too, so it is registered
+    // like the sofas — facing the table, which is what makes two of them read as
+    // two people having a coffee rather than two people facing a wall.
+    for (const [sx, sz, rot] of [[0, -1.0, 0], [1.0, 0, 3]]) {
+      if (!rng.chance(sz ? 0.7 : 0.5)) continue;
+      if (tryPlace(sink, 'stool', cx + sx, cz + sz, rot, rng)) {
+        sink.workstation(cx + sx, cz + sz, (rot + 2) & 3, 'lounge');
+      }
+    }
   }
   wallClutter(sink, bounds, ['trashCan', 'recyclingBin'], 45, rng);
 }
@@ -589,6 +603,31 @@ function seatFacing(sink, kind, cx, cz, rot, rng, gap = 0.95) {
     sink.workstation(x + ax, z + az, seat, 'computer');
   }
   return true;
+}
+
+/**
+ * Registers a seat somebody can spend a break in.
+ *
+ * A sofa and an armchair are not chairs: nothing pulls them up to anything, so
+ * they never came down the `seatFacing` pipe and the game had no idea they were
+ * places to sit. `edgeProp` hands back where the prop landed and which wall it
+ * is against, and a prop backed against side `s` faces FACING[s] into the room —
+ * so the body sits at the prop's own position facing the way the prop does,
+ * which is the same line `_seat` uses to turn a station's rot into a yaw.
+ *
+ * `seats` is how many bodies fit on it, spread along its width: one on an
+ * armchair, two on a sofa. Spread by a third of the prop's width either side of
+ * centre rather than by half, so two people on a sofa are sitting on it rather
+ * than perched on its arms.
+ */
+function lounge(sink, kind, at, rng, seats) {
+  if (!at) return;
+  const { w } = footprintOf(sink, kind);
+  for (let i = 0; i < seats; i++) {
+    const t = seats === 1 ? 0 : (i - (seats - 1) / 2) * (w / 3) * 2;
+    const [ax, az] = QUARTER[at.side](t, 0);
+    sink.workstation(at.cx + ax, at.cz + az, at.side, 'lounge');
+  }
 }
 
 // --- the three rooms you need a card for ------------------------------------

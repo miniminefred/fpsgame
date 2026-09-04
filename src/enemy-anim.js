@@ -324,7 +324,11 @@ export function animate(e, dt, audio) {
   // enemies.js — and it is the same pose from the hips down either way.
   if (e.seat) {
     if (e.seat === 'table') return animateEating(e, dt);
-    if (e.seat === 'meeting') return animateAttending(e, dt);
+    // A meeting and a sofa are the same pose and that is not an economy: both
+    // are a body sitting still with its hands in its lap and its head wandering
+    // over the room, which is what sitting through something and sitting doing
+    // nothing both look like. A desk is the odd one out because a desk is work.
+    if (e.seat === 'meeting' || e.seat === 'lounge') return animateAttending(e, dt);
     return animateWorking(e, dt);
   }
 
@@ -790,6 +794,16 @@ const CHORE_POSE = {
     hands: 0, armsDown: true, stoop: 0, reach: 0, lean: 0.02, look: 0.03,
     beat: 1, duty: -2, rate: 0.6, throw: 0.045, stagger: 0.02, rest: 0.04,
     sweep: 0.6, sweepRate: 0.42,
+  },
+  // On the dock in the break room. The stillest pose in the game and that is the
+  // point: a machine on charge is a machine that has stopped, so the arms hang
+  // at zero (`armsDown`, for `patrol`'s reason — a height would be a different
+  // pose on every rig) and there is no sweep, because a head turning to watch the
+  // room is a machine that has NOT stopped. What moves is the breath in `lean`
+  // and nothing else, which at this amplitude reads as a chassis idling.
+  dock: {
+    hands: 0, armsDown: true, stoop: 0, reach: 0, lean: 0.01, look: 0,
+    beat: 1, duty: -2, rate: 0.35, throw: 0.012, stagger: 0, rest: 0.012,
   },
   // Running the meeting: writing on the whiteboard, with the other hand down.
   //
