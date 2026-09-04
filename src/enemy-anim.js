@@ -730,6 +730,17 @@ const CHORE_POSE = {
     hands: 1.45, stoop: 0, reach: 0.14, lean: -0.06, look: -0.16,
     beat: 0.62, duty: -0.1, rate: 5, throw: 0.14, stagger: 0.26, rest: 0.50,
   },
+  // Sliding a box off a shelf, or back onto one. Lower than `server` because a
+  // box is carried at chest height rather than fitted at eye level, and BOTH
+  // hands together — `stagger` is nearly nothing, which everywhere else on this
+  // table is the applause note to avoid and is exactly right here: you take a
+  // box down with two hands or you drop it. The stroke is slow and long
+  // (`throw`), because it is one motion out and back rather than a repeated
+  // fiddle, and the arms come well forward (`reach`) to get under it.
+  shelfTake: {
+    hands: 1.12, stoop: 0, reach: 0.26, lean: 0.10, look: 0.14,
+    beat: 1.2, duty: -0.55, rate: 2.2, throw: 0.16, stagger: 0.04, rest: 0.22,
+  },
   // Building something on the bench: the firmest stroke of the six, both hands
   // in it, leaning over the work and looking straight down at it.
   bench: {

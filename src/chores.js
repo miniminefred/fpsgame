@@ -155,6 +155,33 @@ const CHORES = {
     at: 'panel', pose: 'panel', time: [16, 34], weight: 4, stay: [2, 5],
     spark: { y: 1.55, out: 0.6, tick: [0.45, 1.1] },
   },
+  // TAKING A BOX OFF A RACK, AND PUTTING ONE BACK ON ANOTHER.
+  //
+  // Both `weight: 0` and both only ever the legs of `stocktake` below, for
+  // `file`'s reason: walking to a rack to take nothing off it is not a job, and
+  // walking to one carrying nothing to put away is not either. What makes them a
+  // pair is the box — `gives` puts one in the body's arms at the end of the first
+  // and `takes` is checked against what it is actually holding at the end of the
+  // second, so a leg that was skipped cannot leave somebody filing a crate they
+  // never picked up.
+  //
+  // `at: 'racks'` is the one station kind that is two: a storeroom's shelving and
+  // an archive's bookshelves, which are pooled apart everywhere else because a
+  // parcel run may start at one and not the other (see `storage` and `archive` in
+  // gen/rooms.js). Taking something off a shelf and putting it back somewhere
+  // else is the same errand in either room, so this is the one place they are the
+  // same thing.
+  fetchBox: {
+    at: 'racks', pose: 'server', time: [5, 11], weight: 0, stay: [1, 1],
+    then: { pose: 'shelfTake', time: [2.4, 4.0], gives: 'box' },
+  },
+  // ...and putting it back, which is one beat rather than two: the box leaves the
+  // arms when the leg ends (`takes` is checked in `_finishGo`), so a second beat
+  // after it would be somebody pushing a box onto a shelf while still holding it.
+  stowBox: {
+    at: 'racks', pose: 'shelfTake', time: [4, 8], weight: 0, stay: [1, 1],
+    takes: 'box',
+  },
   // THE MEETING, which is the one thing on this table that is not one body doing
   // one thing. Both kinds are `weight: 0` — neither is ever rolled on its own,
   // because a lone body standing at a whiteboard talking to an empty room is
@@ -228,6 +255,22 @@ const ROUTINES = {
         ],
       },
       { kind: 'file', stay: [1, 1], takes: 'papers' },
+    ],
+  },
+  // ...and the other thing an office does with its own stuff: move a box from
+  // one rack to another. Two legs rather than three, and no machine in it — it
+  // is the shortest errand on the table and the only one whose whole content is
+  // the thing being carried, which is exactly why it reads: a body walking
+  // across a floor with a crate in its arms is legible from anywhere.
+  //
+  // It is what "the boxes can be taken in and out" comes to. The box is real
+  // (`giveCrate` in enemies.js — the same crate a parcel run carries, and the
+  // same bit on the wire), so the joiner in a co-op session sees it too.
+  stocktake: {
+    weight: 3,
+    legs: [
+      { kind: 'fetchBox' },
+      { kind: 'stowBox', takes: 'box' },
     ],
   },
 };
@@ -391,6 +434,15 @@ export class Chores {
     // `tables`). Occupancy from there on is `busy`, like every other kind.
     const chairs = [...(enemies.desks?.values() ?? [])].flat();
 
+    // Every rack in the building somebody can stand at, of either kind. They are
+    // pooled apart by the furnisher because a parcel run may only start at a
+    // storeroom's, and the box errand is the one thing that does not care which
+    // room it is in. See `fetchBox`.
+    const racks = [
+      ...(enemies.stations?.get('shelf') ?? []),
+      ...(enemies.stations?.get('files') ?? []),
+    ];
+
     for (const kind of KINDS) {
       const at = CHORES[kind].at;
       // A meeting's chairs come out of `meetingSeats` for the same reason a
@@ -400,7 +452,8 @@ export class Chores {
         : at === 'hall' ? hall
           : at === 'chair' ? chairs
             : at === 'meeting' ? [...(enemies.meetingSeats?.values() ?? [])].flat()
-              : (enemies.stations?.get(at) ?? []);
+              : at === 'racks' ? racks
+                : (enemies.stations?.get(at) ?? []);
       if (from.length) this.pools.set(kind, from);
     }
     // Nothing to do on a floor with no machines anybody can stand at, which is
@@ -973,6 +1026,12 @@ export class Chores {
       this.enemies.giveCan?.(e, this._key(e));
     }
     if (beat.gives === 'papers') this.enemies.givePapers?.(e, this._key(e));
+    // The crate, which is the same one a parcel run carries. Flagged on the JOB
+    // rather than read off the body, because jobs.js hands out the same crate
+    // and `lost` must only take back the one this errand gave: a chore that
+    // stripped a porter of the parcel it is delivering would be the single-slot
+    // callback bug in another key.
+    if (beat.gives === 'box') { this.enemies.giveCrate?.(e); e.chore.crate = true; }
   }
 
   /** A stable integer for this body at this machine. See `_hand`. */
@@ -1000,6 +1059,7 @@ export class Chores {
     // moment for it — and this is also the one place a routine's last leg
     // reaches, so nothing can walk away still holding it.
     if (job.takes === 'papers') this.enemies.takePapers?.(e);
+    if (job.takes === 'box' && c.crate) { this.enemies.takeCrate?.(e); c.crate = false; }
     if (c.legs && c.leg + 1 < c.legs.length) { this._nextLeg(e); return; }
     this.lost(e);
   }
@@ -1153,6 +1213,8 @@ export class Chores {
     // floor holding a report they will never file. The CAN is deliberately not
     // touched: that is a drink somebody bought, and it is theirs.
     if (e.papers) this.enemies.takePapers?.(e);
+    // ...and the crate, only if this errand is what put it there — see `gives`.
+    if (c.crate) { this.enemies.takeCrate?.(e); c.crate = false; }
     e.chore = null;
 
     const i = this.live.indexOf(e);
