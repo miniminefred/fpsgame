@@ -388,20 +388,23 @@ export const TYPES = {
     // armoured, still slow, still on tracks — and still the only thing in the
     // building that arrives at the height it left at.
     //
-    // The one machine on the roster that is ROLLED rather than placed by a
-    // theme, which is why it is filed with the staff and not with the fleet
-    // below: it was bought in to watch a corridor in a building full of people,
-    // so it turns up in one.
+    // It used to be the one machine on the roster that was ROLLED rather than
+    // placed by a theme — bought in to watch a corridor in a building full of
+    // people, so it turned up in one — and it is not any more. `weight: 0` puts
+    // it with the other five: a machine is something you meet on the floor that
+    // has machines on it, and nowhere else.
     //
-    // Which makes it the one neutral in the game with a WEIGHT, and that is
-    // worth knowing before tuning anything. Every other harmless thing here is
-    // hand-placed background traffic on top of the shift; this is part of the
-    // shift itself, so a slice of every floor's dealt staff is now something you
-    // do not have to shoot, and `hostileCount` is smaller than the headcount by
-    // that slice. Zeroing the weight instead would have deleted it from six of
-    // the seven themes (and from Night shift's `sentry: 4` boost, which
-    // multiplies a weight and so cannot resurrect a zero) — it is meant to go on
-    // turning up everywhere, harmlessly.
+    // What that cost is worth writing down, because it was argued the other way
+    // here for a long time. It was the only neutral in the game with a weight,
+    // so a slice of every floor's dealt staff was something you did not have to
+    // shoot — 1 to 17% of it, which means `hostileCount` on an ordinary floor
+    // has just gone UP by that slice and every non-machine floor is a little
+    // longer to clear. It also took Night shift's `sentry: 4` boost with it: a
+    // boost multiplies a weight and cannot resurrect a zero, so that entry is
+    // gone rather than left to read as if it did something.
+    //
+    // `unlockFloor` stays at 2 even so, because `themeUsable` reads it off every
+    // share and it is what holds Automated back a floor — see there.
     name: 'Sentry Unit', hp: 3.2, speed: 0.78, damage: 0, rate: 99, spread: 1,
     range: 0, melee: false, scale: 1.18, chassis: 'sentry', neutral: true,
     voice: 'robot', screams: 'robot-alert',
@@ -412,10 +415,8 @@ export const TYPES = {
     // of armour, and that IS the job — the darkest visor in the building used to
     // mean the thing you cannot walk out in front of, so leaving it near-black
     // on something harmless is the exact lie the palette exists to prevent.
-    // `unlockFloor` stays at 2, because themeUsable reads it off every share and
-    // it is what holds Automated back a floor (see themeUsable).
     suit: 0x474d55, shirt: 0x9aa3ab, visor: 0xff5cc4,
-    unlockFloor: 2, weight: 3,
+    unlockFloor: 2, weight: 0,
   },
 };
 
@@ -485,6 +486,14 @@ export const BYSTANDERS = [TYPES.courier];
 // A floor being worked by machines is a floor with its covers off, and an
 // ordinary office is not.
 //
+// `chargers` is the sixth, and it is the only one that reaches the FURNITURE
+// rather than being fitted into the finished floor afterwards: a dock on the
+// break room wall for the machines to stand at (see `charger` in gen/props.js
+// and the `charge` job in chores.js). It is Automated's alone for the same
+// reason the parcel lines are — there are no machines on any other shift to use
+// it, and a charging point in an office nobody plugs anything into is a prop
+// that raises a question the floor does not answer.
+//
 // `bystanders` is the last one and it is about the corridors: the harmless
 // traffic is a courier unless a theme names its own. Two do — the Night Cleaner
 // is Night shift's alone, because a man mopping a corridor should say what time
@@ -529,7 +538,7 @@ export const THEMES = [
   // the floor, which is most of what stops "harmless" reading as "scenery".
   { name: 'Automated', weight: 3, light: 0.72, tint: 0x7fb4ff,
     rats: [0, 0], patrols: [0, 1], cleaners: [3, 5], bystanders: ['porter', 'worker'],
-    conveyors: [5, 9], washersFly: true, panels: [3, 6],
+    conveyors: [5, 9], washersFly: true, panels: [3, 6], chargers: true,
     share: { clerk: 0.29, sentry: 0.15, legacy: 0.15, loader: 0.14, welder: 0.10, drone: 0.07 },
     boost: { sysadmin: 6, facilities: 3, reanimated: 0 } },
   { name: 'Lockdown', weight: 2, light: 0.75, rats: [1, 1], patrols: [3, 4], boost: { security: 6, manager: 4 } },
@@ -539,7 +548,7 @@ export const THEMES = [
   // deliveries do not stop because the lights are down.
   { name: 'Night shift', weight: 2, light: 0.5, rats: [2, 3], patrols: [1, 2],
     bystanders: ['cleaner', 'courier'],
-    boost: { reanimated: 4, sentry: 4, facilities: 3 } },
+    boost: { reanimated: 4, facilities: 3 } },
   { name: 'All-hands', weight: 2, light: 1, rats: [1, 1], patrols: [2, 4], boost: { analyst: 6, intern: 5, manager: 3 } },
 ];
 

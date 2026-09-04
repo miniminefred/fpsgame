@@ -15,11 +15,15 @@ export class Level {
   }
 
   // Replaces whatever floor is loaded with a freshly generated one.
-  generate(seed, floorNumber) {
+  generate(seed, floorNumber, theme = null) {
     this.dispose();
 
     const layout = generateLayout(seed, floorNumber);
-    const built = buildLevel(this.scene, layout);
+    // The shift, purely so the furnisher can ask what KIND of floor this is —
+    // one flag today (`chargers`, the dock in a break room). Everything else a
+    // theme does to the building is fitted into the finished floor afterwards
+    // by a module of its own; this one is furniture, so it has to be here.
+    const built = buildLevel(this.scene, layout, theme);
     const nav = new NavGrid(built.nav);
 
     this.current = {

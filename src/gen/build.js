@@ -61,7 +61,7 @@ const GRADE = {
   generator: BACK_OF_HOUSE,
 };
 
-export function buildLevel(scene, layout) {
+export function buildLevel(scene, layout, theme = null) {
   const { materials } = getAssets();
   const { W, H, tiles, rng } = layout;
 
@@ -127,7 +127,7 @@ export function buildLevel(scene, layout) {
   buildStairs(layout, batcher, materials, { colliders, blocked, occupied, fixtures }, rng);
   buildGeneratorMezzanine(layout, batcher, materials,
     { colliders, occupied, dynamics, destructibles, fixtures }, rng);
-  furnishRooms(layout, sink, rng, workstations);
+  furnishRooms(layout, sink, rng, workstations, theme);
   furnishCorridors(layout, sink, rng);
   // After the ordinary corridor clutter, so a machine takes a tile the clutter
   // did not want rather than the other way round: there are at most three of
@@ -2178,7 +2178,7 @@ function makeSink(layout, batcher, materials, masks) {
   };
 }
 
-function furnishRooms(layout, sink, rng, workstations) {
+function furnishRooms(layout, sink, rng, workstations, theme) {
   for (const room of layout.rooms) {
     // Keep furniture off the walls so nothing clips into the skirting.
     const bounds = {
@@ -2188,7 +2188,7 @@ function furnishRooms(layout, sink, rng, workstations) {
       z1: worldZ(layout, room.y1) - 0.15,
     };
     const before = workstations.length;
-    furnish(sink, room, bounds, rng, layout.doors);
+    furnish(sink, room, bounds, rng, layout.doors, theme);
     // Whose room each desk is in, stamped here rather than threaded through the
     // furnisher: `seatFacing` is called from six roles and none of them has any
     // other reason to know which room it is filling, and a workstation lands

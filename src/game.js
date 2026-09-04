@@ -430,14 +430,17 @@ export class Game {
     // materials these corpses are still drawn with.
     this.ragdolls.clear();
 
-    const level = this.level.generate(seed, this.floor);
-
-    // The shift, rolled HERE rather than inside enemies.spawn, because the
-    // BUILDING has to know it now: a theme that runs parcel lines on the walls
-    // has to say so before the floor's colliders are handed to the solver and
-    // to the player. It is still the first draw off this floor's rng — that was
-    // enemies.spawn's first line — so nothing after it has moved for that.
+    // The shift, rolled BEFORE the floor is built, because the building has to
+    // know it: a theme that runs parcel lines on the walls has to say so before
+    // the floor's colliders are handed to the solver and to the player, and one
+    // that puts machines in the building has to say so before its break rooms
+    // are furnished — a charging dock on a floor with nothing to charge is a
+    // prop that raises a question the floor does not answer. It is still the
+    // first draw off this floor's rng (that was enemies.spawn's first line, and
+    // `generate` has a seeded stream of its own), so nothing after it moved.
     const theme = pickTheme(this.floor, rng);
+
+    const level = this.level.generate(seed, this.floor, theme);
     // Fitted before the physics, because a run pushes its own collider onto the
     // level's list and both consumers are about to read it. It contributes no
     // nav tile and reserves no floor: a belt is above everything, which is what

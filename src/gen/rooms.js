@@ -14,12 +14,12 @@ import { PLAYER_RADIUS } from '../metrics.js';
 // already shrunk by the wall clearance the builder wants to keep. `doors` is
 // the floor's whole list, not just this room's own — only generatorRoom needs
 // it (see doorsOnRoom there), and every other role ignores the extra argument.
-export function furnish(sink, room, bounds, rng, doors) {
+export function furnish(sink, room, bounds, rng, doors, theme = null) {
   const { x0, z0, x1, z1 } = bounds;
   if (x1 - x0 < 1.5 || z1 - z0 < 1.5) return;
 
   const fill = ROLES[room.role] ?? privateOffice;
-  fill(sink, bounds, rng, room, doors);
+  fill(sink, bounds, rng, room, doors, theme);
   cartons(sink, bounds, rng);
 }
 
@@ -198,7 +198,7 @@ function meetingRoom(sink, bounds, rng) {
   }
 }
 
-function breakRoom(sink, bounds, rng) {
+function breakRoom(sink, bounds, rng, room, doors, theme) {
   const { x0, z0, x1, z1 } = bounds;
 
   // Seating FIRST, and that ordering is the whole of whether this room has any.
@@ -221,13 +221,18 @@ function breakRoom(sink, bounds, rng) {
   }
   if (rng.chance(0.7)) lounge(sink, 'armchair', edgeProp(sink, bounds, 'armchair', rng), rng, 1);
 
-  // What a break is made of. The counter is the coffee run, and the dock is for
-  // the half of the roster that does not drink it — see `charger` in props.js
-  // and the break cycle in enemies.js.
+  // What a break is made of.
   edgeProp(sink, bounds, 'counter', rng);
   edgeProp(sink, bounds, 'vending', rng);
   edgeProp(sink, bounds, 'waterCooler', rng);
-  edgeProp(sink, bounds, 'charger', rng);
+  // ...and the dock, on the one shift that has anything to plug into it. It is
+  // the only thing a theme does to the FURNITURE rather than to the finished
+  // floor, which is why the shift is rolled before the building is furnished
+  // (see game.js). A charging point in an office where nothing charges is a prop
+  // raising a question the floor does not answer — and there is nothing to
+  // charge anywhere else now, because the Sentry Unit came off the roll and
+  // every machine in the game is an Automated floor's.
+  if (theme?.chargers) edgeProp(sink, bounds, 'charger', rng);
 
   // Low tables through the middle with a stool or two pulled up to them. Stools
   // rather than the office chairs that used to be here: a task chair in a break
