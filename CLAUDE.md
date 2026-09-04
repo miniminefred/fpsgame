@@ -1856,17 +1856,25 @@ The machinery below is untouched by any of it: the furnisher still places every 
 faces it at its desk, the pose still hinges a real joint, and everybody who sits goes
 through the same path all twenty-three used to.
 
-Three kinds of body are in a chair, and the first is the one the rule is really for:
+Four kinds of body are in a chair, and the first is the one the rule is really for:
 
 - **Anybody at a desk, working** (`deskWork` in `chores.js`). The commonest thing on the
   floor, and the one that retired the rule above — see the note on it there. Hostile or not,
   and on its feet the frame it notices you.
-- **Anybody on their break**, at the tables in the canteen. Harmless while they are there.
-  This used to be a fixed cast of permanently-neutral diners in the room the floor put you
-  down in; it is now a **cycle** that ordinary employees walk too, in a room you find, which
-  is the next section.
+- **Anybody on their break**, at the tables in the canteen or on a sofa in a break room.
+  Harmless while they are there. This used to be a fixed cast of permanently-neutral diners
+  in the room the floor put you down in; it is now a **cycle** that ordinary employees walk
+  too, in rooms you find, which is the next section.
+- **Anybody sitting through a meeting** (`attend`). Hostile or not, exactly like a desk, and
+  on its feet the moment somebody opens the door.
 - **The Manager**, at his own desk behind the black door.
 - **One guard**, on the cameras in the security office.
+
+**And `e.seat` is what the animator dispatches on**, which is why it is a kind rather than a
+flag: `'desk'` is typed at, `'table'` is eaten at, and `'meeting'` and `'lounge'` are both
+sat through — hands in the lap, head wandering over the room, which is what sitting through
+something and sitting doing nothing both look like. A desk is the odd one out because a desk
+is work.
 
 The last two are the only reason either room exists, and both are behind a lock.
 
@@ -1979,10 +1987,46 @@ desk any more, so there is nothing for it to except, and a flag no code reads is
 will be trusted by the next person to read the file. The machines are still kept out of the
 canteen, and by the same one place: `type.chassis` in `_lunchOk`.
 
-### Lunch (`_lunch` in `enemies.js` + `buildTray` in `rigs.js`)
+### Lunch, and the other kind of break (`_lunch` in `enemies.js` + `buildTray` in `rigs.js`)
 The canteen had a job that was not fighting you, and the people in it did it for ever:
 placed in a chair when the floor was generated and still in it when the floor ended. A break
 that never ends is a tableau, not a shift.
+
+**There are two places to take one now**, and which one is a coin (`REST_SHARE`) rather than
+a preference. A canteen is a queue, a tray and a meal; a **break room** is ten minutes on a
+sofa — `_sendToRest`, which is the same stage machine with `collect`, `return` and `drop`
+taken out of it, because `toseat`, `eat` and `leave` already are exactly this. Every
+hard-won thing in them applies unchanged: the last stretch walked straight onto the seat,
+the seat handed back the moment they stand, the visor, and `_seatGone` standing them up if
+somebody shoots the sofa. There are far more break rooms than canteens on a floor —
+measured at 24 against 1 — so an even-ish split is what keeps both rooms occupied.
+
+**A seat you sit ON TOP of is a different thing from a chair, and it took three goes.** A
+canteen chair is LOOSE, so it is not on the nav grid at all and its own tile is ordinary
+walkable floor; a sofa is fitted. Everything the seat pools do assumes the first:
+
+- `deskPool` asks `fitsAt` at the station, and a sofa's tile is blocked with every
+  neighbouring tile eroded out of `fits` besides — **5 of 85 lounge seats survived**, and the
+  five were stools, which are loose. `sittable` asks the question the other way round: a seat
+  is usable if there is somewhere to STEP OFF it, and the station carries that spot. 76 of 85
+  survive. `_stepOffSeat` puts the body there when the break ends, because the tile it has
+  been sitting on is one it cannot route away from — which is the canteen chair bug in a room
+  with better furniture. Measured: zero bodies left standing on a tile they cannot leave.
+- `routeTo` floods to the point it is given and **there is no route to a tile inside a
+  sofa**, so the walk goes to the step-off tile.
+- And `_settleOnto` moves through `_tryMove`, which the sofa's own collider stops dead: a
+  body is 0.8 m across and a sofa is 0.9 m deep, so a kinematic body can never occupy one. It
+  slid along the front until the stage cap ran out — **eight rest breaks walked to a sofa and
+  not one of them sat down.** The walk now finishes on the floor in front and `_seat` closes
+  the last half metre, which is both what sitting down is and the one move in that file
+  allowed to ignore a collider.
+
+Measured after all three, over 300 s on floor 9: 7 break-room breaks against 5 canteen
+lunches, peak 4 people on sofas at once, and nobody on a break with a gun in their hand.
+
+**Machines still do not eat, and now they have somewhere to go instead**: the charging dock
+in the same room. That one is a chore rather than a break — see `charge` in chores.js for
+why the distinction is load-bearing rather than tidy.
 
 So there is a **cycle**, and both halves of the canteen run the same one — walk in, queue at
 the counter, take a tray, find a seat, eat, take the tray back, walk out. The staff the floor
@@ -2256,11 +2300,31 @@ corridor.
 | `bench` | the IT bay | building something, in the odd shower of sparks |
 | `panel` | a hole in the wall | both arms into the wiring, in sparks |
 | `file` | a storage rack | putting something away — a routine's last leg only |
+| `fetchBox` | a rack, either kind | taking a box down off it — a routine's first leg |
+| `stowBox` | ...and another one | putting the same box back on a different rack |
+| `present` | at the whiteboard | running the meeting: writing on the board, one hand |
+| `attend` | a meeting room chair | **sitting** through it, hands in the lap, watching |
+| `charge` | the dock in a break room | a machine, plugged into the wall, doing nothing |
 | `mop` | a patch of corridor | the janitor and the night cleaner, washing the floor |
 | `patrol` | a corridor post | security, standing and watching |
 
 `panel` is the machine floor's alone (see the openings below); the other five machine jobs
 are everywhere, because a copier is everywhere.
+
+**Three of them are `weight: 0` and are never rolled on their own**, which is `file`'s rule
+and now covers most of the table's newer half. `fetchBox` and `stowBox` are the two legs of
+the `stocktake` routine — walking to a rack to take nothing off it is not a job, and nor is
+walking to one carrying nothing to put away. `present` and `attend` are only ever cast
+together by `_tryMeeting`: a lone body at a whiteboard talking to an empty room is not a
+meeting, and a lone body at a meeting table is somebody who wandered in.
+
+**And one of them is not work at all.** `charge` is a machine standing on the dock in a
+break room (`charger` in `gen/props.js`), and it is a CHORE rather than a break on purpose.
+A break means a specific thing here — the body stops being able to fight you and its visor
+turns blue to say so — and a machine on charge has made no such promise: it is plugged into
+a wall, it can see you, and it comes off the dock when it does. `machine: true` is `human`'s
+opposite and the only place either flag is inverted, because a person standing at a charging
+point is somebody waiting for the kettle at the wrong appliance.
 
 **The last two belong to a TRADE rather than to a machine**, and they are the only ones
 that are not at a prop — a patch of corridor is where you mop and where you stand a post.
@@ -2555,9 +2619,28 @@ the machines as the stops along the way. So a **routine** is a list of legs walk
 by one body, and each leg is an ordinary job that happens to have somewhere to go afterwards
 — same `routeTo`/`advanceTo`/`standAt` walking, same poses, same endings.
 
-There is one, and it is the one everybody has watched happen: **sit at a desk and write it →
-print it → take it out of the tray → square it up and put a band round it → carry it across
-the floor → file it on a rack.** Which is also why it reads without a word of explanation:
+There are two. The first is the one everybody has watched happen: **sit at a desk and write
+it → print it → take it out of the tray → square it up and put a band round it → carry it
+across the floor → file it on a rack.**
+
+The second is **`stocktake`**, and it is the shortest errand on the table: **take a box off
+a rack → carry it across the floor → put it back on a different one.** Two legs, no machine
+in either, and its whole content is the thing being carried — which is exactly why it reads,
+because a body walking a corridor with a crate in its arms is legible from anywhere. It is
+what "the boxes can be taken in and out" comes to, and the box is REAL: `giveCrate` in
+enemies.js hands over the same crate a parcel run carries, on the same bit of the wire
+(`SNAP_BOX`), so a joiner in a co-op session sees it too. Measured over 300 s on floor 9: 9
+errands, a box in somebody's arms on 72% of frames, peak 4 carried at once, and zero crates
+left on a body with no errand behind it.
+
+`at: 'racks'` is the one station kind that is two — a storeroom's shelving (`shelf`) and an
+archive's bookshelves (`files`) — because taking something off a shelf and putting it back
+somewhere else is the same errand in either room. They are pooled apart everywhere else,
+and that is the point of the split: a parcel run may start at a storeroom's rack and not at
+an archive's, because a porter fetching a ring binder to put it on a conveyor is not a
+thing that happens.
+
+Back to the first one: Which is also why it reads without a word of explanation:
 every beat is something the player has done themselves, so a man at a storage rack holding a
 bundle of banded paper is legible on sight. Driven end to end at a fixed 1/30 with eight
 bodies competing for seven machines: 10.4 s sits down, 58.6 s stands up, 62.6 s at the
@@ -2592,6 +2675,45 @@ Four things in it are decisions rather than plumbing:
   lets a beat say what it hands over (`gives`) at the moment it ends rather than at its
   start. The can appearing before the hand has got down to the flap is the machine
   dispensing into thin air.
+
+#### A meeting (`_tryMeeting` in `chores.js`)
+Four to seven people walk into a meeting room, one of them stands at the whiteboard, the
+rest sit down, and they hold it for a minute or so. It is the only thing on the chore table
+that casts more than one body.
+
+**It is still a CHORE rather than a system of its own**, and everything that came free by
+doing it that way was a bug somewhere else first: the walk and its backstop, the chair being
+shot out from under them (`_seatGone`), the machine going (`c.prop`), standing up with the
+joints put back — and above all the STARTLE. `_choreWork` in enemies.js ends any chore the
+moment its body sees or hears you or you simply get close, so **opening the door on a
+meeting turns seven people round without a line of code in this file.** Measured by walking
+the player into one: four bodies, two of them seated with their knees bent (`legL` at 0.79),
+came out of their chairs with the rig's own joints back (0.43) and into `fight` inside 1.2 s.
+
+**One flood for the whole group** (`_castGroup`), which is the lesson the lunch cycle paid
+for. Everybody is going to the same room, so the field to the board answers "can this body
+get there" for all of them; casting each attendee against its own chair would be seven
+floods of a ten-thousand-tile floor to answer one question seven times. The nearest body
+goes to the board, which is both cheaper and right — somebody has to have got there first to
+be writing on it.
+
+The furnisher publishes both halves: `whiteboard` is in `WORK_AT`, so every board in the
+building offers a `board` station for free (a training room's included, which is where the
+person taking the session stands), and `meetingRoom` registers each chair it places as a
+`meeting` station. That third seat kind is neither a job nor lunch, and it has to be: a
+meeting chair in the desk pool would have the room dealt a shift of six people typing at a
+table with no desks on it, and in the canteen pool it would send people there for lunch.
+
+Two numbers and a refusal. `MEETING` is 4–7 **including** whoever is at the board, so a
+meeting is never one person presenting to one person; `MAX_MEETINGS` is 3, because a meeting
+takes a room's whole seating and half a dozen bodies off the floor for a minute, and the
+point of it is that you walk into one. And a cast that cannot fill the room is dropped
+whole rather than held smaller — nothing is committed until every seat has somebody in it.
+Measured on floor 9: 14 board stations, 82 meeting chairs, meetings of 4–7 lasting 58–108 s,
+peak 3 at once with 11 people seated in them.
+
+Machines are excluded (`human: true` on both kinds), and that is the same argument
+`_lunchOk` has always made about the canteen. Their version of the same room is the dock.
 
 #### The poses (`CHORE_POSE` in `enemy-anim.js`)
 Six jobs and one function, the way `TYPES` is one rig and a table of numbers. Every height
