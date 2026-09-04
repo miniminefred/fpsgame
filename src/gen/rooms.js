@@ -127,8 +127,6 @@ function openPlan(sink, { x0, z0, x1, z1 }, rng) {
 
 function meetingRoom(sink, bounds, rng) {
   const { x0, z0, x1, z1 } = bounds;
-  const cx = (x0 + x1) / 2;
-  const cz = (z0 + z1) / 2;
   const alongX = (x1 - x0) >= (z1 - z0);
   const rot = alongX ? 0 : 1;
 
@@ -141,61 +139,113 @@ function meetingRoom(sink, bounds, rng) {
   // meeting room in five with nowhere to hold a meeting.
   edgeProp(sink, bounds, 'whiteboard', rng);
 
-  if (tryPlace(sink, 'meetingTable', cx, cz, rot, rng)) {
-    // Half the table's real depth — measured across its short axis whichever
-    // way round it went in, which is what `footprintOf` answers in the prop's
-    // own frame — plus room for a chair to be pushed under it.
-    const half = footprintOf(sink, 'meetingTable').d / 2 + 0.42;
-    const seats = Math.max(2, Math.floor((alongX ? x1 - x0 : z1 - z0) / 0.85) - 1);
-    // Inside the table's own reservation, which is what `lend` is for and is not
-    // optional: floor is claimed by whole tiles, so a 1.32 m table's claim
-    // reaches a good way past its own edge and a chair pulled up to it lands
-    // inside that claim whatever the arithmetic says. It is the trap `seatFacing`
-    // and the cafeteria both document, and it was costing this room 1768 refused
-    // chairs against 1274 placed.
-    const { w: tw, d: td } = footprintOf(sink, 'meetingTable', rot);
-    sink.lend(cx - tw / 2, cz - td / 2, cx + tw / 2, cz + td / 2, () => {
-      for (let i = 0; i < seats; i++) {
-        const t = (i - (seats - 1) / 2) * 0.85;
-        // Both long sides, each chair turned to face the table. Derived rather
-        // than written out, and it is a FIX rather than a tidy-up: written out it
-        // was four coordinates and four turns, and the two for a table running
-        // east-west were backwards — every meeting room on that half of the roll
-        // sat its whole meeting facing the walls. Measured off the geometry rather
-        // than argued about: the backrest of every chair was the box nearest the
-        // table. `side` is the quarter turn naming which way the chair is offset
-        // and (side + 2) is what brings its front back round, exactly as
-        // seatFacing has always done it for a desk.
-        for (const side of [rot, (rot + 2) & 3]) {
-          const [ox, oz] = QUARTER[side](0, -half);
-          const [ax, az] = QUARTER[side](t, 0);
-          const x = cx + ox + ax, z = cz + oz + az;
-          const seat = (side + 2) & 3;
-          // Registered as somewhere to SIT IN A MEETING, which is neither a job
-          // nor lunch. A meeting chair in the desk pool would have this room
-          // dealt a shift of six people typing at a table with no desks on it,
-          // and in the canteen pool it would send people here for their break.
-          if (tryPlace(sink, 'chair', x, z, seat, rng)) {
-            sink.workstation(x, z, seat, 'meeting');
-          }
-        }
-      }
-    });
-  } else if (tryPlace(sink, 'coffeeTable', cx, cz, rot, rng)) {
-    // Too small for a real table, which is about one meeting room in ten: a low
-    // table with a few chairs round it, which is what a two-person meeting room
-    // actually is rather than a failure to furnish one.
-    const { w: tw, d: td } = footprintOf(sink, 'coffeeTable', rot);
-    sink.lend(cx - tw / 2, cz - td / 2, cx + tw / 2, cz + td / 2, () => {
-      for (const side of [0, 1, 2, 3]) {
-        const [ox, oz] = QUARTER[side](0, -0.92);
+  // The table, as near the middle of the room as will take one. The full one
+  // first and the four-seater after it — and both are real meeting tables, at
+  // 0.75 m with the same dark top. A coffee table used to stand in here when the
+  // big one would not fit, and a coffee table is 0.42 m high: what that came out
+  // as was four office chairs drawn up round something you would put a magazine
+  // on, which is a waiting room, in the one room type whose whole job is to be
+  // recognisable from its doorway.
+  const table = centreProp(sink, ['meetingTable', 'smallMeetingTable'], bounds, rot, rng);
+  if (!table) return;
+
+  const { cx, cz, kind } = table;
+  // Half the table's real depth — measured across its short axis whichever way
+  // round it went in, which is what `footprintOf` answers in the prop's own
+  // frame — plus room for a chair to be pushed under it.
+  const half = footprintOf(sink, kind).d / 2 + 0.42;
+  // How many a side, off the TABLE's own length rather than the room's. It used
+  // to come off the room, which put chairs a metre and a half past both ends of
+  // the table with nothing in front of them — eight of them a room, sitting at
+  // thin air. `SEAT_PITCH` is what a meeting table actually seats people at:
+  // tighter than the 0.85 m a rank of desks uses, because chairs at a table are
+  // nearly touching, and it is what gets three a side out of the 1.88 m the
+  // meeting table really measures (see gen/model-table.js — the catalogue's 3.1
+  // is the fallback boxes, not the model the game ships).
+  const seats = Math.max(2, Math.round(footprintOf(sink, kind).w / SEAT_PITCH));
+  // Inside the table's own reservation, which is what `lend` is for and is not
+  // optional: floor is claimed by whole tiles, so a table's claim reaches a good
+  // way past its own edge and a chair pulled up to it lands inside that claim
+  // whatever the arithmetic says. It is the trap `seatFacing` and the cafeteria
+  // both document, and it was costing this room 1768 refused chairs against 1274
+  // placed.
+  const { w: tw, d: td } = footprintOf(sink, kind, rot);
+  sink.lend(cx - tw / 2, cz - td / 2, cx + tw / 2, cz + td / 2, () => {
+    for (let i = 0; i < seats; i++) {
+      const t = (i - (seats - 1) / 2) * SEAT_PITCH;
+      // Both long sides, each chair turned to face the table. Derived rather
+      // than written out, and it is a FIX rather than a tidy-up: written out it
+      // was four coordinates and four turns, and the two for a table running
+      // east-west were backwards — every meeting room on that half of the roll
+      // sat its whole meeting facing the walls. Measured off the geometry rather
+      // than argued about: the backrest of every chair was the box nearest the
+      // table. `side` is the quarter turn naming which way the chair is offset
+      // and (side + 2) is what brings its front back round, exactly as
+      // seatFacing has always done it for a desk.
+      for (const side of [rot, (rot + 2) & 3]) {
+        const [ox, oz] = QUARTER[side](0, -half);
+        const [ax, az] = QUARTER[side](t, 0);
+        const x = cx + ox + ax, z = cz + oz + az;
         const seat = (side + 2) & 3;
-        if (tryPlace(sink, 'chair', cx + ox, cz + oz, seat, rng)) {
-          sink.workstation(cx + ox, cz + oz, seat, 'meeting');
+        // Registered as somewhere to SIT IN A MEETING, which is neither a job
+        // nor lunch. A meeting chair in the desk pool would have this room
+        // dealt a shift of six people typing at a table with no desks on it,
+        // and in the canteen pool it would send people here for their break.
+        if (tryPlace(sink, 'chair', x, z, seat, rng)) {
+          sink.workstation(x, z, seat, 'meeting');
         }
       }
-    });
+    }
+    // ...and one at each END of the table, which is where a meeting table seats
+    // its last two and is also the difference between a room that can hold a
+    // meeting of five and one that can hold seven (`MEETING` in chores.js wants
+    // up to six seated). `(rot + 1)` is the table's long axis, so the offset is
+    // half its LENGTH rather than half its depth.
+    const ends = footprintOf(sink, kind).w / 2 + 0.42;
+    for (const side of [(rot + 1) & 3, (rot + 3) & 3]) {
+      const [ox, oz] = QUARTER[side](0, -ends);
+      const x = cx + ox, z = cz + oz;
+      const seat = (side + 2) & 3;
+      if (tryPlace(sink, 'chair', x, z, seat, rng)) {
+        sink.workstation(x, z, seat, 'meeting');
+      }
+    }
+  });
+}
+
+/**
+ * The first of these props that will stand somewhere near the middle of a room.
+ *
+ * Placed at the centre and then walked outward from it, which is the cafeteria's
+ * lesson in a smaller room: on a fixed spot a placement is all or nothing, and
+ * the middle of a room is exactly where a doorway apron, a through-route lane
+ * and a reserved arrival square all get stamped. A meeting room only has one
+ * thing in it, so losing that one thing to a reservation two tiles wide leaves a
+ * whiteboard and some chairs — measured, **16 of 207 meeting rooms had no table
+ * of any kind**, and dropping in a smaller one recovered exactly one of them,
+ * because the problem was never the size.
+ *
+ * Rings rather than a scan, so a table that cannot have the middle still ends up
+ * as near it as the room allows and the room still reads as laid out around it.
+ */
+const SEAT_PITCH = 0.66;   // metres between two people at a meeting table
+const CENTRE_RINGS = [0, 0.55, 1.1, 1.65];
+const CENTRE_DIRS = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]];
+
+function centreProp(sink, kinds, bounds, rot, rng) {
+  const cx = (bounds.x0 + bounds.x1) / 2;
+  const cz = (bounds.z0 + bounds.z1) / 2;
+  for (const kind of kinds) {
+    for (const r of CENTRE_RINGS) {
+      for (const [dx, dz] of CENTRE_DIRS) {
+        if (r === 0 && (dx || dz)) continue;
+        const x = cx + dx * r, z = cz + dz * r;
+        if (x < bounds.x0 || x > bounds.x1 || z < bounds.z0 || z > bounds.z1) continue;
+        if (tryPlace(sink, kind, x, z, rot, rng)) return { kind, cx: x, cz: z };
+      }
+    }
   }
+  return null;
 }
 
 function breakRoom(sink, bounds, rng, room, doors, theme) {

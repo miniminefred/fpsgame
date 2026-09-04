@@ -584,6 +584,35 @@ export const PROPS = {
     },
   },
 
+  // The same table for a room that cannot take the big one.
+  //
+  // It is a REAL meeting table and not a coffee table, which is what used to
+  // stand in here — and a coffee table is 0.42 m high, so a meeting room that
+  // rolled small came out as four office chairs drawn up round something you
+  // would put a magazine on. Same top at the same 0.75 m, same dark laminate,
+  // same speakerphone in the middle of it: it is the big one shortened to seat
+  // four, which is what a small meeting room actually contains.
+  //
+  // No model, deliberately. `meeting_table` measures 1.88 x 0.98 (gen/model-table
+  // .js) — that IS the big one as the game ships it, whatever the catalogue's
+  // hand-authored 3.1 says — so there is nothing smaller to point at, and a prop
+  // this size is four boxes and a phone.
+  smallMeetingTable: {
+    w: 1.35, d: 0.85, hp: 90, substance: 'wood',
+    build(p, rng) {
+      const H = 0.75;
+      p.box('laminateDark', -0.66, H - 0.06, -0.42, 0.66, H, 0.42);
+      // One pedestal rather than a leg at each corner, which is what a table this
+      // size has and is also what keeps its legs out from under the chairs: four
+      // legs on a 1.35 m table land exactly where somebody's knees go.
+      p.box('metal', -0.08, 0, -0.08, 0.08, H - 0.06, 0.08);
+      p.box('metalDark', -0.34, 0, -0.26, 0.34, 0.05, 0.26);
+      p.box('plastic', -0.14, H, -0.14, 0.14, H + 0.06, 0.14);
+      if (rng.chance(0.5)) p.box('paper', 0.24, H, -0.24, 0.5, H + 0.02, 0.02);
+      p.obstacle(-0.66, -0.42, 0.66, 0.42, H);
+    },
+  },
+
   // --- what the back-of-house rooms are made of -----------------------------
 
   bookshelf: {
