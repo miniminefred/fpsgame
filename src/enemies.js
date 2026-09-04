@@ -518,6 +518,13 @@ export class Enemies {
     // The canteen's chairs, pooled apart from the desks because they are not
     // jobs: see `at` on sink.workstation in gen/build.js.
     this.tables = deskPool(workstations, nav, rng, 'table');
+    // ...and a meeting room's, which are a third thing again and are kept BY
+    // ROOM rather than flattened, because that is the whole of what a meeting
+    // is: everybody in the same room. Un-nudged like the other two seat pools —
+    // `stations` moves a record back off its furniture so a body fits in front
+    // of it, and a chair may never be moved, because the seated pose is drawn
+    // relative to the seat. See `standable`.
+    this.meetingSeats = deskPool(workstations, nav, rng, 'meeting');
     // Where you queue and where the trays go back, both registered by the
     // furnisher because it is the only thing that knows where the counter
     // actually landed (see `cafeteria` in gen/rooms.js). Unlike a chair these
@@ -3083,8 +3090,12 @@ export class Enemies {
    * without the second leaves a body walking the floor with its hips in a chair
    * that is not there. Same rule as `setChorePose`, and the same bug.
    */
-  sitAt(e, station) {
-    this._seat(e, station, 'desk');
+  // `at` is which KIND of chair it is, and it is what the animator dispatches on:
+  // a desk is typed at, a canteen table is eaten at, and a meeting is sat
+  // through. Defaulted rather than required, because every caller but the
+  // meeting means a desk.
+  sitAt(e, station, at = 'desk') {
+    this._seat(e, station, at);
   }
 
   standUp(e) {

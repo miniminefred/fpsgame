@@ -322,7 +322,11 @@ export function animate(e, dt, audio) {
   // Two seats now: a desk somebody is working at, and a canteen table somebody
   // is having their lunch at. Which one a body is in is `e.seat` — see _seat in
   // enemies.js — and it is the same pose from the hips down either way.
-  if (e.seat) return e.seat === 'table' ? animateEating(e, dt) : animateWorking(e, dt);
+  if (e.seat) {
+    if (e.seat === 'table') return animateEating(e, dt);
+    if (e.seat === 'meeting') return animateAttending(e, dt);
+    return animateWorking(e, dt);
+  }
 
   // Working on the parcel line overhead (see jobs.js). Checked after the seats
   // and before the walk cycle, because it is the same kind of thing as a seated
@@ -534,6 +538,57 @@ export function animateWorking(e, dt) {
 }
 
 /**
+ * Sitting through a meeting.
+ *
+ * `animateWorking` with the typing switched off would be most of it, and it is
+ * deliberately not that: what makes a room full of seated bodies read as a
+ * meeting rather than as a room full of people waiting is that they are all
+ * looking at the same thing. So the arms rest where that pose puts them when it
+ * is NOT typing — hands on the table, which is where they already are — and the
+ * head does the work, turning slowly toward whoever is at the board.
+ *
+ * The head is the cheapest thing on the rig to move and the only one nothing
+ * else here writes, which is why `patrol` uses it for the same reason one pose
+ * over. `stand` puts `head.rotation.y` back, and it has done since that pose
+ * needed it.
+ *
+ * The turn is seeded off `walkPhase` like every other beat in this file, so a
+ * room of six is six people looking round at slightly different moments rather
+ * than a chorus line.
+ */
+const ATTEND_SWEEP = 0.34;     // radians either side of straight ahead
+const ATTEND_RATE = 0.23;      // ...and how fast the look wanders across it
+const ATTEND_NOD = 0.05;
+
+export function animateAttending(e, dt) {
+  e.walkPhase += dt;
+  const breath = Math.sin(e.walkPhase) * 0.025;
+
+  e.group.position.y = e.y - DESK_DROP;
+  sitLegs(e);
+  hinge(e.armL, -ARM_X, ARM_Y, ARM_HALF, DESK_IDLE_ARMS);
+  hinge(e.armR, ARM_X, ARM_Y, ARM_HALF, DESK_IDLE_ARMS);
+  e.torso.rotation.x = 0.04 + breath;
+
+  // Two sines rather than one, at rates that do not divide into each other, so
+  // the look does not swing back and forth like a metronome.
+  const look = Math.sin(e.walkPhase * ATTEND_RATE) * 0.7
+    + Math.sin(e.walkPhase * ATTEND_RATE * 2.7 + 1.1) * 0.3;
+  e.head.rotation.y = look * ATTEND_SWEEP;
+  e.head.rotation.x = Math.sin(e.walkPhase * 0.61) * ATTEND_NOD;
+
+  if (e.blunt) {
+    e.blunt.rotation.x = -0.1;
+    e.blunt.position.y = 1.04;
+  } else {
+    e.gun.position.set(0.3, 1.0, -0.08);
+    e.gun.rotation.x = 1.25;
+  }
+
+  tickFlash(e, dt);
+}
+
+/**
  * Both hands up in a machine, fitting something into it.
  *
  * The pose is the answer to "he is just standing there holding a box", which is
@@ -724,6 +779,26 @@ const CHORE_POSE = {
     hands: 0, armsDown: true, stoop: 0, reach: 0, lean: 0.02, look: 0.03,
     beat: 1, duty: -2, rate: 0.6, throw: 0.045, stagger: 0.02, rest: 0.04,
     sweep: 0.6, sweepRate: 0.42,
+  },
+  // Running the meeting: writing on the whiteboard, with the other hand down.
+  //
+  // The board's own panel runs from about 0.9 m to 1.9 m (see `whiteboard` in
+  // gen/props.js), so 1.52 is where somebody writes on it — high enough to be
+  // reaching UP, which is what tells a whiteboard apart from a table at any
+  // distance, and inside what an arm with no elbow in it can get to (a shoulder
+  // at 1.42 plus a 0.54 arm reaches 1.96, so this is not near the limit and the
+  // pose does not come out at full stretch).
+  //
+  // The biggest `stagger` on the table, and that is the whole read: one hand
+  // works and the other stays by the side, which is the difference between
+  // writing on a board and pressing both palms against it. The beat is slow and
+  // the duty high — you write for a while, then stand back and look at what you
+  // wrote, and the standing-back is what makes a body at a board look like it is
+  // explaining something rather than cleaning it.
+  present: {
+    hands: 1.52, stoop: 0, reach: 0.10, lean: -0.04, look: -0.10,
+    beat: 0.34, duty: 0.1, rate: 5.5, throw: 0.14, stagger: 0.78, rest: 0.5,
+    sweep: 0.22, sweepRate: 0.9,
   },
 };
 

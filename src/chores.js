@@ -155,6 +155,23 @@ const CHORES = {
     at: 'panel', pose: 'panel', time: [16, 34], weight: 4, stay: [2, 5],
     spark: { y: 1.55, out: 0.6, tick: [0.45, 1.1] },
   },
+  // THE MEETING, which is the one thing on this table that is not one body doing
+  // one thing. Both kinds are `weight: 0` — neither is ever rolled on its own,
+  // because a lone body standing at a whiteboard talking to an empty room is
+  // not a meeting and a lone body sitting at a meeting table is somebody who
+  // has wandered in. They are only ever cast together, by `_tryMeeting`.
+  //
+  // `human` on both: a meeting is staff. A machine's break is the dock in the
+  // break room (see `charger` in gen/props.js), which is the same argument
+  // `_lunchOk` has always made about the canteen.
+  present: {
+    at: 'board', pose: 'present', time: [15, 30], weight: 0, stay: [2, 4],
+    human: true,
+  },
+  attend: {
+    at: 'meeting', pose: null, sit: true, seatAs: 'meeting', human: true,
+    time: [17, 34], weight: 0, stay: [2, 4],
+  },
   // The two that belong to a trade rather than to a machine. Both stand on a
   // patch of corridor (`hall`) rather than at a prop, and both are weighted low
   // because only a handful of bodies on the floor may take them — a weight here
@@ -221,6 +238,21 @@ const ROUTINE_KINDS = Object.keys(ROUTINES);
 // a field for three walks instead of one. Six of them on a floor of a hundred and
 // seventy is one visible errand per few rooms, which is what it is for.
 const MAX_ROUTINES = 6;
+
+// A meeting: how many people are in it, and how many may be running at once.
+//
+// Four to seven INCLUDING whoever is at the board, so a meeting is never one
+// person presenting to one person. The cap is low because a meeting takes a
+// room's whole seating and six or seven bodies off the floor for half a minute,
+// and because the point of it is that you walk into one — three at a time on a
+// floor of a hundred and seventy is often enough to meet one and rare enough
+// that it is still a thing you found.
+const MEETING = [4, 7];
+const MAX_MEETINGS = 3;
+// How often the die comes up meeting at all, against the single jobs and the
+// routines. Weighted rather than tried first, for the reason a routine is: the
+// mix is then one number instead of a priority.
+const MEETING_WEIGHT = 5;
 
 // What a body with no trade does: the ordinary work of an office, and it is
 // everything on the table that is not somebody's job in particular.
@@ -361,10 +393,14 @@ export class Chores {
 
     for (const kind of KINDS) {
       const at = CHORES[kind].at;
+      // A meeting's chairs come out of `meetingSeats` for the same reason a
+      // desk's come out of `desks`: they are seats, and a seat may never be
+      // nudged back off its furniture the way `stations` nudges a machine.
       const from = at === 'panel' ? (panels?.spots ?? [])
         : at === 'hall' ? hall
           : at === 'chair' ? chairs
-            : (enemies.stations?.get(at) ?? []);
+            : at === 'meeting' ? [...(enemies.meetingSeats?.values() ?? [])].flat()
+              : (enemies.stations?.get(at) ?? []);
       if (from.length) this.pools.set(kind, from);
     }
     // Nothing to do on a floor with no machines anybody can stand at, which is
@@ -443,11 +479,20 @@ export class Chores {
     const routineWeight = this._routinesLive() < MAX_ROUTINES
       ? ROUTINE_KINDS.reduce((t, k) => t + ROUTINES[k].weight, 0)
       : 0;
-    let total = routineWeight;
+    // ...and the meeting, on the same die. It fails far more often than either —
+    // it wants a room with a board and four free chairs in it and four people who
+    // can all walk there — and a failure falls through to the rest of the roll
+    // rather than costing the turn, exactly as a routine's does.
+    const meetWeight = this._meetingsLive() < MAX_MEETINGS && this._free('present')
+      ? MEETING_WEIGHT
+      : 0;
+    let total = routineWeight + meetWeight;
     for (const kind of KINDS) if (this._free(kind)) total += CHORES[kind].weight;
 
     if (total <= 0) return false;
-    if (Math.random() * total < routineWeight && this._tryRoutine()) return true;
+    const roll = Math.random() * total;
+    if (roll < meetWeight && this._tryMeeting()) return true;
+    if (roll < meetWeight + routineWeight && this._tryRoutine()) return true;
     // A failed routine falls through to a single job rather than giving up the
     // turn. It fails often and legitimately — it wants three free machines and a
     // body that can walk between all of them — and `update` reads a failed turn
@@ -463,6 +508,112 @@ export class Chores {
 
     this._commit(worker, [{ kind, station }], null);
     return true;
+  }
+
+  /**
+   * How many meetings are going on, counted by the people AT THE BOARD.
+   *
+   * One presenter per meeting by construction, so counting them is counting
+   * meetings — where counting attendees would count one meeting four to seven
+   * times and counting rooms would need a set.
+   */
+  _meetingsLive() {
+    let n = 0;
+    for (const e of this.live) if (e.chore?.kind === 'present') n++;
+    return n;
+  }
+
+  /**
+   * Four to seven people, one room, and somebody at the whiteboard.
+   *
+   * The only thing on this table that casts more than one body, and it is
+   * deliberately still a CHORE rather than a system of its own: an attendee is a
+   * body that walked to a chair and sat in it, and a presenter is a body that
+   * walked to a board and held a pose at it, which is what every other line in
+   * this file already does. Everything that came free by doing it this way is a
+   * thing that was a bug somewhere else first — the walk and its backstop, the
+   * chair being shot out from under them (`_seatGone`), the machine going
+   * (`c.prop`), standing up with the joints put back, and above all the STARTLE:
+   * `_choreWork` in enemies.js ends any chore the moment its body sees or hears
+   * you or you simply get close, so opening the door on a meeting turns seven
+   * people round without a line of code here.
+   *
+   * ONE FLOOD FOR THE WHOLE GROUP, which is the lesson the lunch cycle paid for.
+   * Everybody is going to the same room, so the field to the board answers "can
+   * this body get there" for all of them; casting each attendee against its own
+   * chair would be seven floods of a ten-thousand-tile floor to answer one
+   * question seven times.
+   */
+  _tryMeeting() {
+    const boards = this.pools.get('present');
+    const seats = this.pools.get('attend');
+    if (!boards?.length || !seats?.length) return false;
+
+    // Walked from a random start rather than scanned from the front, for
+    // `_pickStation`'s reason: taken in order, the same room would hold every
+    // meeting on the floor.
+    const start = (Math.random() * boards.length) | 0;
+    for (let i = 0; i < boards.length; i++) {
+      const board = boards[(start + i) % boards.length];
+      if (!this._usable(board)) continue;
+      const free = seats.filter((s) => s.room === board.room && this._usable(s));
+      if (free.length < MEETING[0] - 1) continue;
+
+      // How many are in it, capped by what the room can seat. `MEETING` counts
+      // the presenter, so the chairs wanted is one fewer.
+      const want = MEETING[0] + ((Math.random() * (MEETING[1] - MEETING[0] + 1)) | 0);
+      // A contiguous run of the room's chairs from a random start, rather than a
+      // shuffle: chairs come out of the furnisher in the order they were placed
+      // round the table, so a run of them seats a meeting down one end together
+      // where a shuffle scatters four people over twelve seats.
+      const chairs = [];
+      const from = (Math.random() * free.length) | 0;
+      for (let n = 0; n < free.length && chairs.length < want - 1; n++) {
+        chairs.push(free[(from + n) % free.length]);
+      }
+
+      const cast = this._castGroup(board, 1 + chairs.length, 'present');
+      // A meeting nobody could get to is not a meeting, and a meeting of two is
+      // not one either — so the whole attempt is dropped rather than a smaller
+      // one being held. Nothing has been committed at this point.
+      if (cast.length < MEETING[0]) continue;
+
+      this._commit(cast[0], [{ kind: 'present', station: board }], null);
+      for (let n = 1; n < cast.length; n++) {
+        this._commit(cast[n], [{ kind: 'attend', station: chairs[n - 1] }], null);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * The `n` nearest bodies that can reach one station, off ONE field.
+   *
+   * `_cast`'s two-part question asked once and answered for everybody: flood to
+   * the destination, then take the bodies that are standing on the field, in
+   * order of how far along it they are. The nearest goes first, so the person
+   * who ends up at the board is the one who was closest to the room — which is
+   * both cheaper and the right answer, since somebody has to have got there
+   * first to be writing on it.
+   */
+  _castGroup(station, n, kind) {
+    if (!this.nav) return [];
+    this._field ??= this.nav.makeField();
+    if (!this.nav.floodTo(this._field, station.x, station.z)) return [];
+
+    const humanOnly = !!CHORES[kind].human;
+    const found = [];
+    for (const e of this.enemies.items) {
+      if (!this._eligible(e) || !worksFor(e).includes(kind)) continue;
+      if (humanOnly && (e.rig !== 'human' || isMachine(e.type))) continue;
+      if (!this.nav.descendOn(this._field, e.x, e.z, this._v)) continue;
+      const d = this.nav.distanceOn(this._field, e.x, e.z, e.layer);
+      if (d < 0) continue;
+      found.push({ e, d });
+    }
+    found.sort((a, b) => a.d - b.d);
+    return found.slice(0, n).map((f) => f.e);
   }
 
   /** How many of the live jobs are multi-leg errands. */
@@ -916,7 +1067,7 @@ export class Chores {
     // `setChorePose` does for a standing job.
     if (job.sit) {
       if (!e.seat) {
-        this.enemies.sitAt?.(e, c.station);
+        this.enemies.sitAt?.(e, c.station, job.seatAs ?? 'desk');
         // A SEATED BODY HAS TO BE `idle`, and this is the one line that says so.
         // `animate` stands up any seated body whose state is not idle or alert —
         // which is right, and is how a body that has noticed you gets out of its
