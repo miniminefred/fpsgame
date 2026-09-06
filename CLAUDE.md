@@ -1347,9 +1347,10 @@ north-south needs no second set of coordinates.
 `layout.spawnRoom` rather than off a role name. A role name is a fact about how a room is
 FURNISHED, while "do not put anybody here" is a fact about where the player materialises,
 and the two used to be the same room; keeping the test on `spawnRoom` is what made moving
-the arrival to the reception a one-line change rather than a hunt. The mid-sized `canteen`
-role is untouched and the two are meant to read differently: that one is somewhere on the
-floor to eat, this one is the canteen the floor is arranged around.
+the arrival to the reception a one-line change rather than a hunt. It is now the ONLY
+canteen: there used to be a mid-sized `canteen` role as well — round tables and stools,
+somewhere on the floor to eat — and having both meant a floor with two rooms making the
+same statement, one composed and one scattered. This is the composed one, so it stayed.
 
 ### What furniture is never allowed to close (`reserveClearances` in `gen/build.js`)
 A tile mask the furnisher may not place into, stamped before a single prop is put down —
@@ -1390,6 +1391,29 @@ before the cardboard and red after, and the mechanism was not the cardboard — 
 crates that could have been dealt to any seed. A **690-floor** sweep of the pre-cardboard code
 found nothing, which is how a 1-in-300 fragility hides: the seeds are fixed, so a green sweep
 is evidence about those seeds and not about the generator.
+
+### What each room turns out to be (`ROLE_PICKS`/`assignRoles` in `gen/layout.js`, `furnish` in `gen/rooms.js`)
+A room's role is rolled off its SHAPE — long-thin, big, mid or small (`roleBranch`) — and then
+a handful of flavour rooms are guaranteed on top. Two things about the list are worth knowing
+because neither is obvious from it:
+
+- **`utility` is not on any of the pick lists.** It is not a room you roll, it is what a room
+  turns out to be when nothing else will go in it. `furnish` asks whether the one prop that
+  makes a room what it is (`DEFINES`) could actually be PLACED — every wall, at the standoff
+  `edgeProp` would use, through the same `canPlace` `tryPlace` is about to run — and falls
+  back to a cupboard when it cannot. That is a question about the floor rather than about the
+  square metres: a 40 m² copy room whose every wall is inside a doorway apron has plenty of
+  area and nowhere to put a copier, and what was left was a cupboard the generator had
+  labelled a copy room. Measured over 50 floors: **4.5 a floor**, all of them genuinely
+  blocked rather than small. A small room is a private office by default instead.
+- **There is no `canteen` role and no `training` one.** The canteen went because the floor
+  already has a cafeteria and two rooms making the same statement — one composed, one a
+  scatter of round tables — is one room too many. Training became **`presentation`**: rows of
+  chairs facing a lit 2.4 m screen rather than a whiteboard, because a screen that is ON is
+  the one thing in a grey office that says *look here*, which is what the seating is pointed
+  at. The whiteboard stays where somebody writes on it, in the meeting room. A presentation
+  room publishes a `board` station and registers its chairs as `meeting` seats, so a meeting
+  can be held in one — see `_tryMeeting`.
 
 ### Floor generation (`gen/layout.js`, on the vocabulary in `gen/tiles.js`)
 Real office floors are not mazes, so the generator does not build one. It carves a corridor
@@ -1639,7 +1663,7 @@ Visors answer that same question first and identity second. Every hostile wears 
 brightest for what dies to a look and darkest for what does not — and the Reanimated wear
 green. The harmless are the only ones in an actual colour: white for the Panicking Staffer,
 brown for the Night Cleaner, yellow for the Courier, blue for the Staff on Break, violet for
-the Porter Unit, teal for the Welder Unit and magenta for the Sentry Unit. So hue says
+teal for the Welder Unit and magenta for the Sentry Unit. So hue says
 threat, shade says which one, and no two types share a visor.
 
 **The machines are on that same ramp rather than beside it**, and that is a rule being kept
@@ -1728,8 +1752,10 @@ way `TYPES` is one rig plus a table of numbers, because a floor that is 90% one 
 floor of one enemy repeated that `share` exists to prevent — and it would be that twice
 over here, since the point of the shift is that the building is being worked. So the share
 is split across the JOBS: a hundred Clerk Units at the desks (0.28), Sentry Units in the
-corridors (0.17), Legacy Units with no job at all (0.14), Loader Units shifting stock (0.13),
-Welder Units on the racks (0.11) and Survey Drones over all of it (0.07).
+corridors, Legacy Units with no job at all, Welder Units on the racks and Survey Drones
+over all of it. There were six: the Loader Unit shifting stock came off the roster, and its
+share went back into the three fighting machines in proportion — which is what kept the
+hostile identity in that theme's own comment true. See the share there.
 
 **Only four of them fight you**, and the split deliberately does not follow the jobs: the
 Clerk, the Legacy, the Loader and the Drone are hostile, and the Sentry, the Welder and the
@@ -1760,8 +1786,8 @@ about how a body is DRAWN. The Legacy Unit answered no, and the first thing to n
 `_lunchOk` sending a robot to the canteen for its lunch.
 
 Five of them are `weight: 0`, and that is how the theme stays a place rather than a tint:
-outside an Automated floor none is ever rolled, so meeting a Loader Unit means you are on
-the floor that has loaders on it. The **Sentry Unit** is the exception and always was —
+outside an Automated floor none is ever rolled, so meeting a Welder Unit means you are on
+the floor that has welders on it. The **Sentry Unit** used to be the exception —
 Facilities bought it to watch a corridor in a building full of people, so it turns up in
 one, and it is the reason `themeUsable` still holds Automated back to floor 2.
 
@@ -1807,11 +1833,10 @@ stopped working. And the drone **is authored a metre and a quarter up** rather t
 hover — a rig is placed at its body's feet, so a machine that flies is a machine whose parts
 are simply higher up, and nothing in the engine has to learn what flight is.
 
-The Loader Unit is the one machine painted a **colour** rather than a shade, which is right
-(hi-vis is what plant is painted, and the hardest single hit in the building should be
-legible from the end of a corridor) and was not enough on its own: two thirds of a metre of
-flat yellow reads as a crate. A hazard band across the front and down each flank is what
-turns it back into a machine.
+The Loader Unit was the one machine painted a **colour** rather than a shade — hi-vis, with
+a hazard band across the front and down each flank, because two thirds of a metre of flat
+yellow reads as a crate. It is off the roster now, and so is the Porter Unit; the argument is
+kept because it is the one worked example of what the grey ramp costs and buys.
 
 **And they wear a finish** (`tech-textures.js`). Panel seams and a course of fasteners on the
 paint and on the frame under it, hazard stripes on the Loader's band, and a lit readout on
@@ -1824,9 +1849,10 @@ all; and it never casts, because a flat quad pressed against plating shadows its
 own edge. Measured on a floor of 166 machines: 0.5 ms and 15 draw calls for the lot.
 
 **`bystanders` on a theme** is the same argument for the corridors. The harmless traffic is a
-Night Cleaner and a Courier unless a theme names its own, and here it is the **Porter Unit** —
-the courier joke told about the building instead of about a man, a parcel deck on wheels with
-a beacon on a mast. The toilet guy is deliberately *not* on that list: he is a flat one or
+Night Cleaner and a Courier unless a theme names its own, and here it is the **Maintenance
+Worker** — the tenth of the floor this theme's own comment has always promised, walking the
+corridors of the building they keep running. The toilet guy is deliberately *not* on that
+list: he is a flat one or
 two on every floor there has ever been, and the last human on a floor of robots running for a
 lavatory is the joke landing harder rather than a joke out of place.
 
@@ -2197,8 +2223,13 @@ An Automated floor said it was being worked by being full of machines, and that 
 the whole of the claim: a hundred and fifty bodies standing about, plus a belt on the
 wall with boxes on it that came from nowhere and went nowhere. Now there is a sentence
 in the middle. A **Welder Unit** takes a box off a storage rack, brings it out to the
-corridor and hands it to a **Porter Unit**, which wheels it to a parcel line where a
-**Maintenance Worker** spends fifteen seconds fitting it, in sparks.
+corridor and hands it to a **Maintenance Worker**, who carries it to a parcel line where a
+second one spends fifteen seconds fitting it, in sparks.
+
+The middle part was a Porter Unit until that came off the roster, and swapping it was ONE
+LINE — `CAST` in jobs.js, whose own comment had been promising for months that a theme could
+one day run its parcels with a different set of machines. `_cast` takes the bodies already
+cast as exclusions, which is what stops the same worker being handed both parts.
 
 **He puts the box DOWN to do it**, and that is most of what makes the last beat
 read (`animateFixing` in enemy-anim.js). The repair was a man standing perfectly
@@ -2301,6 +2332,8 @@ corridor.
 | `panel` | a hole in the wall | both arms into the wiring, in sparks |
 | `file` | a storage rack | putting something away — a routine's last leg only |
 | `fetchBox` | a rack, either kind | taking a box down off it — a routine's first leg |
+| `fetchPost` | a mailroom rack | collecting a parcel — a courier's, and nobody else's |
+| `sendPost` | outside the lift doors | ...and handing it in, which is it leaving the building |
 | `stowBox` | ...and another one | putting the same box back on a different rack |
 | `present` | at the whiteboard | running the meeting: writing on the board, one hand |
 | `attend` | a meeting room chair | **sitting** through it, hands in the lap, watching |
@@ -2311,12 +2344,20 @@ corridor.
 `panel` is the machine floor's alone (see the openings below); the other five machine jobs
 are everywhere, because a copier is everywhere.
 
-**Three of them are `weight: 0` and are never rolled on their own**, which is `file`'s rule
+**Five of them are `weight: 0` and are never rolled on their own**, which is `file`'s rule
 and now covers most of the table's newer half. `fetchBox` and `stowBox` are the two legs of
 the `stocktake` routine — walking to a rack to take nothing off it is not a job, and nor is
-walking to one carrying nothing to put away. `present` and `attend` are only ever cast
-together by `_tryMeeting`: a lone body at a whiteboard talking to an empty room is not a
-meeting, and a lone body at a meeting table is somebody who wandered in.
+walking to one carrying nothing to put away. `fetchPost` and `sendPost` are the two legs of `postrun`, which is the post going
+out. `present` and `attend` are only ever cast together by `_tryMeeting`: a lone body at a
+whiteboard talking to an empty room is not a meeting, and a lone body at a meeting table is
+somebody who wandered in.
+
+**And one of them names a DISPOSITION rather than a shape.** `neutral: true` on the two post
+legs is the third of these flags after `human` and `machine`, and it is the only one that is
+not about what a body is made of: whoever carries the post walks the length of a floor with
+their arms full and their back to everything, so it is a courier's errand rather than an
+armed employee's — and it is the one thing on the table where meeting the person doing it is
+supposed to cost you nothing.
 
 **And one of them is not work at all.** `charge` is a machine standing on the dock in a
 break room (`charger` in `gen/props.js`), and it is a CHORE rather than a break on purpose.
@@ -2633,6 +2674,18 @@ enemies.js hands over the same crate a parcel run carries, on the same bit of th
 errands, a box in somebody's arms on 72% of frames, peak 4 carried at once, and zero crates
 left on a body with no errand behind it.
 
+And there is a third, **`postrun`**, which is the same two legs going somewhere else: **off a
+mailroom rack, and out of the building by the lift.** It is cast from the NEUTRALS only, so
+what you come across is a courier crossing a corridor with a parcel — measured over 600 s on
+floor 9, 3 runs and a parcel in somebody's arms on 12% of frames, which is the "rarely" it
+was asked for. The lift end is not furniture and does not come down the workstation pipe: it
+is derived from the two cars the floorplan carved (`gen/lifts.js`), the way the mop and
+patrol spots are derived from the corridor sample. **Walked out from the car until a body
+fits**, rather than measured — `fits` is the walk grid eroded by a body's radius, so every
+tile touching the car's front wall is out of it, and a standoff picked by eye landed one tile
+short and made `floodTo` come back false for every post run on every floor, silently, because
+a route to a tile nothing can stand on is no route at all.
+
 `at: 'racks'` is the one station kind that is two — a storeroom's shelving (`shelf`) and an
 archive's bookshelves (`files`) — because taking something off a shelf and putting it back
 somewhere else is the same errand in either room. They are pooled apart everywhere else,
@@ -2698,9 +2751,10 @@ goes to the board, which is both cheaper and right — somebody has to have got 
 be writing on it.
 
 The furnisher publishes both halves: `whiteboard` is in `WORK_AT`, so every board in the
-building offers a `board` station for free (a training room's included, which is where the
-person taking the session stands), and `meetingRoom` registers each chair it places as a
-`meeting` station. That third seat kind is neither a job nor lunch, and it has to be: a
+building offers a `board` station for free, and `meetingRoom` registers each chair it places
+as a `meeting` station. **A presentation room does both too** — a lit 2.4 m screen instead of
+a board, its own `board` station beside it, and every chair in its rows a `meeting` seat — so
+a meeting is as likely to be a dozen people watching something as six round a table. That third seat kind is neither a job nor lunch, and it has to be: a
 meeting chair in the desk pool would have the room dealt a shift of six people typing at a
 table with no desks on it, and in the canteen pool it would send people there for lunch.
 
