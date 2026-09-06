@@ -1180,7 +1180,7 @@ export class Destruction {
     const welded = entry.parts.filter((part) => part.hulk && part.material);
     if (!welded.length) return false;
     // Measured off the WELDED STRUCTURE alone, never the trim bolted to it (see
-    // `hulk` in gen/build.js). Every one of these numbers is an answer about the
+    // `hulk` in gen/sink.js). Every one of these numbers is an answer about the
     // machine — where its corners are, how big a corner is worth blowing off one
     // this long, which of its faces the room is on — and a fitting that stands
     // clear of the plating answers all three wrongly: exhaust stacks reaching

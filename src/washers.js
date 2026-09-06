@@ -371,7 +371,7 @@ export class Washers {
     // being flung into the tiles leaves a dent.
     const force = Math.min(1, Math.max(0, (rise - HIT_MIN) / (HIT_FULL - HIT_MIN)));
     // On the underside of the tiles, facing DOWN — which is the face they are
-    // drawn on and the only face anybody can see (see buildShell in gen/build.js).
+    // drawn on and the only face anybody can see (see buildShell in gen/shell.js).
     this._at.set(p.x, CEIL_H - 0.01, p.z);
     this._normal.set(0, -1, 0);
     this._impact(m, this._at, this._normal, force);

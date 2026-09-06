@@ -26,7 +26,7 @@ const BASE_AMBIENT = 0.36;
 const BASE_SUN = 0.85;
 
 // The two unlit materials the ceiling tubes are drawn with (see
-// buildCeilingLights in gen/build.js — `panel` front of house, `panelWarm`
+// buildCeilingLights in gen/shell.js — `panel` front of house, `panelWarm`
 // back). setPower tints them, which is what makes a floor on quarter power
 // read as one: they are the only part of the lighting the player looks
 // straight at, and a tube burning at full while the room under it is dark

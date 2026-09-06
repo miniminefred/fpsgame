@@ -417,7 +417,7 @@ export const PROPS = {
     // needs its own mesh so the solver can move it, and a model is one merged
     // mesh per material. It gets both because it has to. A static one cannot
     // hop — batched geometry does not move — and it is the hopping that this
-    // prop IS. So `endDynamic` in gen/build.js draws the model as the group's
+    // prop IS. So `endDynamic` in gen/sink.js draws the model as the group's
     // own meshes and keeps the boxes below as the pieces it breaks into, which
     // is the same division of labour every model-backed prop already has,
     // moved from the batch onto one free-standing group.
@@ -427,7 +427,7 @@ export const PROPS = {
     // is what the hop impulses in washers.js are sized against.
     w: 0.83, d: 0.86, mass: 68, hp: 55, substance: 'metal', spills: 'water',
     model: 'washing_machine',
-    // Read in gen/build.js and handed to the runtime on the dynamic record.
+    // Read in gen/sink.js and handed to the runtime on the dynamic record.
     // washers.js finds its machines with it rather than by matching on the prop
     // name, which is the same reason `crushable` and `spills` are flags.
     washer: true,
@@ -1062,7 +1062,7 @@ export const PROPS = {
     build(p, rng) {
       const Y0 = 0.86, Y1 = 2.24;
       // Bezel, then the picture inside it, a couple of centimetres proud so the
-      // two faces are never coplanar — see the note on windows in gen/build.js.
+      // two faces are never coplanar — see the note on windows in gen/shell.js.
       p.box('metalDark', -1.2, Y0, 0.02, 1.2, Y1, 0.11);
       p.box('screenOn', -1.13, Y0 + 0.07, -0.01, 1.13, Y1 - 0.07, 0.03);
       // A dark band across it, which is what stops a 2.4 m rectangle of flat
@@ -1176,7 +1176,7 @@ export const PROPS = {
     // its control face is authored on -Z — this file's own "front" convention
     // — with the wall-facing +Z side left plain. Genuinely massive on purpose
     // — it's meant to dominate the wall it's on, which is now two ordinary
-    // storeys tall (see generatorWallMask in gen/build.js) — so its collider
+    // storeys tall (see generatorWallMask in gen/shell.js) — so its collider
     // is well past MAX_PROP_SIDE/MAX_PROP_TOP and carries `building: true` to
     // be judged as shell rather than furniture, the same as a wall or a
     // staircase (see `obstacle`'s `building` param).
@@ -1211,7 +1211,7 @@ export const PROPS = {
       // as a machine that blew up, and a machine that keeps its casing while
       // every fitting on it disappears reads as a plainer machine swapped in
       // for the one that was there. What should be missing is what the blast
-      // took, and nothing else. See `hulkSpans` in gen/build.js and `_wreck` in
+      // took, and nothing else. See `hulkSpans` in gen/sink.js and `_wreck` in
       // destruction.js.
       //
       // Two grades, and the difference is NOT whether a box survives — both do.
@@ -1306,7 +1306,7 @@ export const PROPS = {
       box('metalDark', -inset(1.6), H + 0.2, 0.55, inset(1.6), H + 0.34, 0.95);
 
       // Twin exhaust stacks: decorative only, reaching well up into the
-      // room's own double-height shaft — see generatorRoomCut in gen/build.js.
+      // room's own double-height shaft — see generatorRoomCut in gen/shell.js.
       // Spaced off the ends rather than at a fixed ±1.3, so a wide machine
       // gets them out over its own shoulders instead of huddled in the middle.
       for (const sx of [-inset(w * 0.28), inset(w * 0.28)]) {

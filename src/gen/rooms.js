@@ -662,7 +662,7 @@ function seatAt(side, x0, z0, x1, z1, standoff, margin, rng) {
 //
 // The retreat is the point of having a helper at all. Reaching both corners
 // means reserving every tile across the room, and the furnisher is not the only
-// thing with a claim on them: reserveClearances in gen/build.js stamps doorway
+// thing with a claim on them: reserveClearances in gen/furnish.js stamps doorway
 // aprons into the shared grid without regard for whose room the tile is in, so
 // one unrelated doorway on the other side of that wall can veto the full span.
 // Giving up there would leave the room without the one thing it is named for,
@@ -700,7 +700,7 @@ function wallSpanProp(sink, bounds, kind, rng, side) {
 // the body doing it sits — so the same call that puts the chair down registers
 // the workstation, and a room cannot end up with a seated body facing the wrong
 // way or sitting on nothing. `sink.workstation` decides whether it is worth
-// keeping (see makeSink in gen/build.js); everything downstream is enemies.js's.
+// keeping (see makeSink in gen/sink.js); everything downstream is enemies.js's.
 function seatFacing(sink, kind, cx, cz, rot, rng, gap = 0.95) {
   const out = QUARTER[rot & 3](0, -gap);
   const x = cx + out[0];

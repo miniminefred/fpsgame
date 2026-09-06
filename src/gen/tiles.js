@@ -19,7 +19,7 @@ export const DOOR_H = 2.1;
 
 // Tiles of floor kept clear on either side of a doorway. It lives here because
 // two unrelated things have to honour it and neither can import the other:
-// `reserveClearances` in gen/build.js stamps it so no prop is ever furnished into
+// `reserveClearances` in gen/furnish.js stamps it so no prop is ever furnished into
 // a door swing, and gen/stairs.js keeps a staircase out of the same square. They
 // were briefly 4 and 3, and the sweep found it immediately as a crate standing in
 // a doorway — which is the FIRST_CONTACT_GAP failure in miniature.
@@ -141,7 +141,7 @@ export function bfs(tiles, W, H, sx, sy) {
  * fitted there would slide out into the corridor and hang in mid-air at right
  * angles to its own frame.
  *
- * It lives here rather than in gen/build.js, which is what actually fits the
+ * It lives here rather than in gen/doorways.js, which is what actually fits the
  * doors, because assignLocks has to ask the same question: a doorway that cannot
  * hold a panel cannot hold a locked one either, and a lock with no door in it is
  * a hole with a badge reader next to it.

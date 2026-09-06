@@ -14,7 +14,7 @@ const PX = 256;
 
 // A ceiling tube is TWO things that have to agree: the emissive panel you look
 // at (the `panel` / `panelWarm` materials below) and the point light it casts
-// (`color` on the fixtures GRADE builds in gen/build.js). They were authored
+// (`color` on the fixtures GRADE builds in gen/shell.js). They were authored
 // separately and drifted — the cold tube was drawn #fdfbf2 while throwing
 // 0xfff4de, and the warm one drawn #f6e2b4 while throwing 0xffd89a — so a lamp
 // was a different colour from its own pool of light, which reads as two light

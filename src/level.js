@@ -43,7 +43,7 @@ export class Level {
       fixtures: built.fixtures,
       exitObject: built.exitObject,
       // Where the staff are found working, handed to enemies.spawn — see
-      // `workstation` in gen/build.js.
+      // `workstation` in gen/sink.js.
       workstations: built.workstations,
       spawn: layout.spawn,
       exit: layout.exit,

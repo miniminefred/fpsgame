@@ -250,7 +250,7 @@ export class Physics {
         shape: new Plane(),
         material: this._worldMat,
         // Under the deepest thing on this floor, not at y = 0. The real floor is a collider now
-        // (`floorPlate` in gen/build.js) with a hole where a staircase goes down, so a
+        // (`floorPlate` in gen/shell.js) with a hole where a staircase goes down, so a
         // plane at zero would be a lid over every basement in the building and
         // everything down there — loose crates, debris, a body — would be shoved up
         // through the floor. This one is only the backstop that stops a body leaving

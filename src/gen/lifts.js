@@ -70,7 +70,7 @@ const FRONT_ROOM = 4;
 
 // The narrowest strip of floor a body can actually use, in tiles — one metre
 // against a 0.8 m body. It is the same number `SCATTER_LANE` and
-// `reserveThroughRoutes` in gen/build.js are built on, and it is what both
+// `reserveThroughRoutes` in gen/furnish.js are built on, and it is what both
 // refusals below are really about: a car may stand against a wall, and it may
 // stand a lane away from one, and what it may not do is leave anything in
 // between.
@@ -129,7 +129,7 @@ export function fitsLifts(r) {
  * rather than two lifts at opposite ends of a building — which is what a lift
  * lobby is, and it is also what makes the departure car legible: you have stood
  * in front of it since before you moved, and the only thing that tells the two
- * apart is that one of them is lit green (see buildExit in gen/build.js).
+ * apart is that one of them is lit green (see buildExit in gen/fitout.js).
  *
  * They are carved one at a time by the same `carveLift` the floor has always
  * used, and the second one is handed the first one's wall as its preference. Two

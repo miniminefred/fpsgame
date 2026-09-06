@@ -57,7 +57,7 @@ const CRUSH_SLICE = 48;
 const COOLER_GLUG = [7, 15];   // seconds between burbles
 const COOLER_RANGE = 9;        // metres — the room you are standing in
 
-// The cow (see placeCow in gen/build.js), on the rare floor that has one: how
+// The cow (see placeCow in gen/furnish.js), on the rare floor that has one: how
 // long between one moo and the next, randomised so it doesn't read as a loop.
 const MOO_INTERVAL = [7, 16];
 
@@ -672,7 +672,7 @@ export class Game {
     // no difference — but a crate in an attic is three metres up, and without this it
     // is a pillar from the carpet to its own lid: it blocked the room below it and,
     // where the two overlap, the staircase. Every static prop has carried a `base`
-    // since the levels arrived (see makeSink in gen/build.js); a loose one is derived
+    // since the levels arrived (see makeSink in gen/sink.js); a loose one is derived
     // from its physics body every frame, so it has to be told here.
     c.base = p.y - dyn.size.y / 2;
   }
@@ -847,7 +847,7 @@ export class Game {
     }
   }
 
-  // The cow (see placeCow in gen/build.js), on the rare floor that has one.
+  // The cow (see placeCow in gen/furnish.js), on the rare floor that has one.
   // Its own position rather than the player's — the whole point is that it
   // carries across the floor from a room you are not standing in.
   _cowMoo(dt) {

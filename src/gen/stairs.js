@@ -35,7 +35,7 @@ import { STEP_EPS } from '../metrics.js';
 //
 // This file is the PLANNING half and is free of Three.js like the rest of the
 // floorplan, so `planStairs` runs inside generateLayout and the layout sweep sees
-// the stairwell on every floor. `buildStairs` in gen/build.js draws it, and every
+// the stairwell on every floor. `buildStairs` in gen/levels.js draws it, and every
 // number the two must agree on is exported from here — see FIRST_CONTACT_GAP in
 // gen/locks.js for what one copied constant cost.
 
@@ -123,7 +123,7 @@ export function planStairs(tiles, W, H, rooms, spawnRoom, exitRoom, rng) {
   const want = rng.int(PER_FLOOR[0], PER_FLOOR[1]);
 
   // Not the generator room: its own walls already stand two storeys tall (see
-  // generatorWallMask in gen/build.js), which is exactly the airspace an attic
+  // generatorWallMask in gen/shell.js), which is exactly the airspace an attic
   // built on top of it would want too.
   const pool = rooms.filter((r) => r !== spawnRoom && r !== exitRoom && r.role !== 'generator');
   rng.shuffle(pool);
@@ -215,7 +215,7 @@ export function stairwellCut(layout, dir) {
 }
 
 /**
- * Where the ordinary roof collider (`buildShell` in gen/build.js) has to stay
+ * Where the ordinary roof collider (`buildShell` in gen/shell.js) has to stay
  * off entirely: an attic's stairwell, same as the ceiling above it, AND an
  * attic's whole room — not just its stairwell. The attic's own deck already
  * covers that footprint one storey up, and a slab of ordinary roof sitting at

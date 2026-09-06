@@ -378,7 +378,7 @@ export class Panels {
  *
  * Walks outward from the wall and asks whether anything opens up again before
  * the grid runs out. Nothing does on a facade, by definition — which is exactly
- * the question `buildWindows` in gen/build.js answers from the other end when it
+ * the question `buildWindows` in gen/shell.js answers from the other end when it
  * decides where the glazing goes.
  */
 function outerWall(layout, tx, ty, wx, wz) {

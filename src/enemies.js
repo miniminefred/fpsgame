@@ -551,7 +551,7 @@ export class Enemies {
     this.corridors = collectCorridors(layout, nav);
     this.desks = deskPool(workstations, nav, rng, 'desk');
     // The canteen's chairs, pooled apart from the desks because they are not
-    // jobs: see `at` on sink.workstation in gen/build.js.
+    // jobs: see `at` on sink.workstation in gen/sink.js.
     this.tables = deskPool(workstations, nav, rng, 'table');
     // ...and a meeting room's, which are a third thing again and are kept BY
     // ROOM rather than flattened, because that is the whole of what a meeting
