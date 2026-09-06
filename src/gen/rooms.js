@@ -395,16 +395,22 @@ function serverRoom(sink, bounds, rng) {
   edgeProp(sink, bounds, 'extinguisher', rng);
 }
 
-// Where the hardware comes to be fixed: benches down the long walls, spares in
-// crates, and one rack of the machines that are still someone's problem.
+// Where the hardware comes to be fixed: a row of benches down a wall, half of
+// them with something open on them (see `workbench` in gen/props.js), somewhere
+// to put the parts, and the boxes they came in.
 function itBay(sink, bounds, rng) {
-  edgeProp(sink, bounds, 'workbench', rng);
-  edgeProp(sink, bounds, 'workbench', rng);
-  wallClutter(sink, bounds, ['workbench', 'serverRack', 'shelving'], 24, rng);
-  scatter(sink, bounds, area(bounds) > 55
-    ? ['crateStack', 'crate', 'trashCan']
-    : ['crateStack', 'trashCan'], 13, rng);
-  if (rng.chance(0.5)) edgeProp(sink, bounds, 'extinguisher', rng);
+  const { x0, z0, x1, z1 } = bounds;
+  // A ROW rather than two benches and a shelf of odds and ends. A bench is 2 m,
+  // so this is as many as the longest wall will take — which is what makes the
+  // room read as a workshop from its doorway instead of as an office with a
+  // bench in it.
+  const count = Math.max(2, Math.floor(Math.max(x1 - x0, z1 - z0) / 2.2));
+  for (let i = 0; i < count; i++) edgeProp(sink, bounds, 'workbench', rng);
+  edgeProp(sink, bounds, 'shelving', rng);
+  if (rng.chance(0.4)) edgeProp(sink, bounds, 'printer', rng);
+  if (rng.chance(0.6)) edgeProp(sink, bounds, 'trashCan', rng);
+  scatter(sink, bounds, ['crateStack', 'carton', 'crate'], 14, rng);
+  if (rng.chance(0.4)) edgeProp(sink, bounds, 'extinguisher', rng);
 }
 
 // Goods in, goods out: pallets in the middle of the floor because they were

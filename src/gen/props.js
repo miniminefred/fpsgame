@@ -1021,6 +1021,18 @@ export const PROPS = {
       }
       p.box('metal', -0.9, 0.2, -0.34, 0.9, 0.26, 0.34);         // lower shelf
       p.box('metalDark', -0.95, H, 0.3, 0.95, H + 0.7, 0.36);    // pegboard
+
+      // ...and whether anything is ON it. Half of them are bare, which is what a
+      // row of benches in a repair bay looks like: some have a machine open on
+      // them and some are waiting for the next one. A row where every bench is
+      // mid-job reads as a production line rather than as the place things are
+      // brought to be fixed, and the empty tops are also what makes the busy ones
+      // legible from the doorway.
+      if (rng.chance(0.5)) {
+        p.obstacle(-0.99, -0.39, 0.99, 0.39, H);
+        return;
+      }
+
       // Guts of whatever is being worked on: towers, boards, a spool of cable.
       const towers = rng.int(1, 3);
       for (let i = 0; i < towers; i++) {
