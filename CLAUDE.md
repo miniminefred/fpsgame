@@ -190,9 +190,11 @@ the Ubuntu runner do not have the problem.
 ## The game
 
 **Office Descent** — an endless procedurally-generated office shooter. The lift doors part
-on a floor of a grey corporate building; you cross the reception in front of you, go through
-the door at the far side of it, clear the staff still working there, find the second lift
-and take it down. The next floor is generated on the fly, usually a little bigger and always
+on a floor of a grey corporate building; somebody is behind a counter in the lobby and about
+a third of the time they are not pleased to see you. You go out through the double doors,
+clear the staff still working there, and come back to the lift standing next to the one that
+brought you — the lobby is the building's core, in the middle of the floor, so a floor is a
+loop out and back. The next one is generated on the fly, usually a little bigger and always
 a little nastier. There is no ground floor.
 
 Two people can do it together, over the internet, off a six-character code read out loud.
@@ -1289,11 +1291,11 @@ ordinary answer of exactly the kind `carveLift` gives.
 
 ### The cafeteria (`cafeteria` in `gen/rooms.js` + `pickCafeteria`)
 The floor's canteen. It is the plant room's sibling — a big room composed around one thing
-— and it is deliberately the **common** one where the generator is the rare one: **577 of
-600** swept floors get a cafeteria against 20 that get a plant room.
+— and it is deliberately the **common** one where the generator is the rare one: **600 of
+600** swept floors get a cafeteria against 17 that get a plant room.
 
 **It used to be the room the floor put you down in, and it is not any more.** The arrival
-is a lift car in a reception now (see The two lifts below), so `layout.cafeteriaRoom` and
+is a lift car in the lobby now (see The lift lobby above), so `layout.cafeteriaRoom` and
 `layout.spawnRoom` are two different rooms with two different names — and everything in
 enemies.js that reaches for one of them had to be asked which it actually meant. The lunch
 cycle's counter, tray rack, tables and diners are the canteen's; "do not stand anybody
@@ -1313,18 +1315,19 @@ whole wall is well past the furniture caps in `validate-props.mjs`, which exist 
 prop that has accidentally become a building.
 
 **Which room it picks is still decided before anything else about the floor**, because
-`pickSpawnRoom` has to be able to keep off it. Three requirements:
+`pickLobbyRoom` has to be able to keep off it. Three requirements:
 
 - 85 m² and a short side of 12 tiles, or the rows behind the queue lane have nowhere to go.
 - Not a room the plant room could have had. `fitsGenerator` is named rather than written
   inline for this — the generator wants the biggest most rectangular room on the floor and
   only ~3% of floors roll one at all, so a canteen claiming rooms by size alone would
   quietly cost the game its rarest set piece. Measured on the same seeds: **20/300 floors
-  have a plant room before and after.**
+  have a plant room before and after.** (The open-plan budget later moved that population;
+  see An office is mostly open floor.)
 - **A doorway onto a CORRIDOR**, so the building's own staff can walk to it. This used to
   be the load-bearing one for a different reason — it was the room the player stood in
   holding nothing, so its way out had to be the part of the floor the prologue is measured
-  over — and that argument has moved to the reception, where it now applies to a room the
+  over — and that argument has moved to the lift lobby, where it now applies to a room the
   player really is standing in.
 
 The pick is deterministic — the biggest room that qualifies — rather than a draw, and that
@@ -1353,10 +1356,10 @@ handle.**
   the servery is the room's whole depth: **11 of 37 came out with nothing to sit at**. It
   is still 2 m to the nearest edge against the 1.5 m the props sweep holds both points to.
   The canteen no longer carries that square at all — nobody arrives in it — but the number
-  stands, because the reception does and a reception is a small room. It is now stamped at
+  stands, because the lobby does and a lift lobby is a modest room. It is now stamped at
   `layout.spawn` and `layout.exit` rather than at the middle of their rooms, which is the
   same point on a floor with no lifts and a car hard against one wall on a floor with them:
-  off the room centre it left the reception's own desk free to be placed across the doors.
+  off the room centre it left the lobby's own counter free to be placed across the doors.
 - **A chair pulled up to a table needs `sink.lend`**, the same trap `seatFacing` documents
   one room type over: floor is claimed by whole tiles, so a table's claim reaches well past
   its own edge and every chair landed inside it — four tables in the room and not one chair
@@ -1444,7 +1447,7 @@ north-south needs no second set of coordinates.
 `layout.spawnRoom` rather than off a role name. A role name is a fact about how a room is
 FURNISHED, while "do not put anybody here" is a fact about where the player materialises,
 and the two used to be the same room; keeping the test on `spawnRoom` is what made moving
-the arrival to the reception a one-line change rather than a hunt. It is now the ONLY
+the arrival to the lift lobby a one-line change rather than a hunt. It is now the ONLY
 canteen: there used to be a mid-sized `canteen` role as well — round tables and stools,
 somewhere on the floor to eat — and having both meant a floor with two rooms making the
 same statement, one composed and one scattered. This is the composed one, so it stayed.
