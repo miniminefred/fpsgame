@@ -26,34 +26,9 @@
 // DOM stub — must be installed before textures.js is imported.
 // ---------------------------------------------------------------------------
 
-const noopCtx = () => new Proxy({}, {
-  get: (_t, prop) => {
-    if (prop === 'canvas') return { width: 0, height: 0 };
-    return (...a) => {
-      // Gradients are the one return value textures.js actually uses.
-      if (String(prop).startsWith('create')) {
-        return { addColorStop() {} };
-      }
-      if (String(prop) === 'getImageData') {
-        return { data: new Uint8ClampedArray(4), width: 1, height: 1 };
-      }
-      return undefined;
-    };
-  },
-  set: () => true,
-});
-
-globalThis.document = {
-  createElement: () => {
-    const c = { width: 0, height: 0, style: {}, nodeType: 1 };
-    c.getContext = () => noopCtx();
-    c.toDataURL = () => 'data:,';
-    c.addEventListener = () => {};
-    return c;
-  },
-  createElementNS: () => ({}),
-};
-globalThis.self = globalThis.self ?? globalThis;
+// The DOM stub the real builder needs, installed by importing it. See its own
+// file for why it is not written out here — there were two copies of it.
+import './headless.mjs';
 
 const { generateLayout, TILE, WALL_H, CEIL_H, SOLID, ROOM, CORRIDOR, DOOR, isOpen } =
   await import('../src/gen/layout.js');

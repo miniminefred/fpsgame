@@ -1282,15 +1282,98 @@ const DOOR_T = 0.09;           // panel thickness
 // edge standing in the next room that this replaces.
 const POCKET_CLEAR = 0.02;
 const DOOR_PANEL_H = DOOR_H - 0.04;
+
+// One unit cube behind every door in the building. Each door scales it, so there
+// is nothing per-door about the geometry, and the three builders below were each
+// allocating one of these per floor for themselves.
+const DOOR_GEO = new THREE.BoxGeometry(1, 1, 1);
+
+/**
+ * Everything about a doorway that does not depend on what is hung in it.
+ *
+ * There are three door builders in this file — one panel on a runner, two hinged
+ * leaves, two parting leaves — and they differ ONLY in the meshes and in how
+ * those meshes move. Where the opening is in world metres, how wide it is, the
+ * collider that fills it when shut and the tiles it occupies are the same three
+ * questions for all three, and each builder used to answer them for itself.
+ *
+ * The collider is the one worth pulling out on its own account: it is load
+ * bearing in two directions at once, being what the player walks into and — by
+ * having its `top` dropped below the floor rather than being removed — how every
+ * door in this game says "walk through me" (see player.js).
+ */
+function doorway(layout, d) {
+  const x0 = worldX(layout, d.x0), x1 = worldX(layout, d.x1);
+  const z0 = worldZ(layout, d.y0), z1 = worldZ(layout, d.y1);
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  const width = d.vertical ? z1 - z0 : x1 - x0;
+
+  // Shut, whatever is in the opening fills it exactly, so one box serves a
+  // panel, a parting pair and a hinged pair alike.
+  const collider = {
+    minX: d.vertical ? cx - DOOR_T / 2 : x0,
+    maxX: d.vertical ? cx + DOOR_T / 2 : x1,
+    minZ: d.vertical ? z0 : cz - DOOR_T / 2,
+    maxZ: d.vertical ? z1 : cz + DOOR_T / 2,
+    top: DOOR_PANEL_H,
+    // Not furniture. It stands in a doorway on purpose and it is out of the way
+    // whenever anybody is there, so the checks that police what may block a
+    // doorway have to be able to tell it apart from a filing cabinet.
+    door: true,
+  };
+
+  // The tiles this opening occupies. A locked door is closed to the nav grid as
+  // well as to the player (see buildLevel), and unlocking it has to hand them
+  // back — which is the same job destruction.js does when a prop that was
+  // standing in the way stops existing.
+  const navTiles = [];
+  for (let ty = d.y0; ty < d.y1; ty++) {
+    for (let tx = d.x0; tx < d.x1; tx++) navTiles.push(ty * layout.W + tx);
+  }
+
+  return { x0, x1, z0, z1, cx, cz, width, half: width / 2, collider, navTiles };
+}
+
+/**
+ * ...and registering one, which is the other end of the same sentence.
+ *
+ * `moving` is whatever doors.js needs to animate this kind — a `mesh` for a
+ * panel, `panels` for a parting pair, `leaves` for a hinged pair. Everything
+ * else on a door record is the same for all three, the badge reader included:
+ * a doorway asked for a lock and not given a reader is a lock that seals
+ * nothing and says nothing, which is the shape of the bug `5.lock-sealed`
+ * caught in the pass that assigns them.
+ */
+function addDoor(doors, colliders, readers, d, geom, moving) {
+  colliders.push(geom.collider);
+  doors.push({
+    ...moving,
+    collider: geom.collider,
+    x: geom.cx, z: geom.cz,
+    at: new THREE.Vector3(geom.cx, 1.2, geom.cz),
+    height: DOOR_PANEL_H,
+    // null on an ordinary door; a card tier on a badged one. See doors.js.
+    lock: d.lock ?? null,
+    navTiles: geom.navTiles,
+    reader: d.lock && readers ? readers.add(d, geom.cx, geom.cz, geom.x1, geom.z1) : null,
+  });
+}
+
+// A leaf or a panel, sized and turned for the wall its doorway is cut in.
+function doorPanel(materials, d, width, x, z) {
+  const mesh = new THREE.Mesh(DOOR_GEO, materials.doorPanel);
+  mesh.scale.set(d.vertical ? DOOR_T : width, DOOR_PANEL_H, d.vertical ? width : DOOR_T);
+  mesh.position.set(x, DOOR_PANEL_H / 2, z);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
 // Which doorways get a panel. Where a retracted one goes — and why some
 // openings cannot take one at all — is slidePocketSide's business, in layout.js,
 // because assignLocks has to ask the same question before it badges a room. A
 // floor with a few open doorways on it reads as a floor with a few open doorways
 // on it, which is what an office looks like anyway.
 function buildSlidingDoors(layout, scene, materials, doors, colliders, readers, rng) {
-  const geo = new THREE.BoxGeometry(1, 1, 1);
-  const { W } = layout;
-
   for (const d of layout.doors) {
     // The ones across the corridors are hinged, not hung on a runner, and they
     // are fitted below. So are the lift cars', which are a pair of leaves that
@@ -1306,51 +1389,13 @@ function buildSlidingDoors(layout, scene, materials, doors, colliders, readers, 
     const side = slidePocketSide(layout.tiles, layout.W, layout.H, d, rng.chance(0.5) ? 1 : -1);
     if (!side) continue;
 
-    const x0 = worldX(layout, d.x0), x1 = worldX(layout, d.x1);
-    const z0 = worldZ(layout, d.y0), z1 = worldZ(layout, d.y1);
-    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-    const width = d.vertical ? z1 - z0 : x1 - x0;
-
-    const mesh = new THREE.Mesh(geo, materials.doorPanel);
-    mesh.scale.set(
-      d.vertical ? DOOR_T : width,
-      DOOR_PANEL_H,
-      d.vertical ? width : DOOR_T);
-    mesh.position.set(cx, DOOR_PANEL_H / 2, cz);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
+    const g = doorway(layout, d);
+    const mesh = doorPanel(materials, d, g.width, g.cx, g.cz);
     scene.add(mesh);
 
-    // The collider is the closed footprint. It is not retired when the door
-    // opens — its `top` is dropped below the floor instead, which is how every
-    // other collider in this game says "walk through me" (see player.js).
-    const collider = {
-      minX: d.vertical ? cx - DOOR_T / 2 : x0,
-      maxX: d.vertical ? cx + DOOR_T / 2 : x1,
-      minZ: d.vertical ? z0 : cz - DOOR_T / 2,
-      maxZ: d.vertical ? z1 : cz + DOOR_T / 2,
-      top: DOOR_PANEL_H,
-      // Not furniture. It stands in a doorway on purpose and it is out of the
-      // way whenever anybody is there, so the checks that police what may block
-      // a doorway have to be able to tell it apart from a filing cabinet.
-      door: true,
-    };
-    colliders.push(collider);
-
-    // The tiles this opening occupies. A locked door is closed to the nav grid
-    // as well as to the player (see buildLevel), and unlocking it has to hand
-    // them back — which is the same job destruction.js does when a prop that
-    // was standing in the way stops existing.
-    const navTiles = [];
-    for (let ty = d.y0; ty < d.y1; ty++) {
-      for (let tx = d.x0; tx < d.x1; tx++) navTiles.push(ty * W + tx);
-    }
-
-    doors.push({
-      mesh, root: mesh, collider,
-      x: cx, z: cz,
-      at: new THREE.Vector3(cx, 1.2, cz),
-      baseX: cx, baseZ: cz,
+    addDoor(doors, colliders, readers, d, g, {
+      mesh, root: mesh,
+      baseX: g.cx, baseZ: g.cz,
       dirX: d.vertical ? 0 : side,
       dirZ: d.vertical ? side : 0,
       // A hair further than its own width, so the trailing edge finishes inside
@@ -1360,13 +1405,8 @@ function buildSlidingDoors(layout, scene, materials, doors, colliders, readers, 
       // put 3 to 4 cm of the panel's far end out in the open on the other side. It
       // is the same panel either way; what changed is that the number now comes
       // from the wall rather than from a multiplier.
-      travel: Math.min(width * 1.02,
+      travel: Math.min(g.width * 1.02,
         Math.max(0, slidePocketRun(layout.tiles, layout.W, layout.H, d, side) * TILE - POCKET_CLEAR)),
-      height: DOOR_PANEL_H,
-      // null on an ordinary door; a card tier on a badged one. See doors.js.
-      lock: d.lock ?? null,
-      navTiles,
-      reader: d.lock ? readers.add(d, cx, cz, x1, z1) : null,
     });
   }
 }
@@ -1386,17 +1426,10 @@ function buildSlidingDoors(layout, scene, materials, doors, colliders, readers, 
  * one badge reader too, for the same reason: it is one doorway.
  */
 function buildHallDoors(layout, scene, materials, doors, colliders, readers) {
-  const geo = new THREE.BoxGeometry(1, 1, 1);
-  const { W } = layout;
-
   for (const d of layout.doors) {
     if (!d.hall) continue;
 
-    const x0 = worldX(layout, d.x0), x1 = worldX(layout, d.x1);
-    const z0 = worldZ(layout, d.y0), z1 = worldZ(layout, d.y1);
-    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-    const half = (d.vertical ? z1 - z0 : x1 - x0) / 2;
-
+    const g = doorway(layout, d);
     const root = new THREE.Group();
     const leaves = [];
 
@@ -1406,19 +1439,12 @@ function buildHallDoors(layout, scene, materials, doors, colliders, readers) {
     for (const end of [-1, 1]) {
       const pivot = new THREE.Group();
       pivot.position.set(
-        d.vertical ? cx : (end < 0 ? x0 : x1),
+        d.vertical ? g.cx : (end < 0 ? g.x0 : g.x1),
         0,
-        d.vertical ? (end < 0 ? z0 : z1) : cz);
-
-      const mesh = new THREE.Mesh(geo, materials.doorPanel);
-      mesh.scale.set(d.vertical ? DOOR_T : half, DOOR_PANEL_H, d.vertical ? half : DOOR_T);
-      mesh.position.set(
-        d.vertical ? 0 : -end * half / 2,
-        DOOR_PANEL_H / 2,
-        d.vertical ? -end * half / 2 : 0);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      pivot.add(mesh);
+        d.vertical ? (end < 0 ? g.z0 : g.z1) : g.cz);
+      pivot.add(doorPanel(materials, d, g.half,
+        d.vertical ? 0 : -end * g.half / 2,
+        d.vertical ? -end * g.half / 2 : 0));
       root.add(pivot);
 
       // A quarter turn, and which quarter is the one that lays the arm down the
@@ -1429,35 +1455,7 @@ function buildHallDoors(layout, scene, materials, doors, colliders, readers) {
     }
     scene.add(root);
 
-    // Shut, the pair fills the opening exactly, so the two of them need one box
-    // between them.
-    const collider = {
-      minX: d.vertical ? cx - DOOR_T / 2 : x0,
-      maxX: d.vertical ? cx + DOOR_T / 2 : x1,
-      minZ: d.vertical ? z0 : cz - DOOR_T / 2,
-      maxZ: d.vertical ? z1 : cz + DOOR_T / 2,
-      top: DOOR_PANEL_H,
-      door: true,
-    };
-    colliders.push(collider);
-
-    // The corridor tiles this doorway occupies. A locked one is shut to the nav
-    // grid as well as to the player, and unlocking it has to hand them back —
-    // which for a hall door is a whole wing of the floor rejoining the chase.
-    const navTiles = [];
-    for (let ty = d.y0; ty < d.y1; ty++) {
-      for (let tx = d.x0; tx < d.x1; tx++) navTiles.push(ty * W + tx);
-    }
-
-    doors.push({
-      root, leaves, collider,
-      x: cx, z: cz,
-      at: new THREE.Vector3(cx, 1.2, cz),
-      height: DOOR_PANEL_H,
-      lock: d.lock ?? null,
-      navTiles,
-      reader: d.lock ? readers.add(d, cx, cz, x1, z1) : null,
-    });
+    addDoor(doors, colliders, readers, d, g, { root, leaves });
   }
 }
 
@@ -1590,65 +1588,30 @@ function dressCar(layout, lift, batcher, materials, fixtures, sign) {
  * be measured off the wall it was cut into.
  */
 function fitPartingDoors(layout, d, scene, materials, doors, colliders, travelFor, readers) {
-  const { W } = layout;
-  const geo = new THREE.BoxGeometry(1, 1, 1);
-
-  const x0 = worldX(layout, d.x0), x1 = worldX(layout, d.x1);
-  const z0 = worldZ(layout, d.y0), z1 = worldZ(layout, d.y1);
-  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-  const width = d.vertical ? z1 - z0 : x1 - x0;
-  const half = width / 2;
-
+  const g = doorway(layout, d);
   const root = new THREE.Group();
   const panels = [];
+
   for (const end of [-1, 1]) {
-    const mesh = new THREE.Mesh(geo, materials.doorPanel);
-    mesh.scale.set(d.vertical ? DOOR_T : half, DOOR_PANEL_H, d.vertical ? half : DOOR_T);
-    const px = d.vertical ? cx : cx + end * half / 2;
-    const pz = d.vertical ? cz + end * half / 2 : cz;
-    mesh.position.set(px, DOOR_PANEL_H / 2, pz);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
+    const px = d.vertical ? g.cx : g.cx + end * g.half / 2;
+    const pz = d.vertical ? g.cz + end * g.half / 2 : g.cz;
+    const mesh = doorPanel(materials, d, g.half, px, pz);
     root.add(mesh);
     panels.push({
       mesh, baseX: px, baseZ: pz,
       dirX: d.vertical ? 0 : end,
       dirZ: d.vertical ? end : 0,
-      travel: travelFor(end, half),
+      travel: travelFor(end, g.half),
     });
   }
   scene.add(root);
 
-  const collider = {
-    minX: d.vertical ? cx - DOOR_T / 2 : x0,
-    maxX: d.vertical ? cx + DOOR_T / 2 : x1,
-    minZ: d.vertical ? z0 : cz - DOOR_T / 2,
-    maxZ: d.vertical ? z1 : cz + DOOR_T / 2,
-    top: DOOR_PANEL_H,
-    door: true,
-  };
-  colliders.push(collider);
-
-  const navTiles = [];
-  for (let ty = d.y0; ty < d.y1; ty++) {
-    for (let tx = d.x0; tx < d.x1; tx++) navTiles.push(ty * W + tx);
-  }
-
-  doors.push({
-    root, panels, collider,
-    x: cx, z: cz,
-    at: new THREE.Vector3(cx, 1.2, cz),
-    height: DOOR_PANEL_H,
-    // Neither of these doorways is ever badged — a car has no reader and the
-    // lobby's way out is marked `free` before a single lock is assigned. It is
-    // read off the doorway rather than written as `null` even so, because a
-    // reader the generator asked for and the builder did not fit is a lock that
-    // seals nothing and says nothing, which is precisely the shape of the bug
-    // `5.lock-sealed` caught in the pass that assigns them.
-    lock: d.lock ?? null,
-    navTiles,
-    reader: d.lock && readers ? readers.add(d, cx, cz, x1, z1) : null,
-  });
+  // Neither of these doorways is ever badged — a car has no reader and the
+  // lobby's way out is marked `free` before a single lock is assigned. It still
+  // goes through `addDoor` like the other two rather than hardcoding `null`,
+  // because a reader the generator asked for and the builder did not fit is a
+  // lock that seals nothing and says nothing.
+  addDoor(doors, colliders, readers, d, g, { root, panels });
 }
 
 function fitLiftDoors(layout, lift, scene, materials, doors, colliders) {

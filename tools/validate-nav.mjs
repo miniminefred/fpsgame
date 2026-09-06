@@ -24,28 +24,10 @@
 //   FAIL — a hard invariant (a level nobody can reach, a body that teleports).
 //   WARN — it works but the quality is off.
 
-const noopCtx = () => new Proxy({}, {
-  get: (_t, prop) => {
-    if (prop === 'canvas') return { width: 0, height: 0 };
-    return () => {
-      if (String(prop).startsWith('create')) return { addColorStop() {} };
-      if (String(prop) === 'getImageData') return { data: new Uint8ClampedArray(4), width: 1, height: 1 };
-      return undefined;
-    };
-  },
-  set: () => true,
-});
-globalThis.document = {
-  createElement: () => {
-    const c = { width: 0, height: 0, style: {}, nodeType: 1 };
-    c.getContext = () => noopCtx();
-    c.toDataURL = () => 'data:,';
-    c.addEventListener = () => {};
-    return c;
-  },
-  createElementNS: () => ({}),
-};
-globalThis.self = globalThis.self ?? globalThis;
+// The DOM stub the real builder needs, installed by importing it. See its own
+// file for why it is not written out here — there were two copies of it, and
+// this was the one that had already drifted from the other.
+import './headless.mjs';
 
 const { generateLayout } = await import('../src/gen/layout.js');
 const { buildLevel } = await import('../src/gen/build.js');
