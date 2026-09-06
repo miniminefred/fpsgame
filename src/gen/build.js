@@ -112,6 +112,9 @@ export function buildLevel(scene, layout, theme = null) {
   const readers = new BadgeReaders(scene, objects, layout.doors.length);
   buildSlidingDoors(layout, scene, materials, doors, colliders, readers, rng);
   buildHallDoors(layout, scene, materials, doors, colliders, readers);
+  // The lobby's way out into the office: a pair of leaves rather than a panel,
+  // and never locked. See buildDoubleDoors.
+  buildDoubleDoors(layout, scene, materials, doors, colliders);
   readers.finish();
   // The two cars, after the doors because they fit doors of their own, and
   // before the furnishing for no reason at all — nothing they draw is on the
@@ -1296,7 +1299,7 @@ function buildSlidingDoors(layout, scene, materials, doors, colliders, readers, 
     // part in the middle — and which must never be one of the doorways that
     // simply has no door in it, whatever the die says: a lift standing open to
     // its shaft is not a lift.
-    if (d.hall || d.lift) continue;
+    if (d.hall || d.lift || d.double) continue;
     // Not every doorway has a door in it. Some were taken off their runners
     // years ago and nobody replaced them — but never the badged ones, and the
     // generator has already checked that every one of those can hold a panel.
@@ -1564,23 +1567,32 @@ function dressCar(layout, lift, batcher, materials, fixtures, sign) {
 }
 
 /**
- * The doors: two leaves that part in the middle, one runner each.
+ * Two leaves that part in the middle, one runner each.
  *
- * A third kind of door, and the arithmetic behind it is all in LIFT_DOOR_W in
- * gen/lifts.js — each leaf is half the opening and retracts into the half tile
- * of the car's own front beside it, which is why a car's opening is 1.0 m rather
- * than the building's 1.5 m. Everything else is buildSlidingDoors': one collider
- * for the closed opening, retired by dropping its `top` when the pair is more
- * than half open, and the door tiles handed over so a shut car is opaque to
- * sight as well as to walking.
+ * A third kind of door, and there are two of them in the building. A lift car's
+ * is the one the arithmetic was written for: LIFT_DOOR_W in gen/lifts.js sizes
+ * the opening so each leaf is half of it and retracts into exactly the tile of
+ * the car's own front beside it, which is why a car's opening is 1.0 m rather
+ * than the building's 1.5 m. The lobby's own way out is the other — see
+ * buildDoubleDoors, which is the same pair of leaves in a wall that was not
+ * built around them.
+ *
+ * Everything else is buildSlidingDoors': one collider for the closed opening,
+ * retired by dropping its `top` when the pair is more than half open, and the
+ * door tiles handed over so a shut doorway is opaque to sight as well as to
+ * walking.
  *
  * They share one entry in `doors` because they are one doorway — the same
  * argument buildHallDoors makes about its two leaves, and for the same three
  * reasons: one sensor, one sound, one collider.
+ *
+ * `travelFor(end, half)` is how far the leaf hanging off that end may run. A
+ * callback rather than a number because the two callers know different things: a
+ * car's pocket is guaranteed by the way the car was carved, and a room's has to
+ * be measured off the wall it was cut into.
  */
-function fitLiftDoors(layout, lift, scene, materials, doors, colliders) {
+function fitPartingDoors(layout, d, scene, materials, doors, colliders, travelFor) {
   const { W } = layout;
-  const d = lift.door;
   const geo = new THREE.BoxGeometry(1, 1, 1);
 
   const x0 = worldX(layout, d.x0), x1 = worldX(layout, d.x1);
@@ -1604,11 +1616,7 @@ function fitLiftDoors(layout, lift, scene, materials, doors, colliders) {
       mesh, baseX: px, baseZ: pz,
       dirX: d.vertical ? 0 : end,
       dirZ: d.vertical ? end : 0,
-      // Its own width, less the same hair `slidePocketRun` keeps: the pocket is
-      // exactly one leaf long, so travelling the full width would put the far
-      // face of the leaf flush with the far face of the jamb — which is a
-      // shimmering rectangle of door on the end of a wall.
-      travel: Math.max(0, half - POCKET_CLEAR),
+      travel: travelFor(end, half),
     });
   }
   scene.add(root);
@@ -1637,6 +1645,46 @@ function fitLiftDoors(layout, lift, scene, materials, doors, colliders) {
     navTiles,
     reader: null,
   });
+}
+
+function fitLiftDoors(layout, lift, scene, materials, doors, colliders) {
+  // Its own width, less the same hair `slidePocketRun` keeps: a car's pocket is
+  // exactly one leaf long, so travelling the full width would put the far face
+  // of the leaf flush with the far face of the jamb — which is a shimmering
+  // rectangle of door on the end of a wall.
+  fitPartingDoors(layout, lift.door, scene, materials, doors, colliders,
+    (end, half) => Math.max(0, half - POCKET_CLEAR));
+}
+
+/**
+ * The lobby's own doors: a pair, and never locked.
+ *
+ * The one doorway in the building the player meets before they have moved, and
+ * the one they walk back to. A single panel sliding sideways out of a lift lobby
+ * reads as a cupboard being opened; two leaves parting in the middle is a way
+ * out of a lobby, and it is the same statement the two cars behind them are
+ * making one wall back.
+ *
+ * The leaves are the cars', with one difference that is the whole of this
+ * function: a car's front was BUILT round its pocket and a room's wall was not,
+ * so how far each leaf may run is measured (`slidePocketRun`) rather than
+ * assumed. A short pocket leaves a hand's width of leaf standing in the opening
+ * rather than putting the far end of it out in the next room, which is the trade
+ * every sliding panel in this building already makes and for the same reason.
+ *
+ * Never badged, and that is settled in gen/layout.js rather than here — the
+ * lobby's doorways are marked `free` before a single lock is assigned, because a
+ * reader on the way out of the lobby is the one lock in the game that can shut
+ * the player in holding nothing.
+ */
+function buildDoubleDoors(layout, scene, materials, doors, colliders) {
+  for (const d of layout.doors) {
+    if (!d.double || d.hall || d.lift) continue;
+    fitPartingDoors(layout, d, scene, materials, doors, colliders, (end, half) => {
+      const run = slidePocketRun(layout.tiles, layout.W, layout.H, d, end) * TILE;
+      return Math.max(0, Math.min(half, run) - POCKET_CLEAR);
+    });
+  }
 }
 
 // --- badge readers ----------------------------------------------------------

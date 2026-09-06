@@ -7,7 +7,7 @@ import {
   assignLocks, lockedMask, prologueRegion, doorsOnRoom, opensOntoCorridor,
 } from './locks.js';
 import { planStairs } from './stairs.js';
-import { carveLift, fitsLift } from './lifts.js';
+import { carveBank, fitsLifts } from './lifts.js';
 
 // Procedural office floorplan.
 //
@@ -255,48 +255,55 @@ export function generateLayout(seed, floorNumber) {
     r.cy = (r.y0 + r.y1) / 2;
   }
 
-  // Where the floor puts you down: the reception outside the lifts, and never
-  // anywhere else. The floor arrives the way a person arrives at an office —
-  // out of a lift car, into the reception in front of it, and through a door
-  // into the building — so the arrival room is picked for that shape and for
-  // nothing else. See pickSpawnRoom.
+  // Where the floor puts you down, and where it lets you off: the lift lobby,
+  // and it is ONE room. The floor arrives the way a person arrives at an office
+  // — out of a car, into the lobby in front of it, and through the doors into
+  // the building — and it leaves by the car standing next to the one that
+  // brought you. See pickLobbyRoom.
   //
-  // The canteen is picked in the same breath and is no longer the same room.
-  // It used to BE the spawn, which is where the lunch cycle's counter, tables
-  // and diners all live, so the two are separated by name rather than by
-  // accident: `cafeteriaRoom` is where lunch happens and `spawnRoom` is where
-  // you come in, and enemies.js reads whichever of the two it actually means.
+  // `spawnRoom` and `exitRoom` are therefore the same object, and they are kept
+  // as two names on purpose rather than collapsed into one: half a dozen callers
+  // ask one of those two questions (assignLocks, planStairs, placeCow, the props
+  // sweep) and each of them means the one it says. A floor that ever wanted them
+  // apart again would change this line and nothing else.
+  //
+  // The canteen is picked in the same breath and is a different room. It used to
+  // BE the spawn, which is where the lunch cycle's counter, tables and diners
+  // all live, so the two are separated by name rather than by accident:
+  // `cafeteriaRoom` is where lunch happens and `spawnRoom` is where you come in,
+  // and enemies.js reads whichever of the two it actually means.
   const cafeteria = pickCafeteria(live, tiles, W, doors);
-  const spawnRoom = pickSpawnRoom(live, tiles, W, doors, cafeteria, rng);
+  const spawnRoom = pickLobbyRoom(live, tiles, W, H, doors, cafeteria);
+  const exitRoom = spawnRoom;
   const dist = bfs(tiles, W, H, Math.round(spawnRoom.cx), Math.round(spawnRoom.cy));
 
-  // The exit goes somewhere far, but not reliably in the opposite corner — the
-  // strict furthest room makes every floor a diagonal march across the whole
-  // slab. Picking from the furthest quarter keeps it a hike without making it
-  // a chore.
+  // The lobby's own doorways are never badged and are fitted as a pair of doors
+  // rather than a single sliding panel. Both are facts about the lobby rather
+  // than about a lock or a builder, so both are stated here, once, before
+  // anything reads `doors` again.
   //
-  // Ranked among the rooms that can hold the departure car first, and among all
-  // of them only if none can. The way down is a lift, so the room it is in has
-  // to have somewhere to put one — and asking here rather than discovering it at
-  // carve time is what keeps the fallback rare enough to stay a fallback.
-  const ranked = live
-    .map((r) => ({ r, d: dist[Math.round(r.cy) * W + Math.round(r.cx)] }))
-    .filter((e) => e.d >= 0 && e.r !== spawnRoom)
-    .sort((a, b) => b.d - a.d);
-  const roomy = ranked.filter((e) => fitsLift(e.r));
-  const pool = roomy.length ? roomy : ranked;
-  const exitRoom = pool.length
-    ? rng.pick(pool.slice(0, Math.max(1, Math.ceil(pool.length * 0.25)))).r
-    : spawnRoom;
+  // `free` is the flag freeThePrologue uses for the same purpose one pass later,
+  // and marking these up front is cheaper and far more certain than letting that
+  // pass discover it: a reader on the way out of the lobby is the one lock in
+  // the building that can shut the player in with nothing in their pocket, and
+  // it is not a hypothetical — on about one floor in seven the lobby's only
+  // doorway was shared with a neighbouring room and that room's white pass
+  // badged it. Every consumer already honours the flag: `assignLocks` will not
+  // give a lock to any room sharing one, and the prologue flood walks through it.
+  //
+  // `doorsOnRoom` rather than `spawnRoom.doors`, and for that same reason — a
+  // room's own list holds only the doors IT cut, and the one that matters may
+  // have been cut by the room next door into a wall they share.
+  for (const d of doorsOnRoom(doors, spawnRoom)) {
+    d.free = true;
+    d.double = true;
+  }
 
-  // The canteen only survives as one if neither of the two rooms the floor is
-  // built around took it. `pickSpawnRoom` and the exit ranking both prefer to
-  // leave it alone, but both fall back rather than fail, and a canteen that is
-  // also the reception is a canteen the lunch cycle would walk the whole floor
-  // to eat in with the player standing in it.
-  const cafeteriaRoom = (cafeteria && cafeteria !== spawnRoom && cafeteria !== exitRoom)
-    ? cafeteria
-    : null;
+  // The canteen only survives as one if the lobby did not take it. `pickLobbyRoom`
+  // prefers to leave it alone but falls back rather than fail, and a canteen that
+  // is also the lobby is a canteen the lunch cycle would walk the whole floor to
+  // eat in with the player standing in it.
+  const cafeteriaRoom = (cafeteria && cafeteria !== spawnRoom) ? cafeteria : null;
 
   assignRoles(live, spawnRoom, exitRoom, cafeteriaRoom, doors, rng);
   // On its own stream, not the floor's. Everything downstream of here — the
@@ -344,6 +351,14 @@ export function generateLayout(seed, floorNumber) {
   // of the room and the way down to the lit pad it has always been.
   layout.lifts = carveLifts(layout, doors);
 
+  // Which wall the bank took, recorded on the room because the FURNISHER needs
+  // it and gets nothing else about the lifts: `liftLobby` in gen/rooms.js keeps
+  // the reception counter off that wall, and a desk with its back to the only
+  // thing in the room is exactly what it is avoiding. A side number rather than
+  // the car itself, so nothing downstream can start reasoning about tiles it has
+  // not been handed.
+  spawnRoom.liftSide = layout.lifts.arrival?.side ?? null;
+
   // Every tile they can reach on arrival with nothing in their pocket, which is
   // a different question now that the corridors have readers on them too: it is
   // where the FIRST white card has to be standing. See _cardOutside in
@@ -371,44 +386,37 @@ const tileOf = (layout, lift, room) => (lift
   : { x: Math.round(room.cx), y: Math.round(room.cy) });
 
 /**
- * Cuts the arrival car into the spawn room and the departure car into the exit.
+ * Cuts both cars into the lobby, side by side.
  *
- * Both go on the wall OPPOSITE the room's own doorway when that wall will take
- * one, which is what makes the arrival read as a sequence rather than as a room:
- * the doors part, the reception is in front of you, and the way into the
- * building is across it and straight ahead. `carveLift` walks the other three
+ * The bank goes on the wall OPPOSITE the lobby's own doorway when that wall will
+ * take it, which is what makes the arrival read as a sequence rather than as a
+ * room: the doors part, the lobby is in front of you, and the way into the
+ * building is across it and straight ahead. `carveBank` walks the other three
  * walls itself when it has to.
  *
  * The connectivity proof inside `carveLift` is run from a CORRIDOR tile, which
- * has to be outside whichever room is being cut into — the corridor network is
- * connected by construction and every live room opens onto it, so one tile of it
- * is a fixed point the whole floor can be measured from before and after.
+ * has to be outside the room being cut into — the corridor network is connected
+ * by construction and every live room opens onto it, so one tile of it is a
+ * fixed point the whole floor can be measured from before and after.
  */
 function carveLifts(layout, doors) {
-  const { tiles, W, H, spawnRoom, exitRoom } = layout;
+  const { tiles, W, H, spawnRoom } = layout;
   let seed = null;
   for (let i = 0; i < W * H && !seed; i++) {
     if (tiles[i] === CORRIDOR) seed = { x: i % W, y: (i / W) | 0 };
   }
   if (!seed) return { arrival: null, departure: null };
 
-  const wall = (room) => {
-    // The doorway the player actually leaves by, which is the one onto a
-    // corridor where the room has one. `doorsOnRoom` rather than `room.doors`,
-    // for the reason generatorRoom gives: a room's own list holds only the doors
-    // IT cut, and the one that matters may have been cut by the room next door
-    // into a wall they share.
-    const onRoom = doorsOnRoom(doors, room);
-    const out = onRoom.find((d) => opensOntoCorridor(d, W, tiles)) ?? onRoom[0];
-    return out ? (doorSide(out, room) + 2) & 3 : 0;
-  };
+  // The doorway the player actually leaves by, which is the one onto a corridor
+  // where the room has one. `doorsOnRoom` rather than `room.doors`, for the
+  // reason generatorRoom gives: a room's own list holds only the doors IT cut,
+  // and the one that matters may have been cut by the room next door into a wall
+  // they share.
+  const onRoom = doorsOnRoom(doors, spawnRoom);
+  const out = onRoom.find((d) => opensOntoCorridor(d, W, tiles)) ?? onRoom[0];
+  const wall = out ? (doorSide(out, spawnRoom) + 2) & 3 : 0;
 
-  return {
-    arrival: carveLift(layout, spawnRoom, doors, wall(spawnRoom), seed),
-    departure: exitRoom === spawnRoom
-      ? null
-      : carveLift(layout, exitRoom, doors, wall(exitRoom), seed),
-  };
+  return carveBank(layout, spawnRoom, doors, wall, seed);
 }
 
 // --- generation internals ---------------------------------------------------
@@ -726,43 +734,61 @@ function connectAll(tiles, W, H, rooms, doors, vBand, hBand, rng) {
   }
 }
 
-// The biggest a reception is allowed to be. There is no floor to go with it:
-// what the room has to be able to hold is stated once, in `fitsLift`, and
+// The biggest a lift lobby is allowed to be. There is no floor to go with it:
+// what the room has to be able to hold is stated once, in `fitsLifts`, and
 // restating it here in square metres is the FIRST_CONTACT_GAP failure in
 // miniature — a room that passes an area test and cannot hold a car is a floor
 // that arrives by standing in the middle of the carpet.
-const RECEPTION_MAX = 80;   // m²
+const LOBBY_MAX = 110;   // m²
 
 /**
- * The room the floor arrives in: the reception that fronts the lifts.
+ * The lift lobby: the room the floor arrives in AND the room it leaves by.
+ *
+ * Both cars stand in it, which is what a building core is, and it is picked
+ * NEAREST THE MIDDLE OF THE SLAB for the same reason a real one is there — every
+ * wing of the floor is then the same walk away, and clearing a floor is a loop
+ * out and back rather than a diagonal march from one corner to the far one.
  *
  * Three requirements, and only the last of them is about size:
  *
- *  - It can hold a lift car. Everything about the arrival is the car, so a room
- *    that cannot take one is not a reception, it is a room.
- *  - It has a doorway onto a CORRIDOR. This is the door you go through to find
- *    the rest of the office, and it is also the part of the floor the prologue
- *    is measured over — a reception whose only way out is somebody's office
+ *  - It can hold the whole bank. Everything about the arrival and the departure
+ *    is the two cars, so a room that cannot take both is not a lobby.
+ *  - It has a doorway onto a CORRIDOR. Those are the doors you go through to
+ *    find the rest of the office, and it is also the part of the floor the
+ *    prologue is measured over — a lobby whose only way out is somebody's office
  *    starts the floor by walking through a stranger's office to reach the
  *    building.
  *  - It is not the canteen and not a room the plant room could have had. Both
  *    are set pieces that want the biggest rooms on the floor and both are rare;
- *    a reception is a modest room by nature, so it should never be the thing
- *    that takes one of them away.
+ *    a lobby is a modest room by nature, so it should never be the thing that
+ *    takes one of them away.
  *
  * Each requirement is dropped in turn if nothing survives it, rather than
- * failing: a floor with an odd reception is a floor, and a floor with no arrival
+ * failing: a floor with an odd lobby is a floor, and a floor with no arrival
  * room is not.
+ *
+ * Deterministic — the qualifying room nearest the middle — rather than a draw,
+ * and that is the argument `pickCafeteria` and `assignLocks` both make: this
+ * runs before the floor's own rng has been spent on anything, so a die here
+ * would re-roll the contents of every room in the building off a number that has
+ * nothing to do with them. Which room is the lobby already varies with the floor,
+ * because the floorplan it is picked out of does.
  */
-function pickSpawnRoom(rooms, tiles, W, doors, cafeteria, rng) {
-  const canHold = rooms.filter(fitsLift);
+function pickLobbyRoom(rooms, tiles, W, H, doors, cafeteria) {
+  const canHold = rooms.filter(fitsLifts);
   const onHall = canHold.filter((r) =>
     doorsOnRoom(doors, r).some((d) => opensOntoCorridor(d, W, tiles)));
   const spare = onHall.filter((r) =>
-    r !== cafeteria && r.areaM2 <= RECEPTION_MAX && !fitsGenerator(r, doors));
+    r !== cafeteria && r.areaM2 <= LOBBY_MAX && !fitsGenerator(r, doors));
 
   const pool = spare.length ? spare : (onHall.length ? onHall : (canHold.length ? canHold : rooms));
-  return rng.pick(pool);
+  // Measured to the middle of the SLAB rather than to the middle of the corridor
+  // spine, because the spine is a handful of bands and the middle of the
+  // building is not necessarily on one of them. The nearest qualifying room is
+  // as central as the floorplan allows, which is the claim being made.
+  const mx = W / 2, my = H / 2;
+  const off = (r) => (r.cx - mx) ** 2 + (r.cy - my) ** 2;
+  return pool.reduce((best, r) => (off(r) < off(best) ? r : best));
 }
 
 // How big a room has to be before it is a canteen rather than a room with a
@@ -914,17 +940,22 @@ function assignRoles(rooms, spawnRoom, exitRoom, cafeteria, doors, rng) {
     if (room) { room.role = role; room.forcedRole = true; }
   }
 
-  // The three rooms the floor is composed around, assigned last so the shuffled
+  // The two rooms the floor is composed around, assigned last so the shuffled
   // draw above can never land a storeroom on one of them.
   //
-  // The canteen is one of the three now and is no longer the same room as the
-  // arrival, which it was for as long as the cafeteria has existed. The
-  // reception is what the floor arrives in — see pickSpawnRoom — and the canteen
-  // is a room somewhere in the building that people go to at lunchtime, which is
-  // what the lunch cycle in enemies.js was always describing.
-  spawnRoom.role = 'reception';
-  exitRoom.role = 'exit';
-  if (cafeteria && cafeteria !== spawnRoom && cafeteria !== exitRoom) {
+  // There used to be three, and the lobby is why there are two: the arrival room
+  // and the exit room are one room now (see pickLobbyRoom), so `reception` and
+  // `exit` were two roles competing for the same object with the later
+  // assignment quietly winning. It takes `exit` — the room is furnished as a
+  // lobby with a counter in it either way, and `exit` is the name the minimap
+  // and the props sweep already look for.
+  //
+  // The canteen is the other one and is a different room, which it has not always
+  // been: it used to BE the arrival. The lunch cycle in enemies.js is about a
+  // room people walk to at lunchtime, which is what it was always describing.
+  spawnRoom.role = 'exit';
+  spawnRoom.forcedRole = true;
+  if (cafeteria && cafeteria !== spawnRoom) {
     cafeteria.role = 'cafeteria';
     cafeteria.forcedRole = true;
   }

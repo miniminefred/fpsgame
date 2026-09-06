@@ -74,9 +74,14 @@ const IDS = [
   ['1.corridor-reach', 'FAIL', 'CONNECTIVITY  every corridor tile reachable'],
   ['2.exit-open', 'FAIL', 'EXIT          exit tile is open floor'],
   ['2.exit-reach', 'FAIL', 'EXIT          exit reachable from spawn'],
-  ['2.exit-distinct', 'FAIL', 'EXIT          exit room is not the spawn room'],
-  ['2.exit-near', 'WARN', 'EXIT          exit at least 15 m walk from spawn'],
-  ['2.exit-far', 'WARN', 'EXIT          exit at most 150 m walk from spawn'],
+  // The exit room IS the spawn room, which is the whole of the lift lobby: both
+  // cars stand in one room and the floor is a loop out and back. This check is
+  // the old `2.exit-distinct` turned round, and it is kept as a check rather
+  // than deleted because it is the one line that would catch the two coming
+  // apart again — half the generator asks one of those two questions by name.
+  ['2.exit-lobby', 'FAIL', 'EXIT          exit room is the spawn room — one lift lobby'],
+  ['2.exit-apart', 'FAIL', 'EXIT          the two cars do not stand on the same tile'],
+  ['2.lobby-central', 'WARN', 'EXIT          lobby within a third of the slab of its middle'],
   ['3.spawn-open', 'FAIL', 'SPAWN         spawn tile is open floor'],
   ['3.spawn-inroom', 'FAIL', 'SPAWN         spawn point lies inside its spawnRoom'],
   ['4.border', 'FAIL', 'NO LEAKS      no open tile on the grid border'],
@@ -191,7 +196,8 @@ const hist = (m) => [...m.entries()].sort((a, b) => a[0] - b[0]).map(([k, v]) =>
 const stats = {
   roomCounts: [], roomAreas: [], roomMinDim: [], roomAspect: [],
   corridorShare: [], walkableShare: [], doorCounts: [], doorsPerRoom: [],
-  exitDist: [], roles: new Map(), roleBranch: { longThin: 0, big: 0, mid: 0, small: 0 },
+  exitDist: [], lobbyOff: [],
+  roles: new Map(), roleBranch: { longThin: 0, big: 0, mid: 0, small: 0 },
   depth: new Map(), vCorr: new Map(), hCorr: new Map(),
   abutPairs: 0, deadDoors: 0, alcoveDoors: 0, totalDoors: 0, hallDoors: 0, hallLocked: 0,
   prologue: [],
@@ -268,9 +274,23 @@ function validate(seed, floorNumber) {
   const dExit = inb(ex, ey) ? dist[idx(ex, ey)] : -1;
   if (dExit < 0) check('2.exit-reach').fail(id, 'exit not reachable from spawn');
   else stats.exitDist.push(dExit * TILE);
-  if (L.exitRoom === L.spawnRoom) check('2.exit-distinct').fail(id, 'exitRoom === spawnRoom');
-  if (dExit >= 0 && dExit * TILE < 15) check('2.exit-near').fail(id, `exit only ${fmt(dExit * TILE)} m from spawn`);
-  if (dExit * TILE > 150) check('2.exit-far').fail(id, `exit ${fmt(dExit * TILE)} m from spawn`);
+  if (L.exitRoom !== L.spawnRoom) check('2.exit-lobby').fail(id, 'exitRoom !== spawnRoom');
+  // The two cars are carved one after the other into the same room, and the only
+  // thing stopping the second landing on the first is that every tile a block
+  // stands on has to be plain ROOM floor. That is a real proof and this is what
+  // says so out loud: two lifts at the same point is a floor you descend from the
+  // moment you arrive.
+  const gap = Math.hypot(L.exit.x - L.spawn.x, L.exit.z - L.spawn.z);
+  if (gap < CAR_W * TILE) check('2.exit-apart').fail(id, `cars only ${fmt(gap)} m apart`);
+  // ...and it is in the MIDDLE of the building, which is the reason it is one
+  // room rather than two. A third of the slab is loose on purpose: the lobby is
+  // whichever qualifying ROOM is nearest the middle, and on a floor whose middle
+  // is corridor or a canteen the nearest one can be a fair way off.
+  const off = Math.hypot(L.spawnRoom.cx - W / 2, L.spawnRoom.cy - H / 2);
+  stats.lobbyOff.push(off / Math.hypot(W / 2, H / 2));
+  if (off > Math.hypot(W, H) / 3) {
+    check('2.lobby-central').fail(id, `lobby ${fmt(off * TILE)} m off the middle of the slab`);
+  }
 
   // ---- 4. leaks -----------------------------------------------------------
   // NOTE: the "flood SOLID from (0,0)" formulation is vacuous for this
@@ -783,7 +803,9 @@ console.log(`walkable share      min ${fmt(lo(stats.walkableShare) * 100)}%  mea
 console.log(`doors / floor       min ${lo(stats.doorCounts)}  median ${median(stats.doorCounts)}  mean ${fmt(mean(stats.doorCounts))}  max ${hi(stats.doorCounts)}`);
 console.log(`doors / room        min ${lo(stats.doorsPerRoom)}  median ${median(stats.doorsPerRoom)}  mean ${fmt(mean(stats.doorsPerRoom), 2)}  max ${hi(stats.doorsPerRoom)}`);
 if (stats.exitDist.length) {
-  console.log(`exit walk distance  min ${fmt(lo(stats.exitDist))} m  median ${fmt(median(stats.exitDist))} m  max ${fmt(hi(stats.exitDist))} m`);
+  console.log(`car to car walk     min ${fmt(lo(stats.exitDist))} m  median ${fmt(median(stats.exitDist))} m  max ${fmt(hi(stats.exitDist))} m`);
+  const share = (v) => `${fmt(v * 100)}%`;
+  console.log(`lobby off centre    min ${share(lo(stats.lobbyOff))}  median ${share(median(stats.lobbyOff))}  max ${share(hi(stats.lobbyOff))}  (of the half-diagonal)`);
 }
 console.log(`corridor spine      vertical count ${hist(stats.vCorr)}   horizontal count ${hist(stats.hCorr)}`);
 console.log(`room depth from corridor  ${hist(stats.depth)}   (${stats.noCorridorRooms}/${stats.totalRooms} = ${fmt(100 * stats.noCorridorRooms / stats.totalRooms)}% have no corridor door)`);

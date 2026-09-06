@@ -281,6 +281,20 @@ const OFFICE_GUARDS = [2, 5];
 const GUARD_BATON = 0.4;       // how much of the shift drew a baton instead
 const GUARD_GAP = 0.8;         // metres between two men in one room
 
+/**
+ * How often the receptionist is not pleased to see you.
+ *
+ * Three in ten, and the number is doing a specific job: it has to be low enough
+ * that walking into a lobby is not a fight you brace for, and high enough that
+ * you cannot walk past one without looking at it. At one in ten the second
+ * lobby teaches you to ignore them; at one in two the visor stops being news.
+ *
+ * Rolled once per floor and never re-rolled, so the answer for THIS lobby is
+ * settled before the doors open — which matters more than it sounds, because the
+ * lobby is also the room you come back to at the end of the floor.
+ */
+const ANGRY_RECEPTION = 0.3;
+
 // The canteen's own, in the room the floor arrives in — see _diners. A handful
 // rather than a crowd, and that is the whole tuning: a canteen with fifteen
 // people in it is a room you have to work out before you can move, and the point
@@ -555,6 +569,13 @@ export class Enemies {
     // are shared and never taken out of the pool: a serving hatch is somewhere
     // you stand for four seconds, not somewhere you sit for a minute.
     this.servery = deskPool(workstations, nav, rng, 'servery').get(layout.cafeteriaRoom) ?? [];
+    // Behind the counter in the lift lobby, and there is exactly one of them on
+    // the floor. Kept by ROOM and then asked for the lobby's, rather than taken
+    // off the flattened `stations` map below, for the reason the servery is: it
+    // is a fact about one room, and a station in some other room that happened to
+    // publish the same kind would put the receptionist in a corridor.
+    this.reception = deskPool(workstations, nav, rng, 'reception', STAND_NUDGE)
+      .get(layout.spawnRoom) ?? [];
     // Every OTHER kind of station the furnisher published, pooled by what it is
     // a place to work at and flattened the same way — a printer is a printer
     // whosever office it is in, so unlike a chair it does not matter which room
@@ -684,6 +705,7 @@ export class Enemies {
     }
 
     this._cardOutside(layout, nav, rng, tuning);
+    this._receptionist(layout, nav, rng, tuning);
     this._diners(layout, nav, rng, tuning);
     this._janitors(layout, nav, rng, tuning);
     this._manager(layout, nav, rng, tuning);
@@ -1045,6 +1067,48 @@ export class Enemies {
       boss.behindLock = true;
       return;
     }
+  }
+
+  /**
+   * The receptionist, behind the counter in the lift lobby.
+   *
+   * The first person on the floor, and the only body ever placed in the arrival
+   * room — `_spawnPoints` skips that room entirely, so the lobby is empty apart
+   * from this one. That is what makes them worth having: you step out of the
+   * car, and there is somebody looking at you across a counter before you have
+   * gone through a door.
+   *
+   * And three times in ten they are not pleased to see you (`ANGRY`). The two
+   * types are the same person in the same clothes at the same counter and differ
+   * in one thing, which is the visor — so this is the game's oldest tell put to
+   * the only use it has never been put to: not "what is this" but "is this one
+   * going to be a problem", asked of a room you cannot avoid walking into.
+   * Violet means walk past; a grey off the hostile ramp means it is about to
+   * stand up. Nothing else about them says which, on purpose.
+   *
+   * Standing rather than seated, and that is not an oversight. A chair in this
+   * building means "has not noticed you yet" (see the note on it in CLAUDE.md),
+   * and this one has: they watched the doors open. What they do about it is the
+   * coin, and a seated pose would be promising the wrong thing about both halves
+   * of it.
+   *
+   * Taken out of the pool like a desk, so nothing else can be dealt the spot.
+   * A lobby that could not fit a counter publishes no station and has nobody at
+   * one, which is an ordinary answer: see `receptionCounter` in gen/rooms.js.
+   */
+  _receptionist(layout, nav, rng, tuning) {
+    const room = layout.spawnRoom;
+    if (!room) return;
+    const at = this._takeDesk(room, (x, z) => nav.clear(x, z, RADIUS), this.reception);
+    if (!at) return;
+
+    const e = this._add(at.x, at.z, rng, tuning,
+      rng.chance(ANGRY_RECEPTION) ? TYPES.angryReceptionist : TYPES.receptionist);
+    // Facing whoever comes out of the lift, which is what the counter faces.
+    // Same conversion `_seat` makes and for the same reason — a prop's turns
+    // rotate its front from -Z toward +X, which is a negative rotation about Y.
+    e.yaw = -at.rot * Math.PI / 2;
+    e.group.rotation.y = e.yaw;
   }
 
   /**

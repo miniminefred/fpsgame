@@ -270,6 +270,48 @@ export const TYPES = {
     range: 0, melee: false, scale: 1.0, neutral: true, dines: true,
     suit: 0x3f4a59, shirt: 0xc6d0dc, visor: 0x5aa9ff, unlockFloor: 1, weight: 0,
   },
+  receptionist: {
+    // Behind the counter in the lift lobby, and the first person on the floor
+    // either way — this is the one body you meet before you have gone through a
+    // door. Harmless: greets you, watches you cross the lobby, and goes back to
+    // whatever was on the screen. Hand-placed only, and there is exactly one of
+    // them; see _receptionist in enemies.js.
+    //
+    // Violet, which was the last hue on the neutral side of the palette with
+    // nothing wearing it. Hue says threat and shade says which one, so the whole
+    // point of this type is that it is a COLOUR: from the far end of the lobby a
+    // violet visor is the promise that this one is not going to shoot, and the
+    // grey one three doors down is `angryReceptionist` below.
+    name: 'Receptionist', hp: 0.5, speed: 1.05, damage: 0, rate: 99, spread: 1,
+    range: 0, melee: false, scale: 1.0, neutral: true,
+    suit: 0x3b4250, shirt: 0xd8dde3, visor: 0xa66bff, unlockFloor: 1, weight: 0,
+  },
+  angryReceptionist: {
+    // ...and the three in ten who are not pleased to see you. The SAME body in
+    // the same clothes at the same counter — the only thing that has changed is
+    // the visor, and it has changed to a grey off the hostile ramp, which is the
+    // one thing in this building that has never lied.
+    //
+    // That is the whole design of the pair. Every other tell in the game answers
+    // "what is this" and this one answers "is it going to be a problem", from
+    // across a room, before you are committed — and the answer is a coin the
+    // floor tossed rather than a fact about receptionists. It reads as a room
+    // you have to look at rather than one you walk through.
+    //
+    // A warm light grey: bright, because this dies to a look, and warm so it is
+    // not mistaken for the Intern's `0xc8ced4` or Security's `0x7d7973` at the
+    // range you actually read one from.
+    //
+    // Every number is a MULTIPLIER on the floor's own tuning (see tuningFor in
+    // game.js), and these are the numbers of somebody who keeps a pistol in a
+    // drawer and has never used it: dies to a look, shoots slowly, shoots badly,
+    // and is slow onto a target because they were looking at a screen. What
+    // makes them worth anything at all is where they are standing — behind a
+    // counter, in the room you arrive in, before you have taken a step.
+    name: 'Receptionist', hp: 0.5, speed: 1.15, damage: 0.6, rate: 1.35, spread: 1.8,
+    range: 11, melee: false, scale: 1.0, aimMul: 1.2,
+    suit: 0x3b4250, shirt: 0xd8dde3, visor: 0xafa79c, unlockFloor: 1, weight: 0,
+  },
   worker: {
     // The generator room's docile majority — logged in on the terminals
     // around it, or just standing near the thing, and no more interested in

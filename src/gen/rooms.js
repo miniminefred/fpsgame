@@ -1084,6 +1084,100 @@ function lobby(sink, bounds, rng) {
   if (rng.chance(0.4)) edgeProp(sink, bounds, 'extinguisher', rng);
 }
 
+/**
+ * Where the receptionist stands, measured out from the room's furnishing bounds
+ * — which are already 0.15 m off the plaster, so this is 0.9 m off the wall.
+ *
+ * It is a NAV number rather than a look. `standable` in enemies.js holds a
+ * station to a whole tile of `fits`, and `fits` disqualifies every tile
+ * orthogonally touching a blocked one — so the half-metre tile against the
+ * plaster is not somewhere a body can be put, however much room the arithmetic
+ * says is there. This is the middle of the second tile in.
+ */
+const COUNTER_STAND = 0.75;
+
+// ...and how far the counter's back face stands clear of them. Half a body plus
+// a little, so the receptionist is behind the counter rather than inside it.
+const COUNTER_CLEAR = 0.5;
+
+/**
+ * The lift lobby: the room the floor arrives in, leaves by, and is greeted in.
+ *
+ * Both cars are already standing in it before this runs — they are shell, cut
+ * into the floorplan itself (see gen/lifts.js) — so what the furnisher adds is
+ * the front of house around them: a counter to be greeted at, a plant, and
+ * somewhere to wait that you are not going to wait in.
+ *
+ * `room.liftSide` is which wall the bank took, and the counter keeps off it: a
+ * reception desk backed against the lifts is a desk with its back to the only
+ * thing in the room. It goes on one of the two walls beside them first, which is
+ * where a real one is — you come out of the car, and it is on your left or your
+ * right — and only then on the wall opposite, which is the one the doors out are
+ * usually cut in.
+ */
+function liftLobby(sink, bounds, rng, room) {
+  const bank = room?.liftSide ?? 0;
+  const counter = receptionCounter(sink, bounds, rng,
+    rng.shuffle([(bank + 1) & 3, (bank + 3) & 3]).concat((bank + 2) & 3));
+  // A plant beside a counter that landed and a plant anywhere at all if it did
+  // not — the room still has to read as a lobby rather than as an empty box with
+  // two lifts in it.
+  edgeProp(sink, bounds, 'plant', rng);
+  if (rng.chance(0.7)) edgeProp(sink, bounds, 'sofa', rng);
+  if (rng.chance(0.6)) edgeProp(sink, bounds, 'armchair', rng);
+  if (rng.chance(0.5)) edgeProp(sink, bounds, 'coffeeTable', rng);
+  if (rng.chance(0.5)) edgeProp(sink, bounds, 'extinguisher', rng);
+  if (!counter && rng.chance(0.5)) edgeProp(sink, bounds, 'plant', rng);
+}
+
+/**
+ * A counter standing OFF a wall, with somewhere to stand behind it.
+ *
+ * Every other wall-backed prop in the catalogue goes through `edgeProp`, which
+ * puts the prop's back on the plaster — there is nothing behind a filing cabinet
+ * and nothing needs to be. A reception desk is the one prop in the building
+ * somebody stands behind, and the receptionDesk model is 0.55 m deep, so backed
+ * against the wall the entire pocket is the 0.15 m of skirting clearance. It has
+ * to stand out into the room or there is no such thing as behind it.
+ *
+ * `sides` is the walls to try, in order of preference. Several positions are
+ * tried along each: a lobby's floor is heavily spoken for by the time this runs
+ * — the doorway aprons and the clear square at each car (see reserveClearances)
+ * take most of the band in front of the bank — so the first spot offered is
+ * regularly not free.
+ *
+ * Returns where it landed, or null. Null is an ordinary answer: a lobby with no
+ * counter is a lobby, and the receptionist is placed off the station this
+ * publishes, so a floor that could not fit one simply has nobody at it.
+ */
+function receptionCounter(sink, bounds, rng, sides) {
+  const { x0, z0, x1, z1 } = bounds;
+  const { w: fw, d: fd } = footprintOf(sink, 'receptionDesk');
+  const standoff = COUNTER_STAND + COUNTER_CLEAR + fd / 2;
+  const margin = fw / 2;
+
+  for (const side of sides) {
+    if ((side === 0 || side === 2) && x1 - x0 < margin * 2) continue;
+    if ((side === 1 || side === 3) && z1 - z0 < margin * 2) continue;
+    for (let tries = 0; tries < 10; tries++) {
+      const [cx, cz] = seatAt(side, x0, z0, x1, z1, standoff, margin, rng);
+      if (!tryPlace(sink, 'receptionDesk', cx, cz, side, rng)) continue;
+      // Behind it, which is the way the wall is. A prop is authored facing -Z,
+      // so its own +Z is the side the wall is on and QUARTER turns that into a
+      // direction — the same line every station in this file is derived with,
+      // and the sign is the whole difference between this and `edgeProp`'s,
+      // which puts a body in FRONT of what it is working at.
+      //
+      // The body faces the way the counter faces, not back at it: what a
+      // receptionist is looking at is whoever just walked in.
+      const [bx, bz] = QUARTER[side](0, standoff - COUNTER_STAND);
+      sink.workstation(cx + bx, cz + bz, side, 'reception');
+      return { cx, cz, side };
+    }
+  }
+  return null;
+}
+
 const ROLES = {
   openplan: openPlan,
   meeting: meetingRoom,
@@ -1104,7 +1198,9 @@ const ROLES = {
   closet: broomCloset,
   generator: generatorRoom,
   lobby,
-  exit: lobby,
+  // The floor arrives in the exit room and leaves by it — they are one room now
+  // (see pickLobbyRoom in gen/layout.js), so `exit` is the lift lobby.
+  exit: liftLobby,
 };
 
 // Every role the generator is allowed to hand out. layout.js picks from this by

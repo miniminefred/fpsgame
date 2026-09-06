@@ -4,9 +4,14 @@
 // and end with a lit pad on the carpet. Both are places rather than arrivals:
 // nothing about either says you came from the floor above, or that there is one
 // below. So a floor now opens the way an office opens — you are in a lift car,
-// its doors part, and the room in front of you is the reception that fronts the
-// lifts. The door out of that reception is the door into the building, and the
-// way down is the second car at the far end of the floor.
+// its doors part, and the room in front of you is the lift lobby.
+//
+// Both cars are in THAT ONE ROOM, side by side, and the room is the one nearest
+// the middle of the slab — which is where a building puts its core, and what
+// makes a floor a loop out and back rather than a march from one corner to the
+// other. See `carveBank` below and `pickLobbyRoom` in gen/layout.js. The way out
+// of the lobby is a pair of doors onto the office, and the way down is the car
+// next to the one you came up in, lit green.
 //
 // A car is a TINY ROOM CARVED INTO A ROOM, not a structure stood inside one, and
 // that is the whole reason this file is tile arithmetic rather than a mesh
@@ -79,21 +84,76 @@ const BLOCK_A = CAR_W + 2;
 const BLOCK_D = CAR_D + 1;
 
 /**
- * Whether a room could hold a car at all.
+ * How much clear room the BANK has to leave in front of it, in tiles.
  *
- * Named and exported rather than written out at its two call sites, which is the
- * FIRST_CONTACT_GAP lesson: `pickSpawnRoom` refuses a room that cannot hold the
- * arrival car and the exit ranking refuses one that cannot hold the departure
- * car, and the two asking slightly different questions is exactly how a floor
- * ends up promising a lift it cannot build.
+ * FRONT_ROOM is the floor you step out onto and it is what a single car needs.
+ * The two extra tiles here are not a margin either, and they are the whole
+ * reason a lobby is asked for ten tiles across rather than eight: they keep the
+ * room's own CENTRE TILE out of the block.
  *
- * The block goes against any of the four walls, so a room needs the long
+ * `tryCarve` refuses to stand on that tile — half the generator uses
+ * `round(cx), round(cy)` as the one tile that stands for a room, and a car walled
+ * over it makes `assignLocks`, the exit ranking and the layout sweep all answer
+ * "unreachable" about a room that is fine. With one car that refusal cost a wall
+ * and not a lift, because the wall opposite always had room. With two cars on
+ * ONE wall it costs the bank: the pair is twelve tiles across a sixteen-tile
+ * wall, so the room's centre column is inside one of them nearly every time, and
+ * the only thing keeping the centre TILE clear is that the centre ROW is deeper
+ * into the room than the block is. Four tiles of block plus two of clearance is
+ * what makes that true on either long wall.
+ */
+const BANK_FRONT = FRONT_ROOM + 2;
+
+/**
+ * Whether a room could hold the floor's whole lift bank.
+ *
+ * Named and exported rather than written out at its call site, which is the
+ * FIRST_CONTACT_GAP lesson: `pickLobbyRoom` refuses a room that cannot hold both
+ * cars, and `carveBank` is what actually cuts them — the two asking slightly
+ * different questions is exactly how a floor ends up promising a lift it cannot
+ * build.
+ *
+ * The bank goes against any of the four walls, so a room needs the long
  * requirement on one axis and the short one on the other, either way round.
  */
-export function fitsLift(r) {
+export function fitsLifts(r) {
   const long = Math.max(r.wTiles, r.hTiles);
   const short = Math.min(r.wTiles, r.hTiles);
-  return short >= BLOCK_D + FRONT_ROOM && long >= BLOCK_A + SIDE_ROOM * 2;
+  return short >= BLOCK_D + BANK_FRONT && long >= BLOCK_A * 2 + SIDE_ROOM * 2;
+}
+
+/**
+ * Both cars, side by side on one wall of one room.
+ *
+ * The floor is entered and left by the same lobby, so the two cars are a BANK
+ * rather than two lifts at opposite ends of a building — which is what a lift
+ * lobby is, and it is also what makes the departure car legible: you have stood
+ * in front of it since before you moved, and the only thing that tells the two
+ * apart is that one of them is lit green (see buildExit in gen/build.js).
+ *
+ * They are carved one at a time by the same `carveLift` the floor has always
+ * used, and the second one is handed the first one's wall as its preference. Two
+ * consequences fall out of that and both are wanted: the second car cannot
+ * overlap the first, because every tile a block stands on has to be plain ROOM
+ * floor and the first car's walls are not; and the second is free to walk round
+ * to another wall when the first one has no room left, which is a bank that has
+ * turned a corner rather than a floor with one lift in it.
+ *
+ * `bias` is what centres the PAIR rather than the first car. `carveLift` walks
+ * out from the middle of the wall, so with no bias the arrival takes the centre
+ * and the departure ends up beside it and the two of them sit off to one side.
+ * Half a block each way puts the gap between them on the middle of the wall.
+ *
+ * Either may come back null and a null car is an ordinary answer — see
+ * `carveLift`.
+ */
+export function carveBank(layout, room, doors, prefer, seed) {
+  const arrival = carveLift(layout, room, doors, prefer, seed, -BLOCK_A / 2);
+  if (!arrival) return { arrival: null, departure: null };
+  return {
+    arrival,
+    departure: carveLift(layout, room, doors, arrival.side, seed, BLOCK_A / 2),
+  };
 }
 
 /**
@@ -113,7 +173,7 @@ export function fitsLift(r) {
  * always been. A floor with no lift in it is a worse floor; a floor that fails
  * to generate is not a floor.
  */
-export function carveLift(layout, room, doors, prefer, seed) {
+export function carveLift(layout, room, doors, prefer, seed, bias = 0) {
   const { tiles, W, H } = layout;
 
   // What was reachable before, so the carve can be proved to have taken nothing
@@ -132,7 +192,7 @@ export function carveLift(layout, room, doors, prefer, seed) {
     // at a time. A car centred on the reception's back wall is what a lift lobby
     // looks like; being able to step off centre is what gets one built at all in
     // a room whose own doorway happens to be dead behind the middle of it.
-    for (const a0 of offsets(geom)) {
+    for (const a0 of offsets(geom, bias)) {
       const lift = tryCarve(layout, room, doors, side, geom, a0, before, seed);
       if (lift) return lift;
     }
@@ -141,8 +201,10 @@ export function carveLift(layout, room, doors, prefer, seed) {
 }
 
 // Where along the wall the block may start, centred first and stepping outward.
-function* offsets({ aMin, aMax }) {
-  const centre = Math.round((aMin + aMax) / 2);
+// `bias` moves the point it starts from — see `carveBank`, which is the only
+// caller that wants anywhere but the middle.
+function* offsets({ aMin, aMax }, bias = 0) {
+  const centre = Math.round((aMin + aMax) / 2 + bias);
   for (let step = 0; step <= aMax - aMin; step++) {
     for (const a0 of step === 0 ? [centre] : [centre - step, centre + step]) {
       if (a0 >= aMin && a0 <= aMax) yield a0;
@@ -226,20 +288,31 @@ function tryCarve(layout, room, doors, side, geom, a0, before, seed) {
   // And no SLIVER down either flank. A car pushed hard into the corner of a
   // reception is the best place for it and leaves no gap at all, which is why
   // this is not a margin: nought is right and two is right, and the one thing
-  // that must not happen is ONE — half a metre of floor between the car and the
-  // room's own wall, which the tile grid calls floor and a 0.8 m body cannot get
-  // down. It is quiet in exactly the way the doorway above is: the room stays
-  // reachable, the car stays reachable, and a doorway at the far end of that
-  // sliver is a doorway you cannot walk out of. The props sweep found it as one
-  // exit room in three hundred with 1% of its own floor reachable from its own
-  // door — the geometric check catching what the tile flood cannot see.
+  // that must not happen is ONE — half a metre of floor between the car and
+  // whatever is beside it, which the tile grid calls floor and a 0.8 m body
+  // cannot get down. It is quiet in exactly the way the doorway above is: the
+  // room stays reachable, the car stays reachable, and a doorway at the far end
+  // of that sliver is a doorway you cannot walk out of. The props sweep found it
+  // as one exit room in three hundred with 1% of its own floor reachable from
+  // its own door — the geometric check catching what the tile flood cannot see.
   //
-  // Both gaps come off the geometry rather than being counted out of the tiles,
-  // because a room is a rectangle: `aMin` is its first tile along this wall and
-  // `aMax` the last position the block can start at, so what is left over on
-  // each side is arithmetic.
-  const gapLo = a0 - geom.aMin, gapHi = geom.aMax - a0;
-  if (gapLo === 1 || gapHi === 1) return null;
+  // WALKED out from the block rather than measured off the room's rectangle,
+  // which is the same answer against the room's own wall and the only right one
+  // against THE OTHER CAR. A floor's two cars stand in one room now, side by
+  // side on one wall (see carveBank), so the tile beside this block is as likely
+  // to be its neighbour's corner post as the room's plaster — and arithmetic off
+  // `aMin`/`aMax` cannot see a wall that was not there when the room was cut.
+  // Every row of the block is asked, not just one: they all give the same answer
+  // for a rectangular room and for a car parked alongside, and asking all four
+  // costs nothing and is the version that stays true if either stops being a
+  // clean rectangle.
+  for (let d = 0; d < BLOCK_D; d++) {
+    for (const dir of [-1, 1]) {
+      let gap = 0;
+      while (gap < LANE && at(dir < 0 ? -1 - gap : BLOCK_A + gap, d) === ROOM) gap++;
+      if (gap === 1) return null;
+    }
+  }
 
   // And it may not stand on the room's own CENTRE TILE, which is not a look but
   // a contract. Half the generator uses `round(cx), round(cy)` as the one tile
