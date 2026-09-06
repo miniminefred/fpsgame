@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CORRIDOR, SOLID, worldX, worldZ } from './gen/layout.js';
+import { centreX, centreZ, CORRIDOR, NEIGHBOURS, siteWalk, SOLID, worldX, worldZ } from './gen/layout.js';
 import { BODY_H } from './metrics.js';
 import { clamp01 } from './util.js';
 import { getTech } from './tech-textures.js';
@@ -101,7 +101,6 @@ const SCREEN_H = 0.11;
 const RUNWAY_H = 0.035;
 const RUNWAY_PITCH = 0.5;
 
-const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 export class Conveyors {
   constructor({ scene, audio }) {
@@ -168,26 +167,12 @@ export class Conveyors {
     }
   }
 
-  // Every corridor tile with a wall beside it, shuffled — the same walk the
-  // cameras do and for the same reason: a tile that survives every test below
-  // is a few percent of a floor, so throwing darts at the grid delivers three
-  // lines on one floor and nine on the next.
-  //
-  // Corridors only. A belt is the building's artery and belongs where the
-  // traffic is; one running the length of somebody's private office is a
+  // Every corridor tile with a wall beside it, shuffled — see `siteWalk`.
+  // Corridors only: a belt is the building's artery and belongs where the
+  // traffic is, and one running the length of somebody's private office is a
   // different building.
   _sites(layout, rng) {
-    const { W, H, tiles } = layout;
-    const out = [];
-    for (let ty = 1; ty < H - 1; ty++) {
-      for (let tx = 1; tx < W - 1; tx++) {
-        const i = ty * W + tx;
-        if (tiles[i] !== CORRIDOR) continue;
-        if (tiles[i - 1] === SOLID || tiles[i + 1] === SOLID
-          || tiles[i - W] === SOLID || tiles[i + W] === SOLID) out.push(i);
-      }
-    }
-    return rng.shuffle(out);
+    return siteWalk(layout, rng, { kinds: [CORRIDOR], wall: true });
   }
 
   /**
@@ -205,7 +190,7 @@ export class Conveyors {
 
     // Both walls this tile could hang a line off; the longest run wins.
     let best = null;
-    for (const [wx, wz] of DIRS) {
+    for (const [wx, wz] of NEIGHBOURS) {
       if (tiles[(ty + wz) * W + tx + wx] !== SOLID) continue;
       // The belt runs ALONG the wall, which is the axis the wall is not on.
       const [dx, dz] = wx ? [0, 1] : [1, 0];
@@ -230,8 +215,8 @@ export class Conveyors {
     // The belt's centre line: from the tile centre, out to the wall face and
     // back in by the standoff plus half its own depth.
     const off = TILE / 2 - WALL_GAP - DEPTH / 2;
-    const cx = worldX(layout, tx + 0.5) + best.wx * off;
-    const cz = worldZ(layout, ty + 0.5) + best.wz * off;
+    const cx = centreX(layout, tx) + best.wx * off;
+    const cz = centreZ(layout, ty) + best.wz * off;
 
     const run = {
       // Where it starts, and the unit vector it runs in.

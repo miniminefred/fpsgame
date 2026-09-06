@@ -33,6 +33,18 @@ export const DOOR = 3;
 export const isOpen = (t) => t !== SOLID;
 
 /**
+ * What is at a tile, with anything off the grid reading SOLID.
+ *
+ * Five files wrote this line out for themselves, which is four more chances to
+ * get the bounds test wrong in a loop that is walking a wall. Off the grid is
+ * SOLID rather than undefined for the same reason the building has a PAD of
+ * shell around it: every caller is asking "can I put something here", and the
+ * honest answer outside the building is no.
+ */
+export const tileAt = (tiles, W, H, x, y) =>
+  (x >= 0 && y >= 0 && x < W && y < H ? tiles[y * W + x] : SOLID);
+
+/**
  * The four quarter turns, as the directions they face.
  *
  * Everything in this game that faces somewhere faces -Z at rotation 0 and turns
@@ -47,8 +59,25 @@ export const isOpen = (t) => t !== SOLID;
  * It is `QUARTER[rot](0, -1)` from gen/props.js, evaluated. Kept here rather
  * than imported from there because the three callers have no other business
  * with the furniture catalogue.
+ *
+ * It doubles as the four orthogonal TILE steps — `FACING[side]` is `[dx, dy]` on
+ * the grid as readily as `[dx, dz]` in metres, because a tile is square and the
+ * axes are the same two. `wallBeside` below indexes it that way.
  */
 export const FACING = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+
+/**
+ * The same four steps in the order the PLACERS walk them, which is not the same
+ * order and deliberately so.
+ *
+ * `FACING` is indexed by a rotation, so its order is the game's rotation order
+ * and cannot move. This one is only ever iterated — "try each wall beside this
+ * tile" — so its order is arbitrary, and it is written down once here because
+ * cameras.js, conveyors.js and panels.js each had their own copy of the same
+ * literal. Two tables rather than one is the honest answer: they are the same
+ * four directions asked two different questions.
+ */
+export const NEIGHBOURS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 // Tile <-> world helpers. The building is centred on the origin.
 //
@@ -136,35 +165,34 @@ export function bfs(tiles, W, H, sx, sy) {
  * 3 to 6 doors each, 3-4 cm of panel edge standing in open space.
  */
 export function slidePocketRun(tiles, W, H, door, dir, max = 12) {
-  const at = (tx, ty) => (tx >= 0 && ty >= 0 && tx < W && ty < H ? tiles[ty * W + tx] : SOLID);
   let run = 0;
   for (let i = 1; i <= max; i++) {
+    const step = dir > 0 ? doorSpan(door) - 1 + i : -i;
     const ok = door.vertical
-      ? at(door.x0, dir > 0 ? door.y1 - 1 + i : door.y0 - i) === SOLID
-      : at(dir > 0 ? door.x1 - 1 + i : door.x0 - i, door.y0) === SOLID;
+      ? tileAt(tiles, W, H, door.x0, door.y0 + step) === SOLID
+      : tileAt(tiles, W, H, door.x0 + step, door.y0) === SOLID;
     if (!ok) break;
     run++;
   }
   return run;
 }
 
+// How many tiles wide the opening is, along the wall it is cut in.
+export const doorSpan = (d) => (d.vertical ? d.y1 - d.y0 : d.x1 - d.x0);
+
+/**
+ * ...and the same question asked as a yes/no: is there a pocket at least a
+ * panel long, on `prefer` if possible and on the other side if not.
+ *
+ * It is `slidePocketRun` measured against the panel's own width, and it used to
+ * be a second copy of the same wall walk with the loop written inside out. Two
+ * copies of "walk the wall beside a doorway" is exactly the drift this file
+ * exists to prevent — they disagreeing by one tile is a door that slides into
+ * the room next door.
+ */
 export function slidePocketSide(tiles, W, H, door, prefer = 1) {
-  const at = (tx, ty) => (tx >= 0 && ty >= 0 && tx < W && ty < H ? tiles[ty * W + tx] : SOLID);
-  const span = door.vertical ? door.y1 - door.y0 : door.x1 - door.x0;
-
-  const fits = (dir) => {
-    for (let i = 1; i <= span; i++) {
-      if (door.vertical) {
-        const ty = dir > 0 ? door.y1 - 1 + i : door.y0 - i;
-        if (at(door.x0, ty) !== SOLID) return false;
-      } else {
-        const tx = dir > 0 ? door.x1 - 1 + i : door.x0 - i;
-        if (at(tx, door.y0) !== SOLID) return false;
-      }
-    }
-    return true;
-  };
-
+  const span = doorSpan(door);
+  const fits = (dir) => slidePocketRun(tiles, W, H, door, dir, span) === span;
   return fits(prefer) ? prefer : fits(-prefer) ? -prefer : 0;
 }
 
@@ -188,32 +216,96 @@ export function doorSide(door, room) {
   return best;
 }
 
+/**
+ * Somewhere to put something, in a shuffled order — every tile of the floor that
+ * passes the test, walked rather than sampled.
+ *
+ * FOUR modules had their own copy of this loop and CLAUDE.md records the same
+ * lesson under each of them, which is the tell: a tile that survives a placer's
+ * own tests is a few percent of a floor, so throwing darts at the grid delivers
+ * three parcel lines on one floor and nine on the next, four cameras and then
+ * ten, one washing machine and then five. Walking a shuffled list of every
+ * candidate is what makes a count a count.
+ *
+ * The four differed in two details and nothing else, so both are options:
+ *
+ *  - `kinds` is what the tile itself has to be. Corridors only for the parcel
+ *    lines, the service openings and the washing machines — all three are the
+ *    building's own services and belong where the traffic is, and one running
+ *    the length of somebody's private office is a different building. Cameras
+ *    take rooms too, because a camera in an office is an ordinary camera.
+ *  - `wall` asks for a SOLID neighbour, because a thing that hangs off a wall
+ *    needs one; a washing machine stands on the floor and does not.
+ *
+ * `locked` skips the rooms behind a badge reader. A camera you cannot walk up to
+ * can neither catch you nor be shot out, which is two thirds of what one is for.
+ *
+ * `margin` is how far off the edge of the grid to start. It is 1 for anything
+ * that only looks at its own four neighbours and 2 for anything that needs a
+ * little more room; below that the neighbour reads would run off the grid, which
+ * is what `tileAt` is for everywhere else and what an explicit margin is for in
+ * a hot double loop.
+ */
+export function siteWalk(layout, rng, { kinds, wall = false, locked = false, margin = 1 }) {
+  const { W, H, tiles } = layout;
+  const out = [];
+  for (let ty = margin; ty < H - margin; ty++) {
+    for (let tx = margin; tx < W - margin; tx++) {
+      const i = ty * W + tx;
+      if (!kinds.includes(tiles[i])) continue;
+      if (locked && layout.locked?.[i]) continue;
+      if (wall && tiles[i - 1] !== SOLID && tiles[i + 1] !== SOLID
+        && tiles[i - W] !== SOLID && tiles[i + W] !== SOLID) continue;
+      out.push(i);
+    }
+  }
+  return rng.shuffle(out);
+}
+
+/**
+ * Which of a tile's four neighbours is wall, starting the search at `from`.
+ *
+ * The three things that hang off a corridor wall — a camera, a parcel line, a
+ * service opening — each wrote this out, and a camera's copy carries the reason
+ * the start point is an argument: begun at the same side every time, a floor's
+ * cameras all end up on their tiles' east wall.
+ *
+ * Returns the STEP toward the wall, which is `FACING[side]`, or null.
+ */
+export function wallBeside(tiles, W, H, tx, ty, from = 0) {
+  for (let k = 0; k < 4; k++) {
+    const side = (from + k) & 3;
+    const [dx, dy] = FACING[side];
+    if (tileAt(tiles, W, H, tx + dx, ty + dy) === SOLID) return [dx, dy];
+  }
+  return null;
+}
+
 // --- rectangle fills and tile tests -----------------------------------------
 //
 // A room and a doorway are both just rectangles of tiles, and the lock proofs
 // spend all their time filling them in, sealing them shut, or asking whether a
 // given cell is one of them. None of these knows anything about locks.
 
-export function fillRoom(tiles, W, room, value) {
-  for (let y = room.y0; y < room.y1; y++) {
-    for (let x = room.x0; x < room.x1; x++) tiles[y * W + x] = value;
+export function fillRect(tiles, W, r, value) {
+  for (let y = r.y0; y < r.y1; y++) {
+    for (let x = r.x0; x < r.x1; x++) tiles[y * W + x] = value;
   }
 }
 
-export function sealDoor(tiles, W, d) {
-  for (let y = d.y0; y < d.y1; y++) {
-    for (let x = d.x0; x < d.x1; x++) tiles[y * W + x] = SOLID;
-  }
-}
+// Sealing a doorway is filling its rect with wall. It had a name of its own and
+// an identical body; a room and a doorway are both rectangles of tiles, which is
+// the whole reason this section is not about rooms or about doors.
+export const sealDoor = (tiles, W, d) => fillRect(tiles, W, d, SOLID);
 
-export const doorHasTile = (d, W, i) => {
+export const rectHasTile = (r, W, i) => {
   const x = i % W, y = (i / W) | 0;
-  return x >= d.x0 && x < d.x1 && y >= d.y0 && y < d.y1;
+  return x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1;
 };
 
-export const anyDoorTile = (d, W, reached) => {
-  for (let y = d.y0; y < d.y1; y++) {
-    for (let x = d.x0; x < d.x1; x++) if (reached(y * W + x)) return true;
+export const anyRectTile = (r, W, hit) => {
+  for (let y = r.y0; y < r.y1; y++) {
+    for (let x = r.x0; x < r.x1; x++) if (hit(y * W + x)) return true;
   }
   return false;
 };

@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { BODY_RADIUS as RADIUS } from './nav.js';
-import { CORRIDOR, FACING, STAFF_ONLY, FIRST_CONTACT_GAP, worldX, worldZ } from './gen/layout.js';
+import {
+  centreX, centreZ, CORRIDOR, FACING, FIRST_CONTACT_GAP, STAFF_ONLY, worldX, worldZ,
+} from './gen/layout.js';
 import { buildRig, buildTray, buildCrate, buildCan, buildPapers } from './rigs.js';
 import { TYPES, BYSTANDERS, isMachine, pickType, pickTheme } from './enemy-types.js';
 import { DEATH_TIME, HIT_FLASH, SWING_TIME, animate, die, stand } from './enemy-anim.js';
@@ -4076,8 +4078,8 @@ function collectCorridors(layout, nav) {
     for (let tx = 1; tx < W - 1; tx++) {
       if (tiles[ty * W + tx] !== CORRIDOR) continue;
       if (n++ % CORRIDOR_SAMPLE) continue;
-      const x = worldX(layout, tx + 0.5);
-      const z = worldZ(layout, ty + 0.5);
+      const x = centreX(layout, tx);
+      const z = centreZ(layout, ty);
       if (nav.clear(x, z, RADIUS)) spots.push({ x, z });
     }
   }

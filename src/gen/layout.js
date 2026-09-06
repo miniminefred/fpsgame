@@ -35,9 +35,10 @@ import { carveBank, fitsLifts } from './lifts.js';
 // has a file of its own.
 export {
   TILE, WALL_H, CEIL_H, DOOR_H, DOOR_CLEAR,
-  SOLID, ROOM, CORRIDOR, DOOR, isOpen, FACING,
+  SOLID, ROOM, CORRIDOR, DOOR, isOpen, FACING, NEIGHBOURS,
   worldX, worldZ, centreX, centreZ, tileX, tileY,
-  bfs, slidePocketSide, slidePocketRun, doorSide,
+  bfs, slidePocketSide, slidePocketRun, doorSide, doorSpan,
+  tileAt, siteWalk, wallBeside, fillRect, sealDoor,
 } from './tiles.js';
 // FIRST_CONTACT_GAP is re-exported rather than re-declared, and that is not
 // tidiness — enemies.js imports it from here and measures the prologue guarantee

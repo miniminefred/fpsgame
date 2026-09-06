@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CORRIDOR, FACING, SOLID, worldX, worldZ } from './gen/tiles.js';
+import { centreX, centreZ, CORRIDOR, FACING, NEIGHBOURS, siteWalk, SOLID, worldX, worldZ } from './gen/tiles.js';
 import { getTech } from './tech-textures.js';
 
 /**
@@ -95,7 +95,6 @@ const STAND_TILES = 1;
 
 const MIN_GAP = 11;            // metres between two of them
 
-const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 export class Panels {
   constructor({ scene }) {
@@ -162,21 +161,12 @@ export class Panels {
     }
   }
 
-  // Every corridor tile with a wall beside it, shuffled. Corridors only, for the
-  // parcel line's reason: this is the building's own services, and a hole in the
-  // wall of somebody's private office is a different kind of story.
+  // Every corridor tile with a wall beside it, shuffled — see `siteWalk`.
+  // Corridors only, for the parcel line's reason: this is the building's own
+  // services, and a hole in the wall of somebody's private office is a
+  // different kind of story.
   _sites(layout, rng) {
-    const { W, H, tiles } = layout;
-    const out = [];
-    for (let ty = 1; ty < H - 1; ty++) {
-      for (let tx = 1; tx < W - 1; tx++) {
-        const i = ty * W + tx;
-        if (tiles[i] !== CORRIDOR) continue;
-        if (tiles[i - 1] === SOLID || tiles[i + 1] === SOLID
-          || tiles[i - W] === SOLID || tiles[i + W] === SOLID) out.push(i);
-      }
-    }
-    return rng.shuffle(out);
+    return siteWalk(layout, rng, { kinds: [CORRIDOR], wall: true });
   }
 
   /**
@@ -193,7 +183,7 @@ export class Panels {
     const { W, tiles, TILE } = layout;
     const tx = i % W, ty = (i / W) | 0;
 
-    for (const [wx, wz] of DIRS) {
+    for (const [wx, wz] of NEIGHBOURS) {
       if (tiles[(ty + wz) * W + tx + wx] !== SOLID) continue;
       // Never the facade. `buildWindows` glazes the first solid a facade sees,
       // up to seven tiles in, and a service riser cut into a window is not a
@@ -213,8 +203,8 @@ export class Panels {
 
       // The wall face, and the panel just clear of it.
       const face = TILE / 2 - PROUD;
-      const x = worldX(layout, tx + 0.5) + wx * face;
-      const z = worldZ(layout, ty + 0.5) + wz * face;
+      const x = centreX(layout, tx) + wx * face;
+      const z = centreZ(layout, ty) + wz * face;
 
       const site = {
         x, z, wx, wz,
@@ -232,8 +222,8 @@ export class Panels {
         // looks like a deliberately plain prop rather than like a mistake.
         yaw: Math.atan2(wx, wz),
         stand: {
-          x: worldX(layout, sx + 0.5),
-          z: worldZ(layout, sy + 0.5),
+          x: centreX(layout, sx),
+          z: centreZ(layout, sy),
           // The quarter turn that faces the wall, which is `FACING` read
           // backwards — the wall is at (wx, wz) from where the body stands.
           rot: FACING.findIndex(([fx, fz]) => fx === wx && fz === wz),

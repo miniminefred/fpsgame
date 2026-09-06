@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CEIL_H, CORRIDOR, ROOM, SOLID, worldX, worldZ } from './gen/layout.js';
+import { CEIL_H, centreX, centreZ, CORRIDOR, NEIGHBOURS, ROOM, siteWalk, SOLID, worldX, worldZ } from './gen/layout.js';
 import { angleLerp, clamp, clamp01, smoothTo } from './util.js';
 import { EYE, JUMP_APEX } from './metrics.js';
 
@@ -86,7 +86,6 @@ const SEEN_LAMP = 0xffb020;    // amber: it has, and it is counting
 const FIRED_LAMP = 0xff2a24;   // red: it called it in
 const BEAM_COLOR = 0xff2a2a;
 
-const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 export class Cameras {
   constructor({ scene, audio, effects }) {
@@ -170,26 +169,14 @@ export class Cameras {
     }
   }
 
-  // Every open tile with a wall beside it, shuffled. The wall is what a camera
-  // hangs off, so a tile in the middle of the floor is not a candidate however
-  // good the view from it would be.
+  // Every open tile with a wall beside it, shuffled — see `siteWalk`, which is
+  // this walk and the three others that were copies of it. The wall is what a
+  // camera hangs off, so a tile in the middle of the floor is not a candidate
+  // however good the view from it would be; and never a badged room, because a
+  // camera you cannot walk up to can neither catch you nor be shot out, which is
+  // two thirds of what one is for.
   _sites(layout, rng) {
-    const { W, H, tiles } = layout;
-    const out = [];
-    for (let ty = 1; ty < H - 1; ty++) {
-      for (let tx = 1; tx < W - 1; tx++) {
-        const i = ty * W + tx;
-        const t = tiles[i];
-        if (t !== CORRIDOR && t !== ROOM) continue;
-        // Never inside a badged room. A camera you cannot walk up to is a
-        // camera that can neither catch you nor be shot out, which is two
-        // thirds of what one is for.
-        if (layout.locked?.[i]) continue;
-        if (tiles[i - 1] === SOLID || tiles[i + 1] === SOLID
-          || tiles[i - W] === SOLID || tiles[i + W] === SOLID) out.push(i);
-      }
-    }
-    return rng.shuffle(out);
+    return siteWalk(layout, rng, { kinds: [CORRIDOR, ROOM], wall: true, locked: true });
   }
 
   // Can this site take one, and if so, which wall does it hang off and which
@@ -198,8 +185,8 @@ export class Cameras {
     const { W, tiles } = layout;
     const tx = i % W, ty = (i / W) | 0;
 
-    const cx = worldX(layout, tx + 0.5);
-    const cz = worldZ(layout, ty + 0.5);
+    const cx = centreX(layout, tx);
+    const cz = centreZ(layout, ty);
     if (Math.hypot(cx - layout.spawn.x, cz - layout.spawn.z) < MIN_FROM_SPAWN) return null;
     if (this.items.some((c) => Math.hypot(c.x - cx, c.z - cz) < MIN_GAP)) return null;
 
@@ -208,7 +195,7 @@ export class Cameras {
     const start = rng.int(0, 3);
     let wall = null;
     for (let k = 0; k < 4 && !wall; k++) {
-      const [dx, dy] = DIRS[(start + k) % 4];
+      const [dx, dy] = NEIGHBOURS[(start + k) % 4];
       if (tiles[(ty + dy) * W + tx + dx] === SOLID) wall = [dx, dy];
     }
     if (!wall) return null;
@@ -220,7 +207,7 @@ export class Cameras {
     // 3 m corridor that reliably turns the camera down the hall instead of at
     // the plaster opposite.
     let best = null;
-    for (const [dx, dy] of DIRS) {
+    for (const [dx, dy] of NEIGHBOURS) {
       if (dx === wall[0] && dy === wall[1]) continue;
       // A tripwire wants to cross the space, not run down it — and it is
       // mounted at hip height where a bracket cannot reach past furniture, so

@@ -1,6 +1,6 @@
 import {
   TILE, SOLID, CORRIDOR,
-  bfs, slidePocketSide, fillRoom, sealDoor, doorHasTile, anyDoorTile,
+  bfs, slidePocketSide, fillRect, sealDoor, rectHasTile, anyRectTile,
 } from './tiles.js';
 
 // --- keycard locks ----------------------------------------------------------
@@ -159,7 +159,7 @@ export function assignLocks(tiles, W, H, rooms, doors, spawnRoom, exitRoom, dist
       for (const d of onRoom) d.lock = step.tier;
       locks.push({ room, tier: step.tier, doors: onRoom, staffOnly: true });
 
-      fillRoom(sealed, W, room, SOLID);
+      fillRect(sealed, W, room, SOLID);
       reach = bfs(sealed, W, H, sx, sy);
       placed++;
     }
@@ -368,7 +368,7 @@ function goesRound(sealed, W, H, sx, sy, door, reach) {
   const after = bfs(trial, W, H, sx, sy);
 
   for (let i = 0; i < after.length; i++) {
-    if (reach[i] >= 0 && after[i] < 0 && !doorHasTile(door, W, i)) return false;
+    if (reach[i] >= 0 && after[i] < 0 && !rectHasTile(door, W, i)) return false;
   }
   return true;
 }
@@ -411,7 +411,7 @@ function doorTouching(d, W, dist) {
 // that has to stay in front of you.
 function survivesWithout(sealed, W, H, sx, sy, rooms, candidate, locks, exitRoom, ownDoors) {
   const trial = Uint8Array.from(sealed);
-  fillRoom(trial, W, candidate, SOLID);
+  fillRect(trial, W, candidate, SOLID);
 
   const after = bfs(trial, W, H, sx, sy);
   const reached = (i) => after[i] >= 0;
@@ -422,9 +422,9 @@ function survivesWithout(sealed, W, H, sx, sy, rooms, candidate, locks, exitRoom
   }
   // The doors of everything locked, the candidate's own included — a room you
   // can never walk up to is a room whose card does nothing.
-  if (!ownDoors.some((d) => anyDoorTile(d, W, reached))) return false;
+  if (!ownDoors.some((d) => anyRectTile(d, W, reached))) return false;
   for (const lock of locks) {
-    if (!lock.doors.some((d) => anyDoorTile(d, W, reached))) return false;
+    if (!lock.doors.some((d) => anyRectTile(d, W, reached))) return false;
   }
   return reached(Math.round(exitRoom.cy) * W + Math.round(exitRoom.cx));
 }

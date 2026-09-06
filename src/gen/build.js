@@ -6,9 +6,7 @@ import { footprintOf, tryPlace } from './props.js';
 import { furnish } from './rooms.js';
 import { modelInfo, stampModel, paintDebris } from './models.js';
 import {
-  TILE, WALL_H, CEIL_H, DOOR_H, DOOR_CLEAR,
-  SOLID, ROOM, CORRIDOR, DOOR, isOpen, FACING, worldX, worldZ, tileX, tileY,
-  slidePocketSide, slidePocketRun, doorSide, doorsOnRoom,
+  CEIL_H, centreX, centreZ, CORRIDOR, DOOR, DOOR_CLEAR, DOOR_H, doorSide, doorsOnRoom, FACING, isOpen, ROOM, slidePocketRun, slidePocketSide, SOLID, TILE, tileX, tileY, WALL_H, worldX, worldZ,
 } from './layout.js';
 import { CARDS, READER_LIT, READER_OPEN } from '../keycards.js';
 import { PLAYER_RADIUS } from '../metrics.js';
@@ -1188,7 +1186,7 @@ function buildCeilingLights(layout, batcher, materials, fixtures, destructibles)
     for (let tx = step; tx < W - step; tx += step) {
       if (tiles[ty * W + tx] !== CORRIDOR) continue;
       const runX = tiles[ty * W + tx - 4] === CORRIDOR && tiles[ty * W + tx + 4] === CORRIDOR;
-      addFixture(worldX(layout, tx + 0.5), worldZ(layout, ty + 0.5), runX);
+      addFixture(centreX(layout, tx), centreZ(layout, ty), runX);
     }
   }
 }
@@ -2543,8 +2541,8 @@ function furnishCorridors(layout, sink, rng) {
   for (let ty = step; ty < H - step; ty += step) {
     for (let tx = step; tx < W - step; tx += step) {
       if (tiles[ty * W + tx] !== CORRIDOR || !rng.chance(0.4)) continue;
-      const x = worldX(layout, tx + 0.5);
-      const z = worldZ(layout, ty + 0.5);
+      const x = centreX(layout, tx);
+      const z = centreZ(layout, ty);
       tryPlace(sink, rng.pick(kinds), x, z, rng.int(0, 3), rng);
     }
   }
@@ -2583,8 +2581,8 @@ function placeWashers(layout, sink, rng) {
   const placed = [];
   for (const [tx, ty] of spots) {
     if (placed.length >= want) break;
-    const x = worldX(layout, tx + 0.5);
-    const z = worldZ(layout, ty + 0.5);
+    const x = centreX(layout, tx);
+    const z = centreZ(layout, ty);
     if (placed.some((q) => Math.hypot(q.x - x, q.z - z) < WASHER_GAP)) continue;
     if (tryPlace(sink, 'washingMachine', x, z, rng.int(0, 3), rng)) placed.push({ x, z });
   }
