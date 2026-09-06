@@ -199,6 +199,24 @@ const CHORES = {
     at: 'meeting', pose: null, sit: true, seatAs: 'meeting', human: true,
     time: [17, 34], weight: 0, stay: [2, 4],
   },
+  // THE POST GOING OUT: a box off a mailroom rack, and out of the building by
+  // the lift. Two legs of `postrun` below, so both are `weight: 0` for
+  // `fetchBox`'s reason.
+  //
+  // `neutral: true` is the third of these flags after `human` and `machine`, and
+  // it is the only one that is about DISPOSITION rather than shape. Whoever does
+  // this walks the length of a floor with their arms full and their back to
+  // everything, so it is a courier's errand and not an armed employee's — and it
+  // is the only thing on the table where meeting the person doing it is supposed
+  // to cost you nothing.
+  fetchPost: {
+    at: 'mail', pose: 'server', time: [4, 9], weight: 0, stay: [1, 1], neutral: true,
+    then: { pose: 'shelfTake', time: [2.4, 4.0], gives: 'box' },
+  },
+  sendPost: {
+    at: 'lift', pose: 'shelfTake', time: [3, 6], weight: 0, stay: [1, 1], neutral: true,
+    takes: 'box',
+  },
   // A MACHINE'S BREAK, and the only entry on this table that is not work.
   //
   // Half the roster does not eat: `_lunchOk` in enemies.js has kept a chassis
@@ -294,6 +312,18 @@ const ROUTINES = {
       { kind: 'stowBox', takes: 'box' },
     ],
   },
+  // ...and the post, which is the same two legs going somewhere else: off a
+  // mailroom rack and out of the building. Weighted low and cast from the
+  // neutrals only, so it is a thing you come across rather than a thing the
+  // floor is doing — a courier crossing a corridor with a parcel, which is the
+  // whole of it.
+  postrun: {
+    weight: 1,
+    legs: [
+      { kind: 'fetchPost' },
+      { kind: 'sendPost', takes: 'box' },
+    ],
+  },
 };
 const ROUTINE_KINDS = Object.keys(ROUTINES);
 
@@ -302,6 +332,14 @@ const ROUTINE_KINDS = Object.keys(ROUTINES);
 // a field for three walks instead of one. Six of them on a floor of a hundred and
 // seventy is one visible errand per few rooms, which is what it is for.
 const MAX_ROUTINES = 6;
+
+// How far out of a lift car the post is handed in — searched between these two
+// rather than fixed, because what has to be true is that a body FITS there. Near
+// enough to be unmistakably at the lift, far enough to be in the room rather
+// than in the doorway.
+const LIFT_NEAR = 1.4;
+const LIFT_FAR = 3.2;
+const LIFT_STEP = 0.25;
 
 // A meeting: how many people are in it, and how many may be running at once.
 //
@@ -464,6 +502,34 @@ export class Chores {
       ...(enemies.stations?.get('files') ?? []),
     ];
 
+    // Where the post leaves by: the floor a body stands on with the lift doors
+    // in front of it. Not furniture, so it does not come down the workstation
+    // pipe — it is derived from the two cars the floorplan carved (gen/lifts.js)
+    // exactly as the mop and patrol spots are derived from the corridor sample,
+    // and for the same reason: it is a patch of floor rather than a thing.
+    //
+    // `facing` is the direction the doors open into the room, so stepping that
+    // far out of the car puts a body clear of the doorway, and turning back
+    // round (`+ 2`) has them facing the doors. Both cars, and the errand takes
+    // whichever it can reach — a parcel goes down either of them.
+    const lifts = [];
+    for (const car of [enemies.layout?.lifts?.arrival, enemies.layout?.lifts?.departure]) {
+      if (!car) continue;
+      const [fx, fz] = FACING[car.facing & 3];
+      // WALKED OUT UNTIL A BODY FITS, rather than measured. `fits` is the walk
+      // grid eroded by a body's radius, so every tile touching the car's front
+      // wall is out of it — a standoff picked by eye landed one tile short and
+      // `floodTo` came back false for every post run on every floor, silently,
+      // because a route to a tile nothing can stand on is no route.
+      for (let out = LIFT_NEAR; out <= LIFT_FAR + 1e-6; out += LIFT_STEP) {
+        const x = car.x + fx * out;
+        const z = car.z + fz * out;
+        if (!nav.fitsAt(nav.tx(x), nav.ty(z))) continue;
+        lifts.push({ x, z, rot: (car.facing + 2) & 3 });
+        break;
+      }
+    }
+
     for (const kind of KINDS) {
       const at = CHORES[kind].at;
       // A meeting's chairs come out of `meetingSeats` for the same reason a
@@ -474,7 +540,8 @@ export class Chores {
           : at === 'chair' ? chairs
             : at === 'meeting' ? [...(enemies.meetingSeats?.values() ?? [])].flat()
               : at === 'racks' ? racks
-                : (enemies.stations?.get(at) ?? []);
+                : at === 'lift' ? lifts
+                  : (enemies.stations?.get(at) ?? []);
       if (from.length) this.pools.set(kind, from);
     }
     // Nothing to do on a floor with no machines anybody can stand at, which is
@@ -885,6 +952,7 @@ export class Chores {
     // it already has: standing at the end of it.
     const humanOnly = !!CHORES[kind].human;
     const machineOnly = !!CHORES[kind].machine;
+    const calmOnly = !!CHORES[kind].neutral;
 
     let best = null;
     let bestD = Infinity;
@@ -892,6 +960,7 @@ export class Chores {
       if (!this._eligible(e) || !worksFor(e).includes(kind)) continue;
       if (humanOnly && (e.rig !== 'human' || isMachine(e.type))) continue;
       if (machineOnly && !isMachine(e.type)) continue;
+      if (calmOnly && !e.type.neutral) continue;
       // `descendOn` is the reachability half and it is asked FIRST: a distance
       // can be read off a tile a body cannot actually set off from.
       if (!this.nav.descendOn(this._field, e.x, e.z, this._v)) continue;

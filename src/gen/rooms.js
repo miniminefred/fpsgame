@@ -481,15 +481,23 @@ function itBay(sink, bounds, rng) {
   if (rng.chance(0.4)) edgeProp(sink, bounds, 'extinguisher', rng);
 }
 
-// Goods in, goods out: pallets in the middle of the floor because they were
-// dropped where the trolley stopped.
+// Goods in, goods out: shelves of parcels, and the crates they came in stacked
+// where the trolley stopped.
+//
+// The shelves publish a `mail` station, which is where the post is collected
+// from — see the `postrun` routine in chores.js. It is its own kind rather than
+// the storeroom's `shelf` or the archive's `files`, because what comes off one
+// of these is somebody's parcel and it leaves the building: a stocktake that
+// took a box off the mailroom rack and put it on another one would be the post
+// being filed instead of sent.
 function mailRoom(sink, bounds, rng) {
-  edgeProp(sink, bounds, 'counter', rng);
-  edgeProp(sink, bounds, 'shelving', rng);
-  wallClutter(sink, bounds, ['recyclingBin', 'printer', 'shelving'], 28, rng);
+  const { x0, z0, x1, z1 } = bounds;
+  const racks = Math.max(2, Math.floor(Math.max(x1 - x0, z1 - z0) / 2.4));
+  for (let i = 0; i < racks; i++) edgeProp(sink, bounds, 'shelving', rng, ALL_SIDES, 'mail');
+  if (rng.chance(0.6)) edgeProp(sink, bounds, 'recyclingBin', rng);
   scatter(sink, bounds, area(bounds) > 55
-    ? ['pallet', 'crate', 'crateStack', 'crateStack']
-    : ['crateStack', 'crateStack', 'crate'], 10, rng);
+    ? ['crateStack', 'crateStack', 'crate', 'pallet', 'carton']
+    : ['crateStack', 'crateStack', 'carton'], 9, rng);
 }
 
 // The room the building would rather you didn't see: lockers, cleaning kit and
@@ -1271,6 +1279,12 @@ const WORK_AT = {
   charger: 'charge',
 };
 
+// ...except where the ROOM decides what a prop is a place to do. A shelving unit
+// is `shelf` in a storeroom and `mail` in a mailroom, and the difference is not
+// about shelving, it is about what is on it — so it cannot come off the table
+// above, which is keyed on the prop. `edgeProp` takes it as an override.
+
+
 // How far in front of a machine a body stands to use it. A shade under the
 // rack's 0.65 because these are reached with the hands rather than leaned into,
 // and a body standing a full arm's length off a vending machine reads as
@@ -1288,7 +1302,7 @@ const WORK_REACH = 0.58;
 // room for, and a pod on a tight pitch loses both.
 const DESK_ASIDE = 0.62;
 
-function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES) {
+function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES, as = null) {
   const { x0, z0, x1, z1 } = bounds;
   // Asked in the prop's OWN frame, where `d` is always the dimension that faces
   // the wall and `w` the one that runs along it — which is the whole reason the
@@ -1317,7 +1331,7 @@ function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES) {
     // -Z, so QUARTER turns its own depth into a direction, and the body faces
     // back the other way. Written out by hand this is four coordinates and half
     // of them come out backwards (see the note on sides above).
-    const at = WORK_AT[kind];
+    const at = as ?? WORK_AT[kind];
     if (at) {
       const [ox, oz] = QUARTER[side](0, -(standoff + WORK_REACH));
       sink.workstation(cx + ox, cz + oz, (side + 2) & 3, at);
