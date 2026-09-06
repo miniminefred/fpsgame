@@ -206,9 +206,12 @@ See **Co-op** below.
 index.html        Entry shell: overlay, HUD markup, minimap canvas
 vite.config.js    Dev/preview server pinned to port 8090
 tools/
+  headless.mjs         The DOM stub the real builder needs, for tools without a browser
   validate-layout.mjs  Headless floorplan invariants (connectivity, doors, sealing)
   validate-props.mjs   Headless furniture-placement invariants
   validate-nav.mjs     Headless multi-level routing invariants
+  fingerprint.mjs      Hashes what the generator PRODUCES, for proving a refactor
+                       changed nothing. See "Proving a refactor" below
 src/
   main.js         Bootstrap: wires modules, runs the render loop
   game.js         The run: floor progression and difficulty curves
@@ -262,16 +265,34 @@ src/
   dev-sounds.js   Drives dev-sounds.html
   dev-layout.js   Drives dev-layout.html
   style.css       All UI styling
-  gen/
-    tiles.js      The tile vocabulary: sizes, the tile enum, tile<->world, bfs
-    layout.js     Floorplan: corridor spine + BSP room blocks + doors. Re-exports
-                  tiles.js and locks.js, so the rest of the tree has one address
+  gen/            Generation, in two halves: PLANNING a floor, then BUILDING it.
+                  Each half has one file that is the ORDER its passes run in and
+                  nothing else — layout.js and build.js — and every pass has a
+                  file of its own. See "One file per pass" below.
+    tiles.js      The tile vocabulary everything is written in: the tile enum,
+                  tile<->world, bfs, the wall walks, the site walk
+    ---- planning ----
+    layout.js     The order the planning passes run in, plus the dice that decide
+                  how big a floor is. Re-exports tiles.js, carve.js, locks.js and
+                  roles.js, so the rest of the tree has one address for a floor
+    carve.js      Corridor spine, BSP room blocks, doorways, hall doors
+    roles.js      What each room turns out to be: the lobby, the canteen, the rest
     locks.js      Badge readers: which door gets which card, and the proofs
     stairs.js     A staircase up a room's wall, and the sealed storey above it
-    lifts.js      The two cars a floor is entered and left by, cut into two rooms
-    build.js      Floorplan -> meshes, colliders, nav grid, lights, windows
+    lifts.js      The bank of two cars, cut into the lobby
+    ---- building ----
+    build.js      The order the building passes run in
+    shell.js      Walls, floors, ceilings, roofs, glazing, door frames, lights
+    doorways.js   The three kinds of door, and the badge reader beside them
+    fitout.js     The two lift cars fitted out, and the way down
+    mezzanine.js  The plant room's deck, its flight and its workstations
+    levels.js     A staircase built, and the storey at the top of it
+    sink.js       The one object every prop in the building is placed through
+    furnish.js    What is kept clear, which rooms get furnished, and the corridors
+    ---- what goes in a room ----
+    rooms.js      Which props each role gets — one function per room type
+    placement.js  How a prop is put down: against a wall, in ranks, scattered
     props.js      Office furniture catalogue and the placement primitive
-    rooms.js      Which props a room gets, and where they go against its walls
     models.js     Loads + bakes the downloaded furniture GLBs for batching
     model-table.js  Per-model scale/yaw/footprint normalization data
     geom.js       World-space UVs and the material/chunk geometry batcher
@@ -403,6 +424,101 @@ the parent still has to be measured against everything else at its new size — 
 narrow-screen rule drops to a hardcoded offset below `#mission`'s bottom edge, which is
 exactly the sort of number a new line in that block invalidates. All 12 sizes clear with
 the co-op chip forced up alongside it.
+
+## One file per pass, and one place per idea
+
+Generation is two pipelines — plan a floor, then build it — and each pipeline has
+exactly one file that is the ORDER its passes run in. `gen/layout.js` and
+`gen/build.js` are those two, and both are short enough to read on one screen,
+because several passes in each only work because of where they sit in the list.
+Everything else in `gen/` is one pass, or one idea, in a file of its own.
+
+That is a rule the tree grew into rather than started with. `build.js` reached
+**2,879 lines** holding eight unrelated concerns, and the cost is not aesthetic:
+the change that put both lifts in one lobby had to touch three separate places in
+that file, and finding the third took longer than making it. It is now 261 lines
+and the eight concerns are eight modules, none over 850.
+
+**Four things were the same thing written out several times**, and each is now
+written once:
+
+- **The tile vocabulary.** Five files had their own bounded tile read, two had
+  their own `slidePocketSide` wall walk (one of them written inside out), and
+  `fillRoom` and `sealDoor` were the same function under two names — a room and a
+  doorway are both rectangles of tiles. `tileAt`, `fillRect`, `rectHasTile` and
+  `doorSpan` are the survivors.
+- **The site walk.** FOUR modules had their own copy of "every tile of the floor
+  that passes this test, shuffled", and this file records the same lesson under
+  each of them: a tile that survives a placer's own tests is a few percent of a
+  floor, so darts deliver three parcel lines on one floor and nine on the next.
+  `siteWalk` in gen/tiles.js is that walk, with the two options the four differed
+  in. `NEIGHBOURS` went the same way — three copies of the same four steps.
+- **The doorway.** Three door builders — one panel on a runner, two hinged
+  leaves, two parting leaves — differed ONLY in the meshes and in how they move,
+  and each answered "where is this opening, how wide is it, what collider fills
+  it, which tiles does it occupy" for itself. `doorway` and `addDoor` in
+  gen/doorways.js are the half that was the same. The collider is worth the
+  extraction on its own: it is what the player walks into AND, by having its
+  `top` dropped rather than being removed, how every door in the game says *walk
+  through me*.
+- **The wall.** A side number is a quarter turn, and four sites answered "which
+  way is into the room" with their own four-case switch. `edgeProp` has warned at
+  length for a long time about what that costs — *four pairs of coordinates and
+  half of them are backwards* — and half of them once were, which stood every
+  vending machine and reception desk on the ±z walls with its front to the
+  plaster. `wall(side, bounds)` in gen/placement.js is the one answer.
+
+**And `edgeProp` absorbed the lift lobby's counter.** That was a 60-line function
+of its own — a wall placer with a sweep instead of darts, a standoff instead of a
+back to the plaster, and a station BEHIND instead of in front. All three are
+options on the one placer now, and the difference between a copier and a
+reception counter is one call:
+
+```js
+edgeProp(sink, bounds, 'receptionDesk', rng, sides, 'reception',
+  { behind: COUNTER_STAND + COUNTER_CLEAR, stand: COUNTER_STAND, sweep: true });
+```
+
+### Proving a refactor (`tools/fingerprint.mjs`)
+The three validators prove INVARIANTS — a floor is connected, no lock strands the
+exit, no prop stands in a doorway — and a refactor can hold every one of them
+while quietly generating a different building. So there is a fourth tool that
+hashes what the generator PRODUCES:
+
+```
+node tools/fingerprint.mjs > before.txt      # ...refactor...
+node tools/fingerprint.mjs > after.txt
+diff before.txt after.txt
+```
+
+Two layers, because they fail differently. The **plan** — the tile grid, every
+door, every room's rect and role, the locks, the stairs, the cars — over 280
+floors. And the **build**: the colliders, the door records, the workstations and
+the nav grid `buildLevel` turns that plan into, over 24. The second layer is the
+one that catches a builder refactor, and the plan cannot see it at all.
+
+Every commit in the cleanup above was landed on a **zero-line diff** against the
+commit before it. It also earns its keep as a test: `deskAgainstWall` kept a call
+to a helper that had been renamed, `npm run build` was perfectly happy with it
+(JavaScript, no types), and the fingerprint failed 24 of 24 floors on the spot.
+
+A baseline can be taken from any commit, which is how the door refactor was
+proved against the one before it:
+
+```
+git worktree add --detach /tmp/base <sha>
+cp tools/headless.mjs tools/fingerprint.mjs /tmp/base/tools/
+(cd /tmp/base && node tools/fingerprint.mjs) > base.txt
+```
+
+**One caveat worth knowing: a refactor must not move an `rng` draw.** Every floor
+is a pure function of its seed, so spending the stream in a different ORDER
+re-rolls the contents of the whole building — which reads as a broken refactor
+and is not one. `edgeProp`'s wall order is a GENERATOR rather than an array for
+exactly this reason: drawing its twelve sides up front would take twelve numbers
+off the floor before the first `tryPlace` took any. The fingerprint catches it
+instantly; the validators do not, because a differently-furnished floor is just
+as valid as the one before it.
 
 ## Key systems
 
@@ -545,7 +661,7 @@ inside a wall, and resolving from inside a big box teleports you to its edge. Th
 domain is *positions the player can legally occupy*, and on that domain 40,000 samples and
 1,217 m of simulated walking agree to the last decimal.
 
-### Backing a prop against a wall (`edgeProp` in `gen/rooms.js`)
+### Backing a prop against a wall (`edgeProp` in `gen/placement.js`)
 Props are authored facing **-z** (`gen/props.js`), and `edgeProp`'s side number
 **is** the quarter turn that puts that face into the room: 0 = the +z wall, 1 =
 -x, 2 = -z, 3 = +x. The two even sides used to be swapped, which stood every
@@ -631,7 +747,7 @@ land: darts gave a room of two things or of nine, and without the cap the big pr
 first few spots and every leftover gap took the one prop still small enough to fit it — which
 came out as two pallets and eight fire extinguishers.
 
-### The generator room (`generatorRoom` in `gen/rooms.js` + `buildGeneratorMezzanine`)
+### The generator room (`generatorRoom` in `gen/rooms.js` + `gen/mezzanine.js`)
 One big room a floor, when the slab throws up somewhere that fits (area over 110 m², a
 short side of 15 tiles, and exactly one door), becomes the plant room: walls a full
 storey taller than everything else, no suspended ceiling, a roof of its own at `WALL_H *
@@ -721,7 +837,7 @@ Three things about it are structural rather than decorative:
   catalogue (`gen/props.js`): it is built to the width it is ASKED for rather than to a
   number typed into the catalogue, because what it is for is being the far end of the
   room, and a five-metre cabinet against the middle of a fifteen-metre wall is a cabinet.
-  `wallSpanProp` in `gen/rooms.js` is the placement, and its retreat is the point of it —
+  `wallSpanProp` in `gen/placement.js` is the placement, and its retreat is the point of it —
   reaching both corners means reserving every tile across the room, and `reserveClearances`
   stamps doorway aprons into the shared grid without regard for whose room the tile is in,
   so one unrelated doorway on the far side of that wall can veto the full span. It steps in
@@ -1093,7 +1209,7 @@ the deck at 3.2 m, and on the door wall they do it starting from inside the door
 the one-turn walk is the tested claim and not just the intended one. Each deck comes out
 with three to five desks on it.
 
-### The lift lobby (`gen/lifts.js` + `buildLifts`/`buildExit` in `gen/build.js`)
+### The lift lobby (`gen/lifts.js` + `buildLifts`/`buildExit` in `gen/fitout.js`)
 A floor used to begin with the player standing in the middle of a room and end with a lit
 pad on the carpet. Both are PLACES rather than arrivals: nothing about either said you had
 come from the floor above or that there was one below. So a floor now opens the way an
@@ -1289,7 +1405,7 @@ arrangement and a lobby with nobody in it is worse.
 A lobby that could not fit a counter publishes no station and has nobody at one, which is an
 ordinary answer of exactly the kind `carveLift` gives.
 
-### The cafeteria (`cafeteria` in `gen/rooms.js` + `pickCafeteria`)
+### The cafeteria (`cafeteria` in `gen/rooms.js` + `pickCafeteria` in `gen/roles.js`)
 The floor's canteen. It is the plant room's sibling — a big room composed around one thing
 — and it is deliberately the **common** one where the generator is the rare one: **600 of
 600** swept floors get a cafeteria against 17 that get a plant room.
@@ -1350,7 +1466,7 @@ handle.**
   puts tables on either side of whatever is in the way; each axis only jumps a full pitch
   once something has landed, so the ranks stay parallel and evenly spaced.
 - **The square kept clear where you arrive came down from 5.5 m to 4 m** (`ARRIVAL_CLEAR`
-  in `gen/build.js`). It was sized when arriving always meant a lift lobby — a small room
+  in `gen/furnish.js`). It was sized when arriving always meant a lift lobby — a small room
   furnished against its walls anyway, where the difference is invisible. A cafeteria is 8
   to 12 m across, and 5.5 m of clear square through the middle plus the lane in front of
   the servery is the room's whole depth: **11 of 37 came out with nothing to sit at**. It
@@ -1452,7 +1568,7 @@ canteen: there used to be a mid-sized `canteen` role as well — round tables an
 somewhere on the floor to eat — and having both meant a floor with two rooms making the
 same statement, one composed and one scattered. This is the composed one, so it stayed.
 
-### What furniture is never allowed to close (`reserveClearances` in `gen/build.js`)
+### What furniture is never allowed to close (`reserveClearances` in `gen/furnish.js`)
 A tile mask the furnisher may not place into, stamped before a single prop is put down —
 because a floor should not be furnished into a state it then has to be rescued from. Doorways
 get a 4-tile apron on both sides, and the spawn and exit a clear square.
@@ -1492,7 +1608,7 @@ crates that could have been dealt to any seed. A **690-floor** sweep of the pre-
 found nothing, which is how a 1-in-300 fragility hides: the seeds are fixed, so a green sweep
 is evidence about those seeds and not about the generator.
 
-### An office is mostly open floor (`OPEN_SHARE`/`bsp` in `gen/layout.js`)
+### An office is mostly open floor (`OPEN_SHARE`/`bsp` in `gen/carve.js`)
 An office building is mostly open plan with the cellular offices round the edge of it, and
 this generator was the other way round. `MAX_LEAF` caps a BSP leaf at 26 tiles a side, so
 the biggest room a floor could ever have was 13 x 13 m, the median room was **37 m²**, and
@@ -1536,7 +1652,7 @@ side effect of it: an open plan office is decided by the BSP now, and a 45 m² r
 open plan was the game calling a modest office a floorplate — which is exactly what made the
 label mean nothing.
 
-### What each room turns out to be (`ROLE_PICKS`/`assignRoles` in `gen/layout.js`, `furnish` in `gen/rooms.js`)
+### What each room turns out to be (`ROLE_PICKS`/`assignRoles` in `gen/roles.js`, `furnish` in `gen/rooms.js`)
 A room's role is rolled off its SHAPE — long-thin, big, mid or small (`roleBranch`) — unless
 the BSP already handed it over whole as an open floor, in which case it is an open plan
 office and nothing else (see above). Then a handful of flavour rooms are guaranteed on top.
@@ -1560,7 +1676,7 @@ Two things about the list are worth knowing because neither is obvious from it:
   room publishes a `board` station and registers its chairs as `meeting` seats, so a meeting
   can be held in one — see `_tryMeeting`.
 
-### Floor generation (`gen/layout.js`, on the vocabulary in `gen/tiles.js`)
+### Floor generation (`gen/carve.js`, on the vocabulary in `gen/tiles.js`)
 Real office floors are not mazes, so the generator does not build one. It carves a corridor
 spine first (2-4 vertical, 1-3 horizontal bands, guaranteed to intersect, so the corridor
 network is connected by construction), then BSP-subdivides each leftover block into rooms
@@ -1602,7 +1718,7 @@ always fully connected from the spawn, and two doorways never merge into one wid
 (each room cuts its own door, so without a minimum wall stub the second lands flush
 against the first).
 
-### Hall doors (`cutHallDoors` in `gen/layout.js` + `buildHallDoors` in `gen/build.js`)
+### Hall doors (`cutHallDoors` in `gen/carve.js` + `buildHallDoors` in `gen/doorways.js`)
 The corridors get doors of their own — otherwise the hallway network is one continuous
 open loop, the one part of the building that reads as a level rather than as an office.
 They are the exception to almost everything the room doorways do, and all of it falls out
@@ -2001,7 +2117,7 @@ list: he is a flat one or
 two on every floor there has ever been, and the last human on a floor of robots running for a
 lavatory is the joke landing harder rather than a joke out of place.
 
-### A chair means "hasn't noticed you yet" (`workstations` in `gen/build.js` + `_takeDesk`/`animateWorking`)
+### A chair means "hasn't noticed you yet" (`workstations` in `gen/sink.js` + `_takeDesk`/`animateWorking`)
 **This rule was retired on purpose, and it used to be the strongest one in the game.** It
 read: *nothing that is going to fight you is ever found sitting down* — the one tell in the
 building about behaviour rather than identity, stated in the cafeteria on the way in before
@@ -2097,7 +2213,7 @@ and still faces it at its desk, the pose still hinges a real joint, and everybod
 sit goes through exactly the path all twenty-three used to.
 
 **The furnisher decides where, because it is the only thing that knows.** A desk with a
-monitor on it and a chair pulled up to it is a job, and `seatFacing` in `gen/rooms.js` is
+monitor on it and a chair pulled up to it is a job, and `seatFacing` in `gen/placement.js` is
 the one call that places that chair — so it registers a **workstation** (where the chair
 is, and the quarter turn that faces the desk) through `sink.workstation`. `enemies.js`
 would otherwise be guessing at furniture from the nav grid, and `_seat` converts that turn
@@ -2575,7 +2691,7 @@ keeps:
   version, kept because somebody leaning over your machine is a real thing and because it
   is what a **machine** does at a desk (`human` on the kind; a chassis has drive wheels
   where a pair of hips would be). The standing pose is offset along the desk from its own
-  chair by `DESK_ASIDE` in `gen/rooms.js`, offered both sides and filtered down to whichever
+  chair by `DESK_ASIDE` in `gen/placement.js`, offered both sides and filtered down to whichever
   the room has room for.
 - **The visor is untouched.** A break recolours the eyes because a break really does stop
   somebody fighting you. This does not, so it must not.
@@ -2636,7 +2752,7 @@ that puts a hinged limb back and hands the machine back to the pool.
 
 **Where somebody stands comes from the FURNISHER**, down the same `sink.workstation` pipe
 the chairs and the servery queue use, because it is the only thing that knows where a
-printer actually landed. `WORK_AT` in `gen/rooms.js` is a table read by `edgeProp`, not an
+printer actually landed. `WORK_AT` in `gen/placement.js` is a table read by `edgeProp`, not an
 argument threaded through its fifteen call sites — whether a printer is somewhere to stand
 is a fact about printers rather than about the copy room — so every vending machine,
 copier, bench and rack backed against a wall anywhere in the building offers a place to
