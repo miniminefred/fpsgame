@@ -1046,6 +1046,39 @@ export const PROPS = {
     },
   },
 
+  // The presentation room's screen: a wall of it, showing something.
+  //
+  // Not the `tv_screen` model, which measures 1.22 m and is a monitor on a
+  // bracket. What this room is arranged around is a screen you can read from the
+  // back row, so it is 2.4 m of it — authored, because there is no model that
+  // size and because a lit rectangle in a dark bezel is four boxes.
+  //
+  // The face is `screenOn`, which is unlit (`MeshBasicMaterial`), and that is
+  // the whole trick: being immune to the room's lighting is exactly what makes
+  // it read as a screen that is ON rather than a dark panel with a light on it.
+  // It is the same argument the ceiling panels and the lit menu boards make.
+  presentationScreen: {
+    w: 2.4, d: 0.22, hp: 45, substance: 'electronic',
+    build(p, rng) {
+      const Y0 = 0.86, Y1 = 2.24;
+      // Bezel, then the picture inside it, a couple of centimetres proud so the
+      // two faces are never coplanar — see the note on windows in gen/build.js.
+      p.box('metalDark', -1.2, Y0, 0.02, 1.2, Y1, 0.11);
+      p.box('screenOn', -1.13, Y0 + 0.07, -0.01, 1.13, Y1 - 0.07, 0.03);
+      // A dark band across it, which is what stops a 2.4 m rectangle of flat
+      // colour reading as a painted wall: something is on the screen.
+      const band = Y0 + 0.3 + rng.range(0, 0.5);
+      p.box('screen', -1.13, band, -0.02, 1.13, band + 0.16, 0.02);
+      // The bracket, and the cable down to the socket.
+      p.box('metal', -0.3, Y0 - 0.06, 0.08, 0.3, Y0, 0.16);
+      p.box('plastic', 0.2, 0.02, 0.09, 0.26, Y0 - 0.04, 0.13);
+      // Only as deep as the bracket: the screen itself is on the wall, and a
+      // 0.22 m obstruction along a wall people are sitting in rows in front of
+      // is a row of chairs pushed 0.22 m further back for nothing.
+      p.obstacle(-1.2, 0.02, 1.2, 0.16, Y1);
+    },
+  },
+
   // The archive's own bench: where paper is dealt with rather than stored.
   //
   // Authored as boxes rather than model-backed, and the small printer on it is

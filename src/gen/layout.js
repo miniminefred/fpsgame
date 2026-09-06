@@ -838,10 +838,11 @@ export function roleBranch(r) {
 
 // What each branch may be. Long-thin rooms furnish as ranks with an aisle
 // between them, which is why they are back-of-house whatever their area.
+
 const ROLE_PICKS = {
   longThin: ['storage', 'copyroom', 'server', 'storage', 'archive', 'utility', 'mailroom'],
-  big: ['openplan', 'openplan', 'openplan', 'canteen'],
-  mid: ['openplan', 'meeting', 'breakroom', 'storage', 'training', 'itbay', 'canteen', 'reception'],
+  big: ['openplan', 'openplan', 'openplan', 'presentation'],
+  mid: ['openplan', 'meeting', 'breakroom', 'storage', 'presentation', 'itbay', 'reception'],
   small: ['office', 'office', 'copyroom', 'storage', 'breakroom', 'utility', 'archive', 'server'],
 };
 
@@ -897,8 +898,7 @@ function assignRoles(rooms, spawnRoom, exitRoom, cafeteria, doors, rng) {
       ['utility', (r) => r.areaM2 < 60],
       ['mailroom', (r) => r.areaM2 > 25 && r.areaM2 < 90],
       ['itbay', (r) => r.areaM2 > 25 && r.areaM2 < 90],
-      ['training', (r) => r.areaM2 > 35],
-      ['canteen', (r) => r.areaM2 > 45],
+      ['presentation', (r) => r.areaM2 > 35],
       ['reception', (r) => r.areaM2 > 25],
     ]).slice(0, 4),
   ];

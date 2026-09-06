@@ -8,7 +8,7 @@ import { PLAYER_RADIUS } from '../metrics.js';
 //
 // A room has to be recognisable from its doorway, before anything in it has
 // been shot at, so every role commits to a silhouette: aisles in storage, rows
-// facing a whiteboard in training, a wall of racks in the server room.
+// facing a lit screen in the presentation room, a wall of racks in the server room.
 
 // Fills a room according to its role. Room bounds arrive in world metres,
 // already shrunk by the wall clearance the builder wants to keep. `doors` is
@@ -434,29 +434,50 @@ function utilityRoom(sink, bounds, rng) {
   scatter(sink, bounds, ['crateStack', 'trashCan'], 14, rng);
 }
 
-// Rows of seats facing a board at the front, with an aisle up the middle so the
-// room reads as a classroom from the doorway rather than a furniture warehouse.
-function trainingRoom(sink, bounds, rng) {
+// Rows of seats facing a big screen at the front, with an aisle up the middle so
+// the room reads as a room somebody presents in rather than a furniture
+// warehouse — and so it reads that way from the doorway, before anything in it
+// has moved.
+//
+// A screen rather than a whiteboard, and the difference is that it is ON: a lit
+// 2.4 m rectangle is the one thing in a grey office that says LOOK HERE, which
+// is what the whole seating plan is pointed at. The whiteboard stays where it
+// belongs, in the meeting room, where somebody writes on it.
+//
+// The screen publishes a `board` station like a whiteboard does (see WORK_AT),
+// and every chair here is registered as a `meeting` seat — so a meeting can be
+// held in this room too, with one body at the screen and the rest sitting in the
+// rows. Same cast, same poses; see `_tryMeeting` in chores.js.
+function presentationRoom(sink, bounds, rng) {
   const { x0, z0, x1, z1 } = bounds;
   const alongX = (x1 - x0) >= (z1 - z0);
   // Seats look at the front wall: rows run across the room, ranked back from it.
   const [f0, f1, a0, a1] = alongX ? [z0, z1, x0, x1] : [x0, x1, z0, z1];
   const at = (across, along) => (alongX ? [along, across] : [across, along]);
 
-  // The board decides which wall is the front, not the die: a doorway keeps
-  // four tiles of floor clear on both sides, so a board centred on the wall the
+  // The screen decides which wall is the front, not the die: a doorway keeps
+  // four tiles of floor clear on both sides, so a screen centred on the wall the
   // door is in never lands — and rows of chairs facing a blank wall is not a
-  // training room, it is a waiting room. Try both walls and a few positions
+  // presentation room, it is a waiting room. Try both walls and a few positions
   // along each, and rank the seats at whichever one took it.
-  let front = null, dir = 1, rot = 0;
+  let front = null, dir = 1, rot = 0, placed = false;
   for (const flip of rng.chance(0.5) ? [false, true] : [true, false]) {
     front = flip ? f1 : f0;
     dir = flip ? -1 : 1;                                   // deeper into the room
     rot = alongX ? (flip ? 0 : 2) : (flip ? 3 : 1);        // facing the front wall
-    let placed = false;
     for (const t of [0.5, 0.3, 0.7, 0.18, 0.82]) {
-      const [bx, bz] = at(front + dir * 0.3, a0 + (a1 - a0) * t);
-      if (tryPlace(sink, 'whiteboard', bx, bz, (rot + 2) & 3, rng)) { placed = true; break; }
+      const [bx, bz] = at(front + dir * 0.14, a0 + (a1 - a0) * t);
+      if (tryPlace(sink, 'presentationScreen', bx, bz, (rot + 2) & 3, rng)) {
+        // Where the person running it stands: to one side of the screen, out of
+        // its way, facing the room. Registered here rather than through
+        // `edgeProp`'s WORK_AT table because the screen is not placed by
+        // `edgeProp` — it is put on the wall the ROWS decide, not on a wall of
+        // its own choosing.
+        const [sx, sz] = at(front + dir * 0.9, a0 + (a1 - a0) * t + 1.5);
+        sink.workstation(sx, sz, (rot + 2) & 3, 'board');
+        placed = true;
+        break;
+      }
     }
     if (placed) break;
   }
@@ -469,42 +490,13 @@ function trainingRoom(sink, bounds, rng) {
       if (seats >= 5 && s === (seats >> 1)) continue;
       const along = a0 + (a1 - a0) * ((s + 0.5) / seats);
       const [cx, cz] = at(front + dir * (1.6 + r * 1.1), along);
-      tryPlace(sink, 'chair', cx, cz, rot, rng);
+      if (tryPlace(sink, 'chair', cx, cz, rot, rng)) {
+        sink.workstation(cx, cz, rot, 'meeting');
+      }
     }
   }
   if (rng.chance(0.6)) edgeProp(sink, bounds, 'plant', rng);
   if (rng.chance(0.5)) edgeProp(sink, bounds, 'cabinet', rng);
-}
-
-// Canteen seating: round tables with stools round them, on a pitch wide enough
-// to walk between two occupied chairs.
-function canteen(sink, bounds, rng) {
-  const { x0, z0, x1, z1 } = bounds;
-  const PITCH = 3.4;
-  const cols = Math.max(1, Math.floor((x1 - x0) / PITCH));
-  const rows = Math.max(1, Math.floor((z1 - z0) / PITCH));
-  const padX = (x1 - x0 - cols * PITCH) / 2;
-  const padZ = (z1 - z0 - rows * PITCH) / 2;
-
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const cx = x0 + padX + (c + 0.5) * PITCH;
-      const cz = z0 + padZ + (r + 0.5) * PITCH;
-      if (!tryPlace(sink, 'roundTable', cx, cz, 0, rng)) {
-        tryPlace(sink, 'coffeeTable', cx, cz, rng.int(0, 3), rng);
-        continue;
-      }
-      // Stools on the four sides, most of them pushed back in.
-      for (const [dx, dz, rot] of [[0, -1.4, 0], [0, 1.4, 2], [-1.4, 0, 1], [1.4, 0, 3]]) {
-        if (rng.chance(0.75)) tryPlace(sink, 'stool', cx + dx, cz + dz, rot, rng);
-      }
-    }
-  }
-
-  edgeProp(sink, bounds, 'counter', rng);
-  if (rng.chance(0.8)) edgeProp(sink, bounds, 'vending', rng);
-  if (rng.chance(0.7)) edgeProp(sink, bounds, 'recyclingBin', rng);
-  if (rng.chance(0.6)) edgeProp(sink, bounds, 'plant', rng);
 }
 
 // The front of house on a floor that has one: a counter to be greeted at, and
@@ -799,9 +791,11 @@ function generatorRoom(sink, bounds, rng, room, doors) {
 // of the room instead of one wall of four — the same argument the generator's
 // wall-to-wall placement rests on.
 //
-// `canteen` is still what a mid-sized room rolls, and the two are meant to read
-// differently: that one is somewhere on the floor to eat, this one is the
-// canteen the floor is arranged around.
+// It is the ONLY canteen now. There used to be a mid-sized `canteen` role as
+// well — round tables and stools, somewhere on the floor to eat — and having
+// both meant a floor with two rooms making the same statement, one of them
+// composed and one of them scattered. This is the composed one, so it is the one
+// that stayed.
 function cafeteria(sink, bounds, rng, room, doors) {
   const { x0, z0, x1, z1 } = bounds;
 
@@ -1025,8 +1019,7 @@ const ROLES = {
   itbay: itBay,
   mailroom: mailRoom,
   utility: utilityRoom,
-  training: trainingRoom,
-  canteen,
+  presentation: presentationRoom,
   cafeteria,
   reception,
   office: privateOffice,
@@ -1202,8 +1195,9 @@ const WORK_AT = {
   serverRack: 'server',
   // The front of a room rather than a machine, and it is the same fact: a
   // whiteboard is somewhere a body stands. Meetings hold their board here (see
-  // meetings.js) and a training room's board is where the person taking the
-  // session stands, which is what that room has always been drawn around.
+  // meetings.js). A presentation room registers its own `board` beside its
+  // screen rather than coming through here, because that screen goes on the wall
+  // the seating picked rather than on a wall of its own choosing.
   whiteboard: 'board',
   sortingBench: 'sorting',
   charger: 'charge',
