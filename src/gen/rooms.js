@@ -77,14 +77,13 @@ function fits(sink, bounds, role) {
   const margin = fw / 2;
 
   for (const side of ALL_SIDES) {
-    const alongX = side === 0 || side === 2;
-    if (alongX && x1 - x0 < margin * 2) continue;
-    if (!alongX && z1 - z0 < margin * 2) continue;
+    const w = wall(side, bounds);
+    if (w.a1 - w.a0 < margin * 2) continue;
     // Both ends of the wall and its middle. A wall with a doorway in the middle
     // of it still takes a copier at one end, and a wall with aprons at both ends
     // still takes one in the middle.
     for (const t of [0.5, 0.15, 0.85]) {
-      const [cx, cz] = seatAt(side, x0, z0, x1, z1, standoff, margin, { range: (lo, hi) => lo + (hi - lo) * t });
+      const [cx, cz] = w.seat(w.a0 + margin + (w.a1 - w.a0 - margin * 2) * t, standoff);
       if (sink.canPlace(cx - margin, cz - standoff, cx + margin, cz + standoff)) return true;
     }
   }
@@ -619,7 +618,6 @@ function privateOffice(sink, bounds, rng) {
 
 // Desk backed onto a wall with its chair tucked in front of it.
 function deskAgainstWall(sink, bounds, rng) {
-  const { x0, z0, x1, z1 } = bounds;
   // The footprint the placer will actually reserve — the desk's model is
   // 1.84 x 0.97 where its fallback boxes are 1.6 x 0.8, so seating it off the
   // catalogue's numbers put its back 8.5 cm through the wall inset and its
@@ -629,31 +627,83 @@ function deskAgainstWall(sink, bounds, rng) {
   const margin = fw / 2;
 
   for (let tries = 0; tries < 10; tries++) {
-    const side = rng.int(0, 3);
-    const alongX = side === 0 || side === 2;
-    if (alongX && x1 - x0 < margin * 2) continue;
-    if (!alongX && z1 - z0 < margin * 2) continue;
+    const w = wall(rng.int(0, 3), bounds);
+    if (w.a1 - w.a0 < margin * 2) continue;
 
-    const [cx, cz] = seatAt(side, x0, z0, x1, z1, standoff, margin, rng);
-    if (!tryPlace(sink, 'desk', cx, cz, side, rng)) continue;
+    const [cx, cz] = w.seat(rng.range(w.a0 + margin, w.a1 - margin), standoff);
+    if (!tryPlace(sink, 'desk', cx, cz, w.side, rng)) continue;
 
-    seatFacing(sink, 'desk', cx, cz, side, rng);
+    seatFacing(sink, 'desk', cx, cz, w.side, rng);
     return true;
   }
   return false;
 }
 
-// Where a prop stands when its back is against `side`. Half its DEPTH off the
-// wall and half its WIDTH in from each end of it — that is the whole point of
-// backing something against a wall, and swapping the two pushed wide props a
-// metre into the room and buried narrow ones in the plaster.
-function seatAt(side, x0, z0, x1, z1, standoff, margin, rng) {
-  switch (side) {
-    case 0: return [rng.range(x0 + margin, x1 - margin), z1 - standoff];
-    case 1: return [x0 + standoff, rng.range(z0 + margin, z1 - margin)];
-    case 2: return [rng.range(x0 + margin, x1 - margin), z0 + standoff];
-    default: return [x1 - standoff, rng.range(z0 + margin, z1 - margin)];
-  }
+/**
+ * A wall, resolved into the two numbers everything that backs a prop against one
+ * actually needs: which way is INTO the room, and which axis runs ALONG it.
+ *
+ * Four sites used to answer this for themselves — `edgeProp`, `wallSpanProp`,
+ * the reception counter and the mezzanine's own arithmetic — and every one of
+ * them was a four-case switch or a chain of ternaries over the same side number.
+ * `edgeProp` documents at length what happens when that is written out by hand:
+ * it comes out as four pairs of coordinates and half of them are backwards, and
+ * for a long time the two even sides WERE swapped, which stood every vending
+ * machine and reception desk on the ±z walls with its front to the plaster.
+ *
+ * `alongX` says which of `bounds`' two axes runs along the wall; `into` is +1 or
+ * -1 on the other one; `edge` is where that other axis starts from. So a prop
+ * standing `standoff` off this wall at position `at` along it is at `seat(at,
+ * standoff)`, whichever wall it is.
+ */
+function wall(side, bounds) {
+  const { x0, z0, x1, z1 } = bounds;
+  const alongX = side === 0 || side === 2;
+  const into = (side === 0 || side === 3) ? -1 : 1;
+  const edge = side === 0 ? z1 : side === 1 ? x0 : side === 2 ? z0 : x1;
+  const [a0, a1] = alongX ? [x0, x1] : [z0, z1];
+  return {
+    side, alongX, into, edge, a0, a1,
+    // `at` runs along the wall, `standoff` runs into the room from it.
+    seat(at, standoff) {
+      const off = edge + into * standoff;
+      return alongX ? [at, off] : [off, at];
+    },
+    // ...and the rectangle between the wall and something standing `depth` off
+    // it, `width` across. What is behind a counter, in other words.
+    pocket(at, depth, width) {
+      const [p, q] = [edge, edge + into * depth].sort((m, n) => m - n);
+      return alongX
+        ? [at - width / 2, p, at + width / 2, q]
+        : [p, at - width / 2, q, at + width / 2];
+    },
+  };
+}
+
+/**
+ * Where along a wall to try, in the order to try them.
+ *
+ * Two answers, and which one a caller wants is about how spoken-for the room
+ * is. A filing cabinet against the wall of an ordinary office wants ONE random
+ * point, because almost any point will do and a swept prop lands in the same
+ * corner of every room on the floor. A prop going into a room whose floor is
+ * mostly reserved wants every position on the wall, walked from a random start
+ * so it is still not in the same place twice — the lift lobby's counter found a
+ * spot on about half of floors with ten darts and on nearly all of them with a
+ * sweep, and the half that missed came out with nobody behind the counter.
+ */
+function* wallOrder(sides, rng, sweep) {
+  if (sweep) { yield* sides; return; }
+  for (let i = 0; i < 12; i++) yield rng.pick(sides);
+}
+
+function* wallSlots(w, margin, rng, sweep) {
+  const lo = w.a0 + margin, hi = w.a1 - margin;
+  if (hi < lo) return;
+  if (!sweep) { yield rng.range(lo, hi); return; }
+  const n = Math.max(1, Math.floor((hi - lo) / TILE) + 1);
+  const from = rng.int(0, n - 1);
+  for (let i = 0; i < n; i++) yield lo + ((from + i) % n) * TILE;
 }
 
 // Backs a `spanning` prop against one whole wall, corner to corner, and returns
@@ -672,19 +722,16 @@ function wallSpanProp(sink, bounds, kind, rng, side) {
   const { x0, z0, x1, z1 } = bounds;
   const { d: fd } = footprintOf(sink, kind);
   const standoff = fd / 2;
-  const alongX = side === 0 || side === 2;
-  const full = alongX ? x1 - x0 : z1 - z0;
-  const mid = alongX ? (x0 + x1) / 2 : (z0 + z1) / 2;
-  const out = side === 0 ? z1 - standoff : side === 2 ? z0 + standoff
-    : side === 1 ? x0 + standoff : x1 - standoff;
+  const w = wall(side, bounds);
+  const full = w.a1 - w.a0;
+  const mid = (w.a0 + w.a1) / 2;
 
   // Starting a hair inside the bounds rather than exactly on them. `bounds` is
   // already the 0.15 m wall inset every prop in the building is held to, and a
   // prop whose edge lands exactly on it is one rounding error from being
   // reported as through the plaster (9.inset in tools/validate-props.mjs).
   for (let span = full - 0.04; span >= full - 1.5 && span > 2; span -= 0.5) {
-    const cx = alongX ? mid : out;
-    const cz = alongX ? out : mid;
+    const [cx, cz] = w.seat(mid, standoff);
     if (tryPlace(sink, kind, cx, cz, side, rng, span)) {
       return { cx, cz, rot: side, side, span };
     }
@@ -1131,8 +1178,16 @@ function liftLobby(sink, bounds, rng, room) {
   // back to the only thing in the room — but it is a real arrangement in a real
   // lobby, and a lobby with nobody in it is worse than one whose counter is off
   // to the side of the doors.
-  const counter = receptionCounter(sink, bounds, rng,
-    rng.shuffle([(bank + 1) & 3, (bank + 3) & 3]).concat((bank + 2) & 3, bank));
+  //
+  // An ordinary `edgeProp` with the two options a counter needs: it stands OFF
+  // its wall so there is a behind to stand in, and its position is swept along
+  // the wall rather than thrown at it, because by the time the furnisher reaches
+  // the lobby the doorway aprons and the clear square at each car have taken the
+  // whole band in front of the bank.
+  const counter = edgeProp(sink, bounds, 'receptionDesk', rng,
+    rng.shuffle([(bank + 1) & 3, (bank + 3) & 3]).concat((bank + 2) & 3, bank),
+    'reception',
+    { behind: COUNTER_STAND + COUNTER_CLEAR, stand: COUNTER_STAND, sweep: true });
   // A plant beside a counter that landed and a plant anywhere at all if it did
   // not — the room still has to read as a lobby rather than as an empty box with
   // two lifts in it.
@@ -1144,94 +1199,6 @@ function liftLobby(sink, bounds, rng, room) {
   if (!counter && rng.chance(0.5)) edgeProp(sink, bounds, 'plant', rng);
 }
 
-/**
- * A counter standing OFF a wall, with somewhere to stand behind it.
- *
- * Every other wall-backed prop in the catalogue goes through `edgeProp`, which
- * puts the prop's back on the plaster — there is nothing behind a filing cabinet
- * and nothing needs to be. A reception desk is the one prop in the building
- * somebody stands behind, and the receptionDesk model is 0.55 m deep, so backed
- * against the wall the entire pocket is the 0.15 m of skirting clearance. It has
- * to stand out into the room or there is no such thing as behind it.
- *
- * `sides` is the walls to try, in order of preference. Several positions are
- * tried along each: a lobby's floor is heavily spoken for by the time this runs
- * — the doorway aprons and the clear square at each car (see reserveClearances)
- * take most of the band in front of the bank — so the first spot offered is
- * regularly not free.
- *
- * Returns where it landed, or null. Null is an ordinary answer: a lobby with no
- * counter is a lobby, and the receptionist is placed off the station this
- * publishes, so a floor that could not fit one simply has nobody at it.
- */
-function receptionCounter(sink, bounds, rng, sides) {
-  const { x0, z0, x1, z1 } = bounds;
-  const { w: fw, d: fd } = footprintOf(sink, 'receptionDesk');
-  const standoff = COUNTER_STAND + COUNTER_CLEAR + fd / 2;
-  const margin = fw / 2;
-
-  for (const side of sides) {
-    const alongX = side === 0 || side === 2;
-    const [a0, a1] = alongX ? [x0, x1] : [z0, z1];
-    if (a1 - a0 < margin * 2) continue;
-    // WALKED along the wall a tile at a time rather than thrown at it, and that
-    // is a fix rather than a tidy: `seatAt` picks a random point, which is right
-    // for a filing cabinet against a wall of an empty office and wrong here,
-    // because by the time this runs most of a lobby's floor is spoken for — the
-    // doorway aprons and the clear square at each car (see reserveClearances)
-    // take the whole band in front of the bank, and a counter needs the strip
-    // that is left. Ten darts at that found a spot on about half of floors, and
-    // the other half of them came out with nobody in the lobby at all.
-    for (const at of sweep(a0 + margin, a1 - margin, rng)) {
-      const cx = alongX ? at : (side === 1 ? x0 + standoff : x1 - standoff);
-      const cz = alongX ? (side === 2 ? z0 + standoff : z1 - standoff) : at;
-      // The pocket: the floor between the wall and the counter's back face, the
-      // counter's own width across. It has to be free BEFORE the counter goes in
-      // and claimed after, and both halves were missing.
-      //
-      // Free, because `tryPlace` proves the counter's own tiles and nothing
-      // else: a counter standing across the corner of the lift block, or across
-      // a doorway apron, places perfectly and has no floor behind it. And
-      // claimed, because everything else in this room is placed AFTER it — a
-      // lobby whose receptionist was displaced by its own pot plant is a lobby
-      // with a counter and nobody behind it, which is silent, because all that
-      // happens is `standable` drops the station from the pool. Measured at 3
-      // floors in 13 before the claim.
-      const back = standoff - fd / 2;
-      const p0 = alongX
-        ? [cx - fw / 2, side === 2 ? z0 : z1 - back]
-        : [side === 1 ? x0 : x1 - back, cz - fw / 2];
-      const p1 = alongX
-        ? [cx + fw / 2, side === 2 ? z0 + back : z1]
-        : [side === 1 ? x0 + back : x1, cz + fw / 2];
-      if (!sink.canPlace(p0[0], p0[1], p1[0], p1[1])) continue;
-      if (!tryPlace(sink, 'receptionDesk', cx, cz, side, rng)) continue;
-      sink.occupy(p0[0], p0[1], p1[0], p1[1]);
-      // Behind it, which is the way the wall is. A prop is authored facing -Z,
-      // so its own +Z is the side the wall is on and QUARTER turns that into a
-      // direction — the same line every station in this file is derived with,
-      // and the sign is the whole difference between this and `edgeProp`'s,
-      // which puts a body in FRONT of what it is working at.
-      //
-      // The body faces the way the counter faces, not back at it: what a
-      // receptionist is looking at is whoever just walked in.
-      const [bx, bz] = QUARTER[side](0, standoff - COUNTER_STAND);
-      sink.workstation(cx + bx, cz + bz, side, 'reception');
-      return { cx, cz, side };
-    }
-  }
-  return null;
-}
-
-// Positions along a wall, a tile apart, walked out from a random start so a
-// counter is not in the same place on every floor. It covers the whole run
-// rather than sampling it, which is the difference between a lobby that has a
-// counter and one that has room for a counter.
-function* sweep(lo, hi, rng) {
-  const n = Math.max(1, Math.floor((hi - lo) / TILE) + 1);
-  const from = rng.int(0, n - 1);
-  for (let i = 0; i < n; i++) yield lo + ((from + i) % n) * TILE;
-}
 
 const ROLES = {
   openplan: openPlan,
@@ -1453,8 +1420,7 @@ const WORK_REACH = 0.58;
 // room for, and a pod on a tight pitch loses both.
 const DESK_ASIDE = 0.62;
 
-function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES, as = null) {
-  const { x0, z0, x1, z1 } = bounds;
+function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES, as = null, opts = {}) {
   // Asked in the prop's OWN frame, where `d` is always the dimension that faces
   // the wall and `w` the one that runs along it — which is the whole reason the
   // side is the quarter turn. The numbers come from the model when there is
@@ -1462,32 +1428,63 @@ function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES, as = null) {
   // them from the catalogue instead stood a copier 0.44 m off a wall it is
   // 0.565 m deep from the middle of, and a server rack likewise.
   const { w: fw, d: fd } = footprintOf(sink, kind);
-  const standoff = fd / 2;
+  // How far the prop's own middle stands off the wall. Half its depth puts its
+  // back on the plaster, which is what backing something against a wall means
+  // and what all but one prop in the building wants. `behind` is the exception
+  // and is the whole of what a COUNTER is: a reception desk is the one prop
+  // somebody stands behind, and the model is 0.55 m deep, so with its back on
+  // the wall the entire pocket is the 0.15 m of skirting clearance. See
+  // COUNTER_STAND for what the number has to be and why it is a nav number.
+  const standoff = fd / 2 + (opts.behind ?? 0);
   const margin = fw / 2;   // so a 3 m table can't hang off the end of the wall
-
-  const alongX = x1 - x0 >= margin * 2;
-  const alongZ = z1 - z0 >= margin * 2;
   if (!sides.length) return null;
 
-  for (let tries = 0; tries < 12; tries++) {
-    const side = rng.pick(sides);
+  // One random point on a random wall, twelve times over — or every point on
+  // every offered wall in turn. See `wallSlots`: which a caller wants is about
+  // how spoken-for the room is, and the lift lobby is the room where it matters.
+  //
+  // A GENERATOR rather than a list, and that is not style. Drawing the twelve
+  // sides up front would take twelve numbers off the floor's rng before the
+  // first `tryPlace` took any, which re-rolls the contents of every room after
+  // this one — the same argument `assignLocks` makes about spending the floor's
+  // stream out of order, one scale down.
+  for (const side of wallOrder(sides, rng, opts.sweep)) {
+    const w = wall(side, bounds);
     // A prop wider than the wall it was offered simply doesn't fit there.
-    if ((side === 0 || side === 2) && !alongX) continue;
-    if ((side === 1 || side === 3) && !alongZ) continue;
+    if (w.a1 - w.a0 < margin * 2) continue;
 
-    const [cx, cz] = seatAt(side, x0, z0, x1, z1, standoff, margin, rng);
-    if (!tryPlace(sink, kind, cx, cz, side, rng)) continue;
-    // Somewhere to stand and use it, if it is that kind of machine. Derived the
-    // way the rack fronts and the servery queue are: a prop is authored facing
-    // -Z, so QUARTER turns its own depth into a direction, and the body faces
-    // back the other way. Written out by hand this is four coordinates and half
-    // of them come out backwards (see the note on sides above).
-    const at = as ?? WORK_AT[kind];
-    if (at) {
-      const [ox, oz] = QUARTER[side](0, -(standoff + WORK_REACH));
-      sink.workstation(cx + ox, cz + oz, (side + 2) & 3, at);
+    for (const along of wallSlots(w, margin, rng, opts.sweep)) {
+      const [cx, cz] = w.seat(along, standoff);
+      // The pocket behind a counter has to be free BEFORE it goes in and claimed
+      // after, and neither is `tryPlace`'s business — it proves the prop's own
+      // tiles and nothing else, so a counter standing across the corner of a lift
+      // block or across a doorway apron places perfectly and has no floor behind
+      // it. Claiming matters just as much: everything else in a room is placed
+      // after, and a lobby whose receptionist was displaced by its own pot plant
+      // is a lobby with a counter and nobody behind it. Both were missing once
+      // and both are silent — all that happens is `standable` in enemies.js drops
+      // the station from the pool.
+      const pocket = opts.behind ? w.pocket(along, standoff - fd / 2, fw) : null;
+      if (pocket && !sink.canPlace(...pocket)) continue;
+      if (!tryPlace(sink, kind, cx, cz, side, rng)) continue;
+      if (pocket) sink.occupy(...pocket);
+
+      // Somewhere to stand and use it, if it is that kind of machine. Derived the
+      // way the rack fronts and the servery queue are: a prop is authored facing
+      // -Z, so QUARTER turns its own depth into a direction.
+      //
+      // IN FRONT for a machine, and BEHIND for a counter — one sign, and it is
+      // the whole difference. A body at a copier faces back at the thing it is
+      // working on; a receptionist stands on the wall side and faces the way the
+      // counter faces, because what they are looking at is whoever walked in.
+      const at = as ?? WORK_AT[kind];
+      if (at) {
+        const reach = opts.behind ? (standoff - opts.stand) : -(standoff + WORK_REACH);
+        const [ox, oz] = QUARTER[side](0, reach);
+        sink.workstation(cx + ox, cz + oz, opts.behind ? side : (side + 2) & 3, at);
+      }
+      return { cx, cz, rot: side, side };
     }
-    return { cx, cz, rot: side, side };
   }
   return null;
 }
