@@ -625,9 +625,9 @@ export class Enemies {
       rng.int(HALL_BYSTANDERS[0], HALL_BYSTANDERS[1]) * (layout.areaRatio ?? 1)));
     // Who that crowd IS is the theme's, because the background traffic is a fact
     // about the building rather than about the roster: a floor run by machines
-    // has its deliveries done by one, and a night cleaner walking a corridor of
-    // Loader Units is somebody who did not get the memo. Named by key and
-    // resolved here so a theme stays pure data.
+    // has its errands run by the people who maintain them, and a night cleaner
+    // walking a corridor of Welder Units is somebody who did not get the memo.
+    // Named by key and resolved here so a theme stays pure data.
     const kinds = this.theme.bystanders?.map((k) => TYPES[k]).filter(Boolean);
     const bystanders = kinds?.length ? kinds : BYSTANDERS;
     // ONE OF EACH FIRST, and the rest of the crowd rolled.

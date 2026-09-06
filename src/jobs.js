@@ -32,7 +32,7 @@ import { TYPES } from './enemy-types.js';
  * chain is a specific piece of theatre and it does not play with the wrong cast:
  *
  *   fetch   a Welder Unit        takes the box off the rack
- *   port    a Porter Unit        carries it, on the deck it already has
+ *   port    a Maintenance Worker carries it up the corridor to the line
  *   fix     a Maintenance Worker puts it into the belt, at length, with sparks
  *
  * All three are NEUTRAL, and that is not incidental — it is what makes the thing
@@ -100,8 +100,13 @@ const BELT_STANDOFF = 0.5;
 const SPARK_Y = 1.95;
 
 // Which roster entry plays each part. A table rather than three lookups inline,
-// so a theme could one day run its parcels with a different set of machines.
-const CAST = { fetch: TYPES.welder, port: TYPES.porter, fix: TYPES.worker };
+// so a theme could one day run its parcels with a different set of machines —
+// and that is not hypothetical any more: the middle part was a Porter Unit, and
+// when that came off the roster it was one line here rather than a rewrite of
+// the chain. A Maintenance Worker carries the box up the corridor instead, so a
+// run is now two of them and a welder. `_cast` takes the bodies already cast as
+// exclusions, which is what stops the same worker being given both parts.
+const CAST = { fetch: TYPES.welder, port: TYPES.worker, fix: TYPES.worker };
 const ROLES = ['fetch', 'port', 'fix'];
 
 export class Jobs {
@@ -451,7 +456,7 @@ export class Jobs {
         this._pass(j.chain, 'fetch', 'port', 'waiting', 'toBelt');
         return;
 
-      // --- the porter: a Porter Unit ---------------------------------------
+      // --- the carrier: the second Maintenance Worker ----------------------
       case 'toMeet':
         if (this._walk(e, dt)) this._wait(e, j.chain.meetShelf, 'waiting');
         return;

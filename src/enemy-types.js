@@ -36,8 +36,8 @@ export const GUARD = {
 // The machines are on that same ramp rather than beside it, and that is a rule
 // being kept rather than a palette being copied: neither question changes
 // because the thing at the end of the corridor has wheels. A Survey Drone is
-// the brightest visor in the building and a Loader Unit is nearly the darkest,
-// for exactly the reasons an Intern and a Manager are.
+// the brightest visor in the building and a Legacy Unit is the darkest thing on
+// it, for exactly the reasons an Intern and a Manager are.
 //
 // `voice` names the set of vocals a type uses (see audio.js). Left off, a type
 // gobbles like the rest of the office; the green ones brought their own.
@@ -157,51 +157,6 @@ export const TYPES = {
     suit: 0x494338, shirt: 0xd97a2e, visor: 0x8f959b, unlockFloor: 1, weight: 0,
   },
 
-  // --- the machines -----------------------------------------------------------
-  //
-  // The Automated floor's staff. Every one of them is a `chassis` rather than a
-  // rig (see CHASSIS in rigs.js) and every one of them is `weight: 0`, which is
-  // the whole of how the theme stays a place rather than a tint: outside an
-  // Automated floor none of these is ever rolled, so meeting a Loader Unit means
-  // you are on the floor that has loaders on it. The Sentry Unit is the
-  // exception and always was — it is Facilities' cost saving rather than the
-  // plant's own fleet, and it turns up anywhere.
-  //
-  // The ones that fight wear greys off the same ramp as everybody else, and that
-  // is a rule being kept rather than a palette being copied: hue answers "do I
-  // shoot this" and shade answers "which one", and neither question changes
-  // because the thing in the corridor has wheels.
-  //
-  // Four of the fleet answer the first one yes — the Clerk, the Legacy, the
-  // Loader and the Drone — and the Sentry, the Welder and the Porter answer it
-  // no, so they are off the ramp entirely and wearing colours of their own. A
-  // machine floor is therefore no longer a floor where everything moving is
-  // coming for you, which is what makes the ramp worth keeping: the greys down
-  // here are a shortlist rather than a description of the room.
-  clerk: {
-    // Whatever used to sit at the desk. The baseline machine and the one there
-    // are a hundred of, so its numbers are deliberately near an Analyst's: a
-    // floor of these has to feel like an office being worked, and the ones with
-    // forks and torches read as exceptions to it.
-    name: 'Clerk Unit', hp: 1.15, speed: 1.02, damage: 0.95, rate: 1, spread: 1.15,
-    range: 14, melee: false, scale: 1, chassis: 'clerk', voice: 'robot',
-    // Faster onto a target than the man it replaced, and nowhere near the
-    // Sentry: it was doing a spreadsheet ninety seconds ago too, it just does
-    // not have to put anything down first.
-    aimMul: 0.95,
-    suit: 0x8d949c, shirt: 0x4a5058, visor: 0x949ba3, unlockFloor: 1, weight: 0,
-  },
-  loader: {
-    // Three hundred kilograms of pallet handling with a grab on the end of the
-    // arm. The slowest thing on the floor and the hardest single hit in the
-    // building — you are meant to hear it coming, decide, and be somewhere
-    // else. The clamp is what makes that possible: the second longest reach on
-    // the roster after the mop, so the arc is legible from outside it.
-    name: 'Loader Unit', hp: 3, speed: 0.86, damage: 2.1, rate: 1.5, spread: 1,
-    range: 2.4, melee: true, scale: 1.16, blunt: ['clamp'],
-    chassis: 'loader', voice: 'robot',
-    suit: 0xd8a12a, shirt: 0x3d4149, visor: 0x454a51, unlockFloor: 1, weight: 0,
-  },
   welder: {
     // On the racks, and getting on with it. The quickest chassis on the floor —
     // it kept the pace it had when it was the thing that ran at you, which is
@@ -268,40 +223,6 @@ export const TYPES = {
     machine: true,
     unlockFloor: 1, weight: 0,
   },
-  porter: {
-    // Deliveries. The machine floor's Courier and the same joke told about the
-    // building instead of about a man: it has a load, it is taking it
-    // somewhere, and a firefight is not on its route. Neutral, so it counts
-    // toward nothing and walking past it costs nothing.
-    //
-    // Violet, because the neutrals are the only things in the building wearing
-    // an actual colour and no two of them may share one — white, brown, yellow,
-    // blue and hi-vis orange are all spoken for, and this has to be told from
-    // the courier it is standing in for at the range you first see it.
-    name: 'Porter Unit', hp: 0.8, speed: 1.2, damage: 0, rate: 99, spread: 1,
-    range: 0, melee: false, scale: 1, neutral: true,
-    chassis: 'porter', voice: 'robot', screams: 'robot-alert',
-    suit: 0x6f7681, shirt: 0x3a3f47, visor: 0xc46bff, unlockFloor: 1, weight: 0,
-  },
-
-  // --- the neutrals -----------------------------------------------------------
-  //
-  // Nobody on this side of the roster is fighting you, and none of them counts
-  // toward clearing the floor — you can walk past every one of them and take the
-  // exit. None of them wears a grey visor, and they all show up yellow on the
-  // minimap, because "do I have to shoot this" is a question you need answered
-  // from the far end of a corridor, not once it is already swinging at you.
-  // Unlike the hostiles they do not share one colour: three harmless people in
-  // identical visors read as one repeated joke, and the toilet guy in
-  // particular has to be recognisable before he is close enough to hear.
-  //
-  // Everybody in THIS block is placed by hand rather than rolled (see spawn),
-  // which is why the weights are zero — but "neutral" and "hand-placed" stopped
-  // being the same fact when the Sentry Unit went harmless. It is filed with the
-  // staff below because it keeps its weight and is still dealt as part of a
-  // floor's shift; it is only listed apart from these because of where it comes
-  // from, not because of what it does. Anything counting harmless bodies has to
-  // read `neutral`, never this block's membership.
   panicker: {
     // Has one problem, and it is not you: he is looking for a toilet and
     // announcing it. Fast, and dies to a look.
@@ -501,7 +422,7 @@ export const BYSTANDERS = [TYPES.courier];
 // maintenance staff, who are the tenth of the floor this theme's own comment
 // promises and who until now were only ever found in a generator room, on the
 // 3% of floors that have one. They are also the far end of a parcel run: a box
-// comes off a rack, a porter carries it, and one of these is who takes it. See
+// comes off a rack, another of these carries it up the corridor, and one takes
 // jobs.js. The toilet guy is
 // never on that list — he is a flat one or two on every floor there has ever
 // been, and the last human on a floor of robots running for a lavatory is the
@@ -515,19 +436,20 @@ export const THEMES = [
   // written to prevent, and it would be that twice over here, since the whole
   // point of this shift is that the building is being WORKED. So the share is
   // split across the jobs: a hundred clerks at the desks, sentries in the
-  // corridors, loaders shifting stock, welders on the racks, a few drones over
-  // all of it — and the Legacy Units, which have no job at all beyond being the
-  // generation before the rest and the only machine here shaped like a person.
+  // corridors, welders on the racks, a few drones over all of it — and the
+  // Legacy Units, which have no job at all beyond being the generation before
+  // the rest and the only machine here shaped like a person.
   //
   // Two of those jobs are no longer a fight, and the split is tuned so that the
   // floor still comes out THREE QUARTERS hostile. The arithmetic is worth
   // writing down because it is the only thing holding that number: the shares
   // are a fraction of the rolled staff, machines take 0.90 of it and the tenth
   // that is still breathing is `boost`ed humans who all fight. So hostile =
-  // (the four fighting machines) + 0.10, and the four have to sum to 0.65 —
-  // clerk 0.29, legacy 0.15, loader 0.14, drone 0.07 — leaving 0.25 for the
-  // sentry and the welder. Retune any one of the six and that identity is what
-  // to re-check; nothing asserts it.
+  // (the fighting machines) + 0.10, and they have to sum to 0.65 — clerk 0.37,
+  // legacy 0.19, drone 0.09 — leaving 0.25 for the sentry and the welder.
+  // Retune any one of the five and that identity is what to re-check; nothing
+  // asserts it. The Loader Unit's 0.14 went back into those three in proportion
+  // when it came off the roster, which is what kept the identity true.
   //
   // It came out at six tenths when the sentry and the welder first went neutral,
   // which is a thinner floor than this theme should be: an Automated floor
@@ -537,9 +459,9 @@ export const THEMES = [
   // still the fastest thing on the floor and the most heavily armoured thing on
   // the floor, which is most of what stops "harmless" reading as "scenery".
   { name: 'Automated', weight: 3, light: 0.72, tint: 0x7fb4ff,
-    rats: [0, 0], patrols: [0, 1], cleaners: [3, 5], bystanders: ['porter', 'worker'],
+    rats: [0, 0], patrols: [0, 1], cleaners: [3, 5], bystanders: ['worker'],
     conveyors: [5, 9], washersFly: true, panels: [3, 6], chargers: true,
-    share: { clerk: 0.29, sentry: 0.15, legacy: 0.15, loader: 0.14, welder: 0.10, drone: 0.07 },
+    share: { clerk: 0.37, sentry: 0.15, legacy: 0.19, welder: 0.10, drone: 0.09 },
     boost: { sysadmin: 6, facilities: 3, reanimated: 0 } },
   { name: 'Lockdown', weight: 2, light: 0.75, rats: [1, 1], patrols: [3, 4], boost: { security: 6, manager: 4 } },
   // The one shift the Night Cleaner works — see BYSTANDERS. He is first in the

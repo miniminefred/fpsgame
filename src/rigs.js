@@ -627,23 +627,6 @@ const CHASSIS = {
     collar: true,
   },
 
-  // The one that moves the building's stock about. Three times a person's mass
-  // on two drive wheels, with a pallet grab on the arm and tines out front it
-  // never put down — the tines are what make it read as a loader from behind,
-  // which is the angle you meet one from while it is doing its job.
-  loader: {
-    drive: 'wheels', mass: 290,
-    torso: { size: [0.62, 0.64, 0.48], y: 0.92 },
-    pod: { size: [0.26, 0.18, 0.24], y: 1.34 },
-    arm: { size: [0.16, 0.54, 0.16], x: 0.39, y: 0.94 },
-    leg: { size: [0.14, 0.52, 0.52], x: 0.31, y: 0.26 },
-    gun: { rest: [0.39, 0.90, -0.30], aim: [0.39, 1.02, -0.52] },
-    forks: true, beacon: true, band: true,
-  },
-
-  // Spindly, quick, and carrying its own gas. Everything about it is thin
-  // except the bottle on its back, which is the tell: the narrowest silhouette
-  // on the floor, with one fat cylinder behind the shoulder.
   welder: {
     drive: 'legs', mass: 78,
     torso: { size: [0.32, 0.46, 0.28], y: 1.12 },
@@ -670,20 +653,6 @@ const CHASSIS = {
     leg: { size: [0.05, 0.16, 0.30], x: 0.14, y: 1.10 },
     gun: { rest: [0.23, 1.22, -0.26], aim: [0.23, 1.30, -0.42] },
     rotors: true,
-  },
-
-  // Deliveries, and the only machine here with no opinion about you whatever.
-  // A flat deck on wheels with the floor's parcels on it, a short mast with one
-  // lamp on top, and two stub arms it loads itself with. Low and long, so what
-  // you see crossing the end of a corridor is a load going somewhere.
-  porter: {
-    drive: 'wheels', mass: 120, whole: true,
-    torso: { size: [0.48, 0.38, 0.62], y: 0.44 },
-    pod: { size: [0.16, 0.14, 0.16], y: 0.86 },
-    arm: { size: [0.09, 0.30, 0.09], x: 0.29, y: 0.50 },
-    leg: { size: [0.10, 0.36, 0.36], x: 0.25, y: 0.18 },
-    gun: { rest: [0.29, 0.44, -0.22], aim: [0.29, 0.52, -0.34] },
-    tray: true, beacon: true,
   },
 };
 
