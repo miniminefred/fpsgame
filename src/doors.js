@@ -4,7 +4,7 @@
 // fitted. A doorway in a wall gets a single panel that lives in the opening and
 // retracts into the wall beside it. A doorway across a corridor gets two leaves
 // on hinges, because there is no wall beside a corridor to retract into — see
-// cutHallDoors in gen/layout.js. Either way they are driven by nothing but
+// cutHallDoors in gen/carve.js. Either way they are driven by nothing but
 // proximity — walk up and it opens, walk away and it shuts. That is deliberately
 // the whole interface: there is no use key in this game and adding one for a
 // door would be the only thing in it you have to press a button at.

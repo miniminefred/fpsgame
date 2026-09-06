@@ -856,7 +856,7 @@ function generatorRoom(sink, bounds, rng, room, doors) {
 }
 
 // The staff canteen, and the room the floor puts you down in — see
-// pickCafeteria in gen/layout.js, which is what makes it the spawn room.
+// pickCafeteria in gen/roles.js, which is what makes it the spawn room.
 //
 // It is a set piece the way the plant room is, and the composition is the whole
 // of it: the servery runs the far wall corner to corner, the strip in front of
@@ -873,7 +873,7 @@ function generatorRoom(sink, bounds, rng, room, doors) {
 // that stayed.
 
 // The staff canteen, and the room the floor puts you down in — see
-// pickCafeteria in gen/layout.js, which is what makes it the spawn room.
+// pickCafeteria in gen/roles.js, which is what makes it the spawn room.
 //
 // It is a set piece the way the plant room is, and the composition is the whole
 // of it: the servery runs the far wall corner to corner, the strip in front of
@@ -1229,7 +1229,7 @@ const ROLES = {
   generator: generatorRoom,
   lobby,
   // The floor arrives in the exit room and leaves by it — they are one room now
-  // (see pickLobbyRoom in gen/layout.js), so `exit` is the lift lobby.
+  // (see pickLobbyRoom in gen/roles.js), so `exit` is the lift lobby.
   exit: liftLobby,
 };
 

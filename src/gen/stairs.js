@@ -512,7 +512,7 @@ export function approachRect(plan) {
  * clearance the furnisher keeps (gen/tiles.js), and it is measured against the
  * finished floorplan rather than against `room.doors`: a room only lists the doors
  * it CUT, and the one its neighbour cut into it is in the wall all the same. See
- * cutDoor in gen/layout.js.
+ * cutDoor in gen/carve.js.
  */
 function doorZone(room, tiles, W, H) {
   const zone = new Uint8Array(W * H);

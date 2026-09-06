@@ -1453,7 +1453,7 @@ export class Enemies {
     // Nor in the room the player is standing in when the floor starts, whatever
     // that room is this time. Keyed off `spawnRoom` rather than off the 'lobby'
     // role, because the floor now arrives in its canteen when it has one (see
-    // pickCafeteria in gen/layout.js) — and a role name is a fact about how a
+    // pickCafeteria in gen/roles.js) — and a role name is a fact about how a
     // room is FURNISHED, while "do not put anybody here" is a fact about where
     // the player materialises. Left as the role test, a cafeteria floor would
     // have opened with a dozen people standing around the arrival point.

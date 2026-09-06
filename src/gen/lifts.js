@@ -9,7 +9,7 @@
 // Both cars are in THAT ONE ROOM, side by side, and the room is the one nearest
 // the middle of the slab — which is where a building puts its core, and what
 // makes a floor a loop out and back rather than a march from one corner to the
-// other. See `carveBank` below and `pickLobbyRoom` in gen/layout.js. The way out
+// other. See `carveBank` below and `pickLobbyRoom` in gen/roles.js. The way out
 // of the lobby is a pair of doors onto the office, and the way down is the car
 // next to the one you came up in, lit green.
 //

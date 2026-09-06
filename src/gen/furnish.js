@@ -200,7 +200,7 @@ export function reserveClearances(layout, reserved) {
   // changed is the spawn. This was sized when arriving always meant a lift lobby
   // — a small room furnished against its walls anyway, where the difference is
   // invisible — and a floor now arrives in its canteen when it has one (see
-  // pickCafeteria in gen/layout.js), which is the first room this has ever been
+  // pickCafeteria in gen/roles.js), which is the first room this has ever been
   // stamped into that is furnished AROUND the player. Measured: a cafeteria is
   // typically 8 to 12 m across, and 5.5 m of clear square through the middle of
   // it plus the lane kept in front of the servery is the room's whole depth. 11
@@ -290,7 +290,7 @@ const LANE = 3;
 /**
  * Every doorway of every room, from the inside.
  *
- * `room.doors` holds only the doors that room CUT (see cutDoor in gen/layout.js), and
+ * `room.doors` holds only the doors that room CUT (see cutDoor in gen/carve.js), and
  * the one its neighbour cut into it is in the wall all the same — so the sides are
  * recovered from the tiles either side of each opening. A hall door probes two
  * corridor tiles and drops out, which is right: it is not in anybody's room.
@@ -321,7 +321,7 @@ const LANE = 3;
 /**
  * Every doorway of every room, from the inside.
  *
- * `room.doors` holds only the doors that room CUT (see cutDoor in gen/layout.js), and
+ * `room.doors` holds only the doors that room CUT (see cutDoor in gen/carve.js), and
  * the one its neighbour cut into it is in the wall all the same — so the sides are
  * recovered from the tiles either side of each opening. A hall door probes two
  * corridor tiles and drops out, which is right: it is not in anybody's room.
