@@ -659,9 +659,21 @@ function validate(seed, floorNumber) {
   if (mouthBlocked) check('3.door-mouth').fail(id, `${mouthBlocked} door-mouth tiles not walkable`);
 
   // ---- 6. spawn / exit clearance ----------------------------------------
+  // What this is really asking is "can the player stand here and turn round", so
+  // it is a question about the floor the player is ON. Anything a body walks
+  // clean under is not in the way of it — a crate on the attic deck over the next
+  // room is 3.2 m up, and measured in plan alone it reads as furniture a metre
+  // and a half from the spawn. Same rule `buildGeomGrid` applies for the same
+  // reason, and the same one the game's own collision applies in
+  // `_moveHorizontal`: high enough to walk under is `base >= feet + BODY_H`, and
+  // a basement's is below the slab you are standing on. Both halves, exactly as
+  // `buildGeomGrid` writes them — a body walks under an attic and over a
+  // basement, and one extinguisher of each was reading as furniture 1.49 m from
+  // where the player materialises.
   const clearance = (px, pz) => {
     let worst = Infinity;
     for (const c of furn) {
+      if ((c.base ?? 0) >= BODY_H || c.top <= EPS) continue;
       const dx = Math.max(c.minX - px, 0, px - c.maxX);
       const dz = Math.max(c.minZ - pz, 0, pz - c.maxZ);
       worst = Math.min(worst, Math.hypot(dx, dz));
