@@ -18,9 +18,77 @@ export function furnish(sink, room, bounds, rng, doors, theme = null) {
   const { x0, z0, x1, z1 } = bounds;
   if (x1 - x0 < 1.5 || z1 - z0 < 1.5) return;
 
-  const fill = ROLES[room.role] ?? privateOffice;
+  // ...and it may turn out not to be that kind of room at all. See DEFINES.
+  const role = fits(sink, bounds, room.role) ? room.role : 'utility';
+  room.role = role;
+  const fill = ROLES[role] ?? privateOffice;
   fill(sink, bounds, rng, room, doors, theme);
   cartons(sink, bounds, rng);
+}
+
+/**
+ * The one prop that makes a room what it is.
+ *
+ * A copy room is a room with copiers in it. Take the copiers out — because the
+ * doorway aprons and the through-route lane between two openings have eaten the
+ * only walls it had — and what is left is not a copy room with less in it, it is
+ * a cupboard the generator has labelled a copy room. Which is what `utility` is,
+ * and why it is not on any of the pick lists in gen/layout.js: it is not rolled,
+ * it is what a room falls back to.
+ *
+ * Only the roles with a defining prop are here. A lobby is a lobby with nothing
+ * in it, a generator room and a cafeteria have already been proved to fit what
+ * they are composed around (see fitsGenerator and pickCafeteria), and the three
+ * behind a card are chosen from rooms big enough by `assignLocks`.
+ */
+const DEFINES = {
+  openplan: 'desk',
+  office: 'desk',
+  meeting: 'smallMeetingTable',
+  presentation: 'presentationScreen',
+  breakroom: 'armchair',
+  storage: 'shelving',
+  archive: 'bookshelf',
+  copyroom: 'printer',
+  server: 'serverRack',
+  itbay: 'workbench',
+  mailroom: 'shelving',
+  reception: 'receptionDesk',
+};
+
+/**
+ * Whether a room could actually take the prop its role is about.
+ *
+ * Asked of the SINK rather than of the room's size, and that is the whole value
+ * of it: a 40 m² copy room whose every wall is inside a doorway apron has plenty
+ * of square metres and nowhere to put a copier. `canPlace` is the same test
+ * `tryPlace` is about to run, so this cannot certify a placement that then fails.
+ *
+ * Every wall in turn, at the same standoff `edgeProp` would use — nothing is
+ * placed and nothing is reserved, so a room that passes is furnished exactly as
+ * it was before.
+ */
+function fits(sink, bounds, role) {
+  const kind = DEFINES[role];
+  if (!kind) return true;
+  const { x0, z0, x1, z1 } = bounds;
+  const { w: fw, d: fd } = footprintOf(sink, kind);
+  const standoff = fd / 2;
+  const margin = fw / 2;
+
+  for (const side of ALL_SIDES) {
+    const alongX = side === 0 || side === 2;
+    if (alongX && x1 - x0 < margin * 2) continue;
+    if (!alongX && z1 - z0 < margin * 2) continue;
+    // Both ends of the wall and its middle. A wall with a doorway in the middle
+    // of it still takes a copier at one end, and a wall with aprons at both ends
+    // still takes one in the middle.
+    for (const t of [0.5, 0.15, 0.85]) {
+      const [cx, cz] = seatAt(side, x0, z0, x1, z1, standoff, margin, { range: (lo, hi) => lo + (hi - lo) * t });
+      if (sink.canPlace(cx - margin, cz - standoff, cx + margin, cz + standoff)) return true;
+    }
+  }
+  return false;
 }
 
 // How much of the building has cardboard lying about in it, and how much.

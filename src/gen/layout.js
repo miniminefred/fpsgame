@@ -838,12 +838,18 @@ export function roleBranch(r) {
 
 // What each branch may be. Long-thin rooms furnish as ranks with an aisle
 // between them, which is why they are back-of-house whatever their area.
-
+//
+// `utility` is NOT in here and that is the point of it: it is not a room you
+// roll, it is what a room turns out to be when nothing else will go in it. See
+// `furnish` in gen/rooms.js, which asks whether the one prop that makes a room
+// what it is can actually be placed and falls back to a cupboard when it cannot.
+// A small room is a private office by default instead, which is what a small
+// room in an office building is.
 const ROLE_PICKS = {
-  longThin: ['storage', 'copyroom', 'server', 'storage', 'archive', 'utility', 'mailroom'],
+  longThin: ['storage', 'copyroom', 'server', 'storage', 'archive', 'mailroom'],
   big: ['openplan', 'openplan', 'openplan', 'presentation'],
   mid: ['openplan', 'meeting', 'breakroom', 'storage', 'presentation', 'itbay', 'reception'],
-  small: ['office', 'office', 'copyroom', 'storage', 'breakroom', 'utility', 'archive', 'server'],
+  small: ['office', 'office', 'office', 'copyroom', 'storage', 'breakroom', 'archive', 'server'],
 };
 
 // Whether a room could be the plant room. Named rather than written inline in
@@ -895,7 +901,6 @@ function assignRoles(rooms, spawnRoom, exitRoom, cafeteria, doors, rng) {
     ['breakroom', (r) => r.areaM2 > 30],
     ...rng.shuffle([
       ['archive', (r) => r.areaM2 < 90],
-      ['utility', (r) => r.areaM2 < 60],
       ['mailroom', (r) => r.areaM2 > 25 && r.areaM2 < 90],
       ['itbay', (r) => r.areaM2 > 25 && r.areaM2 < 90],
       ['presentation', (r) => r.areaM2 > 35],
