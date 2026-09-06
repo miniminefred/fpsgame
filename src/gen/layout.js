@@ -53,6 +53,36 @@ export const PAD = 2;              // solid tiles of exterior wall on each side
 export const CORRIDOR_W = 6;       // 3 m corridors
 const MIN_LEAF = 10;               // smallest room block (=> 4.5 m interior)
 const MAX_LEAF = 26;               // above this a block always splits again
+
+/**
+ * How much of a floor's room area is OPEN FLOOR, and how big one of them gets.
+ *
+ * An office building is mostly open plan with the cellular offices round the
+ * edge of it, and this generator was the other way round: `MAX_LEAF` caps a BSP
+ * leaf at 26 tiles a side, so the biggest room a floor could ever have was
+ * 13 x 13 m, the median room was 37 m², and 2.5% of rooms came out on the `big`
+ * branch at all. Every floor was a warren of small rooms with the occasional
+ * slightly larger small room, and "open plan" was a label on a 9 x 8 m office.
+ *
+ * So a share of each floor's room area is claimed for open floor BEFORE the
+ * subdivision reaches it, and a block that qualifies stops splitting whole.
+ * Measured against the area the BSP has to hand out rather than against the
+ * slab, because corridors and structural core are not somebody's office.
+ *
+ * The cap is what keeps it an office rather than a warehouse: a block between
+ * two corridors can be sixty tiles across on a deep floor, and a 30 x 30 m room
+ * with no interior wall in it is a distribution centre. It is a good deal wider
+ * than MAX_LEAF even so — the whole point is that the biggest thing on the floor
+ * is somewhere people work rather than somewhere they store things.
+ */
+const OPEN_SHARE = 0.4;
+const OPEN_LEAF = 44;              // tiles a side — 22 m
+const OPEN_MIN = 20;               // ...and 10 m, under which it is just a room
+// How often a qualifying block is taken rather than split again. It is what
+// SPREADS the open floors: the budget alone would hand the first blocks the BSP
+// walks the whole share, and the blocks are walked in a fixed order across the
+// slab, so every open floor on the floor would be in one corner of it.
+const OPEN_TAKE = 0.8;
 export const DOOR_W = 3;           // 1.5 m doorways
 // Minimum solid wall left between two openings. Without this, two rooms either
 // side of a shared wall each cut their own doorway and the second lands flush
@@ -190,30 +220,45 @@ export function generateLayout(seed, floorNumber) {
   const ySpans = complement(inner.y0, inner.y1, hBands);
 
   const rooms = [];
+  // Every block the BSP is about to be handed, so the open-plan share can be
+  // measured against the area there actually is to give away. Collected first
+  // rather than accumulated as we go, because a budget spent against a running
+  // total is a budget the first block gets all of.
+  const blocks = [];
   for (const xs of xSpans) {
     for (const ys of ySpans) {
       // Too thin to hold a room — leave it solid as a structural core.
       if (xs.hi - xs.lo < MIN_LEAF + 1 || ys.hi - ys.lo < MIN_LEAF + 1) continue;
-
       // Reserve the block's max edges as wall so rooms carved inset-on-min
       // still end up separated from the corridor beyond.
-      const block = { x0: xs.lo, y0: ys.lo, x1: xs.hi - 1, y1: ys.hi - 1 };
-      const leaves = [];
-      bsp(block, rng, leaves);
+      blocks.push({ x0: xs.lo, y0: ys.lo, x1: xs.hi - 1, y1: ys.hi - 1 });
+    }
+  }
+  const open = {
+    left: OPEN_SHARE * blocks.reduce(
+      (a, b) => a + (b.x1 - b.x0) * (b.y1 - b.y0), 0),
+  };
 
-      for (const leaf of leaves) {
-        const room = {
-          id: rooms.length,
-          leaf,
-          x0: leaf.x0 + 1, y0: leaf.y0 + 1, x1: leaf.x1, y1: leaf.y1, // interior, max exclusive
-          doors: [],
-        };
-        if (room.x1 - room.x0 < 4 || room.y1 - room.y0 < 4) continue;
-        for (let y = room.y0; y < room.y1; y++) {
-          for (let x = room.x0; x < room.x1; x++) set(x, y, ROOM);
-        }
-        rooms.push(room);
+  for (const block of blocks) {
+    const leaves = [];
+    bsp(block, rng, leaves, open);
+
+    for (const leaf of leaves) {
+      const room = {
+        id: rooms.length,
+        leaf,
+        // Whether the BSP handed this one over whole as an open floor, which is
+        // what makes it an open plan office rather than a room that merely came
+        // out large. See OPEN_SHARE and assignRoles.
+        open: !!leaf.open,
+        x0: leaf.x0 + 1, y0: leaf.y0 + 1, x1: leaf.x1, y1: leaf.y1, // interior, max exclusive
+        doors: [],
+      };
+      if (room.x1 - room.x0 < 4 || room.y1 - room.y0 < 4) continue;
+      for (let y = room.y0; y < room.y1; y++) {
+        for (let x = room.x0; x < room.x1; x++) set(x, y, ROOM);
       }
+      rooms.push(room);
     }
   }
 
@@ -512,14 +557,39 @@ function complement(lo, hi, bands) {
   return spans;
 }
 
-function bsp(rect, rng, out) {
+/**
+ * Subdivides one block into rooms.
+ *
+ * `open` is the floor's open-plan budget — `{ left }` in tiles, shared by every
+ * block on the floor and spent as blocks are claimed. See OPEN_SHARE.
+ */
+function bsp(rect, rng, out, open) {
   const w = rect.x1 - rect.x0;
   const h = rect.y1 - rect.y0;
   const canX = w >= MIN_LEAF * 2;
   const canY = h >= MIN_LEAF * 2;
 
   if (!canX && !canY) { out.push(rect); return; }
-  // Stop early now and then so some rooms come out as big open-plan floors.
+
+  // An OPEN FLOOR: taken whole, and taken here rather than further down.
+  //
+  // The order is the whole of it. Offered a rect that has already been halved
+  // twice, the budget spends itself on rooms that are merely large — and what
+  // makes an open plan office read as one is that it is the biggest thing on the
+  // floor, with the cellular offices around it rather than beside it. So the
+  // first rect on each path that is inside the cap is the one that gets asked,
+  // and anything wider than the cap goes on splitting until it fits.
+  if (open.left > 0
+    && w <= OPEN_LEAF && h <= OPEN_LEAF
+    && w >= OPEN_MIN && h >= OPEN_MIN
+    && rng.chance(OPEN_TAKE)) {
+    open.left -= w * h;
+    rect.open = true;
+    out.push(rect);
+    return;
+  }
+
+  // Stop early now and then, which is what a floor's merely-large rooms are.
   if (w <= MAX_LEAF && h <= MAX_LEAF && rng.chance(0.22)) { out.push(rect); return; }
 
   let splitX;
@@ -528,12 +598,12 @@ function bsp(rect, rng, out) {
 
   if (splitX) {
     const cut = rng.int(rect.x0 + MIN_LEAF, rect.x1 - MIN_LEAF);
-    bsp({ x0: rect.x0, y0: rect.y0, x1: cut, y1: rect.y1 }, rng, out);
-    bsp({ x0: cut, y0: rect.y0, x1: rect.x1, y1: rect.y1 }, rng, out);
+    bsp({ x0: rect.x0, y0: rect.y0, x1: cut, y1: rect.y1 }, rng, out, open);
+    bsp({ x0: cut, y0: rect.y0, x1: rect.x1, y1: rect.y1 }, rng, out, open);
   } else {
     const cut = rng.int(rect.y0 + MIN_LEAF, rect.y1 - MIN_LEAF);
-    bsp({ x0: rect.x0, y0: rect.y0, x1: rect.x1, y1: cut }, rng, out);
-    bsp({ x0: rect.x0, y0: cut, x1: rect.x1, y1: rect.y1 }, rng, out);
+    bsp({ x0: rect.x0, y0: rect.y0, x1: rect.x1, y1: cut }, rng, out, open);
+    bsp({ x0: rect.x0, y0: cut, x1: rect.x1, y1: rect.y1 }, rng, out, open);
   }
 }
 
@@ -874,8 +944,16 @@ export function roleBranch(r) {
 const ROLE_PICKS = {
   longThin: ['storage', 'copyroom', 'server', 'storage', 'archive', 'mailroom'],
   big: ['openplan', 'openplan', 'openplan', 'presentation'],
-  mid: ['openplan', 'meeting', 'breakroom', 'storage', 'presentation', 'itbay', 'reception'],
-  small: ['office', 'office', 'office', 'copyroom', 'storage', 'breakroom', 'archive', 'server'],
+  // No `openplan` here any more, and that is the point of the open-floor budget
+  // rather than a side effect of it. An open plan office is the biggest thing on
+  // the floor and it is decided by the BSP (see OPEN_SHARE) — a 45 m² room
+  // labelled open plan was the game calling a modest office a floorplate, which
+  // is exactly what made the label mean nothing.
+  mid: ['meeting', 'breakroom', 'storage', 'presentation', 'itbay', 'reception', 'office'],
+  // A private office is a SMALL room, and now that the open floors are big
+  // enough to hold the shift, this is where most of the building's cellular
+  // space goes: five in eight rather than three.
+  small: ['office', 'office', 'office', 'office', 'office', 'copyroom', 'storage', 'breakroom'],
 };
 
 // Whether a room could be the plant room. Named rather than written inline in
@@ -891,7 +969,12 @@ function fitsGenerator(r, doors) {
 }
 
 function assignRoles(rooms, spawnRoom, exitRoom, cafeteria, doors, rng) {
-  for (const r of rooms) r.role = rng.pick(ROLE_PICKS[roleBranch(r)]);
+  // An open floor is an open plan office and is nothing else. It is not a roll —
+  // the BSP already decided, by handing the block over whole (see OPEN_SHARE),
+  // and a die here would put a broom cupboard on 400 m² of floorplate.
+  for (const r of rooms) {
+    r.role = r.open ? 'openplan' : rng.pick(ROLE_PICKS[roleBranch(r)]);
+  }
 
   // Guarantee the flavour rooms the floor is meant to have — but only in rooms
   // the right size for them, so no floor gets a 150 m² "storage cupboard". The
@@ -936,7 +1019,25 @@ function assignRoles(rooms, spawnRoom, exitRoom, cafeteria, doors, rng) {
   const pool = rng.shuffle(rooms.filter(
     (r) => r !== spawnRoom && r !== exitRoom && r !== cafeteria));
   for (const [role, fits] of wants) {
-    const room = pool.find((r) => fits(r) && !r.forcedRole);
+    // An open floor is never any of these, THE PLANT ROOM INCLUDED, and that
+    // last one is a decision worth stating because it looks like the one
+    // exception that should be made.
+    //
+    // `fitsGenerator` asks for a big rectangular room with exactly one door, and
+    // what made that rare was MAX_LEAF: a BSP leaf could not exceed 13 m a side,
+    // so a room that qualified at all was a room pushed hard against the cap and
+    // about 3% of floors had one. An open floor clears the bar by a mile, so
+    // letting the plant room have one took it from 20 floors in 600 to 527 —
+    // measured, on the sweep — which is a set piece you meet every thirty floors
+    // becoming a fixture of nearly all of them. The rarity is the design (see
+    // CLAUDE.md), so the population it is drawn from stays exactly the one it
+    // has always been drawn from: the rooms the subdivision made.
+    //
+    // Everything else in this list would be a storeroom or a copy room on 400 m²
+    // of floorplate — the area predicates below mostly say so already, and the
+    // ones that do not (breakroom, presentation, reception) are open-ended on
+    // purpose.
+    const room = pool.find((r) => !r.forcedRole && !r.open && fits(r));
     if (room) { room.role = role; room.forcedRole = true; }
   }
 

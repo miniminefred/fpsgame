@@ -1,5 +1,5 @@
 import { PROPS, QUARTER, tryPlace, footprintOf } from './props.js';
-import { doorSide, doorsOnRoom } from './layout.js';
+import { doorSide, doorsOnRoom, TILE } from './layout.js';
 import { PLAYER_RADIUS } from '../metrics.js';
 
 // What each kind of room is furnished with. The catalogue in props.js says what
@@ -1085,20 +1085,29 @@ function lobby(sink, bounds, rng) {
 }
 
 /**
- * Where the receptionist stands, measured out from the room's furnishing bounds
- * — which are already 0.15 m off the plaster, so this is 0.9 m off the wall.
+ * Where the receptionist stands, and how much floor the counter leaves past
+ * them. Both measured out from the room's furnishing bounds, which are already
+ * 0.15 m off the plaster.
  *
- * It is a NAV number rather than a look. `standable` in enemies.js holds a
- * station to a whole tile of `fits`, and `fits` disqualifies every tile
- * orthogonally touching a blocked one — so the half-metre tile against the
- * plaster is not somewhere a body can be put, however much room the arithmetic
- * says is there. This is the middle of the second tile in.
+ * These are NAV numbers rather than a look, and they are the tile grid rather
+ * than a taste. `standable` in enemies.js holds a station to a whole tile of
+ * `fits`, and `fits` is the walk grid eroded by a body's radius — a 0.4 m body
+ * on a 0.5 m tile reaches 0.15 m into each neighbour, so a tile orthogonally
+ * touching a blocked one is not somewhere a body can be put. The receptionist's
+ * tile therefore needs an open tile on BOTH sides of it, the wall on one hand
+ * and the counter on the other, which makes three tiles the shallowest pocket
+ * there is: [wall][open][body][open][counter]. 1.25 m off the plaster is the
+ * middle of the third tile, and the counter's back face lands at 2.05, which is
+ * inside the fifth.
+ *
+ * Cut to two tiles it does not merely get tight, it gets SILENT. `standable`
+ * nudges a station backwards to find floor and backwards here is into the wall,
+ * so nothing recovers it: the station is dropped from the pool and the lobby
+ * comes out with a counter and nobody behind it. Measured at 2 floors in 13
+ * before the pocket was widened, with the counter standing there perfectly.
  */
-const COUNTER_STAND = 0.75;
-
-// ...and how far the counter's back face stands clear of them. Half a body plus
-// a little, so the receptionist is behind the counter rather than inside it.
-const COUNTER_CLEAR = 0.5;
+const COUNTER_STAND = 1.25 - 0.15;
+const COUNTER_CLEAR = 0.8;
 
 /**
  * The lift lobby: the room the floor arrives in, leaves by, and is greeted in.
@@ -1117,8 +1126,13 @@ const COUNTER_CLEAR = 0.5;
  */
 function liftLobby(sink, bounds, rng, room) {
   const bank = room?.liftSide ?? 0;
+  // The two walls beside the lifts first, then the one opposite, and the lifts'
+  // own wall last of all. A counter backed against the bank is a desk with its
+  // back to the only thing in the room — but it is a real arrangement in a real
+  // lobby, and a lobby with nobody in it is worse than one whose counter is off
+  // to the side of the doors.
   const counter = receptionCounter(sink, bounds, rng,
-    rng.shuffle([(bank + 1) & 3, (bank + 3) & 3]).concat((bank + 2) & 3));
+    rng.shuffle([(bank + 1) & 3, (bank + 3) & 3]).concat((bank + 2) & 3, bank));
   // A plant beside a counter that landed and a plant anywhere at all if it did
   // not — the room still has to read as a lobby rather than as an empty box with
   // two lifts in it.
@@ -1157,11 +1171,42 @@ function receptionCounter(sink, bounds, rng, sides) {
   const margin = fw / 2;
 
   for (const side of sides) {
-    if ((side === 0 || side === 2) && x1 - x0 < margin * 2) continue;
-    if ((side === 1 || side === 3) && z1 - z0 < margin * 2) continue;
-    for (let tries = 0; tries < 10; tries++) {
-      const [cx, cz] = seatAt(side, x0, z0, x1, z1, standoff, margin, rng);
+    const alongX = side === 0 || side === 2;
+    const [a0, a1] = alongX ? [x0, x1] : [z0, z1];
+    if (a1 - a0 < margin * 2) continue;
+    // WALKED along the wall a tile at a time rather than thrown at it, and that
+    // is a fix rather than a tidy: `seatAt` picks a random point, which is right
+    // for a filing cabinet against a wall of an empty office and wrong here,
+    // because by the time this runs most of a lobby's floor is spoken for — the
+    // doorway aprons and the clear square at each car (see reserveClearances)
+    // take the whole band in front of the bank, and a counter needs the strip
+    // that is left. Ten darts at that found a spot on about half of floors, and
+    // the other half of them came out with nobody in the lobby at all.
+    for (const at of sweep(a0 + margin, a1 - margin, rng)) {
+      const cx = alongX ? at : (side === 1 ? x0 + standoff : x1 - standoff);
+      const cz = alongX ? (side === 2 ? z0 + standoff : z1 - standoff) : at;
+      // The pocket: the floor between the wall and the counter's back face, the
+      // counter's own width across. It has to be free BEFORE the counter goes in
+      // and claimed after, and both halves were missing.
+      //
+      // Free, because `tryPlace` proves the counter's own tiles and nothing
+      // else: a counter standing across the corner of the lift block, or across
+      // a doorway apron, places perfectly and has no floor behind it. And
+      // claimed, because everything else in this room is placed AFTER it — a
+      // lobby whose receptionist was displaced by its own pot plant is a lobby
+      // with a counter and nobody behind it, which is silent, because all that
+      // happens is `standable` drops the station from the pool. Measured at 3
+      // floors in 13 before the claim.
+      const back = standoff - fd / 2;
+      const p0 = alongX
+        ? [cx - fw / 2, side === 2 ? z0 : z1 - back]
+        : [side === 1 ? x0 : x1 - back, cz - fw / 2];
+      const p1 = alongX
+        ? [cx + fw / 2, side === 2 ? z0 + back : z1]
+        : [side === 1 ? x0 + back : x1, cz + fw / 2];
+      if (!sink.canPlace(p0[0], p0[1], p1[0], p1[1])) continue;
       if (!tryPlace(sink, 'receptionDesk', cx, cz, side, rng)) continue;
+      sink.occupy(p0[0], p0[1], p1[0], p1[1]);
       // Behind it, which is the way the wall is. A prop is authored facing -Z,
       // so its own +Z is the side the wall is on and QUARTER turns that into a
       // direction — the same line every station in this file is derived with,
@@ -1176,6 +1221,16 @@ function receptionCounter(sink, bounds, rng, sides) {
     }
   }
   return null;
+}
+
+// Positions along a wall, a tile apart, walked out from a random start so a
+// counter is not in the same place on every floor. It covers the whole run
+// rather than sampling it, which is the difference between a lobby that has a
+// counter and one that has room for a counter.
+function* sweep(lo, hi, rng) {
+  const n = Math.max(1, Math.floor((hi - lo) / TILE) + 1);
+  const from = rng.int(0, n - 1);
+  for (let i = 0; i < n; i++) yield lo + ((from + i) % n) * TILE;
 }
 
 const ROLES = {

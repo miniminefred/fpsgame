@@ -114,7 +114,7 @@ export function buildLevel(scene, layout, theme = null) {
   buildHallDoors(layout, scene, materials, doors, colliders, readers);
   // The lobby's way out into the office: a pair of leaves rather than a panel,
   // and never locked. See buildDoubleDoors.
-  buildDoubleDoors(layout, scene, materials, doors, colliders);
+  buildDoubleDoors(layout, scene, materials, doors, colliders, readers);
   readers.finish();
   // The two cars, after the doors because they fit doors of their own, and
   // before the furnishing for no reason at all — nothing they draw is on the
@@ -1591,7 +1591,7 @@ function dressCar(layout, lift, batcher, materials, fixtures, sign) {
  * car's pocket is guaranteed by the way the car was carved, and a room's has to
  * be measured off the wall it was cut into.
  */
-function fitPartingDoors(layout, d, scene, materials, doors, colliders, travelFor) {
+function fitPartingDoors(layout, d, scene, materials, doors, colliders, travelFor, readers) {
   const { W } = layout;
   const geo = new THREE.BoxGeometry(1, 1, 1);
 
@@ -1641,9 +1641,15 @@ function fitPartingDoors(layout, d, scene, materials, doors, colliders, travelFo
     x: cx, z: cz,
     at: new THREE.Vector3(cx, 1.2, cz),
     height: DOOR_PANEL_H,
-    lock: null,
+    // Neither of these doorways is ever badged — a car has no reader and the
+    // lobby's way out is marked `free` before a single lock is assigned. It is
+    // read off the doorway rather than written as `null` even so, because a
+    // reader the generator asked for and the builder did not fit is a lock that
+    // seals nothing and says nothing, which is precisely the shape of the bug
+    // `5.lock-sealed` caught in the pass that assigns them.
+    lock: d.lock ?? null,
     navTiles,
-    reader: null,
+    reader: d.lock && readers ? readers.add(d, cx, cz, x1, z1) : null,
   });
 }
 
@@ -1677,13 +1683,13 @@ function fitLiftDoors(layout, lift, scene, materials, doors, colliders) {
  * reader on the way out of the lobby is the one lock in the game that can shut
  * the player in holding nothing.
  */
-function buildDoubleDoors(layout, scene, materials, doors, colliders) {
+function buildDoubleDoors(layout, scene, materials, doors, colliders, readers) {
   for (const d of layout.doors) {
     if (!d.double || d.hall || d.lift) continue;
     fitPartingDoors(layout, d, scene, materials, doors, colliders, (end, half) => {
       const run = slidePocketRun(layout.tiles, layout.W, layout.H, d, end) * TILE;
       return Math.max(0, Math.min(half, run) - POCKET_CLEAR);
-    });
+    }, readers);
   }
 }
 

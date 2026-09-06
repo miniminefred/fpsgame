@@ -1091,13 +1091,44 @@ the deck at 3.2 m, and on the door wall they do it starting from inside the door
 the one-turn walk is the tested claim and not just the intended one. Each deck comes out
 with three to five desks on it.
 
-### The two lifts (`gen/lifts.js` + `buildLifts`/`buildExit` in `gen/build.js`)
+### The lift lobby (`gen/lifts.js` + `buildLifts`/`buildExit` in `gen/build.js`)
 A floor used to begin with the player standing in the middle of a room and end with a lit
 pad on the carpet. Both are PLACES rather than arrivals: nothing about either said you had
 come from the floor above or that there was one below. So a floor now opens the way an
-office opens — you are in a lift car, its doors part, the room in front of you is the
-reception that fronts the lifts, and the door out of that reception is the door into the
-building. The way down is the second car at the far end of the floor.
+office opens — you are in a lift car, its doors part, and the room in front of you is the
+lift lobby.
+
+**Both cars stand in that one room, side by side, and the room is the one nearest the
+middle of the slab.** That is where a building puts its core, and what it does to a floor is
+change its shape: clearing one is a loop out and back rather than a diagonal march from one
+corner to the opposite one, and every wing is the same walk away. `layout.spawnRoom` and
+`layout.exitRoom` are therefore the same object. They are kept as two names on purpose
+rather than collapsed into one — half a dozen callers ask one of those two questions
+(`assignLocks`, `planStairs`, `placeCow`, the props sweep) and each means the one it says,
+so a floor that ever wanted them apart again is one line in `generateLayout`. The layout
+sweep asserts the identity (`2.exit-lobby`) rather than having the check deleted, because
+that one line is exactly what would come apart quietly.
+
+**The way out is a DOUBLE DOOR and it is never locked.** A single panel sliding sideways out
+of a lift lobby reads as a cupboard being opened; two leaves parting in the middle is a way
+out of a lobby, and it is the same statement the two cars behind them are making one wall
+back. `buildDoubleDoors` fits them with the leaves a car's doors already use, with one
+difference that is the whole of that function: a car's front was BUILT round its pocket and a
+room's wall was not, so how far each leaf may run is measured (`slidePocketRun`) rather than
+assumed. Never badged either, and that is settled in `gen/layout.js` rather than in the
+builder — the lobby's doorways are marked `free` before a single lock is assigned, because a
+reader on the way out of the lobby is the one lock in the game that can shut the player in
+holding nothing.
+
+That marking found a hole in `assignLocks` the day it went in, and it is worth knowing
+about: the white pass has skipped rooms with a `free` doorway for as long as `free` has
+existed and **the staff-only pass had not**. So a storeroom next door could take grey on a
+doorway that has to stand open, the builder fitted it as the open door it is, and the nav
+grid never sealed a room the reader said was shut — one floor in three hundred with a grey
+storeroom the staff walk straight into, invisible from inside the game until a floor's worth
+of people comes out of it. `5.lock-sealed` in the props sweep is what caught it.
+
+**And there is somebody behind a counter in it** — see The receptionist below.
 
 **A car is a tiny room carved INTO a room**, and that is the whole reason `gen/lifts.js` is
 tile arithmetic rather than a mesh builder. Everything the shell already does for a room it
@@ -1176,19 +1207,85 @@ deep and stood through both its walls. The marker no longer has to be legible fr
 side of a dark floorplate, and that is the trade: a green strip over a lift is a sentence
 where a green glow on a far wall is a rumour.
 
-**Which room the floor arrives in is picked for that shape and nothing else**
-(`pickSpawnRoom`). It has to hold a car, it has to have a doorway onto a CORRIDOR — that is
-the door you go through to find the rest of the office, and it is also the part of the floor
-the prologue is measured over — and it should be neither the canteen nor a room the plant
-room could have had, both being rare set pieces that want the biggest rooms. Each
-requirement is dropped in turn if nothing survives it, rather than failing. `fitsLift` is
-exported and asked by both `pickSpawnRoom` and the exit ranking for the FIRST_CONTACT_GAP
-reason: the two asking slightly different questions is exactly how a floor ends up promising
-a lift it cannot build.
+**Which room the lobby is is picked for that shape and for being central**
+(`pickLobbyRoom`). It has to hold the whole bank, it has to have a doorway onto a CORRIDOR —
+that is the door you go through to find the rest of the office, and it is also the part of
+the floor the prologue is measured over — and it should be neither the canteen nor a room
+the plant room could have had, both being rare set pieces that want the biggest rooms. Among
+whatever survives that, the one nearest the middle of the slab wins. Each requirement is
+dropped in turn if nothing survives it, rather than failing, and the pick is deterministic
+rather than a draw for the reason `pickCafeteria` is: it runs before the floor's own rng has
+been spent on anything, so a die here would re-roll the contents of every room in the
+building off a number that has nothing to do with them. Measured over 600 floors, the lobby
+sits a median **11%** of the slab's half-diagonal off dead centre, worst 45%.
+
+`fitsLifts` is exported and asked by `pickLobbyRoom` for the FIRST_CONTACT_GAP reason: a
+room that passes the pick and cannot hold the bank is a floor that promises a lift it cannot
+build. It asks for a wall of `BLOCK_A * 2 + SIDE_ROOM * 2` tiles and a depth of
+`BLOCK_D + BANK_FRONT` — and those two extra tiles in `BANK_FRONT` are not a margin. They
+keep the room's own CENTRE TILE out of the block. With one car the centre-tile refusal cost
+a wall and not a lift, because the wall opposite always had room; with two cars on one wall
+the pair is twelve tiles across a sixteen-tile wall, so the room's centre COLUMN is inside
+one of them nearly every time and the only thing keeping the centre tile clear is that the
+centre ROW is deeper into the room than the block is.
+
+**The sliver rule had to be walked rather than measured** for the same reason. It used to
+come off the room's rectangle — `aMin` is its first tile along this wall, so what is left
+over each side is arithmetic — and that cannot see a wall that was not there when the room
+was cut. The tile beside a block is now as likely to be its neighbour's corner post as the
+room's plaster, so `tryCarve` walks outward from each flank instead. Same answer against the
+room's own wall; the only right one against the other car.
 
 **Nothing crosses the wire for any of it.** The carve draws no random numbers at all — it is
 a function of the finished floorplan — so both browsers in a co-op session cut the same two
-cars out of the same two rooms from the same seed.
+cars out of the same room from the same seed.
+
+### The receptionist (`liftLobby` in `gen/rooms.js` + `_receptionist` in `enemies.js`)
+Somebody behind a counter in the lift lobby, and **three times in ten they are not pleased
+to see you** (`ANGRY_RECEPTION`). They are the first person on the floor and the only body
+ever placed in the arrival room — `_spawnPoints` skips that room entirely — so you step out
+of the car and there is somebody looking at you across a counter before you have gone
+through a door.
+
+**The two types are the same person in the same clothes at the same counter and differ in
+one thing, which is the visor.** That is the game's oldest tell put to the only use it has
+never been put to: not "what is this" but "is this one going to be a problem", asked of a
+room you cannot avoid walking into. Violet means walk past; a warm light grey off the
+hostile ramp means it is about to stand up, and it is warm so it is not read as the Intern's
+`0xc8ced4` or Security's `0x7d7973` at the range you actually see one from. Nothing else
+about them says which, on purpose — the answer is a coin the floor tossed rather than a fact
+about receptionists, and what it buys is a room you have to look at rather than one you walk
+through. Three in ten is the whole of the tuning: at one in ten the second lobby teaches you
+to ignore them, at one in two the visor stops being news.
+
+**Standing rather than seated**, and that is not an oversight. A chair in this building means
+*has not noticed you yet*; this one has, because they watched the doors open. What they do
+about it is the coin, and a seated pose would be promising the wrong thing about both halves
+of it.
+
+**The counter stands OFF its wall, which nothing else in the catalogue does.** Every other
+wall-backed prop goes through `edgeProp`, which puts the prop's back on the plaster — there
+is nothing behind a filing cabinet and nothing needs to be. A reception desk is the one prop
+somebody stands behind, and the model is 0.55 m deep, so backed against the wall the whole
+pocket is the 0.15 m of skirting clearance. `COUNTER_STAND` is where the body goes and it is
+a NAV number rather than a look: `standable` in enemies.js holds a station to a whole tile of
+`fits`, and `fits` disqualifies every tile orthogonally touching a blocked one, so the tile
+against the plaster is not somewhere a body can be put however much room the arithmetic says
+is there. It is the middle of the second tile in.
+
+**And the position is WALKED along the wall rather than thrown at it.** `seatAt` picks a
+random point, which is right for a cabinet against the wall of an empty office and wrong
+here: by the time the furnisher reaches the lobby most of its floor is spoken for — the
+doorway aprons and the clear square at each car (`reserveClearances`) take the whole band in
+front of the bank, and the counter needs the strip that is left. Ten darts at that found a
+spot on **half** of floors and the other half came out with nobody in the lobby at all;
+sweeping every tile of every wall in turn finds one on nearly all of them. The walls beside
+the lifts are tried first, then the one opposite, then the lifts' own wall last — a counter
+backed against the bank has its back to the only thing in the room, but it is a real
+arrangement and a lobby with nobody in it is worse.
+
+A lobby that could not fit a counter publishes no station and has nobody at one, which is an
+ordinary answer of exactly the kind `carveLift` gives.
 
 ### The cafeteria (`cafeteria` in `gen/rooms.js` + `pickCafeteria`)
 The floor's canteen. It is the plant room's sibling — a big room composed around one thing
@@ -1392,10 +1489,55 @@ crates that could have been dealt to any seed. A **690-floor** sweep of the pre-
 found nothing, which is how a 1-in-300 fragility hides: the seeds are fixed, so a green sweep
 is evidence about those seeds and not about the generator.
 
+### An office is mostly open floor (`OPEN_SHARE`/`bsp` in `gen/layout.js`)
+An office building is mostly open plan with the cellular offices round the edge of it, and
+this generator was the other way round. `MAX_LEAF` caps a BSP leaf at 26 tiles a side, so
+the biggest room a floor could ever have was 13 x 13 m, the median room was **37 m²**, and
+**2.5%** of rooms landed on the `big` branch at all — every floor was a warren of small
+rooms with the occasional slightly larger small room, and "open plan" was a label on a
+9 x 8 m office.
+
+So a share of each floor's room area is CLAIMED for open floor before the subdivision
+reaches it, and a block that qualifies stops splitting whole. Measured over 480 floors: the
+open-plan share of a floor's room area is a median **42%**, every floor gets at least one,
+the biggest one on a floor is a median **296 m²** (max 451), and the median room is 42 m²
+against 37 with half as many rooms on the floor. Private offices went from 20.6% of rooms to
+**29.7%** — a small room is what a private office is, and now that the open floors hold the
+shift, that is where most of the building's cellular space goes.
+
+Four things about it are decisions rather than plumbing:
+
+- **The claim happens at the TOP of the recursion.** Offered a rect that has already been
+  halved twice, the budget spends itself on rooms that are merely large — and what makes an
+  open plan office read as one is being the biggest thing on the floor, with the cellular
+  offices around it rather than beside it. So the first rect on each path that is inside the
+  cap is the one that gets asked, and anything wider goes on splitting until it fits.
+- **`OPEN_TAKE` is what spreads them.** The budget alone would hand the first blocks the BSP
+  walks the whole share, and the blocks are walked in a fixed order across the slab, so every
+  open floor would be in one corner of it. Taking 80% of qualifying blocks and letting the
+  budget stop the run is what scatters them.
+- **`OPEN_LEAF` is what keeps it an office.** A block between two corridors can be sixty
+  tiles across on a deep floor, and a 30 x 30 m room with no interior wall in it is a
+  distribution centre.
+- **An open floor is never any of the flavour roles, THE PLANT ROOM INCLUDED**, and that last
+  one looks like the exception that should be made. `fitsGenerator` asks for a big
+  rectangular room with exactly one door, and what made that rare was `MAX_LEAF`: a room that
+  qualified was one pushed hard against the cap, and about 3% of floors had one. An open
+  floor clears the bar by a mile, so letting the plant room have one took it from **20 floors
+  in 600 to 527** — a set piece you meet every thirty floors becoming a fixture of nearly all
+  of them. The rarity is the design, so the population it is drawn from stays the one it has
+  always been drawn from: the rooms the subdivision made. Back to 17/600 after.
+
+`openplan` also came off the `mid` pick list, which is the point of the budget rather than a
+side effect of it: an open plan office is decided by the BSP now, and a 45 m² room labelled
+open plan was the game calling a modest office a floorplate — which is exactly what made the
+label mean nothing.
+
 ### What each room turns out to be (`ROLE_PICKS`/`assignRoles` in `gen/layout.js`, `furnish` in `gen/rooms.js`)
-A room's role is rolled off its SHAPE — long-thin, big, mid or small (`roleBranch`) — and then
-a handful of flavour rooms are guaranteed on top. Two things about the list are worth knowing
-because neither is obvious from it:
+A room's role is rolled off its SHAPE — long-thin, big, mid or small (`roleBranch`) — unless
+the BSP already handed it over whole as an open floor, in which case it is an open plan
+office and nothing else (see above). Then a handful of flavour rooms are guaranteed on top.
+Two things about the list are worth knowing because neither is obvious from it:
 
 - **`utility` is not on any of the pick lists.** It is not a room you roll, it is what a room
   turns out to be when nothing else will go in it. `furnish` asks whether the one prop that

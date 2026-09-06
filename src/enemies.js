@@ -570,12 +570,15 @@ export class Enemies {
     // you stand for four seconds, not somewhere you sit for a minute.
     this.servery = deskPool(workstations, nav, rng, 'servery').get(layout.cafeteriaRoom) ?? [];
     // Behind the counter in the lift lobby, and there is exactly one of them on
-    // the floor. Kept by ROOM and then asked for the lobby's, rather than taken
-    // off the flattened `stations` map below, for the reason the servery is: it
-    // is a fact about one room, and a station in some other room that happened to
-    // publish the same kind would put the receptionist in a corridor.
-    this.reception = deskPool(workstations, nav, rng, 'reception', STAND_NUDGE)
-      .get(layout.spawnRoom) ?? [];
+    // the floor. Kept BY ROOM rather than flattened into `stations` below — for
+    // the reason the servery is kept by room: it is a fact about one room, and a
+    // station some other room happened to publish under the same name would put
+    // the receptionist in somebody's office. Left as the map `deskPool` returns
+    // rather than reduced to the lobby's list here, because `_takeDesk` is what
+    // reads it and `_takeDesk` takes a map — handing it an array throws, which
+    // is what it did, and the throw took `spawn` down with it: no diners, no
+    // janitors, no manager and no cards on the first floor of every run.
+    this.reception = deskPool(workstations, nav, rng, 'reception', STAND_NUDGE);
     // Every OTHER kind of station the furnisher published, pooled by what it is
     // a place to work at and flattened the same way — a printer is a printer
     // whosever office it is in, so unlike a chair it does not matter which room

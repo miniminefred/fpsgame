@@ -137,6 +137,20 @@ export function assignLocks(tiles, W, H, rooms, doors, spawnRoom, exitRoom, dist
       // are four of these locks on a floor of two hundred rooms, so refusing the
       // candidate outright costs nothing and settles the question permanently.
       if (onRoom.some((d) => d.lock)) continue;
+      // And no way in may be one the floor needs standing OPEN. `free` is on the
+      // lift lobby's own doorways before a single lock is assigned, and on
+      // whatever the prologue pass has to give up further down — a badge on one
+      // of those is a reader on the door the player has to walk through holding
+      // nothing.
+      //
+      // The white pass has had this line for as long as `free` has existed and
+      // this one did not, which is a hole rather than an asymmetry: the shared
+      // doorway takes the tier, the builder fits it as the open door it is, and
+      // the nav grid never seals a room the reader says is shut. It showed up as
+      // one floor in three hundred with a grey storeroom the staff could walk
+      // straight into (`5.lock-sealed`), and it is invisible from inside the game
+      // until a floor's worth of people comes out of it.
+      if (onRoom.some((d) => d.free)) continue;
       if (!survivesWithout(sealed, W, H, sx, sy, rooms, room, locks, exitRoom, onRoom)) continue;
 
       room.lock = step.tier;
