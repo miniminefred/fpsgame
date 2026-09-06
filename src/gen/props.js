@@ -1172,7 +1172,7 @@ export const PROPS = {
   // double-height shaft (nobody can climb the housing to reach it anyway).
   generator: {
     // Backed against a wall like everything else load-bearing in a room (see
-    // edgeProp in gen/rooms.js) rather than standing free in the middle, so
+    // edgeProp in gen/placement.js) rather than standing free in the middle, so
     // its control face is authored on -Z — this file's own "front" convention
     // — with the wall-facing +Z side left plain. Genuinely massive on purpose
     // — it's meant to dominate the wall it's on, which is now two ordinary
@@ -1182,7 +1182,7 @@ export const PROPS = {
     // staircase (see `obstacle`'s `building` param).
     //
     // `spanning`: it is built to the width it is ASKED for and runs wall to
-    // wall (see wallSpanProp in gen/rooms.js). A plant room's generator that
+    // wall (see wallSpanProp in gen/placement.js). A plant room's generator that
     // stops two metres short of the corner reads as a big cabinet somebody put
     // there; one that reaches both side walls reads as the reason the room
     // exists. `w` stays as the fallback for the rare floor where the full span

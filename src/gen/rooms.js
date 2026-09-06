@@ -1,14 +1,25 @@
-import { PROPS, QUARTER, tryPlace, footprintOf } from './props.js';
-import { doorSide, doorsOnRoom, TILE } from './layout.js';
-import { PLAYER_RADIUS } from '../metrics.js';
-
-// What each kind of room is furnished with. The catalogue in props.js says what
-// a desk IS; this says where desks go. Splitting them keeps a room type to a
-// dozen readable lines instead of burying it in the furniture.
+// What each room turns out to be, and what goes in it.
 //
-// A room has to be recognisable from its doorway, before anything in it has
-// been shot at, so every role commits to a silhouette: aisles in storage, rows
-// facing a lit screen in the presentation room, a wall of racks in the server room.
+// One function per role, plus the table that maps a role to its function. How a
+// prop is actually placed is gen/placement.js's business — a recipe in here says
+// "a copier against a wall and some cardboard", and nothing about coordinates.
+
+import { footprintOf, QUARTER, tryPlace } from './props.js';
+import { doorSide, doorsOnRoom } from './layout.js';
+import {
+  aisles,
+  ALL_SIDES,
+  area,
+  centreProp,
+  edgeProp,
+  lounge,
+  scatter,
+  SEAT_PITCH,
+  seatFacing,
+  wall,
+  wallClutter,
+  wallSpanProp,
+} from './placement.js';
 
 // Fills a room according to its role. Room bounds arrive in world metres,
 // already shrunk by the wall clearance the builder wants to keep. `doors` is
@@ -41,6 +52,22 @@ export function furnish(sink, room, bounds, rng, doors, theme = null) {
  * they are composed around (see fitsGenerator and pickCafeteria), and the three
  * behind a card are chosen from rooms big enough by `assignLocks`.
  */
+
+/**
+ * The one prop that makes a room what it is.
+ *
+ * A copy room is a room with copiers in it. Take the copiers out — because the
+ * doorway aprons and the through-route lane between two openings have eaten the
+ * only walls it had — and what is left is not a copy room with less in it, it is
+ * a cupboard the generator has labelled a copy room. Which is what `utility` is,
+ * and why it is not on any of the pick lists in gen/layout.js: it is not rolled,
+ * it is what a room falls back to.
+ *
+ * Only the roles with a defining prop are here. A lobby is a lobby with nothing
+ * in it, a generator room and a cafeteria have already been proved to fit what
+ * they are composed around (see fitsGenerator and pickCafeteria), and the three
+ * behind a card are chosen from rooms big enough by `assignLocks`.
+ */
 const DEFINES = {
   openplan: 'desk',
   office: 'desk',
@@ -55,6 +82,19 @@ const DEFINES = {
   mailroom: 'shelving',
   reception: 'receptionDesk',
 };
+
+/**
+ * Whether a room could actually take the prop its role is about.
+ *
+ * Asked of the SINK rather than of the room's size, and that is the whole value
+ * of it: a 40 m² copy room whose every wall is inside a doorway apron has plenty
+ * of square metres and nowhere to put a copier. `canPlace` is the same test
+ * `tryPlace` is about to run, so this cannot certify a placement that then fails.
+ *
+ * Every wall in turn, at the same standoff `edgeProp` would use — nothing is
+ * placed and nothing is reserved, so a room that passes is furnished exactly as
+ * it was before.
+ */
 
 /**
  * Whether a room could actually take the prop its role is about.
@@ -100,8 +140,21 @@ function fits(sink, bounds, role) {
 // placed. They are the one prop the player can shove out of the way, shoot to
 // nothing, or walk through the middle of while the staff flatten them (see
 // `crushable` in props.js).
+
+// How much of the building has cardboard lying about in it, and how much.
+//
+// Every role gets this on top of its own recipe, which is the point: a delivery
+// that never got put away is not a kind of room, it is a thing that has happened
+// in three rooms out of five. Rolled per room rather than spread evenly, so some
+// rooms are clear and some have a small pile — and the pile is what makes an
+// office readable as somewhere people work rather than somewhere props were
+// placed. They are the one prop the player can shove out of the way, shoot to
+// nothing, or walk through the middle of while the staff flatten them (see
+// `crushable` in props.js).
 const CARTON_CHANCE = 0.62;
+
 const CARTON_PER_M2 = 11;      // one carton per this much floor, where they land
+
 const CARTON_MAX = 7;
 
 function cartons(sink, bounds, rng) {
@@ -120,6 +173,9 @@ function cartons(sink, bounds, rng) {
     }
   }
 }
+
+// Cubicle farm: pods on a 3.7 x 3.0 m pitch, each a desk backed by an L of
+// partitions, with the whole grid facing a consistent direction like real ones.
 
 // Cubicle farm: pods on a 3.7 x 3.0 m pitch, each a desk backed by an L of
 // partitions, with the whole grid facing a consistent direction like real ones.
@@ -295,25 +351,6 @@ function meetingRoom(sink, bounds, rng) {
  * Rings rather than a scan, so a table that cannot have the middle still ends up
  * as near it as the room allows and the room still reads as laid out around it.
  */
-const SEAT_PITCH = 0.66;   // metres between two people at a meeting table
-const CENTRE_RINGS = [0, 0.55, 1.1, 1.65];
-const CENTRE_DIRS = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]];
-
-function centreProp(sink, kinds, bounds, rot, rng) {
-  const cx = (bounds.x0 + bounds.x1) / 2;
-  const cz = (bounds.z0 + bounds.z1) / 2;
-  for (const kind of kinds) {
-    for (const r of CENTRE_RINGS) {
-      for (const [dx, dz] of CENTRE_DIRS) {
-        if (r === 0 && (dx || dz)) continue;
-        const x = cx + dx * r, z = cz + dz * r;
-        if (x < bounds.x0 || x > bounds.x1 || z < bounds.z0 || z > bounds.z1) continue;
-        if (tryPlace(sink, kind, x, z, rot, rng)) return { kind, cx: x, cz: z };
-      }
-    }
-  }
-  return null;
-}
 
 function breakRoom(sink, bounds, rng, room, doors, theme) {
   const { x0, z0, x1, z1 } = bounds;
@@ -374,6 +411,9 @@ function breakRoom(sink, bounds, rng, room, doors, theme) {
 
 // Shelving in aisles, the cabinets the overflow goes in, and the boxes that
 // never made it onto either.
+
+// Shelving in aisles, the cabinets the overflow goes in, and the boxes that
+// never made it onto either.
 function storage(sink, bounds, rng) {
   // `'shelf'` is where the parcel runs start and where the stocktaking routine
   // takes a box off a rack: a machine comes in here, takes a box, and hands it
@@ -392,6 +432,10 @@ function storage(sink, bounds, rng) {
     : ['crateStack'], 12, rng);
   if (rng.chance(0.5)) edgeProp(sink, bounds, 'extinguisher', rng);
 }
+
+// Paper, in every form the building keeps it: binders on shelves, the cabinets
+// nobody has opened this decade, and the bench where it is actually dealt with —
+// a small printer, a calculator and the trays it comes in and goes out of.
 
 // Paper, in every form the building keeps it: binders on shelves, the cabinets
 // nobody has opened this decade, and the bench where it is actually dealt with —
@@ -419,6 +463,8 @@ function archive(sink, bounds, rng) {
 }
 
 // Machines, and the paper going into and out of them.
+
+// Machines, and the paper going into and out of them.
 function copyRoom(sink, bounds, rng) {
   const { x0, z0, x1, z1 } = bounds;
   // The shelf first, for the break room's reason: it is 1.96 m and the copiers
@@ -435,6 +481,10 @@ function copyRoom(sink, bounds, rng) {
   scatter(sink, bounds, ['crateStack', 'crateStack', 'carton'], 11, rng);
   wallClutter(sink, bounds, ['recyclingBin', 'trashCan'], 40, rng);
 }
+
+// Racks in ranks, tight enough that the aisles between them are the only floor —
+// and one terminal, because somebody has to be able to sit down and talk to all
+// of this.
 
 // Racks in ranks, tight enough that the aisles between them are the only floor —
 // and one terminal, because somebody has to be able to sit down and talk to all
@@ -465,6 +515,10 @@ function serverRoom(sink, bounds, rng) {
 // Where the hardware comes to be fixed: a row of benches down a wall, half of
 // them with something open on them (see `workbench` in gen/props.js), somewhere
 // to put the parts, and the boxes they came in.
+
+// Where the hardware comes to be fixed: a row of benches down a wall, half of
+// them with something open on them (see `workbench` in gen/props.js), somewhere
+// to put the parts, and the boxes they came in.
 function itBay(sink, bounds, rng) {
   const { x0, z0, x1, z1 } = bounds;
   // A ROW rather than two benches and a shelf of odds and ends. A bench is 2 m,
@@ -489,6 +543,16 @@ function itBay(sink, bounds, rng) {
 // of these is somebody's parcel and it leaves the building: a stocktake that
 // took a box off the mailroom rack and put it on another one would be the post
 // being filed instead of sent.
+
+// Goods in, goods out: shelves of parcels, and the crates they came in stacked
+// where the trolley stopped.
+//
+// The shelves publish a `mail` station, which is where the post is collected
+// from — see the `postrun` routine in chores.js. It is its own kind rather than
+// the storeroom's `shelf` or the archive's `files`, because what comes off one
+// of these is somebody's parcel and it leaves the building: a stocktake that
+// took a box off the mailroom rack and put it on another one would be the post
+// being filed instead of sent.
 function mailRoom(sink, bounds, rng) {
   const { x0, z0, x1, z1 } = bounds;
   const racks = Math.max(2, Math.floor(Math.max(x1 - x0, z1 - z0) / 2.4));
@@ -501,6 +565,9 @@ function mailRoom(sink, bounds, rng) {
 
 // The room the building would rather you didn't see: lockers, cleaning kit and
 // the spares that have no other home.
+
+// The room the building would rather you didn't see: lockers, cleaning kit and
+// the spares that have no other home.
 function utilityRoom(sink, bounds, rng) {
   edgeProp(sink, bounds, 'lockers', rng);
   edgeProp(sink, bounds, 'extinguisher', rng);
@@ -508,6 +575,21 @@ function utilityRoom(sink, bounds, rng) {
   wallClutter(sink, bounds, ['shelving', 'lockers', 'recyclingBin'], 26, rng);
   scatter(sink, bounds, ['crateStack', 'trashCan'], 14, rng);
 }
+
+// Rows of seats facing a big screen at the front, with an aisle up the middle so
+// the room reads as a room somebody presents in rather than a furniture
+// warehouse — and so it reads that way from the doorway, before anything in it
+// has moved.
+//
+// A screen rather than a whiteboard, and the difference is that it is ON: a lit
+// 2.4 m rectangle is the one thing in a grey office that says LOOK HERE, which
+// is what the whole seating plan is pointed at. The whiteboard stays where it
+// belongs, in the meeting room, where somebody writes on it.
+//
+// The screen publishes a `board` station like a whiteboard does (see WORK_AT),
+// and every chair here is registered as a `meeting` seat — so a meeting can be
+// held in this room too, with one body at the screen and the rest sitting in the
+// rows. Same cast, same poses; see `_tryMeeting` in chores.js.
 
 // Rows of seats facing a big screen at the front, with an aisle up the middle so
 // the room reads as a room somebody presents in rather than a furniture
@@ -576,6 +658,9 @@ function presentationRoom(sink, bounds, rng) {
 
 // The front of house on a floor that has one: a counter to be greeted at, and
 // seating for the meeting you are not here for.
+
+// The front of house on a floor that has one: a counter to be greeted at, and
+// seating for the meeting you are not here for.
 function reception(sink, bounds, rng) {
   edgeProp(sink, bounds, 'receptionDesk', rng);
   edgeProp(sink, bounds, 'plant', rng);
@@ -588,6 +673,12 @@ function reception(sink, bounds, rng) {
   }
   if (rng.chance(0.5)) edgeProp(sink, bounds, 'plant', rng);
 }
+
+// A desk in the dead centre of a 4.5 m room leaves only ~0.65 m of standable
+// floor either side once the player's radius is taken off both edges, and a
+// single cabinet dropped at a random wall then closes one of them and cuts the
+// room in half. So the desk goes against a wall like a real one, and only rooms
+// with space to spare get a free-standing island.
 
 // A desk in the dead centre of a 4.5 m room leaves only ~0.65 m of standable
 // floor either side once the player's radius is taken off both edges, and a
@@ -615,6 +706,8 @@ function privateOffice(sink, bounds, rng) {
   if (rng.chance(0.3)) edgeProp(sink, bounds, 'bookshelf', rng);
   if (rng.chance(0.5)) edgeProp(sink, bounds, 'trashCan', rng);
 }
+
+// Desk backed onto a wall with its chair tucked in front of it.
 
 // Desk backed onto a wall with its chair tucked in front of it.
 function deskAgainstWall(sink, bounds, rng) {
@@ -656,162 +749,6 @@ function deskAgainstWall(sink, bounds, rng) {
  * standing `standoff` off this wall at position `at` along it is at `seat(at,
  * standoff)`, whichever wall it is.
  */
-function wall(side, bounds) {
-  const { x0, z0, x1, z1 } = bounds;
-  const alongX = side === 0 || side === 2;
-  const into = (side === 0 || side === 3) ? -1 : 1;
-  const edge = side === 0 ? z1 : side === 1 ? x0 : side === 2 ? z0 : x1;
-  const [a0, a1] = alongX ? [x0, x1] : [z0, z1];
-  return {
-    side, alongX, into, edge, a0, a1,
-    // `at` runs along the wall, `standoff` runs into the room from it.
-    seat(at, standoff) {
-      const off = edge + into * standoff;
-      return alongX ? [at, off] : [off, at];
-    },
-    // ...and the rectangle between the wall and something standing `depth` off
-    // it, `width` across. What is behind a counter, in other words.
-    pocket(at, depth, width) {
-      const [p, q] = [edge, edge + into * depth].sort((m, n) => m - n);
-      return alongX
-        ? [at - width / 2, p, at + width / 2, q]
-        : [p, at - width / 2, q, at + width / 2];
-    },
-  };
-}
-
-/**
- * Where along a wall to try, in the order to try them.
- *
- * Two answers, and which one a caller wants is about how spoken-for the room
- * is. A filing cabinet against the wall of an ordinary office wants ONE random
- * point, because almost any point will do and a swept prop lands in the same
- * corner of every room on the floor. A prop going into a room whose floor is
- * mostly reserved wants every position on the wall, walked from a random start
- * so it is still not in the same place twice — the lift lobby's counter found a
- * spot on about half of floors with ten darts and on nearly all of them with a
- * sweep, and the half that missed came out with nobody behind the counter.
- */
-function* wallOrder(sides, rng, sweep) {
-  if (sweep) { yield* sides; return; }
-  for (let i = 0; i < 12; i++) yield rng.pick(sides);
-}
-
-function* wallSlots(w, margin, rng, sweep) {
-  const lo = w.a0 + margin, hi = w.a1 - margin;
-  if (hi < lo) return;
-  if (!sweep) { yield rng.range(lo, hi); return; }
-  const n = Math.max(1, Math.floor((hi - lo) / TILE) + 1);
-  const from = rng.int(0, n - 1);
-  for (let i = 0; i < n; i++) yield lo + ((from + i) % n) * TILE;
-}
-
-// Backs a `spanning` prop against one whole wall, corner to corner, and returns
-// where it landed (or null). The prop is built to the length it is given rather
-// than to a catalogue width — see `spanning` in gen/props.js.
-//
-// The retreat is the point of having a helper at all. Reaching both corners
-// means reserving every tile across the room, and the furnisher is not the only
-// thing with a claim on them: reserveClearances in gen/furnish.js stamps doorway
-// aprons into the shared grid without regard for whose room the tile is in, so
-// one unrelated doorway on the other side of that wall can veto the full span.
-// Giving up there would leave the room without the one thing it is named for,
-// so it steps in half a metre a side and asks again, and only then falls back
-// to the catalogue size somewhere else on the wall.
-function wallSpanProp(sink, bounds, kind, rng, side) {
-  const { x0, z0, x1, z1 } = bounds;
-  const { d: fd } = footprintOf(sink, kind);
-  const standoff = fd / 2;
-  const w = wall(side, bounds);
-  const full = w.a1 - w.a0;
-  const mid = (w.a0 + w.a1) / 2;
-
-  // Starting a hair inside the bounds rather than exactly on them. `bounds` is
-  // already the 0.15 m wall inset every prop in the building is held to, and a
-  // prop whose edge lands exactly on it is one rounding error from being
-  // reported as through the plaster (9.inset in tools/validate-props.mjs).
-  for (let span = full - 0.04; span >= full - 1.5 && span > 2; span -= 0.5) {
-    const [cx, cz] = w.seat(mid, standoff);
-    if (tryPlace(sink, kind, cx, cz, side, rng, span)) {
-      return { cx, cz, rot: side, side, span };
-    }
-  }
-  return null;
-}
-
-// The chair that goes with whatever was just backed against a wall: a body's
-// width out in front of it, turned round to face it.
-//
-// And the one place in the furnisher that says where somebody WORKS. A desk with
-// a monitor on it and a chair pulled up to it is a job, and the chair is where
-// the body doing it sits — so the same call that puts the chair down registers
-// the workstation, and a room cannot end up with a seated body facing the wrong
-// way or sitting on nothing. `sink.workstation` decides whether it is worth
-// keeping (see makeSink in gen/sink.js); everything downstream is enemies.js's.
-function seatFacing(sink, kind, cx, cz, rot, rng, gap = 0.95) {
-  const out = QUARTER[rot & 3](0, -gap);
-  const x = cx + out[0];
-  const z = cz + out[1];
-  const seat = (rot + 2) & 3;
-
-  // Placed inside the desk's own reservation, because a chair pulled up to a
-  // desk is inside it whatever the arithmetic says: floor is reserved by whole
-  // tiles and a 0.97 m desk reaches half a metre past its own front face. That
-  // is what `lend` is for, and without it this failed on all 16 wall-backed
-  // desks of the floor it was measured on. Every other claim on the floor still
-  // stands while the tiles are lent — the wall behind, the doorway apron, the
-  // cabinet beside it.
-  const { w, d } = footprintOf(sink, kind, rot);
-  const placed = sink.lend(cx - w / 2, cz - d / 2, cx + w / 2, cz + d / 2,
-    () => tryPlace(sink, 'chair', x, z, seat, rng));
-  if (!placed) return false;
-
-  sink.workstation(x, z, seat);
-
-  // ...and the two places somebody can stand at this desk without standing in
-  // its chair. Offered on every desk in the building and mostly refused: they
-  // are what the standing "work on a computer" job is done at (see chores.js and
-  // DESK_ASIDE), and a chair that only just fits has no room either side of it.
-  // Nothing here reserves a tile — a workstation is an offer, and this one is
-  // taken up by at most one body at a time.
-  for (const aside of [DESK_ASIDE, -DESK_ASIDE]) {
-    const [ax, az] = QUARTER[rot & 3](aside, 0);
-    sink.workstation(x + ax, z + az, seat, 'computer');
-  }
-  return true;
-}
-
-/**
- * Registers a seat somebody can spend a break in.
- *
- * A sofa and an armchair are not chairs: nothing pulls them up to anything, so
- * they never came down the `seatFacing` pipe and the game had no idea they were
- * places to sit. `edgeProp` hands back where the prop landed and which wall it
- * is against, and a prop backed against side `s` faces FACING[s] into the room —
- * so the body sits at the prop's own position facing the way the prop does,
- * which is the same line `_seat` uses to turn a station's rot into a yaw.
- *
- * `seats` is how many bodies fit on it, spread along its width: one on an
- * armchair, two on a sofa. Spread by a third of the prop's width either side of
- * centre rather than by half, so two people on a sofa are sitting on it rather
- * than perched on its arms.
- */
-function lounge(sink, kind, at, rng, seats) {
-  if (!at) return;
-  const { w } = footprintOf(sink, kind);
-  for (let i = 0; i < seats; i++) {
-    const t = seats === 1 ? 0 : (i - (seats - 1) / 2) * (w / 3) * 2;
-    const [ax, az] = QUARTER[at.side](t, 0);
-    sink.workstation(at.cx + ax, at.cz + az, at.side, 'lounge');
-  }
-}
-
-// --- the three rooms you need a card for ------------------------------------
-//
-// All three are behind a badge reader (see assignLocks in gen/layout.js), so
-// each one is a room you had to work to stand in. That buys them the right to
-// look like somewhere: the payoff for a keycard is seeing the room, so none of
-// them may furnish as "a private office with a different label on the door".
 
 // Corner office. A desk you sit BEHIND with the visitor's chairs in front of it,
 // which is the whole silhouette — nobody else on the floor gets seating that
@@ -834,6 +771,9 @@ function managerOffice(sink, bounds, rng) {
 
 // The room the cameras come back to: a bank of screens against one wall, racks
 // and lockers against the others, and nothing in the middle to walk into.
+
+// The room the cameras come back to: a bank of screens against one wall, racks
+// and lockers against the others, and nothing in the middle to walk into.
 function securityOffice(sink, bounds, rng) {
   // The camera desk goes in first and unconditionally, before the room has been
   // filled with anything that could take its wall. It is what the room IS — you
@@ -853,6 +793,9 @@ function securityOffice(sink, bounds, rng) {
 
 // A broom closet is small, and the point of it is that the walls are the room:
 // everything against them and one body's width of floor down the middle.
+
+// A broom closet is small, and the point of it is that the walls are the room:
+// everything against them and one body's width of floor down the middle.
 function broomCloset(sink, bounds, rng) {
   edgeProp(sink, bounds, 'mopBucket', rng);
   edgeProp(sink, bounds, 'shelving', rng);
@@ -861,6 +804,15 @@ function broomCloset(sink, bounds, rng) {
   edgeProp(sink, bounds, 'trashCan', rng);
   scatter(sink, bounds, ['crateStack'], 11, rng);
 }
+
+// The generator room: a big double-height plant room (see generatorRoomCut in
+// gen/build.js) built around the one prop that matters. It goes in FIRST and
+// against a wall like anything else load-bearing in here — same reasoning as
+// the camera desk in securityOffice: a room this size open in the middle
+// reads as a hangar with a box in it, not a plant room, and every other item
+// below is placed against whatever wall it left. The rest reads as the crew
+// that works this room: monitoring terminals rather than desks, and the
+// crates and spares an industrial space accumulates.
 
 // The generator room: a big double-height plant room (see generatorRoomCut in
 // gen/build.js) built around the one prop that matters. It goes in FIRST and
@@ -902,6 +854,23 @@ function generatorRoom(sink, bounds, rng, room, doors) {
   if (rng.chance(0.5)) edgeProp(sink, bounds, 'extinguisher', rng);
   scatter(sink, bounds, ['crateStack', 'crate', 'pallet'], 26, rng);
 }
+
+// The staff canteen, and the room the floor puts you down in — see
+// pickCafeteria in gen/layout.js, which is what makes it the spawn room.
+//
+// It is a set piece the way the plant room is, and the composition is the whole
+// of it: the servery runs the far wall corner to corner, the strip in front of
+// it is left clear because that is where a queue would stand, and the seating
+// behind that is laid in ROWS facing the counter. Rows rather than the `canteen`
+// role's scatter of round tables, because rows are what make the servery the END
+// of the room instead of one wall of four — the same argument the generator's
+// wall-to-wall placement rests on.
+//
+// It is the ONLY canteen now. There used to be a mid-sized `canteen` role as
+// well — round tables and stools, somewhere on the floor to eat — and having
+// both meant a floor with two rooms making the same statement, one of them
+// composed and one of them scattered. This is the composed one, so it is the one
+// that stayed.
 
 // The staff canteen, and the room the floor puts you down in — see
 // pickCafeteria in gen/layout.js, which is what makes it the spawn room.
@@ -1153,8 +1122,48 @@ function lobby(sink, bounds, rng) {
  * comes out with a counter and nobody behind it. Measured at 2 floors in 13
  * before the pocket was widened, with the counter standing there perfectly.
  */
+
+/**
+ * Where the receptionist stands, and how much floor the counter leaves past
+ * them. Both measured out from the room's furnishing bounds, which are already
+ * 0.15 m off the plaster.
+ *
+ * These are NAV numbers rather than a look, and they are the tile grid rather
+ * than a taste. `standable` in enemies.js holds a station to a whole tile of
+ * `fits`, and `fits` is the walk grid eroded by a body's radius — a 0.4 m body
+ * on a 0.5 m tile reaches 0.15 m into each neighbour, so a tile orthogonally
+ * touching a blocked one is not somewhere a body can be put. The receptionist's
+ * tile therefore needs an open tile on BOTH sides of it, the wall on one hand
+ * and the counter on the other, which makes three tiles the shallowest pocket
+ * there is: [wall][open][body][open][counter]. 1.25 m off the plaster is the
+ * middle of the third tile, and the counter's back face lands at 2.05, which is
+ * inside the fifth.
+ *
+ * Cut to two tiles it does not merely get tight, it gets SILENT. `standable`
+ * nudges a station backwards to find floor and backwards here is into the wall,
+ * so nothing recovers it: the station is dropped from the pool and the lobby
+ * comes out with a counter and nobody behind it. Measured at 2 floors in 13
+ * before the pocket was widened, with the counter standing there perfectly.
+ */
 const COUNTER_STAND = 1.25 - 0.15;
+
 const COUNTER_CLEAR = 0.8;
+
+/**
+ * The lift lobby: the room the floor arrives in, leaves by, and is greeted in.
+ *
+ * Both cars are already standing in it before this runs — they are shell, cut
+ * into the floorplan itself (see gen/lifts.js) — so what the furnisher adds is
+ * the front of house around them: a counter to be greeted at, a plant, and
+ * somewhere to wait that you are not going to wait in.
+ *
+ * `room.liftSide` is which wall the bank took, and the counter keeps off it: a
+ * reception desk backed against the lifts is a desk with its back to the only
+ * thing in the room. It goes on one of the two walls beside them first, which is
+ * where a real one is — you come out of the car, and it is on your left or your
+ * right — and only then on the wall opposite, which is the one the doors out are
+ * usually cut in.
+ */
 
 /**
  * The lift lobby: the room the floor arrives in, leaves by, and is greeted in.
@@ -1199,7 +1208,6 @@ function liftLobby(sink, bounds, rng, room) {
   if (!counter && rng.chance(0.5)) edgeProp(sink, bounds, 'plant', rng);
 }
 
-
 const ROLES = {
   openplan: openPlan,
   meeting: meetingRoom,
@@ -1227,6 +1235,9 @@ const ROLES = {
 
 // Every role the generator is allowed to hand out. layout.js picks from this by
 // size; anything it picks that isn't here would silently come out as an office.
+
+// Every role the generator is allowed to hand out. layout.js picks from this by
+// size; anything it picks that isn't here would silently come out as an office.
 export const ROOM_ROLES = Object.keys(ROLES);
 
 // --- placement helpers ------------------------------------------------------
@@ -1240,251 +1251,3 @@ export const ROOM_ROLES = Object.keys(ROLES);
 // pallet in the middle of one seals off everything past it. With a gangway
 // round the ends every aisle has two mouths and no single blockage can shut a
 // room's floor away from its own doorway.
-const GANGWAY = 0.9;   // metres — the player is 0.8 m across
-
-function aisles(sink, bounds, aislePitch, unitPitch, kind, rng, station = null) {
-  const { x0, z0, x1, z1 } = bounds;
-  const alongX = (x1 - x0) >= (z1 - z0);
-  const [a0, a1, b0, b1] = alongX ? [x0, x1, z0, z1] : [z0, z1, x0, x1];
-  const rot = alongX ? 0 : 1;
-
-  // Too short to hold a rank and its gangways: leave it to the clutter.
-  if (a1 - a0 < 2 * GANGWAY + unitPitch) return;
-
-  // How far the last rank may stand from the far wall, which is half of what
-  // the rank is actually DEEP — the same footprint tryPlace will reserve, so a
-  // model-backed rack is measured at the size it ships at. This was a flat
-  // 0.4 m, which happened to suit a 1.06 m server rack and not the 1.31 m one
-  // the model turned out to be, and the last rank in every server room stood a
-  // couple of centimetres into the wall inset because of it. `b` is the aisle
-  // axis, and a rank presents its depth along it whichever way round the room
-  // is, which is why this asks in the prop's own frame.
-  const half = footprintOf(sink, kind).d / 2;
-  // Where a body stands to take something off a rack, if this caller wants one.
-  // Same derivation and the same reasons as the servery's queue below: the
-  // furnisher is the only thing that knows where a rack actually landed, a prop
-  // is authored facing -Z so QUARTER turns its own depth into a direction, and
-  // the body faces back the other way — `(rot + 2) & 3`. Written out by hand
-  // this is four coordinates and half of them come out backwards.
-  //
-  // Offered on EVERY unit rather than a chosen few, and most of them are
-  // rubbish: the first rank of an aisle faces the wall it is nearest, so its
-  // spot is inside the plaster. That is fine and is why the offer goes down the
-  // `sink.workstation` pipe — `deskPool` in enemies.js drops any station a body
-  // cannot stand at, exactly as it already does for one canteen tray rack in ten.
-  const front = half + RACK_REACH;
-  const place = (cx, cz) => {
-    if (!tryPlace(sink, kind, cx, cz, rot, rng)) return;
-    if (!station) return;
-    const [ox, oz] = QUARTER[rot](0, -front);
-    sink.workstation(cx + ox, cz + oz, (rot + 2) & 3, station);
-  };
-  for (let b = b0 + aislePitch * 0.3; b < b1 - half; b += aislePitch) {
-    for (let a = a0 + GANGWAY + unitPitch / 2; a < a1 - GANGWAY - unitPitch / 2 + 0.05; a += unitPitch) {
-      if (alongX) place(a, b);
-      else place(b, a);
-    }
-  }
-}
-
-// How far in front of a rack a body stands to reach it. Under storage's 1.9 m
-// aisle pitch, so the spot lands in the gangway rather than inside the next rank.
-const RACK_REACH = 0.65;
-
-const ALL_SIDES = [0, 1, 2, 3];
-
-const area = ({ x0, z0, x1, z1 }) => (x1 - x0) * (z1 - z0);
-
-// Optional props along the walls, as many as the room has floor to carry. A
-// 34 m2 break room and a 120 m2 one must not both get one of everything: a prop
-// against a wall is cheap on its own and expensive in company, because three of
-// them in a line across a narrow room close the room in half. `kinds` is in
-// priority order — the first is the one the room most wants.
-function wallClutter(sink, bounds, kinds, perM2, rng) {
-  const n = Math.min(kinds.length, Math.floor(area(bounds) / perM2));
-  for (let i = 0; i < n; i++) edgeProp(sink, bounds, kinds[i], rng);
-}
-
-// Clutter dropped where it was put down. `perM2` is one item per that many
-// square metres — the room's own size decides how littered it is.
-//
-// A STATIC prop dropped in the middle of the floor is the one thing the furnisher
-// does that can wall a room off, so it has to leave a body's width around it.
-//
-// This is the copyroom bug in a second room type (see reserveThroughRoutes in
-// gen/build.js): `canPlace` rounds a footprint outward to whole tiles, so two
-// props in diagonally adjacent tile blocks can pass that test and still leave a
-// gap no body can get through — two 0.8 m crates a tile apart on the diagonal
-// have about 0.53 m of perpendicular clearance against a 0.8 m body. Measured in
-// an itbay on one floor in three hundred: 2266 cells of its own floor cut off
-// behind exactly two scattered crates, with a two-cell neck between them.
-//
-// Asking for the footprint plus a body's radius on every side is the whole fix,
-// and it costs a little density in a busy room: a crate that cannot leave a lane
-// beside it is a crate that does not land. Loose props are exempt because they are
-// not obstacles — you walk into a carton and it moves.
-const SCATTER_LANE = PLAYER_RADIUS;
-
-function scatter(sink, bounds, kinds, perM2, rng) {
-  const { x0, z0, x1, z1 } = bounds;
-  const n = 1 + Math.floor(((x1 - x0) * (z1 - z0)) / perM2);
-  for (let i = 0; i < n; i++) {
-    const kind = rng.pick(kinds);
-    const x = rng.range(x0 + 0.5, x1 - 0.5);
-    const z = rng.range(z0 + 0.5, z1 - 0.5);
-    const rot = rng.int(0, 3);
-    if (!PROPS[kind]?.mass) {
-      const foot = footprintOf(sink, kind, rot);
-      const w = foot.w / 2 + SCATTER_LANE, d = foot.d / 2 + SCATTER_LANE;
-      if (!sink.canPlace(x - w, z - d, x + w, z + d)) continue;
-    }
-    tryPlace(sink, kind, x, z, rot, rng);
-  }
-}
-
-// Tries to seat a prop against a random wall, back to the wall, a few times.
-//
-// Every side uses HALF THE DEPTH as the standoff and HALF THE WIDTH as the
-// along-wall margin, with no special case. That is the whole point of backing a
-// prop against a wall: its depth always faces the wall, and the quarter-turn
-// each side applies is exactly what maps `d` onto the axis perpendicular to it.
-// Swapping the two here pushed wide props (counters, meeting tables) up to a
-// metre out into the room and shoved narrow ones into the wall.
-//
-// Sides, throughout: 0 = the +z wall, 1 = -x, 2 = -z, 3 = +x — and the side IS
-// the quarter turn, which is not a coincidence and took a wall of dark monitors
-// to notice. A prop is authored facing -z (see gen/props.js), so the turn that
-// puts its face into the room is exactly the one that maps -z onto the direction
-// away from the wall: rot 0 for the +z wall, rot 1 for -x, and so on. The two
-// even sides used to be the other way round, which stood every vending machine,
-// whiteboard and reception desk on the +z and -z walls with its front to the
-// plaster — invisible on a grey box, and instantly obvious on eight lit screens.
-// It also aimed `deskAgainstWall`'s chair at the wall, so those desks silently
-// came out with nobody sitting at them.
-//
-// `sides` narrows which walls are on offer. A room that knows something about
-// its own layout — a cubicle farm knows exactly how much lane it left between
-// the desks and each wall — uses it to keep a prop off the wall where it would
-// close that lane, instead of leaving it to a die roll.
-//
-// Returns WHERE it landed, or null. Almost every caller only wants to know
-// whether it did, and an object is as truthy as `true` — but a room that has to
-// put a chair in front of the thing it just placed has no other way to find out
-// which wall the die picked.
-// Which machines somebody can be found working AT, and what the station is
-// called when it goes down the `sink.workstation` pipe. See chores.js.
-//
-// A table read by `edgeProp` rather than an argument threaded through its
-// fifteen call sites, and that is the same argument `aisles` already makes about
-// a rack: whether a printer is somewhere to stand is a fact about printers, not
-// about the copy room. So every vending machine, printer, workbench and server
-// rack backed against a wall anywhere in the building offers a place to stand,
-// for free, and the ones that are no good are dropped at the other end —
-// `deskPool` in enemies.js refuses any station a whole body does not fit at,
-// exactly as it already does for one canteen tray rack in ten.
-const WORK_AT = {
-  vending: 'vending',
-  printer: 'printer',
-  workbench: 'bench',
-  serverRack: 'server',
-  // The front of a room rather than a machine, and it is the same fact: a
-  // whiteboard is somewhere a body stands. Meetings hold their board here (see
-  // meetings.js). A presentation room registers its own `board` beside its
-  // screen rather than coming through here, because that screen goes on the wall
-  // the seating picked rather than on a wall of its own choosing.
-  whiteboard: 'board',
-  sortingBench: 'sorting',
-  charger: 'charge',
-};
-
-// ...except where the ROOM decides what a prop is a place to do. A shelving unit
-// is `shelf` in a storeroom and `mail` in a mailroom, and the difference is not
-// about shelving, it is about what is on it — so it cannot come off the table
-// above, which is keyed on the prop. `edgeProp` takes it as an override.
-
-
-// How far in front of a machine a body stands to use it. A shade under the
-// rack's 0.65 because these are reached with the hands rather than leaned into,
-// and a body standing a full arm's length off a vending machine reads as
-// somebody who has decided against it.
-const WORK_REACH = 0.58;
-
-// ...and how far to one side of a desk's own chair the standing job goes.
-//
-// A desk station is where the CHAIR is, and a body standing there is standing
-// in the chair. Offset along the desk instead and they are at the end of it,
-// still in front of the monitor and facing the same way — which is what
-// somebody who has come over to check something on your machine actually does,
-// and it is the only reading of "work on a computer" that does not sit a body
-// down. Both sides are offered; the nav filter keeps whichever the room has
-// room for, and a pod on a tight pitch loses both.
-const DESK_ASIDE = 0.62;
-
-function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES, as = null, opts = {}) {
-  // Asked in the prop's OWN frame, where `d` is always the dimension that faces
-  // the wall and `w` the one that runs along it — which is the whole reason the
-  // side is the quarter turn. The numbers come from the model when there is
-  // one, because that is the footprint tryPlace is about to reserve; taking
-  // them from the catalogue instead stood a copier 0.44 m off a wall it is
-  // 0.565 m deep from the middle of, and a server rack likewise.
-  const { w: fw, d: fd } = footprintOf(sink, kind);
-  // How far the prop's own middle stands off the wall. Half its depth puts its
-  // back on the plaster, which is what backing something against a wall means
-  // and what all but one prop in the building wants. `behind` is the exception
-  // and is the whole of what a COUNTER is: a reception desk is the one prop
-  // somebody stands behind, and the model is 0.55 m deep, so with its back on
-  // the wall the entire pocket is the 0.15 m of skirting clearance. See
-  // COUNTER_STAND for what the number has to be and why it is a nav number.
-  const standoff = fd / 2 + (opts.behind ?? 0);
-  const margin = fw / 2;   // so a 3 m table can't hang off the end of the wall
-  if (!sides.length) return null;
-
-  // One random point on a random wall, twelve times over — or every point on
-  // every offered wall in turn. See `wallSlots`: which a caller wants is about
-  // how spoken-for the room is, and the lift lobby is the room where it matters.
-  //
-  // A GENERATOR rather than a list, and that is not style. Drawing the twelve
-  // sides up front would take twelve numbers off the floor's rng before the
-  // first `tryPlace` took any, which re-rolls the contents of every room after
-  // this one — the same argument `assignLocks` makes about spending the floor's
-  // stream out of order, one scale down.
-  for (const side of wallOrder(sides, rng, opts.sweep)) {
-    const w = wall(side, bounds);
-    // A prop wider than the wall it was offered simply doesn't fit there.
-    if (w.a1 - w.a0 < margin * 2) continue;
-
-    for (const along of wallSlots(w, margin, rng, opts.sweep)) {
-      const [cx, cz] = w.seat(along, standoff);
-      // The pocket behind a counter has to be free BEFORE it goes in and claimed
-      // after, and neither is `tryPlace`'s business — it proves the prop's own
-      // tiles and nothing else, so a counter standing across the corner of a lift
-      // block or across a doorway apron places perfectly and has no floor behind
-      // it. Claiming matters just as much: everything else in a room is placed
-      // after, and a lobby whose receptionist was displaced by its own pot plant
-      // is a lobby with a counter and nobody behind it. Both were missing once
-      // and both are silent — all that happens is `standable` in enemies.js drops
-      // the station from the pool.
-      const pocket = opts.behind ? w.pocket(along, standoff - fd / 2, fw) : null;
-      if (pocket && !sink.canPlace(...pocket)) continue;
-      if (!tryPlace(sink, kind, cx, cz, side, rng)) continue;
-      if (pocket) sink.occupy(...pocket);
-
-      // Somewhere to stand and use it, if it is that kind of machine. Derived the
-      // way the rack fronts and the servery queue are: a prop is authored facing
-      // -Z, so QUARTER turns its own depth into a direction.
-      //
-      // IN FRONT for a machine, and BEHIND for a counter — one sign, and it is
-      // the whole difference. A body at a copier faces back at the thing it is
-      // working on; a receptionist stands on the wall side and faces the way the
-      // counter faces, because what they are looking at is whoever walked in.
-      const at = as ?? WORK_AT[kind];
-      if (at) {
-        const reach = opts.behind ? (standoff - opts.stand) : -(standoff + WORK_REACH);
-        const [ox, oz] = QUARTER[side](0, reach);
-        sink.workstation(cx + ox, cz + oz, opts.behind ? side : (side + 2) & 3, at);
-      }
-      return { cx, cz, rot: side, side };
-    }
-  }
-  return null;
-}

@@ -52,7 +52,7 @@ export const tileAt = (tiles, W, H, x, y) =>
  * from a station's `rot`, the `side` an `edgeProp` is backed against. This is
  * that convention written down once as a table, because it is needed in the
  * three files that have to turn a rotation back into a direction (enemies.js,
- * chores.js, panels.js) and `edgeProp` in gen/rooms.js documents at length what
+ * chores.js, panels.js) and `edgeProp` in gen/placement.js documents at length what
  * happens when it is written out by hand at each site: it comes out as four
  * pairs of coordinates and half of them are backwards.
  *

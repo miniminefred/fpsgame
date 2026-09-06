@@ -692,7 +692,7 @@ const DOWN = { x: 0, y: -1, z: 0 };
  *
  * `standAt` in enemies.js turns a station's `rot` into a yaw with
  * `-rot * PI / 2`, and a body at yaw 0 faces -Z (props are authored the same way
- * — see `edgeProp` in gen/rooms.js). So the four rotations point -Z, +X, +Z, -X
+ * — see `edgeProp` in gen/placement.js). So the four rotations point -Z, +X, +Z, -X
  * in order, and this is that table read backwards. A function rather than four
  * cases at each call site for the reason `edgeProp` documents at length: written
  * out by hand it is four coordinates and half of them come out backwards.

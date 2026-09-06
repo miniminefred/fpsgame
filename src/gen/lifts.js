@@ -160,7 +160,7 @@ export function carveBank(layout, room, doors, prefer, seed) {
  * Cuts a car into one wall of `room` and hands back what it cut.
  *
  * `prefer` is the wall it would rather use, in the game's own side numbering
- * (0 = the +z wall, 1 = -x, 2 = -z, 3 = +x — see `edgeProp` in gen/rooms.js).
+ * (0 = the +z wall, 1 = -x, 2 = -z, 3 = +x — see `edgeProp` in gen/placement.js).
  * For the arrival room that is the wall OPPOSITE the room's own doorway, which
  * is what makes the composition read: the doors part, the reception is in front
  * of you, and the way into the building is across it and straight ahead.
@@ -405,7 +405,7 @@ function tryCarve(layout, room, doors, side, geom, a0, before, seed) {
     //
     // It is the SIDE, not the opposite of it, and the two are easy to swap. A
     // side number is already the quarter turn that puts a thing's front into the
-    // room: `edgeProp` in gen/rooms.js documents at length that a prop backed
+    // room: `edgeProp` in gen/placement.js documents at length that a prop backed
     // against side 0 — the +z wall — faces -z, which is rotation 0. A car is
     // backed against its wall in exactly that sense, so what its doors face is
     // `ud`, the direction this file has been walking into the room all along.

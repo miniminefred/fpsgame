@@ -1099,7 +1099,7 @@ export class Enemies {
    *
    * Taken out of the pool like a desk, so nothing else can be dealt the spot.
    * A lobby that could not fit a counter publishes no station and has nobody at
-   * one, which is an ordinary answer: see `receptionCounter` in gen/rooms.js.
+   * one, which is an ordinary answer: see the `behind` option on `edgeProp` in gen/placement.js.
    */
   _receptionist(layout, nav, rng, tuning) {
     const room = layout.spawnRoom;
