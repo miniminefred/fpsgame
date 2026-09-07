@@ -76,9 +76,10 @@ export const stationMethods = {
       e.z = station.z;
       e.group.position.set(e.x, e.y, e.z);
       // What the pose is drawn relative to, looked up ONCE here rather than
-      // searched for every frame. A seat is two props: the chair holding them up,
-      // and — for lunch — the table their tray is on. Either can be destroyed and
-      // the chair can also be shoved, so a seated body has to be able to tell.
+      // searched for every frame. A seat is up to three props: the chair holding
+      // them up, the table a tray is on, and the DESK somebody at a desk is
+      // typing at. Any of them can be destroyed and the chair can also be
+      // shoved, so a seated body has to be able to tell.
       //
       // Null is a perfectly ordinary answer and means "do not check": a lookup
       // that comes back empty must never be read as the chair having gone, or a
@@ -86,6 +87,20 @@ export const stationMethods = {
       // first frame it ever sat down.
       e.chair = this._looseAt(station.x, station.z);
       e.table = at === 'table' ? this._surfaceAhead(station) : null;
+      // THE DESK, for the bodies that sit at one without a chore to their name:
+      // the Manager at his own desk and the guard on the cameras. A body on
+      // `deskWork` is covered by `c.prop` in chores.js and stood up 80 times out
+      // of 80 when its desk was shot apart; these two are placed by the roster
+      // and have no chore at all, so nothing was asking — measured at 16 of 22
+      // still sitting there typing at the debris.
+      //
+      // `station.prop` first, which is what the FURNISHER said this station is at
+      // (see `workstation` in gen/sink.js), and the probe only where nothing
+      // said. Same order `_propFor` in chores.js asks in, and for the same
+      // reason: a probe that misses reads as "do not check".
+      e.desk = at === 'desk'
+        ? (station.prop ?? this.machineAhead(station) ?? null)
+        : null;
       // The chair's quarter turn, converted the one way it can be: a prop's turns
       // rotate the front from -Z toward +X, which is a negative rotation about Y.
       // Same line as tryPlace's, because a body and the chair under it face the
@@ -120,7 +135,11 @@ export const stationMethods = {
         || Math.abs((chair.minX + chair.maxX) / 2 - e.x) > SEAT_DRIFT
         || Math.abs((chair.minZ + chair.maxZ) / 2 - e.z) > SEAT_DRIFT);
       const noTable = e.seat === 'table' && e.table && e.table.top < 0;
-      if (!lost && !noTable) return;
+      // ...and the desk out from under somebody who was working at it, which is
+      // the same sentence as the table: the chair is still holding them up and
+      // the thing the pose is ABOUT has gone.
+      const noDesk = e.seat === 'desk' && e.desk && e.desk.top < 0;
+      if (!lost && !noTable && !noDesk) return;
 
       // A break ends the way it ends anywhere else — the chair goes back to the
       // pool, the tray goes, the visor comes back — and `_lunchEnd` stands them up
@@ -146,6 +165,7 @@ export const stationMethods = {
       e.seat = null;
       e.chair = null;
       e.table = null;
+      e.desk = null;
       stand(e);
     },
 

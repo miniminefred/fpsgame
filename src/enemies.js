@@ -375,10 +375,11 @@ export class Enemies {
       // Manager at his own, one guard on the cameras — and null for everybody
       // else, which is standing up. See animateWorking in enemy-anim.js.
       seat: null,
-      // ...and the two props that pose is drawn relative to, so a body can tell
-      // when it is sitting on nothing. See _seatGone.
+      // ...and the props that pose is drawn relative to, so a body can tell when
+      // it is sitting on nothing — or working at nothing. See _seatGone.
       chair: null,
       table: null,
+      desk: null,
       // Somebody's lunch: which beat of the cycle they are on, and the tray in
       // their hands while they are on it. Both null for the whole building most
       // of the time — see the block above _sendToLunch.
