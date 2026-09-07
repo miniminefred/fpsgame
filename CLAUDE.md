@@ -210,8 +210,12 @@ tools/
   validate-layout.mjs  Headless floorplan invariants (connectivity, doors, sealing)
   validate-props.mjs   Headless furniture-placement invariants
   validate-nav.mjs     Headless multi-level routing invariants
-  fingerprint.mjs      Hashes what the generator PRODUCES, for proving a refactor
-                       changed nothing. See "Proving a refactor" below
+  snapshot.mjs         Writes down what the game PRODUCES -- the floorplan, the
+                       built floor, and the roster forty seconds into it -- and
+                       diffs it against the committed baselines. The regression
+                       test. See "Proving a change" below
+  baseline/            ...those baselines, three text files under version control:
+                       plan.txt, build.txt, roster.txt
   probe-visitor.mjs    Drives the contractor's errand at a fixed 1/60. See
                        "Somebody visiting" below
   probe-chore.mjs      Drives ONE job on the chore table and reports whether its
@@ -231,7 +235,13 @@ src/
   lighting.js     Fill light + a pooled set of ceiling lights that follow the player
   nav.js          Tile navigation on TWO LEVELS: flow field, line of sight,
                   walkability, and a second field for whoever can open a locked door
-  enemies.js      Spawning, placement guarantees, the AI state machine, gunfire and melee
+  enemies.js      The state machine: noticing, chasing, gunfire, melee, damage, death
+  roster.js       ...who is on the floor to do any of it, and the alarm that adds to them
+  breaks.js       Lunch, and the other kind of break
+  stations.js     Getting a body to a place, and settling it there when it arrives
+  enemy-net.js    The roster, over the wire
+  enemy-tuning.js The numbers more than one of those five has to agree on
+  held.js         The four things a body can be carrying, and one table for all of them
   jobs.js         Parcel runs: three bodies, one box, one errand across a floor
   chores.js       The ordinary work: one body, one machine, six things to be doing
   washers.js      The washing machines, and the fact that they will not stand still
@@ -483,46 +493,82 @@ edgeProp(sink, bounds, 'receptionDesk', rng, sides, 'reception',
   { behind: COUNTER_STAND + COUNTER_CLEAR, stand: COUNTER_STAND, sweep: true });
 ```
 
-### Proving a refactor (`tools/fingerprint.mjs`)
+### Proving a change (`tools/snapshot.mjs` + `tools/baseline/`)
 The three validators prove INVARIANTS — a floor is connected, no lock strands the
-exit, no prop stands in a doorway — and a refactor can hold every one of them
-while quietly generating a different building. So there is a fourth tool that
-hashes what the generator PRODUCES:
+exit, no prop stands in a doorway — and a change can hold every one of them while
+quietly generating a different building, or the same building with a
+differently-behaved roster in it. Neither is a bug they can see and both are bugs.
+So there is a fourth tool, and it is the one that makes regression testing cheap:
+it writes down what the game PRODUCES and diffs that against baselines that are
+**committed**.
 
 ```
-node tools/fingerprint.mjs > before.txt      # ...refactor...
-node tools/fingerprint.mjs > after.txt
-diff before.txt after.txt
+npm test                          # the snapshot, then the three validators
+node tools/snapshot.mjs           # exit 1 on any change, with the diff
+node tools/snapshot.mjs --plan    # one layer (also --build, --roster)
+npm run baseline                  # accept what it produces now
 ```
 
-Two layers, because they fail differently. The **plan** — the tile grid, every
-door, every room's rect and role, the locks, the stairs, the cars — over 280
-floors. And the **build**: the colliders, the door records, the workstations and
-the nav grid `buildLevel` turns that plan into, over 24. The second layer is the
-one that catches a builder refactor, and the plan cannot see it at all.
+**The baseline being committed is the whole design.** This began as a
+before/after diff you drove by hand, which works and asks you to remember to do
+it — so it was run on the changes somebody suspected and not on the ones nobody
+did. A committed baseline inverts that: an ACCIDENTAL change fails `npm test` on
+the spot, and an INTENTIONAL one is `npm run baseline` plus a diff in the commit
+that a reviewer can read. The readability is the point. `tools/baseline/roster.txt`
+moving by four lines is a reviewable claim about what a change did; a hash that
+merely differs is not.
 
-Every commit in the cleanup above was landed on a **zero-line diff** against the
-commit before it. It also earns its keep as a test: `deskAgainstWall` kept a call
-to a helper that had been renamed, `npm run build` was perfectly happy with it
-(JavaScript, no types), and the fingerprint failed 24 of 24 floors on the spot.
+**Three layers, because they fail differently and none of them can see the
+others:**
 
-A baseline can be taken from any commit, which is how the door refactor was
-proved against the one before it:
+- **plan** — the tile grid, the room and door lists, the locks, the stairs, the
+  two cars, over **280** floors. What `gen/layout.js` and the passes it runs
+  decide. Rooms and doors are counted and hashed rather than listed, because
+  listing them came to 97,000 lines and 5.4 MB.
+- **build** — the colliders, the door records, the workstations and the nav grid
+  `buildLevel` turns that plan into, over **24**. The only layer that catches a
+  builder refactor, and the plan cannot see a line of it.
+- **roster** — who is on the floor and what every one of them is doing after
+  **forty seconds** of the building working, over 18 floors: position, state,
+  seat, chore, errand, what is in their hands, which card they carry. The layer
+  for `enemies.js`, `roster.js`, `breaks.js`, `stations.js`, `chores.js`,
+  `jobs.js`, `rigs.js` and `enemy-anim.js` — and the one that made splitting a
+  4,300-line file into five something you could prove rather than hope for.
 
-```
-git worktree add --detach /tmp/base <sha>
-cp tools/headless.mjs tools/fingerprint.mjs /tmp/base/tools/
-(cd /tmp/base && node tools/fingerprint.mjs) > base.txt
-```
+It earns its keep as a test rather than only as a diff. `deskAgainstWall` kept a
+call to a helper that had been renamed: `npm run build` was perfectly happy with
+it (JavaScript, no types), and the snapshot failed 24 of 24 floors on the spot.
 
-**One caveat worth knowing: a refactor must not move an `rng` draw.** Every floor
-is a pure function of its seed, so spending the stream in a different ORDER
-re-rolls the contents of the whole building — which reads as a broken refactor
-and is not one. `edgeProp`'s wall order is a GENERATOR rather than an array for
-exactly this reason: drawing its twelve sides up front would take twelve numbers
-off the floor before the first `tryPlace` took any. The fingerprint catches it
-instantly; the validators do not, because a differently-furnished floor is just
-as valid as the one before it.
+Everything is **rounded** before it is written — four decimals, a tenth of a
+millimetre — because a change that reassociates one floating-point expression is
+not a change to the game and must not read as one. A case that THROWS is recorded
+as its stack rather than crashing the sweep, so floor 3 blowing up does not hide
+what floors 4 to 280 would have said, and the stack lands in the diff where it
+names its own cause.
+
+**Two traps in the roster layer, and both made it lie rather than fail.**
+
+- **`Math.random` must be seeded around the SIMULATION and not before the
+  assets.** `textures.js` and `tech-textures.js` populate lazy caches on first
+  use and draw 27 random numbers doing it, so whichever case ran first in a
+  process ate those draws and every case after it did not. The symptom is the
+  worst kind: a snapshot perfectly stable across runs that disagreed with itself
+  depending on whether the build layer had run first. `warmAssets` builds one
+  throwaway floor with the real `Math.random` before anything is seeded.
+- **`rAF` does not tick in a backgrounded tab**, and `dev.step` derives its `dt`
+  from the wall clock, which in a loop is ~0.6 ms a call. Anything about
+  behaviour over time has to be driven headlessly at a fixed 1/60 — this tool and
+  the two `probe-*.mjs` scripts beside it are the authoritative instrument, not
+  the browser console.
+
+**One caveat that predates all of this: a refactor must not move an `rng` draw.**
+Every floor is a pure function of its seed, so spending the stream in a different
+ORDER re-rolls the contents of the whole building — which reads as a broken
+refactor and is not one. `edgeProp`'s wall order is a GENERATOR rather than an
+array for exactly this reason: drawing its twelve sides up front would take
+twelve numbers off the floor before the first `tryPlace` took any. The snapshot
+catches it instantly; the validators do not, because a differently-furnished
+floor is just as valid as the one before it.
 
 ## Key systems
 
