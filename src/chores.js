@@ -241,6 +241,31 @@ const CHORES = {
     at: 'lift', pose: 'shelfTake', time: [2.5, 4.5], weight: 0, stay: [1, 1],
     neutral: true, trade: true, takes: 'box', exit: true, shared: true,
   },
+  // BOXING THE POST UP: a body at a sorting bench, taking parcels off it one at
+  // a time and dropping them into a crate on the floor beside it.
+  //
+  // The one job on this table whose content is the LOAD rather than the machine,
+  // and it is the shortest sentence any of them makes — pick a thing up, stoop,
+  // let it go, do it again. That is what earns it its `stay`: a single go is
+  // somebody putting a box down, and four is somebody packing.
+  //
+  // It is also the only job that needed `takes` on a beat (see `_hand`), because
+  // it is the only one that puts its load down and then carries on standing
+  // there. Every other errand puts one down by finishing.
+  //
+  // At a `sorting` station, which the furnisher has published for as long as
+  // there has been a sorting bench and which nothing has ever read — see
+  // `sortingStation` in gen/rooms.js, which is what puts the bench and the crate
+  // in the same place so the stoop has something to stoop into.
+  packing: {
+    at: 'sorting', pose: 'shelfTake', time: [1.8, 3.0], weight: 3, stay: [2, 5],
+    then: [
+      // Off the bench and squared up, which is the beat the box appears on.
+      { pose: 'package', time: [1.2, 2.2], gives: 'box' },
+      // ...and over the rim of the crate, which is the beat it goes.
+      { pose: 'crateStow', time: [1.4, 2.4], takes: 'box' },
+    ],
+  },
   // A MACHINE'S BREAK, and the only entry on this table that is not work.
   //
   // Half the roster does not eat: `_lunchOk` in enemies.js has kept a chassis
@@ -1161,6 +1186,22 @@ export class Chores {
     // stripped a porter of the parcel it is delivering would be the single-slot
     // callback bug in another key.
     if (beat.gives === 'box') { this.enemies.giveCrate?.(e); e.chore.crate = true; }
+    // ...and what a beat PUTS DOWN, which the table above has documented since
+    // `then` grew a list and which nothing implemented. Every errand until now
+    // put its load down by ENDING — `_finishGo` is where `takes` was read, and
+    // filing the paperwork IS the last leg, so there was no separate moment for
+    // it. `packing` is the first job whose whole content is a beat that puts
+    // something down and then goes round again: without this the body picks up
+    // one box, holds it through every repetition, and drops it as it leaves.
+    //
+    // Guarded on `c.crate` for `_finishGo`'s reason: only the crate THIS errand
+    // handed out may be taken back, or a chore would strip a porter of the
+    // parcel it is delivering.
+    if (beat.takes === 'papers') this.enemies.takePapers?.(e);
+    if (beat.takes === 'box' && e.chore.crate) {
+      this.enemies.takeCrate?.(e);
+      e.chore.crate = false;
+    }
   }
 
   /** A stable integer for this body at this machine. See `_hand`. */

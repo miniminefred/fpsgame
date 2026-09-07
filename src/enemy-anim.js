@@ -747,6 +747,18 @@ const CHORE_POSE = {
     hands: 0.56, stoop: 0.33, reach: 0.20, lean: 0.52, look: 0.50,
     beat: 1.3, duty: -0.7, rate: 2.6, throw: 0.07, stagger: 0.24, rest: 0.10,
   },
+  // Dropping something over the rim of a crate standing on the floor beside you.
+  //
+  // Measured off the prop like every other height on this table: `crate` in
+  // gen/props.js is 0.78 m tall, so the hands go a little above its rim and the
+  // body stoops to meet them — a box is let GO over the edge rather than placed
+  // on the floor, which is the difference between packing one and tidying up.
+  // It is a shallower stoop than `vendingTake`'s for exactly that reason: a
+  // vending flap is at 0.4 m and a crate rim is nearly twice that.
+  crateStow: {
+    hands: 0.88, stoop: 0.16, reach: 0.26, lean: 0.34, look: 0.46,
+    beat: 1.2, duty: -0.6, rate: 2.4, throw: 0.10, stagger: 0.26, rest: 0.14,
+  },
   // At the front of a rack, hands up among the units. Head back a little,
   // because everything worth looking at on a 2 m rack is above eye level.
   server: {

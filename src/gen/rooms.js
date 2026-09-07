@@ -453,7 +453,7 @@ function archive(sink, bounds, rng) {
   // landed in fewer than half the rooms it is the point of. It is the only thing
   // in here that is not storage — what makes the room read as one somebody works
   // in rather than one nobody has been into since the nineties.
-  edgeProp(sink, bounds, 'sortingBench', rng);
+  sortingStation(sink, bounds, rng);
   if (rng.chance(0.45)) edgeProp(sink, bounds, 'printer', rng);
   aisles(sink, bounds, 1.7, 1.15, 'bookshelf', rng, 'files');
   for (let i = 0; i < 3; i++) edgeProp(sink, bounds, 'cabinet', rng);
@@ -555,6 +555,12 @@ function itBay(sink, bounds, rng) {
 // being filed instead of sent.
 function mailRoom(sink, bounds, rng) {
   const { x0, z0, x1, z1 } = bounds;
+  // The bench FIRST, and for the archive's reason: it is 1.6 m long, the racks
+  // below take a wall each, and offered last it lands in a fraction of the rooms
+  // it is the point of. A mailroom is where the post is sorted and it had nothing
+  // to sort it on — the one room in the building named after a job whose job
+  // nothing could be seen doing. See `packing` in chores.js.
+  sortingStation(sink, bounds, rng);
   const racks = Math.max(2, Math.floor(Math.max(x1 - x0, z1 - z0) / 2.4));
   for (let i = 0; i < racks; i++) edgeProp(sink, bounds, 'shelving', rng, ALL_SIDES, 'mail');
   if (rng.chance(0.6)) edgeProp(sink, bounds, 'recyclingBin', rng);
@@ -563,8 +569,44 @@ function mailRoom(sink, bounds, rng) {
     : ['crateStack', 'crateStack', 'carton'], 9, rng);
 }
 
-// The room the building would rather you didn't see: lockers, cleaning kit and
-// the spares that have no other home.
+
+/**
+ * A sorting bench with a crate on the floor at the end of it.
+ *
+ * The bench alone has been in the archive for a long time and published a
+ * `sorting` station that nothing ever read. `packing` in chores.js reads it now
+ * — take a parcel off the bench, stoop, drop it in the crate — and the crate is
+ * the half that makes the stoop mean anything: a body bending down beside a
+ * bench with nothing beside it is a body bending down.
+ *
+ * The offset is `QUARTER`'s, like every other prop placed relative to another in
+ * this file, and it is deliberately PAST THE BENCH END rather than tucked in
+ * beside the standing spot. A crate against the body would be inside the tile
+ * the station needs — `canPlace` rounds a footprint outward to whole tiles, so a
+ * prop that merely looks clear of a station regularly eats it, and a station a
+ * body does not fit at is dropped from the pool with nothing to say it was ever
+ * there (`standable` in enemies.js). At 1.15 m along the wall the station is
+ * 1.48 m away, which no rounding can reach.
+ *
+ * Either half may fail and both failures are ordinary. No bench is a room with
+ * no sorting station in it, which is what every room in the building except two
+ * already is; no crate is a bench with the boxes going somewhere off camera.
+ */
+const CRATE_ALONG = 1.15;   // metres from the bench's middle, along its wall
+
+function sortingStation(sink, bounds, rng) {
+  const bench = edgeProp(sink, bounds, 'sortingBench', rng);
+  if (!bench) return null;
+  // Either end, so a room does not always have it on the same side. The crate
+  // stands at the bench's own standoff from the wall, which is what puts it
+  // against the wall beside the bench rather than out in the room.
+  const { d } = footprintOf(sink, 'sortingBench');
+  for (const along of rng.shuffle([CRATE_ALONG, -CRATE_ALONG])) {
+    const [ox, oz] = QUARTER[bench.side](along, 0);
+    if (tryPlace(sink, 'crate', bench.cx + ox, bench.cz + oz, bench.side, rng)) break;
+  }
+  return bench;
+}
 
 // The room the building would rather you didn't see: lockers, cleaning kit and
 // the spares that have no other home.
