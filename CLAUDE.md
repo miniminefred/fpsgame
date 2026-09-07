@@ -228,6 +228,7 @@ src/
   drinks.js       What is in the machine: the four drinks, and which one a seed is
   body-pool.js    The lifecycle of a loose body that times out (brass, debris)
   destruction.js  Everything coming apart: damage routing, debris, its lifecycle
+  wreck.js        ...and the one prop that is destroyed and still there: the generator
   ragdolls.js     Jointed bodies for everything that dies, and their lifecycle
   rigs.js         What the staff, the vermin and the cleaner are made of
   level.js        One floor's lifecycle — generate, animate the exit, dispose
@@ -969,7 +970,10 @@ Three things about it are structural rather than decorative:
   measures, and the whole thing is authored in its own frame and shifted back by one `BACK`
   constant. `10.geo-fit` in `validate-props.mjs` is what says so: a prop whose declared
   footprint stops short of its own geometry is a prop you can put your shoulder through.
-- **Shooting it leaves a wreck, and it is the only prop on the floor that does.** Everything
+- **Shooting it leaves a wreck, and it is the only prop on the floor that does**
+  (`wreck.js`, which is that one method and the thousand lines behind it — see
+  the note beside `Object.defineProperties` at the bottom of `destruction.js`
+  for why it is mixed back onto the class rather than passed one). Everything
   else vanishes when it breaks, which is right for a filing cabinet and wrong for the reason
   a room exists — the plant room used to end the fight as an empty wall. **All of the machine
   stays**: the pipework, the coolant tanks, the service gantry, the exhaust stacks and the
