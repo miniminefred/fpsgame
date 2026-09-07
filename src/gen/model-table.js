@@ -183,7 +183,19 @@ export const MODEL_TABLE = {
   monitor: {
     file: 'tech_monitor.glb',
     scale: 0.63935,
-    yaw: 0,
+    // TURNED ROUND, and it was the commonest prop in the building: this model is
+    // two parts — a near-black housing, and the screen as a flat two-triangle
+    // quad on its +Z face — and a prop faces -Z here, so at yaw 0 every monitor
+    // on every desk showed its black back to whoever was sitting at it and its
+    // picture to the wall. Which is exactly how it was reported: the computers
+    // face the wrong way and do not show anything.
+    //
+    // Measured rather than eyeballed, because a dark housing and a dark screen
+    // look alike from either side: the flattest large panel in the model is
+    // 0.553 x 0.299 x 0.000 in `1774ff` at z +0.003, against a housing of
+    // 0.581 x 0.44 x 0.178 in `01050b`. `/dev-models.html?keys=monitor&dy=180`
+    // is the same answer to look at — blue at 180, black at 0.
+    yaw: 3.1416,
     foot: [0.58, 0.18],
     height: 0.44,
     tags: ['screen'],
