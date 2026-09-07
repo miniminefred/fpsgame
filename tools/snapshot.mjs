@@ -283,7 +283,7 @@ function describeRoster(enemies) {
 
 // WHAT THIS LAYER CANNOT SEE, said once here rather than read off a column of
 // zeroes: `cans=` is always 0. A drinks machine's stock is drawn in `dress`,
-// which draws it off the loaded GLB, and no GLB can load in Node -- so the
+// which draws it off the loaded GLB, and no GLB can load in Node — so the
 // window is empty and there is nothing in it to throw, which is the graceful
 // nothing every model-backed prop degrades to by design (see "What a machine is
 // stocked with" in CLAUDE.md). The column stays because it is the one that would
