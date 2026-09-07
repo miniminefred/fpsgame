@@ -302,8 +302,15 @@ export const TYPES = {
     // point of this type is that it is a COLOUR: from the far end of the lobby a
     // violet visor is the promise that this one is not going to shoot, and the
     // grey one three doors down is `angryReceptionist` below.
+    //
+    // `posted` is the whole of "and does not have any other work": this one has
+    // a place to be, and it is the place you meet them. Everybody else on the
+    // floor is dealt whatever the building needs doing (see chores.js), which
+    // for a receptionist would mean walking off to the photocopier and leaving
+    // the lobby empty — so the one body the floor guarantees you will meet would
+    // be the one body you might not.
     name: 'Receptionist', hp: 0.5, speed: 1.05, damage: 0, rate: 99, spread: 1,
-    range: 0, melee: false, scale: 1.0, neutral: true,
+    range: 0, melee: false, scale: 1.0, neutral: true, posted: true,
     suit: 0x3b4250, shirt: 0xd8dde3, visor: 0xa66bff, unlockFloor: 1, weight: 0,
   },
   angryReceptionist: {
@@ -328,8 +335,10 @@ export const TYPES = {
     // and is slow onto a target because they were looking at a screen. What
     // makes them worth anything at all is where they are standing — behind a
     // counter, in the room you arrive in, before you have taken a step.
+    // Posted, like the harmless one and for the same reason — the coin is which
+    // of the two is behind the counter, not whether anybody is.
     name: 'Receptionist', hp: 0.5, speed: 1.15, damage: 0.6, rate: 1.35, spread: 1.8,
-    range: 11, melee: false, scale: 1.0, aimMul: 1.2,
+    range: 11, melee: false, scale: 1.0, aimMul: 1.2, posted: true,
     suit: 0x3b4250, shirt: 0xd8dde3, visor: 0xafa79c, unlockFloor: 1, weight: 0,
   },
   contractor: {

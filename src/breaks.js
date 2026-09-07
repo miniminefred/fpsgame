@@ -254,6 +254,7 @@ export const breakMethods = {
         && !e.chore                  // ...and nor is anybody already at a machine
         && !isMachine(e.type)        // a machine has nowhere to put it
         && !e.type.undead            // ...and this one is off the payroll
+        && !e.type.posted            // ...and this one does not leave the counter
         && !e.keyed                  // an alarm response is not going for lunch
         && e.state === 'idle'        // ...and neither is anybody already in a fight
         && e.layer === 0;

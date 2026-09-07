@@ -892,6 +892,18 @@ export class Enemies {
     // Being shot at is what changes their mind, and `flee` is the one flag that
     // says so. Standing up is the whole of the transition: from the next frame
     // they are an ordinary neutral on the ordinary loop, running for a door.
+    // ...and so is anybody POSTED, which is the receptionist and nobody else.
+    // They are stood at a counter the floor guarantees you will meet somebody
+    // at, and a harmless one is `neutral`, so the wander loop walked them off it
+    // — measured at up to 50 m away two minutes in, on 6 of 8 floors. Keeping
+    // them out of the chore table was only half of "no other work": the other
+    // half is that a post is somewhere to STAY.
+    //
+    // Held above the seat branch because it is the same answer for the same
+    // reason, and `flee` releases it the same way: shoot at them and they are an
+    // ordinary neutral running for a door, like anybody else at a desk.
+    if (e.type.posted && e.flee <= 0) { e.state = 'idle'; return; }
+
     if (e.seat) {
       if (e.flee <= 0) { e.state = 'idle'; return; }
       // Out of the chair — but the ANIMATOR is what stands a body up, and this

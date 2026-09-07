@@ -1073,6 +1073,7 @@ export class Chores {
     return e.alive
       && !e.type.panic             // the toilet guy has a bit, and this is not it
       && !e.type.undead            // ...and this one is off the payroll
+      && !e.type.posted            // ...and this one has somewhere to be already
       && !e.chore && !e.job && !e.break && !e.seat
       && !e.behindLock && !e.offMap && !e.keyed
       && e.flee <= 0
