@@ -572,7 +572,7 @@ that a reviewer can read. The readability is the point. `tools/baseline/roster.t
 moving by four lines is a reviewable claim about what a change did; a hash that
 merely differs is not.
 
-**Three layers, because they fail differently and none of them can see the
+**Four layers, because they fail differently and none of them can see the
 others:**
 
 - **plan** — the tile grid, the room and door lists, the locks, the stairs, the
@@ -588,6 +588,23 @@ others:**
   for `enemies.js`, `roster.js`, `breaks.js`, `stations.js`, `chores.js`,
   `jobs.js`, `rigs.js` and `enemy-anim.js` — and the one that made splitting a
   4,300-line file into five something you could prove rather than hope for.
+- **damage** — the floor **shot apart**, over 8 floors: 30 fitted props and 12
+  loose ones each, then the ceiling brought down. Per prop it records what came
+  off (how many pieces, how heavy, the biggest), the collider retired, the nav
+  tiles handed back, and what spilled; and on the four cases that have a plant
+  room, the generator's wreck as its mesh and vertex count — 44,532 vertices of
+  cut, carved, buckled and stamped plating in one number. The layer for
+  `destruction.js` and `wreck.js`, which the other three touch not at all:
+  they all describe a floor as GENERATED, and all of this happens to a floor
+  afterwards.
+
+  Its stub world is a **recorder, not a mock** — no cannon-es and no solver
+  step. What a fragment is worth is decided before it is thrown (`_scatter`
+  sizes it, weighs it and hands it to `physics.addBox`), and where it comes to
+  rest afterwards would tie the baseline to a dependency whose version says
+  nothing about this game. One thing it genuinely cannot see, and the column of
+  zeroes says so rather than hiding it: no GLB loads in Node, so a drinks
+  machine's window is empty and `cans=` is always 0.
 
 It earns its keep as a test rather than only as a diff. `deskAgainstWall` kept a
 call to a helper that had been renamed: `npm run build` was perfectly happy with
