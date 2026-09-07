@@ -22,6 +22,11 @@ const RAIL_R = 0.035;
 const CAR_LAMP_INSET = 0.35;   // the lit ceiling panel, in from the car's walls
 
 const CAR_LAMP_Y = CEIL_H - 0.02;
+// One round, like every tube in the building and like the glazing: the reward
+// for shooting a light out is that it goes out. Written here rather than
+// imported because shell.js keeps its own PANEL_HP private, and 1 is not a
+// number two files can disagree about interestingly.
+const CAR_LAMP_HP = 1;
 
 const SIGN_Y0 = DOOR_PANEL_H + 0.12;   // the floor indicator over the doors
 
@@ -56,14 +61,15 @@ const SIGN_PROUD = 0.015;
  * Three of the four are batched, because they never move. The doors are meshes,
  * for the reason every other door in the building is.
  */
-export function buildLifts(layout, batcher, materials, scene, doors, colliders, fixtures) {
+export function buildLifts(layout, batcher, materials, scene, doors, colliders, fixtures,
+  destructibles) {
   for (const lift of [layout.lifts?.arrival, layout.lifts?.departure]) {
     if (!lift) continue;
     // The departure car's indicator is green and belongs to buildExit, which
     // owns everything on this floor that says "down" and owns the one-off
     // materials it is painted in. Drawing a white one here as well would be two
     // signs over one doorway, and the wrong one is the one you would read.
-    dressCar(layout, lift, batcher, materials, fixtures,
+    dressCar(layout, lift, batcher, materials, fixtures, destructibles,
       lift !== layout.lifts.departure);
     fitLiftDoors(layout, lift, scene, materials, doors, colliders);
   }
@@ -90,7 +96,7 @@ export function buildLifts(layout, batcher, materials, scene, doors, colliders, 
 // it. One fixture inside, and it is also the only light in the building that is
 // GUARANTEED to be the first thing switched on, because the player is standing
 // under it before they have moved.
-function dressCar(layout, lift, batcher, materials, fixtures, sign) {
+function dressCar(layout, lift, batcher, materials, fixtures, destructibles, sign) {
   const x0 = worldX(layout, lift.tx0), x1 = worldX(layout, lift.tx1);
   const z0 = worldZ(layout, lift.ty0), z1 = worldZ(layout, lift.ty1);
   const [ox, oz] = FACING[lift.facing];
@@ -120,12 +126,43 @@ function dressCar(layout, lift, batcher, materials, fixtures, sign) {
       x1 - 0.2, RAIL_Y + RAIL_R, back.b + LINE_T + RAIL_R * 2),
     { castShadow: false });
 
+  // ...and it is a tube like any other, so it is shot out like any other. It was
+  // raw batched geometry with a fixture beside it and no record between them,
+  // which made the one light in the building you are standing directly under the
+  // one light in the building you could not break. Registered exactly the way
+  // `buildCeilingLights` registers a ceiling panel — same `kind`, so it takes
+  // the same round, makes the same noise and throws the same glass — and with
+  // its fixture on the record, which is what puts the car dark rather than
+  // leaving a lit panel over a dead lamp.
+  const lampSpans = batcher.beginSpans();
   batcher.add('panel', materials.panel, slab(
     x0 + CAR_LAMP_INSET, z0 + CAR_LAMP_INSET,
     x1 - CAR_LAMP_INSET, z1 - CAR_LAMP_INSET, CAR_LAMP_Y, false), { castShadow: false });
-  fixtures.push({
+  batcher.endSpans();
+  const lamp = {
     x: (x0 + x1) / 2, y: CAR_LAMP_Y - 0.1, z: (z0 + z1) / 2,
     color: LAMP_COLD, intensity: 2.2, distance: 5,
+  };
+  fixtures.push(lamp);
+  destructibles?.push({
+    kind: 'panel',
+    hp: CAR_LAMP_HP,
+    spans: lampSpans,
+    colliders: [],
+    // No nav tiles and no collider: it is a panel in a ceiling, and the car's
+    // walls are the shell's. Giving anything back is `_shatter`'s business and
+    // there is nothing here to give.
+    navTiles: [],
+    fixtures: [lamp],
+    parts: [
+      { material: materials.panel,
+        x0: x0 + CAR_LAMP_INSET, y0: CAR_LAMP_Y - 0.05, z0: z0 + CAR_LAMP_INSET,
+        x1: (x0 + x1) / 2, y1: CAR_LAMP_Y - 0.02, z1: z1 - CAR_LAMP_INSET },
+      { material: materials.panel,
+        x0: (x0 + x1) / 2, y0: CAR_LAMP_Y - 0.05, z0: z0 + CAR_LAMP_INSET,
+        x1: x1 - CAR_LAMP_INSET, y1: CAR_LAMP_Y - 0.02, z1: z1 - CAR_LAMP_INSET },
+    ],
+    broken: false,
   });
 
   // And the floor indicator over the doors, on the OUTSIDE. It is the one thing

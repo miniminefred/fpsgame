@@ -99,7 +99,7 @@ export function buildLevel(scene, layout, theme = null) {
   // The two cars, after the doors because they fit doors of their own, and
   // before the furnishing for no reason at all — nothing they draw is on the
   // tile grid the furnisher works against. See gen/lifts.js.
-  buildLifts(layout, batcher, materials, scene, doors, colliders, fixtures);
+  buildLifts(layout, batcher, materials, scene, doors, colliders, fixtures, destructibles);
 
   const sink = makeSink(layout, batcher, materials,
     { blocked, occupied, reserved, colliders, dynamics, destructibles, workstations });
