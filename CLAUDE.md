@@ -214,6 +214,8 @@ tools/
                        changed nothing. See "Proving a refactor" below
   probe-visitor.mjs    Drives the contractor's errand at a fixed 1/60. See
                        "Somebody visiting" below
+  probe-chore.mjs      Drives ONE job on the chore table and reports whether its
+                       station survived, anybody reached it, and it finished
 src/
   main.js         Bootstrap: wires modules, runs the render loop
   game.js         The run: floor progression and difficulty curves
@@ -1438,6 +1440,37 @@ browsers build it in the same order from the same seed. The alarm response is th
 that adds to it mid-floor and it pays for that with a packet per man; a visitor rolled on the
 host alone would leave the two rosters different lengths and every index after his landing on
 the wrong person.
+
+**He wheels it out on a red sack truck** (`truckOf` in rigs.js, `truck` on the type).
+`truck` is the declaration and nothing else reads it, which is the split `blunt` and `melee`
+are two fields for: what somebody CARRIES and what they do with it are two facts, and there
+is nothing he does with this one but push it. It is deliberately NOT an entry on the `BLUNT`
+table — a blunt is a shaft and a business end swung at somebody, and giving that table a
+third field for the one entry with geometry of its own would make every weapon on the roster
+carry a null.
+
+Two things in it are decisions rather than modelling:
+
+- **The handles are where an ELBOWLESS ARM can reach.** An arm here is one box pivoting at
+  the shoulder, so a hand cannot be brought to a handle at chest height with the truck
+  upright beside the body — the way anybody actually wheels one. What a straight arm swung
+  forward and down CAN reach is a grip 0.93 m up and half a metre out, so that is where the
+  handles are and `TRUCK_LEAN` is then not free: it is the angle that puts the axle on the
+  floor given that grip and that frame length, written as that arithmetic rather than as the
+  13.8° it comes to. It reads as somebody wheeling it ahead of themselves at arm's length,
+  which is the compromise the mop already makes and reads for the same reason — wrong by a
+  bent elbow and right about everything else.
+- **The LOAD POINT is a node in the geometry, not a number in the animator.** `boxAt` is how
+  every other rig says where a box rides — chest height on a person, a flat deck on a porter
+  — and a toe plate is a THIRD thing: its height is arithmetic in rigs.js off the frame
+  length and the wheel radius, and a box positioned at a number the animator keeps is that
+  arithmetic written down twice. So `giveCrate` PARENTS the crate to the plate's own node
+  and never positions it, `boxAt` is null on anybody with a truck, and the two cannot drift.
+  Same lesson as `joints`, one object along.
+
+It also had to be made chunkier than it was first drawn. At 3.5 cm bars and one cross brace
+it read as a thin red trolley at the only range anybody sees it from: **the silhouette of a
+sack truck is a ladder, and one rung does not make one.** Two braces and a 5 cm frame.
 
 **`showOut` is four lines because he KEEPS HIS SLOT.** Not drawn, not on the minimap, not
 anybody's target, not ticked — which is what a corpse already means minus the corpse. The
@@ -2692,6 +2725,7 @@ corridor.
 | `fetchBox` | a rack, either kind | taking a box down off it — a routine's first leg |
 | `fetchPost` | a mailroom rack | collecting a parcel — a courier's, and nobody else's |
 | `sendPost` | outside the lift doors | ...and handing it in, which is it leaving the building |
+| `packing` | a sorting bench | boxing the post up: off the bench, and into a crate |
 | `takeCrate` | a rack, either kind | a visitor taking a crate off it — and nobody else's |
 | `leaveFloor` | outside the lift doors | ...and carrying it out of the building, and he is gone |
 | `stowBox` | ...and another one | putting the same box back on a different rack |
@@ -3088,6 +3122,50 @@ Four things in it are decisions rather than plumbing:
   lets a beat say what it hands over (`gives`) at the moment it ends rather than at its
   start. The can appearing before the hand has got down to the flap is the machine
   dispensing into thin air.
+
+#### Boxing the post up (`packing` in `chores.js` + `sortingStation` in `gen/rooms.js`)
+A body at a sorting bench, taking parcels off it one at a time and dropping them into a
+crate on the floor beside it. The shortest sentence any job on the table makes — pick a
+thing up, stoop, let it go, do it again — and the only one whose content is the LOAD rather
+than the machine, which is what earns it its `stay`: a single go is somebody putting a box
+down, and four is somebody packing.
+
+**It needed `takes` on a BEAT, which the table had documented and nothing implemented.**
+Every errand until now put its load down by ENDING — `_finishGo` is where `takes` was read,
+and filing the paperwork IS the last leg, so there was never a separate moment for it. This
+is the first job that puts something down and then goes round again, and without it the body
+picks up one box, holds it through every repetition, and drops it as it leaves. Guarded on
+`c.crate` for `_finishGo`'s reason: only the crate THIS errand handed out may be taken back,
+or a chore would strip a porter of the parcel it is delivering.
+
+**The mailroom had nothing to sort the post on**, which is the odd part of this in
+retrospect: the archive has had a sorting bench for a long time and has published a
+`sorting` station that nothing ever read, and the one room in the building named after a job
+had nothing anybody could be seen doing it at. Both rooms go through `sortingStation` now,
+and the bench is placed FIRST in both for the archive's own reason — it is 1.6 m long, the
+racks take a wall each, and offered last it lands in a fraction of the rooms it is the point
+of.
+
+**The crate is what makes the stoop mean anything**, and where it goes is the `canPlace`
+trap. A crate tucked in beside the standing spot would be inside the tile the station needs:
+footprints round outward to whole tiles, so a prop that merely looks clear of a station
+regularly eats it, and a station a body does not fit at is dropped from the pool with
+nothing to say it was ever there (`standable`). It goes 1.15 m along the wall past the bench
+end instead, which puts it 1.48 m from the station — further than any rounding can reach.
+Either half may fail and both failures are ordinary.
+
+`crateStow` is the one new pose, and it is measured off the prop like every other height on
+that table: a crate is 0.78 m tall, so the hands go a little above its rim and the body
+stoops to meet them — a box is let GO over the edge rather than placed on the floor, which
+is the difference between packing one and tidying up. It is a shallower stoop than
+`vendingTake`'s because a vending flap is at 0.4 m and a crate rim is nearly twice that.
+
+Measured with `tools/probe-chore.mjs`, which drives one job at a fixed 1/60 and is worth
+having for the next one: **9 of 10 floors have a usable station, 9 of 10 had somebody doing
+it, and 34 bodies shifted 74 boxes** in two minutes each. That tool asks the three questions
+a new job can fail silently — is the station published, can anybody reach it, and does the
+job finish — because a job that was never cast and a job that cannot finish look identical
+from a chair.
 
 #### A meeting (`_tryMeeting` in `chores.js`)
 Four to seven people walk into a meeting room, one of them stands at the whiteboard, the
