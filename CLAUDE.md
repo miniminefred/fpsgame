@@ -212,6 +212,8 @@ tools/
   validate-nav.mjs     Headless multi-level routing invariants
   fingerprint.mjs      Hashes what the generator PRODUCES, for proving a refactor
                        changed nothing. See "Proving a refactor" below
+  probe-visitor.mjs    Drives the contractor's errand at a fixed 1/60. See
+                       "Somebody visiting" below
 src/
   main.js         Bootstrap: wires modules, runs the render loop
   game.js         The run: floor progression and difficulty curves
@@ -1405,6 +1407,99 @@ arrangement and a lobby with nobody in it is worse.
 A lobby that could not fit a counter publishes no station and has nobody at one, which is an
 ordinary answer of exactly the kind `carveLift` gives.
 
+### Somebody visiting (`contractor` in `enemy-types.js` + `_visitor`/`showOut` in `enemies.js`)
+Two floors in three, a man in a brightly coloured suit is standing at the lifts when you
+arrive. He walks to a storage rack, takes a crate off it, carries it back to a lift and goes
+down with it. He does not work here, and he is the only body on the floor that leaves.
+
+**The errand is two legs of the routine table and nothing new** (`collection` in chores.js):
+`takeCrate` at a rack and `leaveFloor` at a lift, which are `fetchBox` and `sendPost` with a
+different rack at one end. That is the whole point of the table — "walk here, do this, carry
+that there" is a list rather than a system — and it is what made this a small change on top
+of the cleanup rather than a system of its own. What is new is at the two ENDS of it: he is
+dealt with the floor, and he is off the floor when the last leg finishes.
+
+**THE SUIT IS THE TELL, not the visor.** Everybody in this building is in grey, navy or a
+uniform; he is in a colour nobody would wear to an office, and it is a different one every
+visit (`CONTRACTOR_SUITS`, rolled off the floor's own rng so both browsers of a co-op session
+roll the same one without a byte on the wire). That has to carry, because what he is *doing*
+— walking, with a box — is exactly what a Maintenance Worker on a parcel run is doing.
+
+The visor still answers the usual question and the palette is nearly full: brown 26°, orange
+30°, yellow 45°, green 112°, teal 162°, cyan 196°, blue 212°, violet 265°, magenta 318°, rose
+354°. The widest gap left is the 67° between the Courier's yellow and the Reanimated's green,
+and this sits in the middle of it — 34° off that green rather than in a clear field, so the
+two are told apart by being nothing else alike (a man in a red suit against a green corpse in
+a torn one) rather than by the visor on its own.
+
+**He is dealt with the floor, and that is a co-op decision.** A body's index in
+`enemies.items` is its name on the wire, so the roster is only ever APPENDED to and both
+browsers build it in the same order from the same seed. The alarm response is the one thing
+that adds to it mid-floor and it pays for that with a packet per man; a visitor rolled on the
+host alone would leave the two rosters different lengths and every index after his landing on
+the wrong person.
+
+**`showOut` is four lines because he KEEPS HIS SLOT.** Not drawn, not on the minimap, not
+anybody's target, not ticked — which is what a corpse already means minus the corpse. The
+hitboxes stay where they are with their back-reference cleared, which is `_die`'s own
+mechanism and is right twice over: a round should pass through a man who is not there, and
+the meshes are the level's to dispose of. It crosses the wire as one more bit in the slot the
+seat and the tray already ride in (`SNAP_GONE`), because the chore that does it is host-only
+— without it the host has a man who has gone home and the joiner has one standing in a lift
+car for the rest of the floor. And skipping him in `update` is not a nicety: without it he
+keeps his wander loop and walks the floor invisibly, which shows up two features later as a
+body opening doors.
+
+**Three bugs came out of this and all three were somebody else's**, which is the useful part:
+
+- **A NEUTRAL SHOULD NOT LOOK UP.** `_choreWork` ends any chore the moment the player is
+  within `CHORE_STARTLE`, sees them or hears them, and it did that regardless of whether the
+  body was harmless. The startle exists because of what a HOSTILE at a machine promises — its
+  back is to you and it has not noticed you yet — and somebody who was never going to shoot
+  you makes no such promise, so interrupting them costs the promise nothing and costs the
+  errand everything. `postrun` has had that bug since it was written; a collection is what
+  made it visible, because its whole point is that you follow the man in the red suit to see
+  where he goes. Damage still ends it, in `_damage`, which is the right and only trigger.
+- **A LIFT IS A PLACE, NOT A MACHINE** (`shared` on the kind). `_commit` reserved every leg's
+  station, and a floor has exactly two lift spots — so the post runs held both for the length
+  of an errand each and a collection could never find one free. Measured before the flag:
+  both spots `busy` on every sample, and the contractor stood at the lift wandering for four
+  minutes. It is the same distinction `servery` and `shelves` are kept out of the pools for —
+  somewhere you stand for four seconds, not somewhere you sit for a minute.
+- **FITTING IS NOT THE SAME AS BEING CONNECTED** (`liftSpots`). This is the sharpest of the
+  three. `liftSpots` walked out from a car until `fitsAt` was true and took the first such
+  tile — and a lift lobby's standable floor is not one region: the two cars, the doorway apron
+  and the reception counter cut it into several, and the nearest fitting tile to a car front
+  is very often in the pocket BETWEEN the car and the counter. Standable, and joined to
+  nothing. It now also requires the tile to be on a field flooded from the corridor network,
+  which is connected by construction, and `LIFT_FAR` went from 3.2 m to 5.2 so the walk can
+  get past the counter at all. No spot is an ordinary answer and has to be one rather than a
+  fallback to the unconnected tile: a lift nobody can reach is a post run that does not
+  happen, where a lift somebody is standing at and cannot leave is a body wasted for the
+  whole floor.
+
+  **And the measurement that found it is the thing to copy**, because the first two readings
+  were both wrong in the same way. Flooding from inside the lobby said the lobby reached *2
+  tiles of 14,759* and looked like a sealed room; flooding from one arbitrary standable tile
+  in each lobby over 24 floors said **3 of 24 lobbies are sealed**. Both were measuring
+  whichever island they started in. Flooded from OUTSIDE — once, which is also cheaper — the
+  answer is that **no lobby is sealed and 80–98% of each one's standable tiles are reachable**,
+  so this was never a room, it was a handful of tiles a room and the spot picked was in them.
+
+**And nobody stands INSIDE a car**, which was the first thing tried and is impossible. A lift
+opening is 1.0 m (`LIFT_DOOR_W`, and the pocket arithmetic in gen/lifts.js is why) against a
+0.8 m body on a 0.5 m grid, so both of a car's door tiles are eroded out of `fits` and the
+interior is an island of two. The PLAYER walks in and out of one perfectly well because their
+collision is continuous; nobody else can. So he starts AT a lift, on the spot he will come
+back to, with the doors just closed behind him.
+
+`tools/probe-visitor.mjs` drives the whole thing at a fixed 1/60 — necessary rather than
+tidy, for the reason CLAUDE.md gives about `requestAnimationFrame`: in a tab nobody is
+looking at a body simply freezes, and the errand reads as broken when nothing is. Measured
+over 12 floors: 6 had a visitor, **6 of 6 picked up a crate and 6 of 6 left the building**,
+walking 19–58 m each way and ending within 0.1 m of a lift with the crate released, hidden
+and off the map. The whole errand takes 37 to 109 seconds.
+
 ### The cafeteria (`cafeteria` in `gen/rooms.js` + `pickCafeteria` in `gen/roles.js`)
 The floor's canteen. It is the plant room's sibling — a big room composed around one thing
 — and it is deliberately the **common** one where the generator is the rare one: **600 of
@@ -1924,8 +2019,10 @@ Visors answer that same question first and identity second. Every hostile wears 
 brightest for what dies to a look and darkest for what does not — and the Reanimated wear
 green. The harmless are the only ones in an actual colour: white for the Panicking Staffer,
 brown for the Night Cleaner, yellow for the Courier, blue for the Staff on Break, violet for
-teal for the Welder Unit and magenta for the Sentry Unit. So hue says
-threat, shade says which one, and no two types share a visor.
+the Receptionist, chartreuse for the Contractor, teal for the Welder Unit and magenta for the
+Sentry Unit. So hue says threat, shade says which one, and no two types share a visor — and
+the palette is now nearly full, which is a fact to have in hand before adding a neutral. See
+the Contractor's own note for the measured gaps.
 
 **The machines are on that same ramp rather than beside it**, and that is a rule being kept
 rather than a palette being copied: neither question changes because the thing at the end of
@@ -2595,6 +2692,8 @@ corridor.
 | `fetchBox` | a rack, either kind | taking a box down off it — a routine's first leg |
 | `fetchPost` | a mailroom rack | collecting a parcel — a courier's, and nobody else's |
 | `sendPost` | outside the lift doors | ...and handing it in, which is it leaving the building |
+| `takeCrate` | a rack, either kind | a visitor taking a crate off it — and nobody else's |
+| `leaveFloor` | outside the lift doors | ...and carrying it out of the building, and he is gone |
 | `stowBox` | ...and another one | putting the same box back on a different rack |
 | `present` | at the whiteboard | running the meeting: writing on the board, one hand |
 | `attend` | a meeting room chair | **sitting** through it, hands in the lap, watching |
