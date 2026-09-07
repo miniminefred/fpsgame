@@ -196,6 +196,47 @@ export function wallSpanProp(sink, bounds, kind, rng, side) {
 // the workstation, and a room cannot end up with a seated body facing the wrong
 // way or sitting on nothing. `sink.workstation` decides whether it is worth
 // keeping (see makeSink in gen/sink.js); everything downstream is enemies.js's.
+/**
+ * A body-sized square of free floor beside a prop, on either flank.
+ *
+ * The crook of a peninsula: one open tile out from the prop's face and one out
+ * from the wall, which is where somebody stands at a counter that juts into the
+ * room. Returns where to stand and the rectangle to claim, or null if neither
+ * flank is free.
+ */
+function freeAside(sink, w, along, off, out, first) {
+  // Two distances out from the wall, not one. The nearest tile a body fits in is
+  // the third from the plaster (see COUNTER_STAND), and by the time the
+  // furnisher reaches the lobby that whole band is regularly spoken for by the
+  // doorway apron and the square kept clear at each car — so the next tile out
+  // is tried as well, which is still beside a counter this long. It is worth 8
+  // lobbies in 60.
+  // ...and the far END of it last of all, which is on the prop's own centre line
+  // rather than off to one side. A body there is standing at the end of the
+  // counter, which is a real place to be greeted from and is regularly the only
+  // tile of the four that is free: it is the one furthest into the room, and
+  // what takes the others is the band of floor kept clear along the wall.
+  let fallback = null;
+  for (const [sign, depth] of [[first, out], [-first, out], [first, out + TILE],
+    [-first, out + TILE]]) {
+    const [x, z] = w.seat(along + sign * off, depth);
+    // A whole TILE rather than a body's own square. `fits` in nav.js refuses any
+    // tile orthogonally touching a blocked one, so proving 0.4 m of clearance
+    // here published stations a body could not stand in — 8 of 40 before this.
+    const spot = [x - TILE, z - TILE, x + TILE, z + TILE];
+    if (sink.canPlace(...spot)) return { x, z, spot };
+    fallback ??= { x, z, spot };
+  }
+  // NOTHING FREE, and the answer is still a station rather than no counter.
+  // `standable` in enemies.js nudges a station that is a place to STAND
+  // backwards along its own facing to find floor — which here is further out
+  // into the room, down the flank of the counter — so a crook that this pass
+  // cannot prove is regularly one the roster can still use. Refusing the
+  // placement instead cost 7 lobbies in 60 their receptionist, which is worse
+  // than a counter whose body ends up half a metre further out.
+  return fallback;
+}
+
 export function seatFacing(sink, kind, cx, cz, rot, rng, gap = 0.95) {
   // The DESK, taken before the chair goes in. Every caller places the desk and
   // seats it on the very next line, so the last prop through the sink is that
@@ -581,6 +622,11 @@ export function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES, as = null, 
   const standoff = fd / 2 + (opts.behind ?? 0);
   const margin = fw / 2;   // so a 3 m table can't hang off the end of the wall
   if (!sides.length) return null;
+  // Which side of a peninsula the body is tried on first. Drawn ONCE, out here:
+  // the sweep tries a great many positions and a die inside the loop would
+  // spend a number a floor for each of them — which is the argument `wallOrder`
+  // makes about being a generator rather than an array.
+  const asideFirst = opts.aside != null && rng.chance(0.5) ? 1 : -1;
 
   // One random point on a random wall, twelve times over — or every point on
   // every offered wall in turn. See `wallSlots`: which a caller wants is about
@@ -609,8 +655,18 @@ export function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES, as = null, 
       // the station from the pool.
       const pocket = opts.behind ? w.pocket(along, standoff - fd / 2, fw) : null;
       if (pocket && !sink.canPlace(...pocket)) continue;
+      // ...and the CROOK, for a prop that is stood at from the side. Proved
+      // before the prop goes in and for the pocket's exact reason: a wall
+      // position whose crook is already spoken for has to be skipped rather
+      // than taken, or the sweep delivers a counter with nobody at it. It cost
+      // 17 lobbies in 60 to find that out.
+      const crook = opts.aside == null ? null
+        : freeAside(sink, w, along, margin + opts.aside, opts.stand ?? WORK_REACH, asideFirst);
       if (!tryPlace(sink, kind, cx, cz, side, rng)) continue;
       if (pocket) sink.occupy(...pocket);
+      // Claimed only if it was free to begin with: `occupy` on ground another prop
+      // already holds would take it away from whatever is standing there.
+      if (crook && sink.canPlace(...crook.spot)) sink.occupy(...crook.spot);
 
       // Somewhere to stand and use it, if it is that kind of machine. Derived the
       // way the rack fronts and the servery queue are: a prop is authored facing
@@ -622,13 +678,28 @@ export function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES, as = null, 
       // counter faces, because what they are looking at is whoever walked in.
       const at = as ?? WORK_AT[kind];
       if (at) {
-        const reach = opts.behind ? (standoff - opts.stand) : -(standoff + WORK_REACH);
-        const [ox, oz] = QUARTER[side](0, reach);
-        // `sink.placed()` is the prop on the line above, which is what makes a
-        // job at this station end when that prop is destroyed rather than
-        // leaving somebody pressing the buttons on a heap of debris.
-        sink.workstation(cx + ox, cz + oz, opts.behind ? side : (side + 2) & 3, at,
-          sink.placed());
+        // IN FRONT for a machine, BEHIND for a counter, and BESIDE for one that
+        // juts out of the wall. The third is the lift lobby's, and it is the
+        // only one where the body does not stand on the prop's own axis at all:
+        // a peninsula is stood at from the side, in the crook between it and
+        // the wall it grows out of.
+        //
+        // Which side is whichever one is free, proved and then CLAIMED — the
+        // same bargain the pocket behind a counter makes, and for the same
+        // reason: everything else in the room is placed after this, and a lobby
+        // whose receptionist was displaced by its own pot plant is a lobby with
+        // a counter and nobody at it.
+        if (crook) {
+          sink.workstation(crook.x, crook.z, side, at, sink.placed());
+        } else {
+          const reach = opts.behind ? (standoff - opts.stand) : -(standoff + WORK_REACH);
+          const [ox, oz] = QUARTER[side](0, reach);
+          // `sink.placed()` is the prop on the line above, which is what makes a
+          // job at this station end when that prop is destroyed rather than
+          // leaving somebody pressing the buttons on a heap of debris.
+          sink.workstation(cx + ox, cz + oz, opts.behind ? side : (side + 2) & 3, at,
+            sink.placed());
+        }
       }
       return { cx, cz, rot: side, side };
     }

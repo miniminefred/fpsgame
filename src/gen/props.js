@@ -947,6 +947,35 @@ export const PROPS = {
     },
   },
 
+  // The lift lobby's counter, and it is a PROJECTION OF THE WALL rather than a
+  // piece of furniture: same paint, same speckle, jutting straight out into the
+  // room with somebody standing in the crook of it.
+  //
+  // `wall` is the material the shell draws every interior wall with, so this is
+  // the same colour by construction rather than by a number matched by hand —
+  // and it follows the floor's own tint for free, which a hex here could not.
+  //
+  // The long axis is the DEPTH, which is what makes it a peninsula: `edgeProp`
+  // stands a prop off its wall by half its depth, so 2.4 m of depth is 2.4 m of
+  // counter running out into the lobby with its +z end bedded in the plaster.
+  // Nothing else in the catalogue is authored that way round.
+  //
+  // Three boxes and both of the shadow lines that stop it reading as one lump:
+  // the top stands proud all round, and the plinth is set back so the mass of it
+  // appears to float a hand's width off the floor. A transaction counter is
+  // 1.06 m and the till side of it a hair over — see the heights in CHORE_POSE,
+  // which is what a body standing at one is posed against.
+  receptionCounter: {
+    w: 0.7, d: 1.8, hp: 90, substance: 'wood',
+    build(p) {
+      const H = 1.06, TOP = 1.12;
+      p.box('wall', -0.31, 0.09, -0.88, 0.31, H, 0.90);      // the mass of it
+      p.box('wall', -0.24, 0, -0.82, 0.24, 0.09, 0.90);      // ...on a set-back plinth
+      p.box('wall', -0.35, H, -0.90, 0.35, TOP, 0.90);        // the top, proud all round
+      p.obstacle(-0.35, -0.90, 0.35, 0.90, TOP);
+    },
+  },
+
   armchair: {
     w: 1.25, d: 0.95, model: 'armchair', hp: 55, substance: 'fabric',
     build(p) {

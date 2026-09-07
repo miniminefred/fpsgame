@@ -1206,6 +1206,24 @@ const COUNTER_STAND = 1.25 - 0.15;
 const COUNTER_CLEAR = 0.8;
 
 /**
+ * ...and the same arithmetic turned ninety degrees, which is what a PENINSULA
+ * counter needs.
+ *
+ * The counter juts out of the wall now rather than standing along it, so the
+ * body is beside it instead of behind it — and the pocket it needs is the same
+ * three tiles read the other way: [counter][open][body], plus [wall][open][body]
+ * out from the plaster. `COUNTER_STAND` is still what puts the body in the
+ * middle of the third tile from the wall; this is the clearance from the
+ * counter's own FACE, so `edgeProp` adds the prop's half width to it.
+ *
+ * One open tile plus half of the body's own is 0.75, and it is measured off the
+ * face rather than the centre line for the reason `footprintOf` exists: the
+ * counter's width is a fact about the prop and this number is a fact about the
+ * tile grid, so adding them at the call site is how they stay independent.
+ */
+const COUNTER_ASIDE = 1.0;
+
+/**
  * The lift lobby: the room the floor arrives in, leaves by, and is greeted in.
  *
  * Both cars are already standing in it before this runs — they are shell, cut
@@ -1249,10 +1267,19 @@ function liftLobby(sink, bounds, rng, room) {
   // the wall rather than thrown at it, because by the time the furnisher reaches
   // the lobby the doorway aprons and the clear square at each car have taken the
   // whole band in front of the bank.
-  const counter = edgeProp(sink, bounds, 'receptionDesk', rng,
+  // A PROJECTION OF THE WALL, in the wall's own paint: `receptionCounter` is
+  // authored with its long axis through its depth, so `edgeProp`'s ordinary
+  // standoff — half the depth, which is what backing a prop against a wall means
+  // — runs 2.4 m of it out into the lobby. The whole peninsula is that one fact
+  // about the prop plus `aside` on the station.
+  //
+  // `aside` rather than `behind`, and it is the one thing here that is not a
+  // look: there is no behind a counter that sticks out into the room, so the
+  // body goes in the crook between it and the wall. See COUNTER_ASIDE.
+  const counter = edgeProp(sink, bounds, 'receptionCounter', rng,
     rng.shuffle([(bank + 1) & 3, (bank + 3) & 3]).concat((bank + 2) & 3, bank),
     'reception',
-    { behind: COUNTER_STAND + COUNTER_CLEAR, stand: COUNTER_STAND, sweep: true });
+    { aside: COUNTER_ASIDE, stand: COUNTER_STAND, sweep: true });
   // A plant beside a counter that landed and a plant anywhere at all if it did
   // not — the room still has to read as a lobby rather than as an empty box with
   // two lifts in it.
