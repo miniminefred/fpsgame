@@ -152,12 +152,67 @@ export function fitsLifts(r) {
  * `carveLift`.
  */
 export function carveBank(layout, room, doors, prefer, seed) {
+  const { tiles, W, H } = layout;
+  // What was reachable before EITHER car was cut, so the pair is proved against
+  // the room as it arrived rather than each car against the room the other one
+  // left behind. Stronger than proving them one at a time and simpler.
+  const before = bfs(tiles, W, H, seed.x, seed.y);
+
+  // ONE BANK ON ONE WALL, and the two cars TOUCHING: a bank is what a lift lobby
+  // has, and two lifts round the corner from each other is a room with a lift in
+  // it twice. `pickLobbyRoom` already guarantees a wall long enough for the pair
+  // (`fitsLifts` asks for `BLOCK_A * 2 + SIDE_ROOM * 2`), so what was missing was
+  // insisting on using it that way: the old pass carved each car on its own with
+  // a bias toward opposite halves of the wall, and took whatever it could get —
+  // measured at 38 floors in 60 with both cars on one wall, none of them
+  // adjacent, and gaps of 2 or 8 tiles where they were.
+  //
+  // The undo is what makes this possible at all, and `tryCarve` already had it:
+  // everything a block stands on is proved to be plain ROOM floor first, so
+  // putting the room back is one value rather than a saved copy. That is how a
+  // slot where the FIRST car fits and the second does not can be abandoned and
+  // the next one tried.
+  for (const side of [prefer, (prefer + 1) & 3, (prefer + 3) & 3, (prefer + 2) & 3]) {
+    const geom = carGeometry(room, side);
+    if (!geom) continue;
+    for (const a0 of offsets(geom, -BLOCK_A / 2)) {
+      const arrival = tryCarve(layout, room, doors, side, geom, a0, before, seed);
+      if (!arrival) continue;
+      const departure = tryCarve(layout, room, doors, side, geom, a0 + BLOCK_A,
+        before, seed);
+      if (departure) return { arrival, departure };
+      uncarve(layout, doors, arrival);
+    }
+  }
+
+  // Nothing could hold the pair. Fall back to what this used to do — two cars
+  // carved independently, wherever each will go — because a floor with its lifts
+  // round a corner from each other is a worse floor and a floor with no lift in
+  // it is not a floor. Measured at 2 in 60.
   const arrival = carveLift(layout, room, doors, prefer, seed, -BLOCK_A / 2);
   if (!arrival) return { arrival: null, departure: null };
   return {
     arrival,
     departure: carveLift(layout, room, doors, arrival.side, seed, BLOCK_A / 2),
   };
+}
+
+/**
+ * Put a carved car back, and take its door with it.
+ *
+ * The exact inverse of the two mutations `tryCarve` makes: the block's tiles
+ * were all plain ROOM floor before it (proved, not assumed) and its opening was
+ * pushed onto `doors`. Anything else a caller had already read off the returned
+ * lift is its own business — nothing does, because this is only ever called on a
+ * car that is about to be forgotten.
+ */
+function uncarve(layout, doors, lift) {
+  const { tiles, W } = layout;
+  for (let y = lift.by0; y < lift.by1; y++) {
+    for (let x = lift.bx0; x < lift.bx1; x++) tiles[y * W + x] = ROOM;
+  }
+  const i = doors.indexOf(lift.door);
+  if (i >= 0) doors.splice(i, 1);
 }
 
 /**
