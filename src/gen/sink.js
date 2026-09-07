@@ -43,6 +43,8 @@ export function makeSink(layout, batcher, materials, masks) {
   // when the prop is destroyed; only the first says how big the machine is.
   // See `hulk` below.
   let hulkOn = false;
+  // The collider of the last prop stood up through this sink. See `placed`.
+  let lastObstacle = null;
   // What the boxes being drawn right now are STOCK for, or null: the drink seed
   // for the can itself, or 'trim' for something drawn ON that can. A stock box is
   // not one of the prop's fragments — it is a thing the prop is holding, and it
@@ -146,7 +148,7 @@ export function makeSink(layout, batcher, materials, masks) {
      * it entirely, and a body seated somewhere nothing can walk to is a body
      * that stands up into a wall.
      */
-    workstation(x, z, rot, at = 'desk') {
+    workstation(x, z, rot, at = 'desk', prop = null) {
       if (level) return;
       // `at` is what the chair is pulled up to, and the two are not
       // interchangeable: a desk is a JOB — it decides how big a shift a room is
@@ -154,8 +156,34 @@ export function makeSink(layout, batcher, materials, masks) {
       // enemies.js) — while a canteen table is somewhere to eat lunch. Pooled
       // apart at the other end, so a cafeteria full of seats can never be read
       // as a room with twenty jobs going in it.
-      masks.workstations.push({ x, z, rot, at, room: null });
+      // WHICH PROP THIS IS A STATION AT, when the caller knows -- and the
+      // caller is the only thing that does. `_gone` in chores.js reads the
+      // collider's own `top`, which a destroyed prop drops below the floor, and
+      // that is how a job ends when the machine it is being done at does.
+      //
+      // It used to be re-derived geometrically at the other end (`machineAhead`
+      // in stations.js), and a probe that MISSES reads as "do not check" rather
+      // than as an error: measured over 12 floors, 5% of desk stations and 63%
+      // of the whiteboards came back null, so a body at one of those went on
+      // typing at a desk that had been shot to pieces and the pool went on
+      // handing the station out. The probe stays as the fallback for the
+      // stations nobody places -- a patch of corridor to mop, a post to stand,
+      // the floor outside a lift.
+      masks.workstations.push({ x, z, rot, at, room: null, prop });
     },
+
+    /**
+     * The collider of the last prop this sink stood up.
+     *
+     * Which is how a placer tells a station what it is a station AT: a prop is
+     * placed and its station registered on the next line, with nothing in
+     * between, so "the last obstacle" IS that prop -- see `workstation`. Null
+     * for a LOOSE prop, because a chair and a canteen table contribute no static
+     * collider at all, and that is the right answer rather than a gap: a chair
+     * going out from under somebody is `_seatGone`'s, which handles the loose
+     * lists directly.
+     */
+    placed() { return lastObstacle; },
 
     box(key, x0, y0, z0, x1, y1, z1) {
       const b = { key, x0, y0: y0 + level, z0, x1, y1: y1 + level, z1 };
@@ -215,6 +243,8 @@ export function makeSink(layout, batcher, materials, masks) {
       // or a permanent hole in the nav grid. A dry run isn't there at all.
       if (pending || capture) return;
       const collider = { minX: x0, maxX: x1, minZ: z0, maxZ: z1, top: top + level };
+      // The last thing this sink stood up, for `placed()` below.
+      lastObstacle = collider;
       // Its underside, on a sink that is furnishing a storey rather than the
       // ground. Without it the collider is a pillar from the floor and a crate
       // upstairs is a pillar through the room below — see gen/stairs.js.

@@ -686,7 +686,7 @@ function presentationRoom(sink, bounds, rng) {
         // `edgeProp` — it is put on the wall the ROWS decide, not on a wall of
         // its own choosing.
         const [sx, sz] = at(front + dir * 0.9, a0 + (a1 - a0) * t + 1.5);
-        sink.workstation(sx, sz, outward, 'board');
+        sink.workstation(sx, sz, outward, 'board', sink.placed());
         placed = true;
         break;
       }

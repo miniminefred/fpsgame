@@ -197,6 +197,12 @@ export function wallSpanProp(sink, bounds, kind, rng, side) {
 // way or sitting on nothing. `sink.workstation` decides whether it is worth
 // keeping (see makeSink in gen/sink.js); everything downstream is enemies.js's.
 export function seatFacing(sink, kind, cx, cz, rot, rng, gap = 0.95) {
+  // The DESK, taken before the chair goes in. Every caller places the desk and
+  // seats it on the very next line, so the last prop through the sink is that
+  // desk — and it has to be read here rather than after, because `tryPlace`
+  // below stands a chair up and a chair is loose, which would leave `placed()`
+  // holding whatever static prop happened to precede it.
+  const desk = sink.placed();
   const out = QUARTER[rot & 3](0, -gap);
   const x = cx + out[0];
   const z = cz + out[1];
@@ -214,7 +220,10 @@ export function seatFacing(sink, kind, cx, cz, rot, rng, gap = 0.95) {
     () => tryPlace(sink, 'chair', x, z, seat, rng));
   if (!placed) return false;
 
-  sink.workstation(x, z, seat);
+  // Both stations are AT the desk, which is what ends the job when the desk is
+  // shot apart. The chair is not named: it is loose and contributes no static
+  // collider, and a chair going out from under a body is `_seatGone`'s.
+  sink.workstation(x, z, seat, 'desk', desk);
 
   // ...and the two places somebody can stand at this desk without standing in
   // its chair. Offered on every desk in the building and mostly refused: they
@@ -224,7 +233,7 @@ export function seatFacing(sink, kind, cx, cz, rot, rng, gap = 0.95) {
   // taken up by at most one body at a time.
   for (const aside of [DESK_ASIDE, -DESK_ASIDE]) {
     const [ax, az] = QUARTER[rot & 3](aside, 0);
-    sink.workstation(x + ax, z + az, seat, 'computer');
+    sink.workstation(x + ax, z + az, seat, 'computer', desk);
   }
   return true;
 }
@@ -615,7 +624,11 @@ export function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES, as = null, 
       if (at) {
         const reach = opts.behind ? (standoff - opts.stand) : -(standoff + WORK_REACH);
         const [ox, oz] = QUARTER[side](0, reach);
-        sink.workstation(cx + ox, cz + oz, opts.behind ? side : (side + 2) & 3, at);
+        // `sink.placed()` is the prop on the line above, which is what makes a
+        // job at this station end when that prop is destroyed rather than
+        // leaving somebody pressing the buttons on a heap of debris.
+        sink.workstation(cx + ox, cz + oz, opts.behind ? side : (side + 2) & 3, at,
+          sink.placed());
       }
       return { cx, cz, rot: side, side };
     }

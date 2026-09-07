@@ -1454,7 +1454,14 @@ export class Chores {
    */
   _propFor(station) {
     if (!this.props.has(station)) {
-      this.props.set(station, this.enemies.machineAhead?.(station) ?? null);
+      // What the FURNISHER said this is a station at, and a geometric probe only
+      // where nothing said: a mop spot is a patch of corridor and the spot
+      // outside a lift is derived from the floorplan, so neither has a prop to
+      // name. The probe was doing all of it and a miss reads as "do not check" —
+      // 5% of desks and 63% of whiteboards, each one a job that never ended when
+      // its machine was destroyed. See `workstation` in gen/sink.js.
+      this.props.set(station,
+        station.prop ?? this.enemies.machineAhead?.(station) ?? null);
     }
     return this.props.get(station);
   }
