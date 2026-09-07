@@ -4,7 +4,7 @@
 //   npm test                       # ...runs this among the validators
 //   node tools/snapshot.mjs        # compare against tools/baseline/, exit 1 on any change
 //   node tools/snapshot.mjs --write   # accept what it produces now as the baseline
-//   node tools/snapshot.mjs --plan    # one layer only (also --build, --roster)
+//   node tools/snapshot.mjs --plan    # one layer (also --build, --roster, --damage)
 //
 // WHY THIS EXISTS ALONGSIDE THE THREE VALIDATORS. They prove INVARIANTS — a
 // floor is connected, no lock strands the exit, no prop stands in a doorway —
@@ -20,7 +20,7 @@
 // is a reviewable claim about what a change did, where a hash that merely
 // differs is not.
 //
-// THREE LAYERS, because they fail differently and no one of them can see the
+// FOUR LAYERS, because they fail differently and no one of them can see the
 // others:
 //
 //  - PLAN — the tile grid, the room and door lists, the locks, the stairs and the
@@ -32,8 +32,13 @@
 //    layer that catches a builder refactor.
 //  - ROSTER — who is on the floor and what they are all doing after forty
 //    seconds of the building working, over 18 floors. The layer for enemies.js,
-//    rigs.js, chores.js, jobs.js and enemy-anim.js, and the other two cannot see
-//    a line of it.
+//    rigs.js, chores.js, jobs.js and enemy-anim.js, and the other three cannot
+//    see a line of it.
+//  - DAMAGE — the floor shot apart: what comes off a prop, what its tiles and
+//    its collider are handed back to, what spills, and the generator's wreck.
+//    The layer for destruction.js, which the other three touch not at all: they
+//    all describe a floor as GENERATED, and everything in that file happens to a
+//    floor afterwards.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -44,7 +49,11 @@ const { generateLayout } = await import('../src/gen/layout.js');
 const DIR = path.join(import.meta.dirname, 'baseline');
 const args = process.argv.slice(2);
 const write = args.includes('--write');
-const wanted = ['plan', 'build', 'roster'].filter((k) => args.includes(`--${k}`));
+// Named here rather than read off `LAYERS`, which is declared further down:
+// a `const` is not hoisted, so reading it up here is a TDZ crash rather than
+// an empty list.
+const LAYER_NAMES = ['plan', 'build', 'roster', 'damage'];
+const wanted = LAYER_NAMES.filter((k) => args.includes(`--${k}`));
 
 // ---------------------------------------------------------------------------
 // shared
@@ -86,22 +95,32 @@ const box = (c) => `${num(c.minX)},${num(c.minZ)},${num(c.maxX)},${num(c.maxZ)}`
  * and because a stack in the diff names the change that caused it.
  */
 async function sweep(name, seeds, floors, describe) {
-  const out = [];
+  const cases = [];
   for (let i = 0; i < seeds; i++) {
-    const seed = 1000 + i * 7919;
-    for (const floor of floors) {
-      let body;
-      try {
-        body = await describe(seed, floor);
-      } catch (e) {
-        body = `THREW ${e.stack}`;
-      }
-      out.push(`${name} s${seed}/f${floor} ${hash(body)}`);
-      // The detail goes in too, so a diff says WHAT moved rather than only that
-      // something did. It is the whole reason the baseline is a file of lines
-      // and not a file of hashes.
-      for (const line of body.split('\n')) out.push(`  ${line}`);
+    for (const floor of floors) cases.push([1000 + i * 7919, floor]);
+  }
+  return sweepCases(name, cases, describe);
+}
+
+/**
+ * ...and the same sweep over cases somebody NAMED, which the damage layer needs:
+ * only about 3% of floors roll a plant room, so the one case that exercises the
+ * generator's wreck has to be pointed at rather than waited for.
+ */
+async function sweepCases(name, cases, describe) {
+  const out = [];
+  for (const [seed, floor] of cases) {
+    let body;
+    try {
+      body = await describe(seed, floor);
+    } catch (e) {
+      body = `THREW ${e.stack}`;
     }
+    out.push(`${name} s${seed}/f${floor} ${hash(body)}`);
+    // The detail goes in too, so a diff says WHAT moved rather than only that
+    // something did. It is the whole reason the baseline is a file of lines
+    // and not a file of hashes.
+    for (const line of body.split('\n')) out.push(`  ${line}`);
   }
   return out.join('\n');
 }
@@ -259,6 +278,223 @@ function describeRoster(enemies) {
 }
 
 // ---------------------------------------------------------------------------
+// the damage
+// ---------------------------------------------------------------------------
+
+// WHAT THIS LAYER CANNOT SEE, said once here rather than read off a column of
+// zeroes: `cans=` is always 0. A drinks machine's stock is drawn in `dress`,
+// which draws it off the loaded GLB, and no GLB can load in Node -- so the
+// window is empty and there is nothing in it to throw, which is the graceful
+// nothing every model-backed prop degrades to by design (see "What a machine is
+// stocked with" in CLAUDE.md). The column stays because it is the one that would
+// say so if that ever silently changed.
+//
+// How many props of each list a case shoots apart. Every one is a whole prop
+// coming apart — spans erased, colliders retired, nav tiles handed back,
+// fragments thrown — so the sample is a STRIDE through the floor's own order
+// rather than a slice off the front of it: the front of `destructibles` is the
+// glazing, and a case that shot forty panes would say nothing about furniture.
+const DAMAGE_STATICS = 30;
+const DAMAGE_LOOSE = 12;
+
+// The floors that roll a plant room, which about 3% of them do — so the layer
+// has to be POINTED at one rather than hoping a sweep lands on it. They are the
+// only cases that exercise the wreck at all, and the wreck is the largest and
+// most numerical thing destruction.js does.
+const GEN_CASES = [[1000, 7], [16838, 1], [103947, 3], [135623, 9]];
+
+/**
+ * The world `Destruction` is driven against, which is a RECORDER rather than a
+ * mock.
+ *
+ * Nothing here simulates: no cannon-es, no solver step, no debris landing
+ * anywhere. What every fragment is worth is decided before it is thrown —
+ * `_scatter` sizes each box, weighs it and hands it to `physics.addBox` — and
+ * that decision is the whole of what this layer is about. Where a piece comes to
+ * rest afterwards is the solver's business, and baselining it would tie this
+ * file to a dependency whose version says nothing about this game.
+ *
+ * So the stubs write down what they were asked for and the description reads it
+ * back. `isSleeping` answers true for the same reason: a sleeping body is one
+ * the pool leaves alone, which is what stops `update` syncing a mesh against a
+ * transform nothing is maintaining.
+ */
+function stubWorld() {
+  const log = { bodies: [], spills: [], statics: 0, fixtures: 0, raised: 0 };
+  return {
+    log,
+    physics: {
+      addBox({ size, position, mass }) {
+        log.bodies.push({ x: size.x, y: size.y, z: size.z, mass });
+        return { id: log.bodies.length };
+      },
+      impulse() {}, isSleeping: () => true, remove() {},
+      removeStatic() { log.statics++; },
+      blast() {}, syncMesh() {},
+    },
+    effects: { impact() {}, setSurfaces() {}, removeSurfaces() {} },
+    audio: AUDIO,
+    shooting: {
+      addHittables(list) { log.raised += list.length; },
+      removeHittables(list) { log.raised -= list.length; },
+    },
+    lighting: { removeFixture() { log.fixtures++; }, spark: null },
+    spills: {
+      start(x, y, z, opts) {
+        log.spills.push(`${opts.liquid}${opts.burst ? '!' : ''}`);
+        return { live: true };
+      },
+      feed() {},
+    },
+  };
+}
+
+/**
+ * The middle of a prop, in the frame its boxes are authored in.
+ *
+ * A prop is shot in the middle of itself and from one fixed side, because both
+ * are read rather than decorative: the point is where the killing round landed
+ * (the crater in a wreck, where a stream runs down a machine) and the direction
+ * is what the pieces are thrown by. Neither may be a draw — a case that aimed
+ * somewhere different every run would report different wreckage and mean nothing.
+ */
+function midOf(parts) {
+  let x0 = Infinity, y0 = Infinity, z0 = Infinity;
+  let x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+  for (const p of parts) {
+    x0 = Math.min(x0, p.x0); y0 = Math.min(y0, p.y0); z0 = Math.min(z0, p.z0);
+    x1 = Math.max(x1, p.x1); y1 = Math.max(y1, p.y1); z1 = Math.max(z1, p.z1);
+  }
+  return { x: (x0 + x1) / 2, y: (y0 + y1) / 2, z: (z0 + z1) / 2 };
+}
+
+function walkCount(nav) {
+  let n = 0;
+  for (let i = 0; i < nav.walk.length; i++) n += nav.walk[i];
+  return n;
+}
+
+// What came off one prop: how many pieces, how heavy, and how big the biggest is.
+// The three together are what says a fragment filter or a mass curve has moved —
+// a count alone cannot tell "the same pieces" from "the same number of different
+// pieces".
+function debrisOf(bodies) {
+  if (!bodies.length) return 'frags=0';
+  let mass = 0, big = 0;
+  for (const b of bodies) {
+    mass += b.mass;
+    big = Math.max(big, Math.max(b.x, b.y, b.z));
+  }
+  return `frags=${bodies.length} mass=${num(mass)} big=${num(big)}`;
+}
+
+function describeDamage(THREE, buildLevel, NavGrid, Destruction, seed, floor) {
+  const layout = generateLayout(seed, floor);
+  const scene = new THREE.Scene();
+  const level = buildLevel(scene, layout);
+  const nav = new NavGrid(level.nav);
+  // `level.nav` is what level.js hands the game, and destruction.js reads it for
+  // two things: giving a broken prop's tiles back, and asking which side of a
+  // machine the room is on (`_roomSide`, which is where a spill goes).
+  level.nav = nav;
+
+  const world = stubWorld();
+  const d = new Destruction({ ...world, scene });
+  d.setLevel(level);
+
+  const out = [];
+  out.push(`statics=${level.destructibles.length} loose=${level.dynamics.length}`
+    + ` colliders=${level.colliders.length} walk=${walkCount(nav)}`);
+
+  const real = Math.random;
+  Math.random = seedRandom(seed ^ floor ^ 0x0d1ec7);
+  try {
+    // The generator FIRST, because it is the one prop in the game that leaves a
+    // wreck rather than vanishing, and the only one whose destruction BUILDS
+    // geometry: a thousand-odd bays cut, carved, buckled and stamped, with torn
+    // rim and severed wiring hung off it. The vertex count is the signature of
+    // all of it in one number, which is exactly what a baseline wants.
+    const hulk = level.destructibles.findIndex((e) => e.parts?.some((p) => p.hulk));
+    if (hulk >= 0) {
+      const entry = level.destructibles[hulk];
+      const before = scene.children.length;
+      const b0 = world.log.bodies.length;
+      d.netShatter(hulk, { x: 0, y: 0, z: 1 }, midOf(entry.parts));
+      let verts = 0, meshes = 0;
+      for (const o of scene.children.slice(before)) {
+        o.traverse?.((m) => {
+          if (!m.geometry?.attributes?.position) return;
+          meshes++;
+          verts += m.geometry.attributes.position.count;
+        });
+      }
+      out.push(`wreck hulk=#${hulk} meshes=${meshes} verts=${verts}`
+        + ` ${debrisOf(world.log.bodies.slice(b0))}`
+        + ` arcs=${d.arcs ? 1 : 0} nav=${entry.navTiles?.length ?? 0}`);
+      d.debris.clear();
+    } else {
+      out.push('wreck -');
+    }
+
+    for (const [what, list, want] of [
+      ['s', level.destructibles, DAMAGE_STATICS], ['l', level.dynamics, DAMAGE_LOOSE],
+    ]) {
+      const step = Math.max(1, Math.floor(list.length / want));
+      for (let i = 0; i < list.length; i += step) {
+        const item = list[i];
+        if (item.broken || !item.parts?.length) continue;
+        const at = midOf(item.parts);
+        // A loose prop's boxes are in its GROUP's frame and a fitted one's are in
+        // the world's. That difference is the whole distinction between the two
+        // lists, and it is why they are broken by two different methods.
+        if (what === 'l') {
+          at.x += item.group.position.x;
+          at.y += item.group.position.y;
+          at.z += item.group.position.z;
+        }
+        const b0 = world.log.bodies.length;
+        const sp0 = world.log.spills.length;
+        const st0 = world.log.statics;
+        const cans0 = d.stock.count;
+        const w0 = walkCount(nav);
+        if (what === 's') d.netShatter(i, { x: 0, y: 0, z: 1 }, at);
+        else d.netBreakProp(i, { x: 0, y: 0, z: 1 }, at);
+
+        out.push(`${what}#${i} ${item.kind ?? item.substance ?? '-'}`
+          + ` broke=${item.broken ? 1 : 0}`
+          + ` ${debrisOf(world.log.bodies.slice(b0))}`
+          + ` cans=${d.stock.count - cans0}`
+          + ` nav=+${walkCount(nav) - w0} statics=${world.log.statics - st0}`
+          + ` spill=${world.log.spills.slice(sp0).join('+') || '-'}`);
+        // Each prop is measured on its own, so the pools are emptied between
+        // them: both are capped and evict the OLDEST, so a floor's fortieth prop
+        // would otherwise report a fragment count bounded by the thirty-nine
+        // before it rather than by anything about itself.
+        d.debris.clear();
+        d.stock.clear();
+      }
+    }
+
+    // ...and the ceiling coming down, which is the one destruction on a floor
+    // that is QUEUED rather than done: half the panels, spent over BLACKOUT_RAIN
+    // at a capped rate per frame, because doing all of it in one loop was the
+    // most expensive frame in the game. Driven at a fixed 1/60 like the roster
+    // layer and for the same reason — `rAF` does not tick in a backgrounded tab,
+    // so the wall clock is not an instrument.
+    const b0 = world.log.bodies.length;
+    const f0 = world.log.fixtures;
+    d.blackoutPanels(0.5);
+    for (let f = 0; f < 3 * 60; f++) d.update(DT);
+    out.push(`blackout ${debrisOf(world.log.bodies.slice(b0))}`
+      + ` fixtures=${world.log.fixtures - f0} live=${d.debris.count}`
+      + ` pending=${d._blackout ? 1 : 0}`);
+  } finally {
+    Math.random = real;
+  }
+  return out.join('\n');
+}
+
+// ---------------------------------------------------------------------------
 // layers
 // ---------------------------------------------------------------------------
 
@@ -324,6 +560,22 @@ const LAYERS = {
         Math.random = real;
       }
     });
+  },
+
+  damage: async () => {
+    const THREE = await import('three');
+    const { buildLevel } = await import('../src/gen/build.js');
+    const { NavGrid } = await import('../src/nav.js');
+    const { Destruction } = await import('../src/destruction.js');
+
+    warmAssets(THREE, buildLevel);
+
+    // The plant-room cases first, then ordinary floors: a floor with a wreck on
+    // it exercises everything a floor without one does and a thousand lines
+    // besides, and the ordinary ones are what say the common path still holds.
+    const cases = [...GEN_CASES, [1000, 1], [8919, 4], [16838, 9], [24757, 2]];
+    return sweepCases('damage', cases,
+      (seed, floor) => describeDamage(THREE, buildLevel, NavGrid, Destruction, seed, floor));
   },
 };
 
