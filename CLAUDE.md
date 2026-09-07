@@ -190,11 +190,11 @@ the Ubuntu runner do not have the problem.
 ## The game
 
 **Office Descent** — an endless procedurally-generated office shooter. The lift doors part
-on a floor of a grey corporate building; somebody is behind a counter in the lobby and about
-a third of the time they are not pleased to see you. You go out through the double doors,
-clear the staff still working there, and come back to the lift standing next to the one that
-brought you — the lobby is the building's core, in the middle of the floor, so a floor is a
-loop out and back. The next one is generated on the fly, usually a little bigger and always
+on a floor of a grey corporate building; somebody is standing in the corner of an
+L-shaped counter beside the doors, and about a third of the time they are not pleased to see
+you. You go out through the one wide double door, clear the staff still working there, and
+come back to the lift standing next to the one that brought you — the lobby is at the bottom
+middle of the map, so a floor is a push up it and a walk home. The next one is generated on the fly, usually a little bigger and always
 a little nastier. There is no ground floor.
 
 Two people can do it together, over the internet, off a six-character code read out loud.
@@ -1341,16 +1341,34 @@ come from the floor above or that there was one below. So a floor now opens the 
 office opens — you are in a lift car, its doors part, and the room in front of you is the
 lift lobby.
 
-**Both cars stand in that one room, side by side, and the room is the one nearest the
-middle of the slab.** That is where a building puts its core, and what it does to a floor is
-change its shape: clearing one is a loop out and back rather than a diagonal march from one
-corner to the opposite one, and every wing is the same walk away. `layout.spawnRoom` and
+**Both cars stand in that one room, side by side on one wall and sharing a pier, and
+the room is the one nearest the BOTTOM MIDDLE of the map** — the middle of the far-z edge,
+because the minimap draws world +z down the screen (`_my` in minimap.js). What that does to a
+floor is give it a direction: clearing one is a push up the floorplate and a walk home rather
+than a loop out and back from the middle. Measured over 60 floors, the lobby sits at a median
+0.51 across the slab and 0.92 down it, with 51 of 60 in both the middle third and the bottom
+third.
+
+The bank is carved as ONE bank rather than two cars (`carveBank`): it walks the walls for a
+slot that holds both blocks side by side and only falls back to independent carves if no wall
+can, which is 59 of 60 floors on one wall and 58 of them touching. Two lifts round a corner
+from each other is a room with a lift in it twice. `layout.spawnRoom` and
 `layout.exitRoom` are therefore the same object. They are kept as two names on purpose
 rather than collapsed into one — half a dozen callers ask one of those two questions
 (`assignLocks`, `planStairs`, `placeCow`, the props sweep) and each means the one it says,
 so a floor that ever wanted them apart again is one line in `generateLayout`. The layout
 sweep asserts the identity (`2.exit-lobby`) rather than having the check deleted, because
 that one line is exactly what would come apart quietly.
+
+**There is exactly ONE way out and it is as wide as a corridor** (`oneWayIn` in
+gen/lifts.js). A lobby is the core of the floor and everything comes through it, so what it
+wants is a front door rather than the three or four ordinary 1.5 m holes the carve gives
+every room. That pass seals the rest and opens the survivor out: 57 lobbies in 60 come down
+to a single doorway and 49 of the openings reach the full 6 tiles. Sealing is proved
+cumulatively — the same test `goesRound` makes before badging a hall door — so it cannot undo
+the connectivity established before it, and 3 lobbies in 60 keep a second doorway because
+sealing it would strand something. Widening refuses the wall a HALL door folds its leaves
+onto, which it ate on 11 floors in 600 before that was asked.
 
 **The way out is a DOUBLE DOOR and it is never locked.** A single panel sliding sideways out
 of a lift lobby reads as a cupboard being opened; two leaves parting in the middle is a way
@@ -1455,12 +1473,13 @@ where a green glow on a far wall is a rumour.
 that is the door you go through to find the rest of the office, and it is also the part of
 the floor the prologue is measured over — and it should be neither the canteen nor a room
 the plant room could have had, both being rare set pieces that want the biggest rooms. Among
-whatever survives that, the one nearest the middle of the slab wins. Each requirement is
+whatever survives that, the one nearest the BOTTOM MIDDLE of the map wins — `PAD` off the
+far-z edge, which is the nearest a room's centre could actually get. Each requirement is
 dropped in turn if nothing survives it, rather than failing, and the pick is deterministic
 rather than a draw for the reason `pickCafeteria` is: it runs before the floor's own rng has
 been spent on anything, so a die here would re-roll the contents of every room in the
-building off a number that has nothing to do with them. Measured over 600 floors, the lobby
-sits a median **11%** of the slab's half-diagonal off dead centre, worst 45%.
+building off a number that has nothing to do with them. `2.lobby-bottom` in the layout sweep
+is what says so, and it warns on 1 floor in 600.
 
 `fitsLifts` is exported and asked by `pickLobbyRoom` for the FIRST_CONTACT_GAP reason: a
 room that passes the pick and cannot hold the bank is a floor that promises a lift it cannot
@@ -1506,33 +1525,46 @@ to ignore them, at one in two the visor stops being news.
 about it is the coin, and a seated pose would be promising the wrong thing about both halves
 of it.
 
-**The counter stands OFF its wall, which nothing else in the catalogue does.** Every other
-wall-backed prop goes through `edgeProp`, which puts the prop's back on the plaster — there
-is nothing behind a filing cabinet and nothing needs to be. A reception desk is the one prop
-somebody stands behind, and the model is 0.55 m deep, so backed against the wall the whole
-pocket is the 0.15 m of skirting clearance. `COUNTER_STAND` is where the body goes and it is
-a NAV number rather than a look: `standable` in enemies.js holds a station to a whole tile of
-`fits`, and `fits` disqualifies every tile orthogonally touching a blocked one, so the tile
-against the plaster is not somewhere a body can be put however much room the arithmetic says
-is there. It is the middle of the second tile in.
+**THE COUNTER IS AN L IN THE WALL'S OWN PAINT** (`lCounter` in gen/props.js): a leg along
+the wall it grows out of and a longer one running out into the room, with the receptionist
+standing in the little square inside it. `wall` is the material the shell draws every
+interior wall with, so it is the same colour by construction rather than by a hex matched by
+hand, and it follows the floor's own tint for free. The top stands proud all round and the
+plinth is set back, which are the two shadow lines that stop it reading as one lump.
 
-**And the position is WALKED along the wall rather than thrown at it.** `seatAt` picks a
-random point, which is right for a cabinet against the wall of an empty office and wrong
-here: by the time the furnisher reaches the lobby most of its floor is spoken for — the
-doorway aprons and the clear square at each car (`reserveClearances`) take the whole band in
-front of the bank, and the counter needs the strip that is left. Ten darts at that found a
-spot on **half** of floors and the other half came out with nobody in the lobby at all;
-sweeping every tile of every wall in turn finds one on nearly all of them. The walls beside
-the lifts are tried first, then the one opposite, then the lifts' own wall last — a counter
-backed against the bank has its back to the only thing in the room, but it is a real
-arrangement and a lobby with nobody in it is worse.
+**Its two legs are TWO COLLIDERS**, and that is the whole reason the square is somewhere
+anybody can be. A prop's collider is what nav blocks, so one rectangle over the footprint
+would fill in its own void and the receptionist would be standing inside a wall.
 
-A lobby that could not fit a counter publishes no station and has nobody at one, which is an
-ordinary answer of exactly the kind `carveLift` gives.
+**Where the body goes is ASKED, not derived** (`standableCorner` in gen/placement.js, on
+`sink.standsAt`), and three things about that had to be measured wrong first:
+
+- **It has to be asked AFTER the prop is down.** The legs are what a body has to clear and
+  they are not in the blocked mask until `tryPlace` has run — asked before, the void reads
+  empty on every wall of every lobby, and 21 of 44 corners then failed nav's own test.
+- **It has to ask the whole 3x3.** `fits` is a CIRCLE test — a 0.4 m body at a tile centre —
+  and 0.4 exceeds the 0.354 to a diagonal neighbour's corner, so a blocked diagonal fails it
+  just as an orthogonal one does.
+- **It has to step a whole TILE.** Half a tile from a tile centre lands exactly on a boundary
+  and regularly does not move at all.
+
+**And it is BY THE DOOR.** `near` on `edgeProp` orders the walls and the slots along them by
+distance to the lobby's one doorway rather than restricting either, so a lobby whose doorway
+end is spoken for still gets a counter further along. Median distance from the counter to the
+door: 4.2 m, against 5.9 m before it was ordered.
+
+**Three sizes, which is `wallSpanProp`'s retreat one prop along.** The big L wants nearly
+4 x 5 tiles and lands in 44 lobbies in 60; the small L is the same shape one size down; and
+the one-leg stub covers the 16 that have no square patch anywhere, with the body standing
+BESIDE it (`aside`) rather than in a square it has not got. 59 of 60 lobbies get a counter
+and 51 have somebody standing at it, against 46 for the wall-backed desk this replaced.
+
+A lobby that could not fit any of the three publishes no station and has nobody at one, which
+is an ordinary answer of exactly the kind `carveLift` gives.
 
 ### Somebody visiting (`contractor` in `enemy-types.js` + `_visitor`/`showOut` in `enemies.js`)
-Two floors in three, a man in a brightly coloured suit is standing at the lifts when you
-arrive. He walks to a storage rack, takes a crate off it, carries it back to a lift and goes
+Two floors in three, a man in a delivery uniform — blue trousers, dark grey shirt — is
+standing at the lifts when you arrive. He walks to a storage rack, takes a crate off it, carries it back to a lift and goes
 down with it. He does not work here, and he is the only body on the floor that leaves.
 
 **The errand is two legs of the routine table and nothing new** (`collection` in chores.js):
@@ -1542,11 +1574,15 @@ that there" is a list rather than a system — and it is what made this a small 
 of the cleanup rather than a system of its own. What is new is at the two ENDS of it: he is
 dealt with the floor, and he is off the floor when the last leg finishes.
 
-**THE SUIT IS THE TELL, not the visor.** Everybody in this building is in grey, navy or a
-uniform; he is in a colour nobody would wear to an office, and it is a different one every
-visit (`CONTRACTOR_SUITS`, rolled off the floor's own rng so both browsers of a co-op session
-roll the same one without a byte on the wire). That has to carry, because what he is *doing*
-— walking, with a box — is exactly what a Maintenance Worker on a parcel run is doing.
+**HE IS IN A DELIVERY UNIFORM**, and it used to be a bright suit in one of six colours
+rolled per visit. A man who has come up to collect a crate reads better dressed for carrying
+things than dressed for a wedding — but the colour was doing real work, because what he is
+*doing* (walking, with a box) is exactly what a Maintenance Worker on a parcel run is doing.
+Three things carry that now: the chartreuse visor below, which no other body in the building
+wears; the SACK TRUCK, which nobody else in the building has at all; and the uniform itself,
+since the only other blue trousers on the floor are the janitor's and they come under a
+yellow shirt. `pants` is also what switches the rig from "one suit with a shirt front" to a
+uniform, so `suit` is his collar and placket rather than his whole body.
 
 The visor still answers the usual question and the palette is nearly full: brown 26°, orange
 30°, yellow 45°, green 112°, teal 162°, cyan 196°, blue 212°, violet 265°, magenta 318°, rose
