@@ -112,6 +112,13 @@ const BLACKOUT_VOICES = 16;
 // this way", not "can somebody stand exactly here" — 0.25 m answers it on 76 of
 // the 78, and it stays close enough in not to reach past the half-metre wall
 // behind the machine and find the next room through it.
+// How far a prop has to have fallen over before what is in it comes out: the
+// cosine of the angle its own up-axis makes with the world's, so 0.57 is 55
+// degrees. A cooler rocked by somebody walking into it rights itself; one past
+// this is lying down. See `spillTipped`.
+const TIP_COS = 0.57;
+const _tipUp = new THREE.Vector3();
+
 const SIDE_STAND = 0.4;
 const SIDE_ROOM = 0.25;
 
@@ -284,6 +291,43 @@ export class Destruction {
       this._breakProp(dyn, dir, point);
       this.onBreakProp?.(dyn, dir, point);
     }
+  }
+
+  /**
+   * A prop with liquid in it that has been knocked OVER pours it out.
+   *
+   * Everything else about spills is damage: a round opens a bottle, and killing
+   * the cooler bursts it. Neither is what happens when you walk into one hard
+   * enough to put it on its side, and a 19-litre bottle lying on the carpet with
+   * the carpet dry is the same lie the dry carpet told when a cooler was shot —
+   * the player did a thing, they can see where the water should be, and it is
+   * not there.
+   *
+   * IT ASKS THE PROP'S OWN UP-AXIS, not the solver. A loose prop's mesh is
+   * synced from its rigid body every frame (see `_syncCollider` in game.js), so
+   * the group's rotation IS the body's, and the one number that says "over" is
+   * how far its own +Y has fallen away from the world's. `TIP_COS` is 55
+   * degrees: a cooler rocked by a shove comes back, and one past 55 is on its
+   * side and staying there.
+   *
+   * Once only, and that is `dyn.tipped` rather than the puddle's own liveness: a
+   * bottle empties once, and a prop that rolls about afterwards must not go on
+   * topping the patch up for the rest of the floor. It is emptied as a BURST
+   * rather than fed slowly, because that is what a bottle on its side does, and
+   * because `_spill` already puts the patch where the prop is now standing —
+   * which for a tipped cooler is where it rolled to.
+   */
+  spillTipped(dyn) {
+    if (!dyn?.spills || dyn.broken || dyn.tipped) return false;
+    _tipUp.set(0, 1, 0).applyQuaternion(dyn.group.quaternion);
+    if (_tipUp.y > TIP_COS) return false;
+    dyn.tipped = true;
+    // Poured from where the neck of it now is rather than from a hit point:
+    // nothing hit it. `_spill` clamps this into the prop's own height.
+    const p = dyn.group.position;
+    this._spill(dyn, { x: p.x, y: p.y, z: p.z }, true);
+    this.audio.waterGush({ x: p.x, y: p.y, z: p.z });
+    return true;
   }
 
   /**

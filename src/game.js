@@ -695,6 +695,12 @@ export class Game {
         if (!dyn.handle || this.physics.isSleeping(dyn.handle)) continue;
         this.physics.syncMesh(dyn.group, dyn.handle);
         this._syncCollider(dyn);
+        // ...and if it has gone over, what was in it comes out. Asked here
+        // because this is the one loop in the game that already knows a loose
+        // prop has moved this frame — a sleeping body cannot have tipped, so the
+        // skip above is the filter, and the check itself is two dot products on
+        // the handful of props that hold anything.
+        if (dyn.spills) this.destruction.spillTipped(dyn);
       }
     }
 
