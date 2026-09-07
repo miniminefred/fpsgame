@@ -55,15 +55,6 @@ export const GUARD = {
  * near the Reanimated's green — a bright green suit walking down a corridor is
  * the one reading that would cost something.
  */
-export const CONTRACTOR_SUITS = [
-  0xc4142c,   // crimson
-  0xe07b1e,   // orange
-  0x1f8f4e,   // emerald
-  0x7b3fb5,   // purple
-  0xd94f9c,   // pink
-  0x1d7fc4,   // electric blue
-];
-
 export const TYPES = {
   intern: {
     // Cheap, quick, and always in a group. Dies to a look but closes fast.
@@ -347,12 +338,24 @@ export const TYPES = {
     // where he starts and `collection` in chores.js for the errand, which is two
     // legs of the routine table and nothing new at all.
     //
-    // THE SUIT IS THE POINT. Everybody in this building is in grey, navy, or a
-    // uniform; he is in a colour nobody would wear to an office, and it is a
-    // different one every time (see `CONTRACTOR_SUITS`). That is the whole of how
-    // he reads as somebody visiting rather than somebody who works here, and it
-    // has to carry from across a lobby, because what he is doing — walking, with
-    // a box — is exactly what a Maintenance Worker on a parcel run is doing.
+    // HE IS IN A DELIVERY UNIFORM: blue trousers and a dark grey shirt. It used
+    // to be a bright suit in one of six colours rolled per visit, on the argument
+    // that a colour nobody would wear to an office is what says "visiting" — and
+    // a man who has come up to collect a crate reads better as somebody dressed
+    // for carrying things than as somebody dressed for a wedding.
+    //
+    // What that costs is worth stating: the colour was doing the work of telling
+    // him apart from a Maintenance Worker on a parcel run, who is also walking
+    // about with a box. Three things carry it now — the chartreuse visor below,
+    // which no other body in the building wears; the SACK TRUCK, which nobody
+    // else in the building has at all; and the uniform itself, because the only
+    // other blue trousers on the floor are the janitor's and they come under a
+    // yellow shirt (see `janitor`).
+    //
+    // `pants` is also what switches the rig from "one suit with a shirt front" to
+    // a uniform (see buildRig), so `suit` is the collar and placket here rather
+    // than the whole body — a shade under the shirt, which is what a work shirt's
+    // own seams look like at this range.
     //
     // The visor is a different question and answers the usual one: hue says
     // threat, so a harmless type needs a colour no hostile wears and no other
@@ -375,7 +378,8 @@ export const TYPES = {
     // they do with it are two facts, and there is nothing he does with this one
     // but push it. See `truckOf` in rigs.js.
     truck: true,
-    suit: 0xc4142c, shirt: 0xf1f3f5, visor: 0xbdf03c, unlockFloor: 1, weight: 0,
+    suit: 0x2f3439, shirt: 0x3d434a, pants: 0x27427e,
+    visor: 0xbdf03c, unlockFloor: 1, weight: 0,
   },
   worker: {
     // The generator room's docile majority — logged in on the terminals

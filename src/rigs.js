@@ -232,10 +232,12 @@ function bluntMats() {
 // ...and the sack truck's two, a function for `bluntMats`' reason: one type on
 // the whole roster carries one, so nothing else should pay for the materials.
 //
-// The red is a shade deeper than any of the six suits a contractor turns up in
-// (`CONTRACTOR_SUITS`), which matters more than it sounds: he is regularly
-// wearing crimson, and a truck painted the same red as the man pushing it is one
-// silhouette rather than two. The grips, the plate and the wheels are dark for
+// The red is the one bright thing in the pair now that the man pushing it is in
+// a delivery uniform — blue trousers and a dark grey shirt — and that is the
+// better way round than it was: it used to have to stay clear of six suit
+// colours he might turn up in, one of them crimson, because a truck painted the
+// same red as the man is one silhouette rather than two. The grips, the plate
+// and the wheels are dark for
 // the same reason the mop's head is yellow — a thing made of one colour reads as
 // a shape, and one made of two reads as a machine.
 function truckMats() {

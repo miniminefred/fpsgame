@@ -20,7 +20,7 @@ import {
   FIRST_CONTACT_GAP,
   STAFF_ONLY,
 } from './gen/layout.js';
-import { BYSTANDERS, CONTRACTOR_SUITS, pickTheme, pickType, TYPES } from './enemy-types.js';
+import { BYSTANDERS, pickTheme, pickType, TYPES } from './enemy-types.js';
 import { makeRng } from './gen/rng.js';
 import { LOUNGE_STEP, LUNCH_FIRST, NUDGE_STEP, STAND_NUDGE } from './enemy-tuning.js';
 
@@ -1034,8 +1034,10 @@ export const rosterMethods = {
       // type is CLONED rather than tinted, because `TYPES` entries are shared: one
       // contractor changing colour would change every contractor on every floor
       // still standing in memory.
-      const type = { ...TYPES.contractor, suit: rng.pick(CONTRACTOR_SUITS) };
-      const e = this._add(at.x, at.z, rng, tuning, type);
+      // The type as it stands: his clothes are a uniform now rather than a
+      // colour rolled per visit, so there is nothing to override and nothing
+      // drawn off the floor's rng to override it with.
+      const e = this._add(at.x, at.z, rng, tuning, TYPES.contractor);
       // Facing the doors, which is where `rot` already points — he has just turned
       // round out of the car. Same conversion `_seat` makes: a quarter turn is a
       // negative rotation about Y.
