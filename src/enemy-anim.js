@@ -1045,6 +1045,18 @@ export function animateRoomba(e, dt, audio) {
 // its group here would fight the solver for it. It stays because a ragdoll is
 // allowed to be refused, and a floor with no physics has to keep working.
 export function die(e, dt) {
+  // The white going out, and it has to happen here because a corpse never
+  // reaches `animate` again — `update` gives a dead body this function and
+  // nothing else. Without it the flash freezes at whatever it had got to when
+  // the killing round landed, for ever: measured at 0.750 emissive on a body
+  // killed one frame after a hit, 0.600 at two, 0.450 at three, and 0.000 when
+  // one round did it outright. Which is every burst weapon in the game and a
+  // shotgun whose pellets straddle a frame, and it reads exactly as reported —
+  // some corpses are whiter than others.
+  //
+  // BEFORE the ragdoll return, not after: a ragdolled body is posed by
+  // ragdolls.js rather than by the lines below, and it wears the same materials.
+  tickFlash(e, dt);
   if (e.ragdoll) return;
   if (e.deathTime <= 0) return;
   e.deathTime -= dt;
