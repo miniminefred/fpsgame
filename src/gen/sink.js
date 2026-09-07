@@ -102,6 +102,41 @@ export function makeSink(layout, batcher, materials, masks) {
     occupy(x0, z0, x1, z1) { stamp(occupied, x0, z0, x1, z1); },
 
     /**
+     * Could a BODY stand at this point once the floor is finished?
+     *
+     * The same question `fits` in nav.js answers, asked while the room is still
+     * being furnished: it reads the `blocked` mask rather than `occupied`, which
+     * are two different facts — this one is about geometry rather than about who
+     * claimed the floor.
+     *
+     * THE WHOLE 3x3, not the four orthogonal neighbours, and that distinction
+     * cost a measurement to find. `fits` is a CIRCLE test — a 0.4 m body at a
+     * tile centre — and 0.4 exceeds the 0.354 to a diagonal neighbour's corner,
+     * so a blocked diagonal fails it just as an orthogonal one does. Asking only
+     * the orthogonals said yes on 21 corners nav then refused.
+     *
+     * It exists because a station is only worth publishing if somebody can stand
+     * at it, and only the furnisher knows what it has just put down. The L
+     * counter is the caller: its corner is inside its own footprint, so no
+     * occupancy test can say anything about it, and whether the middle of that
+     * void clears the legs either side depends on where the tile grid happens to
+     * fall — measured at 23 of 44 before this was asked.
+     */
+    standsAt(x, z) {
+      const tx = Math.floor((x - layout.ox) / TILE);
+      const ty = Math.floor((z - layout.oz) / TILE);
+      for (let oy = -1; oy <= 1; oy++) {
+        for (let ox = -1; ox <= 1; ox++) {
+          const cx = tx + ox, cy = ty + oy;
+          if (cx < 0 || cy < 0 || cx >= W || cy >= H) return false;
+          const i = cy * W + cx;
+          if (!isOpen(tiles[i]) || blocked[i]) return false;
+        }
+      }
+      return true;
+    },
+
+    /**
      * Runs `fn` with one prop's reserved floor lent back to it, and takes it
      * again afterwards. For a chair pulled up to a desk, which is the only kind
      * of prop that is SUPPOSED to stand inside another one's reservation.

@@ -57,6 +57,49 @@ function placer(sink, cx, cz, rot) {
 // A monitor standing on a desk at (x, z) in the desk's local space, screen
 // facing the near side where the chair goes. Not a catalogue entry of its own —
 // it's only ever part of a workstation.
+/**
+ * The lift lobby's counter: an L in the wall's own paint.
+ *
+ * `wall` is the material the shell draws every interior wall with, so it is the
+ * same colour by construction rather than by a hex matched by hand, and it
+ * follows the floor's own tint for free. Both entries in the catalogue call this
+ * with their own half-sizes; the shape is the same and only the size differs.
+ *
+ * TWO OBSTACLES RATHER THAN ONE, and that is the whole of why the square inside
+ * it is somewhere anybody can be. A prop's collider is what nav blocks, so one
+ * rectangle over the footprint would fill in its own void and the receptionist
+ * would be standing inside a wall. A leg each leaves the inside as ordinary
+ * floor.
+ *
+ * WHAT SIZE THE VOID HAS TO BE: `fits` in nav.js is a circle test, so a body
+ * needs its whole 3x3 of tiles clear, diagonals included — 1.5 m, plus up to
+ * half a tile of alignment slack, before the MIDDLE of the square is standable.
+ * Under that, the only spot is at the mouth, which is beside the counter rather
+ * than in it. That is the one number the two sizes are chosen against.
+ *
+ * Three boxes a leg and both of the shadow lines that stop it reading as one
+ * lump: the top stands proud all round and the plinth is set back, so the mass
+ * of it appears to float a hand's width off the floor. A transaction counter is
+ * 1.06 m — see the heights in CHORE_POSE, which is what a body at one is posed
+ * against.
+ */
+function lCounter(p, RX, RZ, T = 0.32) {
+  const H = 1.06, TOP = 1.12;
+  const AX = RX - T, AZ = RZ - T;      // where each leg's inner face falls
+  // Along the wall. Authored facing -Z like everything else, so +z is the face
+  // that beds into the plaster.
+  p.box('wall', -RX, 0.09, AZ + 0.02, RX, H, RZ - 0.02);
+  p.box('wall', -RX + 0.07, 0, AZ + 0.08, RX - 0.07, 0.09, RZ - 0.02);
+  p.box('wall', -RX, H, AZ, RX, TOP, RZ);
+  // ...and out into the room, off the -x end of it.
+  p.box('wall', -RX + 0.02, 0.09, -RZ + 0.02, -AX - 0.02, H, AZ + 0.02);
+  p.box('wall', -RX + 0.02, 0, -RZ + 0.07, -AX - 0.08, 0.09, AZ + 0.02);
+  p.box('wall', -RX, H, -RZ, -AX, TOP, AZ);
+  // One collider per leg, which is what leaves the square standable.
+  p.obstacle(-RX, AZ, RX, RZ, TOP);
+  p.obstacle(-RX, -RZ, -AX, AZ, TOP);
+}
+
 function monitorAt(p, x, z, rng) {
   const H = 0.74;
   p.box('metalDark', x - 0.11, H, z - 0.07, x + 0.11, H + 0.02, z + 0.07);
@@ -966,12 +1009,47 @@ export const PROPS = {
   // 1.06 m and the till side of it a hair over — see the heights in CHORE_POSE,
   // which is what a body standing at one is posed against.
   receptionCounter: {
+    // AN L, with the receptionist standing in the little square inside it: one
+    // leg along the wall it grows out of, one running OUT into the room, and the
+    // out leg the longer of the two — a counter you walk up to the side of
+    // rather than a slab across a corner.
+    w: 1.9, d: 2.2, hp: 90, substance: 'wood',
+    build(p) { lCounter(p, 0.95, 1.1); },
+  },
+
+  // ...and the same L one size down, for a lobby that cannot hold the other.
+  //
+  // By the time the furnisher reaches the lobby most of its floor is reserved —
+  // the doorway apron and the clear square at each car — and the big L wants
+  // nearly 4 x 5 tiles of it. Measured over 60 floors: the big one lands in 30
+  // of them and this picks up most of the rest, and the SHAPE is what matters
+  // rather than the size. It is the retreat `wallSpanProp` makes for the
+  // generator, one prop along: ask for the thing that reads best, take the thing
+  // that fits — and here both are the same thing.
+  //
+  // The body stands at the mouth of this one rather than in the middle of it,
+  // and that falls out of `standableCorner` rather than being decided here: its
+  // void is two tiles across, and a body needs three (see `lCounter`).
+  receptionCounterSmall: {
+    w: 1.5, d: 1.7, hp: 90, substance: 'wood',
+    build(p) { lCounter(p, 0.75, 0.85); },
+  },
+
+  // ...and one leg on its own, for the lobbies that have no square patch at all.
+  //
+  // Third and last: 16 in 60 have nowhere three tiles wide against any wall,
+  // and what they do have is a two-tile strip. So this is the L with its along-
+  // the-wall leg taken off — the same paint, the same projection out of the
+  // plaster, and the body standing BESIDE it (`aside`) rather than in a square
+  // it has not got. A lobby with nobody in it is worse than a lobby whose
+  // counter is a plain one.
+  receptionCounterStub: {
     w: 0.7, d: 1.8, hp: 90, substance: 'wood',
     build(p) {
       const H = 1.06, TOP = 1.12;
-      p.box('wall', -0.31, 0.09, -0.88, 0.31, H, 0.90);      // the mass of it
-      p.box('wall', -0.24, 0, -0.82, 0.24, 0.09, 0.90);      // ...on a set-back plinth
-      p.box('wall', -0.35, H, -0.90, 0.35, TOP, 0.90);        // the top, proud all round
+      p.box('wall', -0.31, 0.09, -0.88, 0.31, H, 0.90);
+      p.box('wall', -0.24, 0, -0.82, 0.24, 0.09, 0.90);
+      p.box('wall', -0.35, H, -0.90, 0.35, TOP, 0.90);
       p.obstacle(-0.35, -0.90, 0.35, 0.90, TOP);
     },
   },

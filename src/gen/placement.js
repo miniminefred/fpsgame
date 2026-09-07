@@ -122,13 +122,41 @@ function* wallOrder(sides, rng, sweep) {
   for (let i = 0; i < 12; i++) yield rng.pick(sides);
 }
 
-function* wallSlots(w, margin, rng, sweep) {
+function* wallSlots(w, margin, rng, sweep, near) {
   const lo = w.a0 + margin, hi = w.a1 - margin;
   if (hi < lo) return;
   if (!sweep) { yield rng.range(lo, hi); return; }
   const n = Math.max(1, Math.floor((hi - lo) / TILE) + 1);
+  // NEAREST A POINT FIRST, when the caller has somewhere in mind — the lift
+  // lobby wants its counter by the door, because a reception you walk past on
+  // your way in is a reception. Ordered rather than restricted: every slot is
+  // still offered, so a wall whose near end is spoken for is walked outward from
+  // there rather than given up.
+  if (near) {
+    const d2 = (i) => {
+      const [x, z] = w.seat(lo + i * TILE, 0);
+      return (x - near.x) ** 2 + (z - near.z) ** 2;
+    };
+    const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => d2(a) - d2(b));
+    for (const i of order) yield lo + i * TILE;
+    return;
+  }
+  // ...and from a random slot otherwise, walking round: a fixed start would put
+  // every prop in the building at the same end of its wall.
   const from = rng.int(0, n - 1);
   for (let i = 0; i < n; i++) yield lo + ((from + i) % n) * TILE;
+}
+
+// How far a wall's nearest point is from somewhere, for ordering the walls the
+// same way. Its midpoint would put a long wall behind a short one that happens
+// to be centred nearer, and it is the END of a wall you walk past.
+function nearness(w, near) {
+  let best = Infinity;
+  for (const a of [w.a0, (w.a0 + w.a1) / 2, w.a1]) {
+    const [x, z] = w.seat(a, 0);
+    best = Math.min(best, (x - near.x) ** 2 + (z - near.z) ** 2);
+  }
+  return best;
 }
 
 // Backs a `spanning` prop against one whole wall, corner to corner, and returns
@@ -196,6 +224,48 @@ export function wallSpanProp(sink, bounds, kind, rng, side) {
 // the workstation, and a room cannot end up with a seated body facing the wrong
 // way or sitting on nothing. `sink.workstation` decides whether it is worth
 // keeping (see makeSink in gen/sink.js); everything downstream is enemies.js's.
+/**
+ * Somewhere to stand inside an L, and it has to be ASKED rather than derived.
+ *
+ * The middle of the prop's own footprint is the void between the legs and is
+ * where the body belongs — enclosed on two sides, open to the room on the other
+ * two. Whether that exact tile clears both legs depends on where the tile grid
+ * falls under a prop that is not tile-aligned, so the middle is tried first and
+ * then a TILE at a time outward, and `standsAt` is nav's own question asked of
+ * the sink.
+ *
+ * A tile at a time, not half a tile: a body needs its whole 3x3 clear (see
+ * `standsAt`), so what matters is which tile it lands in, and stepping half a
+ * tile from a tile centre lands exactly on a boundary and regularly does not
+ * move at all. The steps go OUT from the wall as well as along it, because the
+ * L's mouth is the open corner and the lobby's own floor is what clears a body's
+ * far side there — which is what makes a marginal void usable.
+ *
+ * The `spot` it comes back with is a TILE EITHER SIDE of the corner, and that is
+ * not about the corner itself — the void is inside the prop's own footprint,
+ * which `tryPlace` has already reserved, so nothing can be placed in it. It is
+ * about the NEIGHBOURS: `fits` needs the four tiles around a body to be clear
+ * too, and the two open sides of an L look out onto the rest of the lobby, where
+ * the sofa and the pot plant are placed a few lines later. That is the whole of
+ * the difference between 23 standable corners in 44 and all of them — the
+ * furnisher's own mask said yes when it was asked, and then a plant landed in
+ * the mouth of the L.
+ */
+function standableCorner(sink, w, along, standoff, margin) {
+  for (const [da, dd] of [[0, 0], [0, TILE], [TILE, 0], [-TILE, 0],
+    [TILE, TILE], [-TILE, TILE], [0, TILE * 2]]) {
+    // Never back INTO the wall, and never more than a tile past the mouth: a
+    // body two tiles out into the lobby is standing near the counter rather
+    // than at it.
+    if (standoff + dd > standoff + TILE * 2 || Math.abs(da) > margin) continue;
+    const [x, z] = w.seat(along + da, standoff + dd);
+    if (sink.standsAt(x, z)) {
+      return { x, z, spot: [x - TILE, z - TILE, x + TILE, z + TILE] };
+    }
+  }
+  return null;
+}
+
 /**
  * A body-sized square of free floor beside a prop, on either flank.
  *
@@ -637,12 +707,21 @@ export function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES, as = null, 
   // first `tryPlace` took any, which re-rolls the contents of every room after
   // this one — the same argument `assignLocks` makes about spending the floor's
   // stream out of order, one scale down.
-  for (const side of wallOrder(sides, rng, opts.sweep)) {
+  // ...and the walls themselves nearest that point first, for the same reason:
+  // the counter belongs on whichever wall the door is in or beside, not on the
+  // one the caller happened to list first. A stable sort keeps the caller's own
+  // order between walls that are equally near, which is what still keeps a
+  // counter off the lift bank's own wall.
+  const ordered = opts.near
+    ? [...sides].sort((a, b) => nearness(wall(a, bounds), opts.near)
+      - nearness(wall(b, bounds), opts.near))
+    : sides;
+  for (const side of wallOrder(ordered, rng, opts.sweep)) {
     const w = wall(side, bounds);
     // A prop wider than the wall it was offered simply doesn't fit there.
     if (w.a1 - w.a0 < margin * 2) continue;
 
-    for (const along of wallSlots(w, margin, rng, opts.sweep)) {
+    for (const along of wallSlots(w, margin, rng, opts.sweep, opts.near)) {
       const [cx, cz] = w.seat(along, standoff);
       // The pocket behind a counter has to be free BEFORE it goes in and claimed
       // after, and neither is `tryPlace`'s business — it proves the prop's own
@@ -655,18 +734,38 @@ export function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES, as = null, 
       // the station from the pool.
       const pocket = opts.behind ? w.pocket(along, standoff - fd / 2, fw) : null;
       if (pocket && !sink.canPlace(...pocket)) continue;
-      // ...and the CROOK, for a prop that is stood at from the side. Proved
+      // ...and the CROOK, for a prop that is stood at from the SIDE. Proved
       // before the prop goes in and for the pocket's exact reason: a wall
       // position whose crook is already spoken for has to be skipped rather
       // than taken, or the sweep delivers a counter with nobody at it. It cost
       // 17 lobbies in 60 to find that out.
-      const crook = opts.aside == null ? null
-        : freeAside(sink, w, along, margin + opts.aside, opts.stand ?? WORK_REACH, asideFirst);
+      const flank = opts.aside == null ? null
+        : freeAside(sink, w, along, margin + opts.aside, opts.stand ?? WORK_REACH,
+          asideFirst);
       if (!tryPlace(sink, kind, cx, cz, side, rng)) continue;
       if (pocket) sink.occupy(...pocket);
-      // Claimed only if it was free to begin with: `occupy` on ground another prop
-      // already holds would take it away from whatever is standing there.
-      if (crook && sink.canPlace(...crook.spot)) sink.occupy(...crook.spot);
+
+      // THE CORNER of an L, and it is asked AFTER the prop is down while the
+      // crook above is asked before. The difference is what each of them is
+      // about: a flank is room floor somebody else might want, so it has to be
+      // free BEFORE this prop commits to the wall; the corner is inside this
+      // prop's own footprint, and what a body there has to clear is the prop's
+      // own LEGS — which are not in the blocked mask until `tryPlace` has run.
+      //
+      // Asking it too early is exactly the bug this line is the fix for: the
+      // void reads empty on every wall of every lobby, so the answer was always
+      // "the middle is fine" and 21 of 44 corners then failed nav's own test.
+      const crook = opts.corner
+        ? standableCorner(sink, w, along, standoff, margin)
+        : flank;
+      // Claimed outright for a corner — the void is inside the prop's own
+      // footprint, so `canPlace` is false there by construction and asking it
+      // would refuse the very ground this station stands on. A flank is ordinary
+      // room floor and is only claimed if it was free, or the claim would take it
+      // away from whatever is already standing there.
+      if (crook?.spot && (opts.corner || sink.canPlace(...crook.spot))) {
+        sink.occupy(...crook.spot);
+      }
 
       // Somewhere to stand and use it, if it is that kind of machine. Derived the
       // way the rack fronts and the servery queue are: a prop is authored facing

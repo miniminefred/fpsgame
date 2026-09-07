@@ -20,14 +20,20 @@ import {
 } from './layout.js';
 import { approachRect } from './stairs.js';
 
+// How far off the plaster a room's furnishable rectangle starts. Exported
+// because gen/rooms.js has to undo it: a role is handed `bounds` in world metres
+// and its room in tiles, so recovering one from the other needs the inset that
+// was applied here. One number, one place — see the note on metrics.js.
+export const SKIRT = 0.15;
+
 export function furnishRooms(layout, sink, rng, workstations, theme) {
   for (const room of layout.rooms) {
     // Keep furniture off the walls so nothing clips into the skirting.
     const bounds = {
-      x0: worldX(layout, room.x0) + 0.15,
-      z0: worldZ(layout, room.y0) + 0.15,
-      x1: worldX(layout, room.x1) - 0.15,
-      z1: worldZ(layout, room.y1) - 0.15,
+      x0: worldX(layout, room.x0) + SKIRT,
+      z0: worldZ(layout, room.y0) + SKIRT,
+      x1: worldX(layout, room.x1) - SKIRT,
+      z1: worldZ(layout, room.y1) - SKIRT,
     };
     const before = workstations.length;
     furnish(sink, room, bounds, rng, layout.doors, theme);

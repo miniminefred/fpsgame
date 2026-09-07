@@ -5,7 +5,8 @@
 // "a copier against a wall and some cardboard", and nothing about coordinates.
 
 import { footprintOf, QUARTER, tryPlace } from './props.js';
-import { doorSide, doorsOnRoom } from './layout.js';
+import { doorSide, doorsOnRoom, TILE } from './layout.js';
+import { SKIRT } from './furnish.js';
 import {
   aisles,
   ALL_SIDES,
@@ -1254,7 +1255,7 @@ const COUNTER_ASIDE = 1.0;
  * right — and only then on the wall opposite, which is the one the doors out are
  * usually cut in.
  */
-function liftLobby(sink, bounds, rng, room) {
+function liftLobby(sink, bounds, rng, room, doors) {
   const bank = room?.liftSide ?? 0;
   // The two walls beside the lifts first, then the one opposite, and the lifts'
   // own wall last of all. A counter backed against the bank is a desk with its
@@ -1276,10 +1277,34 @@ function liftLobby(sink, bounds, rng, room) {
   // `aside` rather than `behind`, and it is the one thing here that is not a
   // look: there is no behind a counter that sticks out into the room, so the
   // body goes in the crook between it and the wall. See COUNTER_ASIDE.
-  const counter = edgeProp(sink, bounds, 'receptionCounter', rng,
-    rng.shuffle([(bank + 1) & 3, (bank + 3) & 3]).concat((bank + 2) & 3, bank),
-    'reception',
-    { aside: COUNTER_ASIDE, stand: COUNTER_STAND, sweep: true });
+  const walls = rng.shuffle([(bank + 1) & 3, (bank + 3) & 3]).concat((bank + 2) & 3, bank);
+  // BY THE DOOR. The lobby has one way in (see `oneWayIn` in gen/lifts.js), and
+  // a reception you walk past on your way in is a reception where one across the
+  // room is a desk somebody put there. `near` orders the walls and the slots
+  // along them by distance to it rather than restricting either, so a lobby
+  // whose doorway end is spoken for still gets a counter further along.
+  // The doorway's middle in world metres. A role is handed `bounds` in metres
+  // and its room in tiles, so this is the one conversion it needs — and `SKIRT`
+  // is imported rather than written down again, because it is the number
+  // furnish.js insets those bounds by and the two have to agree.
+  const door = doorsOnRoom(doors, room).find((d) => !d.lift) ?? null;
+  const near = door ? {
+    x: bounds.x0 - SKIRT + ((door.x0 + door.x1) / 2 - room.x0) * TILE,
+    z: bounds.z0 - SKIRT + ((door.y0 + door.y1) / 2 - room.y0) * TILE,
+  } : null;
+  const counter = edgeProp(sink, bounds, 'receptionCounter', rng, walls, 'reception',
+    { corner: true, sweep: true, near })
+    // ...and the same L one size down where the big one will not fit, which is
+    // the retreat `wallSpanProp` makes for the generator: ask for the thing that
+    // reads best, take the thing the room can hold. Both are the same shape, so
+    // what a small lobby loses is the room to stand in the middle of the square
+    // rather than the square itself.
+    ?? edgeProp(sink, bounds, 'receptionCounterSmall', rng, walls, 'reception',
+      { corner: true, sweep: true, near })
+    // ...and one leg on its own for a lobby with no square patch anywhere, where
+    // the body stands beside it instead. See `receptionCounterStub`.
+    ?? edgeProp(sink, bounds, 'receptionCounterStub', rng, walls, 'reception',
+      { aside: COUNTER_ASIDE, stand: COUNTER_STAND, sweep: true, near });
   // A plant beside a counter that landed and a plant anywhere at all if it did
   // not — the room still has to read as a lobby rather than as an empty box with
   // two lifts in it.
