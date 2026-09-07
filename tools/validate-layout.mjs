@@ -82,7 +82,7 @@ const IDS = [
   // apart again — half the generator asks one of those two questions by name.
   ['2.exit-lobby', 'FAIL', 'EXIT          exit room is the spawn room — one lift lobby'],
   ['2.exit-apart', 'FAIL', 'EXIT          the two cars do not stand on the same tile'],
-  ['2.lobby-central', 'WARN', 'EXIT          lobby within a third of the slab of its middle'],
+  ['2.lobby-bottom', 'WARN', 'EXIT          lobby within a third of the slab of the bottom middle'],
   ['3.spawn-open', 'FAIL', 'SPAWN         spawn tile is open floor'],
   ['3.spawn-inroom', 'FAIL', 'SPAWN         spawn point lies inside its spawnRoom'],
   ['4.border', 'FAIL', 'NO LEAKS      no open tile on the grid border'],
@@ -287,14 +287,15 @@ function validate(seed, floorNumber) {
   // moment you arrive.
   const gap = Math.hypot(L.exit.x - L.spawn.x, L.exit.z - L.spawn.z);
   if (gap < CAR_W * TILE) check('2.exit-apart').fail(id, `cars only ${fmt(gap)} m apart`);
-  // ...and it is in the MIDDLE of the building, which is the reason it is one
-  // room rather than two. A third of the slab is loose on purpose: the lobby is
-  // whichever qualifying ROOM is nearest the middle, and on a floor whose middle
-  // is corridor or a canteen the nearest one can be a fair way off.
-  const off = Math.hypot(L.spawnRoom.cx - W / 2, L.spawnRoom.cy - H / 2);
-  stats.lobbyOff.push(off / Math.hypot(W / 2, H / 2));
+  // ...and it is at the BOTTOM MIDDLE of the map, which is the middle of the
+  // far-z edge: the minimap draws world +z down the screen, so that is the bottom
+  // of the map the player is reading. A third of the slab is loose on purpose:
+  // the lobby is whichever qualifying ROOM is nearest that point, and on a floor
+  // whose bottom edge is all corridor the nearest one can be a fair way off.
+  const off = Math.hypot(L.spawnRoom.cx - W / 2, L.spawnRoom.cy - (H - PAD));
+  stats.lobbyOff.push(off / Math.hypot(W / 2, H));
   if (off > Math.hypot(W, H) / 3) {
-    check('2.lobby-central').fail(id, `lobby ${fmt(off * TILE)} m off the middle of the slab`);
+    check('2.lobby-bottom').fail(id, `lobby ${fmt(off * TILE)} m off the bottom middle`);
   }
 
   // ---- 4. leaks -----------------------------------------------------------
@@ -855,7 +856,7 @@ console.log(`doors / room        min ${lo(stats.doorsPerRoom)}  median ${median(
 if (stats.exitDist.length) {
   console.log(`car to car walk     min ${fmt(lo(stats.exitDist))} m  median ${fmt(median(stats.exitDist))} m  max ${fmt(hi(stats.exitDist))} m`);
   const share = (v) => `${fmt(v * 100)}%`;
-  console.log(`lobby off centre    min ${share(lo(stats.lobbyOff))}  median ${share(median(stats.lobbyOff))}  max ${share(hi(stats.lobbyOff))}  (of the half-diagonal)`);
+  console.log(`lobby off bottom mid  min ${share(lo(stats.lobbyOff))}  median ${share(median(stats.lobbyOff))}  max ${share(hi(stats.lobbyOff))}  (of the diagonal to it)`);
 }
 console.log(`corridor spine      vertical count ${hist(stats.vCorr)}   horizontal count ${hist(stats.hCorr)}`);
 console.log(`room depth from corridor  ${hist(stats.depth)}   (${stats.noCorridorRooms}/${stats.totalRooms} = ${fmt(100 * stats.noCorridorRooms / stats.totalRooms)}% have no corridor door)`);

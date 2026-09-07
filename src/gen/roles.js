@@ -6,6 +6,7 @@
 // questions and are tuned against different things: a change here moves what is
 // IN a building without moving one wall of it.
 
+import { PAD } from './carve.js';
 import { doorsOnRoom, opensOntoCorridor } from './locks.js';
 import { fitsLifts } from './lifts.js';
 
@@ -91,11 +92,22 @@ export function pickLobbyRoom(rooms, tiles, W, H, doors, cafeteria) {
     r !== cafeteria && r.areaM2 <= LOBBY_MAX && !fitsGenerator(r, doors));
 
   const pool = spare.length ? spare : (onHall.length ? onHall : (canHold.length ? canHold : rooms));
-  // Measured to the middle of the SLAB rather than to the middle of the corridor
-  // spine, because the spine is a handful of bands and the middle of the
-  // building is not necessarily on one of them. The nearest qualifying room is
-  // as central as the floorplan allows, which is the claim being made.
-  const mx = W / 2, my = H / 2;
+  // THE BOTTOM MIDDLE OF THE MAP, which is the middle of the far-z edge: the
+  // minimap draws world +z down the screen (`_my` in minimap.js), so the bottom
+  // of the map a player is reading is the high-z side of the slab. Measured to
+  // the slab's own edge rather than to the corridor spine, because the spine is
+  // a handful of bands and the middle of the building need not be on one.
+  //
+  // It used to be the middle of the slab, and the difference is what a floor
+  // IS: from the centre, clearing one is a loop out and back with every wing the
+  // same walk away; from the bottom edge it is a push up the floor and a walk
+  // home. The lifts are where the plan says they are either way — this is the
+  // only line that decides it.
+  //
+  // `PAD` off the edge rather than the edge itself, because the outermost tiles
+  // are the exterior shell and no room's centre can be in them; the target is
+  // the nearest a room could actually get.
+  const mx = W / 2, my = H - PAD;
   const off = (r) => (r.cx - mx) ** 2 + (r.cy - my) ** 2;
   return pool.reduce((best, r) => (off(r) < off(best) ? r : best));
 }
