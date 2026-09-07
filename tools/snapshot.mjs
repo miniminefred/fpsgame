@@ -257,9 +257,39 @@ function seedRandom(seed) {
  * It exists so that no case pays a one-time cost out of its own seed. It is not
  * an optimisation: it is the difference between a snapshot and a coin toss.
  */
-function warmAssets(THREE, buildLevel) {
+async function warmAssets(THREE, buildLevel) {
   buildLevel(new THREE.Scene(), generateLayout(1, 1));
+  // ...and the four things a body can be holding, which a floor does not build:
+  // a rig only makes one the first time somebody is handed a drink, so the cost
+  // of its geometry and its materials landed on whichever case first sent
+  // somebody to a vending machine. This line is what the comment above has
+  // always claimed and the code did not do.
+  const { buildCan, buildCrate, buildPapers, buildTray } = await import('../src/rigs.js');
+  buildCan(0); buildCrate(0); buildPapers(); buildTray();
 }
+
+/**
+ * WHY THAT WARMING MATTERS MORE THAN IT LOOKS, and it is the sharpest edge in
+ * this file: **constructing any three object draws four `Math.random()` calls.**
+ *
+ * `generateUUID` is what does it, and every BufferGeometry, every Material and
+ * every Mesh gets one — measured, 4 draws each. So inside the seeded window the
+ * stream is being spent by the SHAPE of what is built as much as by the
+ * decisions the game is making, and a prop that comes to 13 meshes instead of 2
+ * eats 44 draws that everything after it used to have.
+ *
+ * The practical consequence: a change to how many meshes something is made of
+ * re-rolls this layer's chore assignments, which reads exactly like a
+ * behavioural regression and is not one. Take the diff, read it — the bodies
+ * should be doing the same KINDS of things in the same numbers — and accept it
+ * with `--write`.
+ *
+ * It cannot be patched away from out here. Three's classes call `generateUUID`
+ * through a direct import binding rather than through `THREE.MathUtils`, so
+ * there is nothing a harness can stub. What warming buys is the ONE-TIME part:
+ * the caches are paid for before the seed goes in, so no single case carries the
+ * cost of being the first to hand somebody a crate.
+ */
 
 function describeRoster(enemies) {
   const out = [];
@@ -523,7 +553,7 @@ const LAYERS = {
     // Every lazily-cached texture and material in the game, painted now with the
     // REAL `Math.random`, so no case pays for them out of its seed. See
     // `seedRandom` for what this is protecting against and how it presented.
-    warmAssets(THREE, buildLevel);
+    await warmAssets(THREE, buildLevel);
 
     return sweep('roster', 6, [1, 5, 9], (seed, floor) => {
       const layout = generateLayout(seed, floor);
@@ -568,7 +598,7 @@ const LAYERS = {
     const { NavGrid } = await import('../src/nav.js');
     const { Destruction } = await import('../src/destruction.js');
 
-    warmAssets(THREE, buildLevel);
+    await warmAssets(THREE, buildLevel);
 
     // The plant-room cases first, then ordinary floors: a floor with a wreck on
     // it exercises everything a floor without one does and a thousand lines
