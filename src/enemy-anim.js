@@ -1,4 +1,5 @@
 import { clamp, lerp, smoothTo } from './util.js';
+import { TRUCK_GRIP } from './rigs.js';
 
 // How a body moves while it is working, and how it falls over when it is not.
 //
@@ -99,6 +100,11 @@ const BOX_FALLBACK = [0, 1.02, -0.34];
 // a tray is the one thing in the building held in two hands, which is most of
 // what makes somebody carrying one read as carrying one from across a room.
 const TRAY_ARMS = -1.25;
+// ...and where they are for somebody wheeling a sack truck: a straight arm swung
+// forward and down onto the handles. It is the angle that puts the hand exactly
+// on `TRUCK_GRIP` in rigs.js, which is where the handles are because it is what
+// an elbowless arm can reach — see `truckOf` for the whole of that argument.
+const TRUCK_ARMS = -1.16;
 const TRAY_CARRY = [0, 1.14, -0.44];
 // ...and put down in front of them once they are sitting at it. The group is
 // dropped by DESK_DROP while seated, so this is the table's own height plus it.
@@ -379,7 +385,20 @@ export function animate(e, dt, audio) {
   const aiming = e.state === 'fight';
   if (e.swing > 0) e.swing -= dt;
 
-  if (e.tray || e.carry) {
+  if (e.truck) {
+    // WHEELING SOMETHING, and it wins over all three branches below for the
+    // reason carrying does: both hands are on the handles, so there is nothing
+    // for a sidearm or a swing to be about. Unlike a crate it is true whether or
+    // not there is a load on it — he arrives with the truck empty and leaves with
+    // a box on it, and the posture is the same either way.
+    const k = smoothTo(10, dt);
+    e.armL.rotation.x = lerp(e.armL.rotation.x, TRUCK_ARMS, k);
+    e.armR.rotation.x = lerp(e.armR.rotation.x, TRUCK_ARMS, k);
+    // Bobs with the stride like everything else held, and a shade harder than a
+    // tray: a loaded truck is heavy and it is running on two small wheels.
+    e.truck.position.y = TRUCK_GRIP[1] + Math.sin(e.walkPhase) * 0.018;
+    if (e.gun) e.gun.position.set(0.3, 1.1, -0.3);
+  } else if (e.tray || e.carry) {
     // Carrying something in both hands, and it wins over both branches below
     // rather than sitting beside them: a body on its break has put the sidearm
     // away and stopped swinging whatever was on its desk (see _lunch in

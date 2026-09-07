@@ -109,6 +109,111 @@ const BLUNT = {
   torch: { shaft: [0.05, 0.05, 0.26], head: [0.06, 0.06, 0.09], headMat: 'accent', reach: 0.34 },
 };
 
+// The sack truck, in the two numbers its own geometry is built from plus the
+// crate it carries. `CRATE_HALF_H` is half the height of `buildCrate`'s body
+// box, and it is read from here rather than typed twice — a box that sinks into
+// the plate it is standing on is the kind of thing nobody notices for months.
+const TRUCK_W = 0.42;         // between the uprights
+const TRUCK_PLATE = 0.30;     // how far the toe plate projects
+const TRUCK_WHEEL_R = 0.095;
+const TRUCK_BAR = 0.05;       // how thick the frame is
+const CRATE_HALF_H = 0.13;
+
+/**
+ * A sack truck, and the numbers in it are a person's arm rather than a taste.
+ *
+ * AN ARM HERE IS ONE BOX WITH NO ELBOW (see `armAt` in enemy-anim.js, which
+ * documents what that costs everywhere else), so a hand cannot be brought to a
+ * handle at chest height with the truck upright beside the body — the way
+ * anybody actually wheels one. What a straight arm swung forward CAN reach is a
+ * grip about 0.93 m up and half a metre out, so that is where the handles are
+ * and the frame leans forward from them onto its wheels. It comes out as
+ * somebody wheeling it ahead of themselves at arm's length, which is the same
+ * compromise the mop makes and reads for the same reason: the posture is wrong
+ * by a bent elbow and right about everything else.
+ *
+ * `TRUCK_LEAN` is then the one free number, and it is fixed by the wheels having
+ * to be ON THE FLOOR: the grip is 0.93 m up and the frame is `TRUCK_LEN` long,
+ * so the lean is the angle that puts the axle at ground level. Written as that
+ * arithmetic rather than as the 0.26 it comes to, because moving the grip or the
+ * frame otherwise leaves a truck hovering or ploughing.
+ *
+ * It is authored UPRIGHT — grips at the origin, frame running down -Y, toe plate
+ * and wheels at the bottom — and the lean is one rotation on the group. Four
+ * cases written out by hand is the mistake `wall` and `edgeProp` both have
+ * monuments to, and this is the same shape of thing one object smaller.
+ *
+ * The LOAD POINT is a node in the geometry rather than a number in the animator,
+ * which is the `joints` lesson again: where a box sits is a fact about the truck,
+ * and the one place that knows it is the file that built the toe plate. A crate
+ * is parented to it (see `giveCrate` in enemies.js) and never positioned, so the
+ * plate and the box cannot drift apart.
+ */
+// Where a straight arm swung forward and down ends, which is where the handles
+// have to be. Exported because the animator bobs the truck with the stride and
+// so has to know the height it is bobbing about — the `gunRest` lesson, one
+// object along: a rig is the file that knows where a hand is.
+export const TRUCK_GRIP = [0, 0.93, -0.50];
+const TRUCK_LEN = 0.86;                // grips to axle
+const TRUCK_LEAN = Math.acos(
+  Math.min(1, (TRUCK_GRIP[1] - TRUCK_WHEEL_R) / TRUCK_LEN));
+
+function truckOf(mats, ownGeo) {
+  const truck = new THREE.Group();
+  const add = (geo, mat, x, y, z, rot = null) => {
+    ownGeo.push(geo);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, y, z);
+    if (rot) mesh.rotation.set(rot[0], rot[1], rot[2]);
+    mesh.castShadow = true;
+    truck.add(mesh);
+    return mesh;
+  };
+
+  const half = TRUCK_W / 2;
+  // The two uprights, and a brace across them half way down. The brace is what
+  // stops the frame reading as two loose bars at any distance.
+  for (const side of [-1, 1]) {
+    add(new THREE.BoxGeometry(TRUCK_BAR, TRUCK_LEN, TRUCK_BAR), mats.truck,
+      side * half, -TRUCK_LEN / 2, 0);
+  }
+  // TWO braces rather than one, and the frame is a hand's width thick. Both are
+  // about how it reads at three metres, which is the only range anybody sees it
+  // from: at 3.5 cm bars and one brace it came out as a thin red trolley — the
+  // silhouette of a sack truck is a LADDER, and one rung does not make one.
+  for (const t of [0.38, 0.72]) {
+    add(new THREE.BoxGeometry(TRUCK_W, 0.035, 0.035), mats.truck, 0, -TRUCK_LEN * t, 0);
+  }
+  // The handles: a crossbar with a dark grip either end, which is the whole of
+  // what says "hold this" on something otherwise made of one colour.
+  add(new THREE.BoxGeometry(TRUCK_W + 0.14, TRUCK_BAR, TRUCK_BAR), mats.truck, 0, -0.025, 0);
+  for (const side of [-1, 1]) {
+    add(new THREE.BoxGeometry(0.13, 0.055, 0.055), mats.truckDark,
+      side * (half + 0.075), -0.025, 0);
+  }
+  // The toe plate, projecting forward at the foot of the frame. A crate sits on
+  // this, and `load` below is where.
+  const plateY = -TRUCK_LEN + 0.04;
+  add(new THREE.BoxGeometry(TRUCK_W + 0.08, 0.026, TRUCK_PLATE), mats.truckDark,
+    0, plateY, -TRUCK_PLATE / 2);
+  // ...and the wheels, on an axle at the very bottom. Turned onto X, which is the
+  // one rotation in here that is not the lean: a cylinder is built about +Y.
+  for (const side of [-1, 1]) {
+    add(new THREE.CylinderGeometry(TRUCK_WHEEL_R, TRUCK_WHEEL_R, 0.06, 10),
+      mats.truckDark, side * (half + 0.04), -TRUCK_LEN, 0.01, [0, 0, Math.PI / 2]);
+  }
+
+  // Where a box rides: on the plate, half a crate up from it. `+ 0.011` clears
+  // the plate's own half thickness so the box sits ON it rather than in it.
+  const load = new THREE.Object3D();
+  load.position.set(0, plateY + 0.011 + CRATE_HALF_H, -TRUCK_PLATE * 0.45);
+  truck.add(load);
+
+  truck.position.set(TRUCK_GRIP[0], TRUCK_GRIP[1], TRUCK_GRIP[2]);
+  truck.rotation.x = TRUCK_LEAN;
+  return { truck, load };
+}
+
 // The palette a swung weapon is made of, and the reason it is a function: only
 // the melee half of the roster ever pays for these six materials, and both rigs
 // that swing anything need the same six. A machine's clamp and a man's mop are
@@ -121,6 +226,22 @@ function bluntMats() {
     screen: new THREE.MeshStandardMaterial({ color: 0x1d2833, roughness: 0.35 }),
     paper: new THREE.MeshStandardMaterial({ color: 0xe8e4d8, roughness: 0.85 }),
     mophead: new THREE.MeshStandardMaterial({ color: 0xe8c33a, roughness: 1 }),
+  };
+}
+
+// ...and the sack truck's two, a function for `bluntMats`' reason: one type on
+// the whole roster carries one, so nothing else should pay for the materials.
+//
+// The red is a shade deeper than any of the six suits a contractor turns up in
+// (`CONTRACTOR_SUITS`), which matters more than it sounds: he is regularly
+// wearing crimson, and a truck painted the same red as the man pushing it is one
+// silhouette rather than two. The grips, the plate and the wheels are dark for
+// the same reason the mop's head is yellow — a thing made of one colour reads as
+// a shape, and one made of two reads as a machine.
+function truckMats() {
+  return {
+    truck: new THREE.MeshStandardMaterial({ color: 0xa8241c, roughness: 0.5, metalness: 0.2 }),
+    truckDark: new THREE.MeshStandardMaterial({ color: 0x2a2d31, roughness: 0.75 }),
   };
 }
 
@@ -272,6 +393,7 @@ function buildHuman(type, rng) {
   // they pay for it. `blunt` rather than `melee`, because those are two facts:
   // see the note where the weapon itself is built, below.
   if (type.blunt) Object.assign(mats, bluntMats());
+  if (type.truck) Object.assign(mats, truckMats());
 
   const ownGeo = [];
   const mesh = part(group);
@@ -357,9 +479,22 @@ function buildHuman(type, rng) {
     group.add(blunt);
   }
 
+  // ...and the sack truck, which is `blunt`'s shape exactly — a thing carried in
+  // the hands, declared by the type rather than derived from what the type DOES
+  // — and is deliberately not on that table. A blunt is a shaft and a business
+  // end swung at somebody; this is a frame with wheels and a load on it, and
+  // giving `BLUNT` a third field for the one entry that has geometry of its own
+  // would make every other weapon on the roster carry a null.
+  const wheeled = type.truck ? truckOf(mats, ownGeo) : null;
+  if (wheeled) group.add(wheeled.truck);
+
   return {
     rig: 'human', group, mats, ownGeo, torso, head,
     armL, armR, legL, legR, gun, blunt,
+    // The truck, and the node on it a box rides. See `truckOf`: where the load
+    // sits is a fact about the toe plate, so it is a place in the geometry rather
+    // than a number the animator keeps.
+    truck: wheeled?.truck ?? null, load: wheeled?.load ?? null,
     // Only the human rig has them. Everything that reads them tests for them
     // first, so a machine sent to a desk simply keeps standing at it — which is
     // the honest picture of a Clerk Unit on wheels anyway.
@@ -385,7 +520,11 @@ function buildHuman(type, rng) {
     // somebody's hands" is chest height on a person and a flat deck two thirds
     // of a metre off the floor on a porter. `boxArms` is whether the arms come
     // up to hold it at all.
-    boxAt: [0, 1.02, -0.34], boxArms: true,
+    // ...and where a carried BOX rides, which is the same lesson one object
+    // further along. Null on anybody with a truck, because then the box is not
+    // carried at a height at all — it is parented to the plate it is standing on
+    // (`load` above), which is what makes the two impossible to drift apart.
+    boxAt: wheeled ? null : [0, 1.02, -0.34], boxArms: !wheeled,
     // What goes white when this one is shot. It has to be whatever they are
     // actually WEARING, not the one material that used to be everything: a
     // janitor's suit colour is a strip of collar, and flashing only that reads
@@ -405,7 +544,7 @@ function buildHuman(type, rng) {
         joint: { to: 0, at: [0, 1.48, 0], angle: 0.65, twist: 0.5 } },
       { parts: [armL], size: [0.14, 0.54, 0.14], at: [-0.32, 1.15, 0], mass: 4,
         joint: { to: 0, at: [-0.27, 1.41, 0], angle: 1.4, twist: 0.8 } },
-      { parts: [armR, gun, blunt], size: [0.14, 0.54, 0.14], at: [0.32, 1.15, 0], mass: 4,
+      { parts: [armR, gun, blunt, wheeled?.truck], size: [0.14, 0.54, 0.14], at: [0.32, 1.15, 0], mass: 4,
         joint: { to: 0, at: [0.27, 1.41, 0], angle: 1.4, twist: 0.8 } },
       { parts: [legL], size: [0.17, 0.86, 0.19], at: [-0.12, 0.43, 0], mass: 11,
         joint: { to: 0, at: [-0.12, 0.85, 0], angle: 0.8, twist: 0.25 } },

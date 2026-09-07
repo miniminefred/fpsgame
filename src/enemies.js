@@ -1900,6 +1900,9 @@ export class Enemies {
       // Where this body carries a box and whether its arms come up to hold it.
       // Same argument as the two above: a porter carries one on a deck.
       boxAt: rig.boxAt ?? null, boxArms: rig.boxArms !== false,
+      // The sack truck, and the node on it a box rides. Both null on everybody
+      // but the one type that brings one — see `truckOf` in rigs.js.
+      truck: rig.truck ?? null, load: rig.load ?? null,
       // The crate, if this one is on a parcel run, and whether they are up to
       // the elbows in a machine. See jobs.js.
       carry: null, job: null, jobRole: null, working: false,
@@ -3274,12 +3277,17 @@ export class Enemies {
   giveCrate(e) {
     if (e.carry) return;
     e.carry = buildCrate();
-    e.group.add(e.carry);
+    // Onto the truck's toe plate if this one brought a truck, and into the body's
+    // own frame otherwise. Parenting rather than positioning is the whole point:
+    // the plate's height is arithmetic in rigs.js and a box placed at a number
+    // the animator keeps is that arithmetic written down twice. `animate` leaves
+    // a box on a plate exactly where the plate put it.
+    (e.load ?? e.group).add(e.carry);
   }
 
   takeCrate(e) {
     if (!e.carry) return;
-    e.group.remove(e.carry);
+    (e.load ?? e.group).remove(e.carry);
     e.carry = null;
   }
 

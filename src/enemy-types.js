@@ -360,6 +360,12 @@ export const TYPES = {
     // are `trade` in chores.js, so they are off the general list too — the two
     // halves of "only he does this, and he does only this".
     works: ['takeCrate', 'leaveFloor'],
+    // ...and he brought a sack truck, which is what he wheels the crate out on.
+    // `truck` is the declaration and nothing else reads it — the same split
+    // `blunt` and `melee` are two fields for: what somebody CARRIES and what
+    // they do with it are two facts, and there is nothing he does with this one
+    // but push it. See `truckOf` in rigs.js.
+    truck: true,
     suit: 0xc4142c, shirt: 0xf1f3f5, visor: 0xbdf03c, unlockFloor: 1, weight: 0,
   },
   worker: {
