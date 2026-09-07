@@ -68,6 +68,22 @@ export const UPPER_CEIL = UPPER_Y + CEIL_H;
 // the thickness of the building's own floor plate, whose underside is a basement's
 // ceiling — so the basement's headroom is CEIL_H too.
 export const PLATE_T = LEVEL_Y - CEIL_H;
+// ...and how far a STOREY's deck holds its underside clear of that.
+//
+// The plate above is exactly the depth between a ceiling and the floor standing
+// on it, which is the right thickness and the wrong place to put a face: an
+// attic's deck drawn that thick has its underside at exactly CEIL_H, where the
+// room below has already drawn its suspended ceiling — two surfaces at the same
+// height over the same footprint, in the same material, which is z-fighting and
+// reads as a roof coming apart. Measured at 417 coplanar slabs over 67 attics.
+//
+// Five centimetres is out of sight either way: from below you see the ceiling
+// tiles, from above you stand on the deck, and nothing can be in between. The
+// alternative was to stop drawing the ceiling under an attic and let the deck's
+// underside be it, which is worse — the room below would lose its tiles and its
+// light fittings and gain a structural soffit, for a surface nobody is meant to
+// notice.
+const DECK_CLEAR = 0.05;
 const WALL_T = 0.14;
 
 /** The floor a plan's level sits at: an attic above, a basement below. */
@@ -277,10 +293,24 @@ export function stairBoxes(layout, plan) {
   // the last step of all is the basement's slab — so there is one fewer of them, and
   // the lowest is exactly one riser above the floor.
   const steps = down ? TREADS - 1 : TREADS;
+  // THE LAST TREAD REACHES THE END OF THE WELL, and that is not a flourish: the
+  // stairwell is a whole number of tiles (`FLIGHT_TILES` rounds the run UP) while
+  // the run itself is TREADS * GOING, so 4.8 m of flight sits in 5.0 m of well
+  // and the deck is punched over all of it. What was left was a 0.2 m slot along
+  // the top of the flight — the stairs not quite meeting the floor they arrive
+  // at, which is exactly what it looks like from the bottom of them.
+  //
+  // Extending the tread rather than shrinking the hole: the hole is what a body
+  // climbing comes up through and the mezzanine's own note is about how little
+  // room there is in it (`NOTCH_PAD`), so making it smaller is the one change
+  // here that could put somebody's head into a soffit. The extra strip is at the
+  // height of the floor above and is walkable, and it is inside the same tile
+  // the top tread already owns, so nav's ramp is unchanged.
+  const far = plan.up > 0 ? a1 : a0;
   for (let i = 0; i < steps; i++) {
     const top = down ? -(i + 1) * RISER : (i + 1) * RISER;
-    out.push(acrossBox('tread',
-      foot + plan.up * i * GOING, foot + plan.up * (i + 1) * GOING, down ? y : 0, top));
+    const to = i === steps - 1 ? far : foot + plan.up * (i + 1) * GOING;
+    out.push(acrossBox('tread', foot + plan.up * i * GOING, to, down ? y : 0, top));
   }
 
   // The level: its floor over the room's whole footprint, a wall ring standing over
@@ -296,7 +326,7 @@ export function stairBoxes(layout, plan) {
   // basement flight was a step off the bottom tread into nothing.
   const floorRects = down ? [rectOf(f)] : punchRects([rectOf(f)], well);
   for (const r of floorRects) {
-    out.push(box('deck', r.x0, r.z0, r.x1, r.z1, y - PLATE_T, y));
+    out.push(box('deck', r.x0, r.z0, r.x1, r.z1, y - PLATE_T + DECK_CLEAR, y));
   }
   out.push(box('wall', f.minX - WALL_T, f.minZ - WALL_T, f.minX, f.maxZ + WALL_T, y, wallTop));
   out.push(box('wall', f.maxX, f.minZ - WALL_T, f.maxX + WALL_T, f.maxZ + WALL_T, y, wallTop));
