@@ -44,7 +44,7 @@ import { TYPES } from './enemy-types.js';
  *
  * HOST ONLY, like the lunch cycle and for its reason: a run is a runtime
  * decision, so two browsers deciding it would be two different runs. The crate
- * crosses as one bit in the snapshot's sixth slot (`SNAP_BOX` in enemies.js) and
+ * crosses as one bit in the snapshot's sixth slot (`snap` on `HELD` in held.js) and
  * the bodies cross as the positions they already crossed as, so a joiner watches
  * the same three machines do the same errand without running a line of this.
  */

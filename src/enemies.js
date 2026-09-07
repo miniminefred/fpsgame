@@ -3,7 +3,8 @@ import { BODY_RADIUS as RADIUS } from './nav.js';
 import {
   centreX, centreZ, CORRIDOR, FACING, FIRST_CONTACT_GAP, STAFF_ONLY, worldX, worldZ,
 } from './gen/layout.js';
-import { buildRig, buildTray, buildCrate, buildCan, buildPapers } from './rigs.js';
+import { buildRig } from './rigs.js';
+import { applyHeld, give, HELD, packHeld, take } from './held.js';
 import {
   TYPES, BYSTANDERS, CONTRACTOR_SUITS, isMachine, pickType, pickTheme,
 } from './enemy-types.js';
@@ -44,31 +45,7 @@ const SNAP_STATES = ['idle', 'alert', 'chase', 'fight', 'wander'];
 // and last beat of a lunch without one.
 const SNAP_SEAT = 8;
 const SNAP_BREAK = 16;
-const SNAP_TRAY = 32;
-// How long somebody keeps the drink they just bought, and it is the whole of the
-// can's lifetime — there is no `_lunchEnd` for a can and nothing else would ever
-// take it off them. Long enough to walk it back to wherever they were going,
-// which is the point of having bought it; not so long that a floor left alone
-// for five minutes is a floor where everybody is holding one.
-const CAN_TIME = [26, 52];
 
-// A parcel-run crate, for the tray's reason exactly: a body carrying a box is
-// doing something visible that it is not doing over there. Unlike the break
-// there is no visor in it — everybody on a run is neutral already and wearing
-// its own colour — so this is the box and nothing else. See jobs.js.
-const SNAP_BOX = 64;
-// ...and the can somebody bought out of the vending machine, for the crate's
-// reason: it is a visible thing in a body's hand that a joiner has no way to
-// derive. The chore that hands it out is host-only and crosses nothing (see
-// chores.js), so without this bit one browser has a man walking a corridor with
-// a drink and the other has him walking it empty-handed.
-const SNAP_CAN = 128;
-// ...and the sheaf of paper a routine carries from the printer to the filing
-// rack, for the can's reason exactly. It is the one thing on a body that says
-// the errand is halfway through rather than starting: a man walking a corridor
-// with a bundle of paper has been to the printer, and a joiner that cannot see
-// it is watching a different office.
-const SNAP_PAPERS = 256;
 // ...and whether this body has left the building, which is the one flag here
 // that is not about what somebody is holding.
 //
@@ -3274,22 +3251,30 @@ export class Enemies {
    * Geometry and materials are shared and module-level (see buildCrate), so
    * there is nothing here to dispose either.
    */
-  giveCrate(e) {
-    if (e.carry) return;
-    e.carry = buildCrate();
-    // Onto the truck's toe plate if this one brought a truck, and into the body's
-    // own frame otherwise. Parenting rather than positioning is the whole point:
-    // the plate's height is arithmetic in rigs.js and a box placed at a number
-    // the animator keeps is that arithmetic written down twice. `animate` leaves
-    // a box on a plate exactly where the plate put it.
-    (e.load ?? e.group).add(e.carry);
-  }
+  /**
+   * What a body is carrying, and it is one table now — see `HELD` in held.js.
+   *
+   * These four pairs stay as named methods rather than becoming `give(e, 'can')`
+   * at every call site, because there are a dozen of those across chores.js,
+   * jobs.js and this file and `enemies.giveCrate(e)` says what it means. What
+   * moved out is the four near-identical BODIES, the wire bits and the four
+   * branches of `applySnapshot` that went with them.
+   */
+  giveCrate(e) { give(e, 'crate', 0); }
 
-  takeCrate(e) {
-    if (!e.carry) return;
-    (e.load ?? e.group).remove(e.carry);
-    e.carry = null;
-  }
+  takeCrate(e) { take(e, 'crate'); }
+
+  giveCan(e, key = 0) { give(e, 'can', key); }
+
+  takeCan(e) { take(e, 'can'); }
+
+  givePapers(e, key = 0) { give(e, 'papers', key); }
+
+  takePapers(e) { take(e, 'papers'); }
+
+  _giveTray(e) { give(e, 'tray', 0); }
+
+  _takeTray(e) { take(e, 'tray'); }
 
   /**
    * Up to the elbows in something overhead, or not — the pose `animateFixing`
@@ -3322,135 +3307,6 @@ export class Enemies {
     if (!e?.chore || e.chore.pose === (pose ?? null)) return;
     e.chore.pose = pose ?? null;
     if (!pose && e.alive) stand(e);
-  }
-
-  /**
-   * The drink out of the machine, into the hand that pressed the button for it.
-   *
-   * PARENTED TO THE ARM, not to the body, and that is the whole of why there is
-   * no pose to go with it. A tray and a crate are carried in both hands and so
-   * have to fight the walk cycle for the arms (see `animate`); a can hangs at
-   * somebody's side in one hand, which is exactly what an arm already does. So
-   * the can is a child of the arm mesh and inherits its swing, its hinge and the
-   * body's own scale for free, and nothing in enemy-anim.js has to learn it
-   * exists.
-   *
-   * The hand is HASHED off where the machine is rather than rolled, for the
-   * reason the eating hand is: it has to be stable for the run and identical in
-   * both browsers of a co-op session, and the tint has to be too — so both come
-   * off the same integer, and the wire carries one bit rather than a colour and
-   * a side.
-   *
-   * `armHalf` off the rig's own joints, because a hand is not at the same place
-   * on a Porter Unit as on a person and this file has paid for that assumption
-   * three times (see `gunRest`, `boxAt`, and `joints` in rigs.js).
-   */
-  giveCan(e, key = 0) {
-    if (e.can) return;
-    // HELD, rather than hanging off the bottom of the hand. `drop` is negative,
-    // so the can's middle sits 2.6 cm ABOVE the point the hand is at and the
-    // fist closes round its lower third — which is how a can is actually
-    // carried, and the whole difference between somebody holding a drink and
-    // somebody with a drink stuck to their wrist. The 3 cm the default gives a
-    // bundle of paper is right for paper: that is tucked under an arm, and this
-    // stands up out of it.
-    //
-    // ...and further FORWARD, because it is now 9.4 cm across against an arm
-    // 14 cm deep. At the paper's 3.5 cm the can is more inside the forearm than
-    // outside it; at 7.2 the back of it is still buried in the hand, which is
-    // what makes it read as gripped rather than as balanced on top of a fist,
-    // and the rest of it stands proud where it can be seen.
-    const held = this._inHand(e, buildCan(key), key, -0.026, 0.072);
-    if (!held) return;
-    e.can = held.mesh;
-    e.canArm = held.arm;
-    e.canTimer = CAN_TIME[0] + Math.random() * (CAN_TIME[1] - CAN_TIME[0]);
-  }
-
-  /**
-   * Puts something in one of a body's hands, and hands back which one.
-   *
-   * PARENTED TO THE ARM, not to the body, and that is the whole reason neither
-   * of the two things that use this needs a pose. A tray and a crate are carried
-   * in both hands and so have to fight the walk cycle for the arms (see
-   * `animate`); a can and a bundle of paper hang at somebody's side in one hand,
-   * which is exactly what an arm already does. So it is a child of the arm mesh
-   * and inherits its swing, its hinge and the body's own scale for free, and
-   * nothing in enemy-anim.js has to learn either exists.
-   *
-   * The hand is HASHED off the key rather than rolled, for the reason the eating
-   * hand is: it has to be stable for the run and identical in both browsers of a
-   * co-op session, and there is a wire bit for WHETHER the thing is held and
-   * nothing for which side it is on.
-   *
-   * `armHalf` comes off the rig's own joints, because a hand is not in the same
-   * place on a Porter Unit as on a person and this file has paid for that
-   * assumption three times already (see `gunRest`, `boxAt`, and `joints` in
-   * rigs.js).
-   */
-  _inHand(e, mesh, key = 0, drop = 0.03, forward = 0.035) {
-    const hash = Math.abs(Math.round(key)) || 1;
-    const arm = (hash & 1) ? e.armR : e.armL;
-    if (!arm) return null;
-    const half = e.joints?.armHalf ?? 0.27;
-    mesh.position.set(0, -half - drop, -forward);
-    arm.add(mesh);
-    return { mesh, arm };
-  }
-
-  /**
-   * The paperwork, out of the printer and into a hand.
-   *
-   * Unlike the can this has no clock of its own: it is carried for exactly as
-   * long as the errand that produced it, and `chores.js` takes it back at the
-   * filing rack. A bundle left on a body after the job ended would be somebody
-   * walking the rest of the floor holding a report they have already filed.
-   */
-  givePapers(e, key = 0) {
-    if (e.papers) return;
-    // Held a little higher than a can and flat rather than upright: this is a
-    // stack of paper tucked against the hip, not something with a lid on it.
-    const held = this._inHand(e, buildPapers(), key, -0.02);
-    if (!held) return;
-    e.papers = held.mesh;
-    e.papersArm = held.arm;
-  }
-
-  takePapers(e) {
-    if (!e.papers) return;
-    (e.papersArm ?? e.group)?.remove(e.papers);
-    e.papers = null;
-    e.papersArm = null;
-  }
-
-  /**
-   * Finished with. Geometry and materials are shared and module-level (see
-   * `buildCan`), so dropping the mesh is the whole of it.
-   *
-   * Removed from whatever it was parented to rather than from the group, because
-   * it never was on the group — a can that outlived its arm's reference would be
-   * a drink floating beside a corpse.
-   */
-  takeCan(e) {
-    if (!e.can) return;
-    (e.canArm ?? e.group)?.remove(e.can);
-    e.can = null;
-    e.canArm = null;
-    e.canTimer = 0;
-  }
-
-  _giveTray(e) {
-    if (e.tray) return;
-    e.tray = buildTray();
-    e.group.add(e.tray);
-  }
-
-  // Geometry and materials are shared and module-level (see buildTray), so
-  // there is nothing here to dispose — dropping the meshes is the whole of it.
-  _takeTray(e) {
-    if (!e.tray) return;
-    e.group.remove(e.tray);
-    e.tray = null;
   }
 
   // A chair back into the pool it came out of. The room is the canteen's,
@@ -3940,10 +3796,7 @@ export class Enemies {
       out[written++] = SNAP_STATES.indexOf(e.state)
         + (e.seat ? SNAP_SEAT : 0)
         + (e.break ? SNAP_BREAK : 0)
-        + (e.tray ? SNAP_TRAY : 0)
-        + (e.carry ? SNAP_BOX : 0)
-        + (e.can ? SNAP_CAN : 0)
-        + (e.papers ? SNAP_PAPERS : 0)
+        + packHeld(e)
         + (e.gone ? SNAP_GONE : 0);
     }
 
@@ -3984,30 +3837,15 @@ export class Enemies {
         e.break = onBreak ? { stage: 'net', at: null, seat: null, timer: 0 } : null;
         this._lunchLook(e, onBreak);
       }
-      if (!!(packed & SNAP_TRAY) !== !!e.tray) {
-        if (packed & SNAP_TRAY) this._giveTray(e); else this._takeTray(e);
-      }
-      // The crate, kept as the mesh alone and no run behind it. A joiner runs no
-      // part of a parcel run for the same reason it runs no part of a lunch: it
-      // only has to draw the body correctly, and half a stage machine is how it
-      // would end up trying to do more than that.
-      if (!!(packed & SNAP_BOX) !== !!e.carry) {
-        if (packed & SNAP_BOX) this.giveCrate(e); else this.takeCrate(e);
-      }
-      // The can, and the one place a derived value beats a sent one: which hand
-      // it is in and what flavour it is are both hashed off the body's index
-      // here rather than off the machine, because the joiner has no idea which
-      // machine it came out of — and it does not need to agree with the host on
-      // either. What it must not do is hold the drink in a hand that is not
-      // there, so the hash is the index, which both ends have.
+      // ...and everything in its hands, which used to be four of these blocks —
+      // a crate, a tray, a can and a bundle of paper, each with its own bit and
+      // its own pair of methods. `applyHeld` walks the table instead. Each is
+      // the MESH alone with no errand behind it: a joiner runs no part of a
+      // parcel run for the same reason it runs no part of a lunch, and half a
+      // stage machine is how it would end up trying to do more than draw.
+      applyHeld(e, packed, e.index + 1);
       // One way only, and deliberately: nothing brings somebody back.
       if ((packed & SNAP_GONE) && !e.gone) this.showOut(e);
-      if (!!(packed & SNAP_CAN) !== !!e.can) {
-        if (packed & SNAP_CAN) this.giveCan(e, e.index + 1); else this.takeCan(e);
-      }
-      if (!!(packed & SNAP_PAPERS) !== !!e.papers) {
-        if (packed & SNAP_PAPERS) this.givePapers(e, e.index + 1); else this.takePapers(e);
-      }
       e.state = SNAP_STATES[packed & 7] ?? 'idle';
     }
   }

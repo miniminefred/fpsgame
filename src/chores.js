@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { give, take } from './held.js';
 import { FACING } from './gen/tiles.js';
 import { isMachine } from './enemy-types.js';
 
@@ -392,6 +393,16 @@ const ROUTINES = {
   },
 };
 const ROUTINE_KINDS = Object.keys(ROUTINES);
+
+/**
+ * What a leg's `gives`/`takes` name means, in held.js's vocabulary.
+ *
+ * Two words for one object, and it is worth the map rather than a rename: `box`
+ * is what this table has called the parcel crate since the stocktake routine was
+ * written, `crate` is what `HELD` calls it, and the name is also on the wire, in
+ * the animator and in three other files. One line here beats touching all of it.
+ */
+const HAND_KIND = { box: 'crate', papers: 'papers', can: 'can' };
 
 // How many routines may be running at once. The cap is about the CASTING rather
 // than the walking: three floods a cast against a job's one, and a routine holds
@@ -1171,21 +1182,7 @@ export class Chores {
    */
   _hand(e, beat) {
     if (!beat) return;
-    if (beat.gives === 'can') {
-      // Keyed off the machine rather than rolled, so which hand it is in and
-      // what flavour it is are stable for the run and identical in both
-      // browsers of a co-op session — the same argument the eating hand makes.
-      // A station's coordinates are the floor's, and the floor came from a
-      // shared seed.
-      this.enemies.giveCan?.(e, this._key(e));
-    }
-    if (beat.gives === 'papers') this.enemies.givePapers?.(e, this._key(e));
-    // The crate, which is the same one a parcel run carries. Flagged on the JOB
-    // rather than read off the body, because jobs.js hands out the same crate
-    // and `lost` must only take back the one this errand gave: a chore that
-    // stripped a porter of the parcel it is delivering would be the single-slot
-    // callback bug in another key.
-    if (beat.gives === 'box') { this.enemies.giveCrate?.(e); e.chore.crate = true; }
+    if (beat.gives) this._give(e, beat.gives);
     // ...and what a beat PUTS DOWN, which the table above has documented since
     // `then` grew a list and which nothing implemented. Every errand until now
     // put its load down by ENDING — `_finishGo` is where `takes` was read, and
@@ -1193,15 +1190,41 @@ export class Chores {
     // it. `packing` is the first job whose whole content is a beat that puts
     // something down and then goes round again: without this the body picks up
     // one box, holds it through every repetition, and drops it as it leaves.
-    //
-    // Guarded on `c.crate` for `_finishGo`'s reason: only the crate THIS errand
-    // handed out may be taken back, or a chore would strip a porter of the
-    // parcel it is delivering.
-    if (beat.takes === 'papers') this.enemies.takePapers?.(e);
-    if (beat.takes === 'box' && e.chore.crate) {
-      this.enemies.takeCrate?.(e);
-      e.chore.crate = false;
-    }
+    if (beat.takes) this._take(e, beat.takes);
+  }
+
+  /**
+   * ...and the two halves of that, which every other caller in this file wants
+   * too — `_finishGo` and `lost` both put a load down.
+   *
+   * `WHAT` is the name a leg uses (`box`, `papers`, `can`), which is not always
+   * the name held.js uses (`crate`) — `box` is what the table in this file has
+   * said since the stocktake was written and renaming it would be a change of a
+   * different kind. `HAND_KIND` is the one place the two vocabularies meet.
+   *
+   * The crate is FLAGGED on the errand rather than read off the body, and that
+   * is the load-bearing part: jobs.js hands out the same crate, and `lost` must
+   * only take back the one this errand gave. A chore that stripped a porter of
+   * the parcel it is delivering would be the single-slot callback bug in another
+   * key.
+   */
+  _give(e, what) {
+    const kind = HAND_KIND[what];
+    if (!kind) return;
+    // Keyed off the machine rather than rolled, so which hand it is in and what
+    // flavour a can is are stable for the run and identical in both browsers of
+    // a co-op session — the same argument the eating hand makes. A station's
+    // coordinates are the floor's, and the floor came from a shared seed.
+    give(e, kind, this._key(e));
+    if (kind === 'crate') e.chore.crate = true;
+  }
+
+  _take(e, what) {
+    const kind = HAND_KIND[what];
+    if (!kind) return;
+    if (kind === 'crate' && !e.chore?.crate) return;
+    take(e, kind);
+    if (kind === 'crate' && e.chore) e.chore.crate = false;
   }
 
   /** A stable integer for this body at this machine. See `_hand`. */
@@ -1228,8 +1251,7 @@ export class Chores {
     // on a beat, because filing the paperwork IS the leg — there is no separate
     // moment for it — and this is also the one place a routine's last leg
     // reaches, so nothing can walk away still holding it.
-    if (job.takes === 'papers') this.enemies.takePapers?.(e);
-    if (job.takes === 'box' && c.crate) { this.enemies.takeCrate?.(e); c.crate = false; }
+    if (job.takes) this._take(e, job.takes);
     if (c.legs && c.leg + 1 < c.legs.length) { this._nextLeg(e); return; }
     // The errand is over, and for one of them so is being here. `lost` still
     // runs afterwards, and has to: it is what puts the hinged limbs back, hands
@@ -1387,9 +1409,9 @@ export class Chores {
     // the filing rack has to put them down, or somebody walks the rest of the
     // floor holding a report they will never file. The CAN is deliberately not
     // touched: that is a drink somebody bought, and it is theirs.
-    if (e.papers) this.enemies.takePapers?.(e);
+    if (e.papers) take(e, 'papers');
     // ...and the crate, only if this errand is what put it there — see `gives`.
-    if (c.crate) { this.enemies.takeCrate?.(e); c.crate = false; }
+    if (c.crate) { take(e, 'crate'); c.crate = false; }
     e.chore = null;
 
     const i = this.live.indexOf(e);
