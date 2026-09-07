@@ -893,7 +893,11 @@ function randomMooDelay() {
 
 // Difficulty curves. Every one of these is deliberately gentle — the floors get
 // bigger on their own, so the enemies only need to keep pace, not outrun you.
-function tuningFor(floor, areaRatio) {
+// Exported for the probes in tools/, which drive the roster headlessly and have
+// to deal a floor the shift the game would deal it — a tool that invents its own
+// tuning is measuring a floor this game does not ship, which is the lesson
+// `modelInfo` taught the props sweep.
+export function tuningFor(floor, areaRatio) {
   const t = floor - 1;
   return {
     // Scaled with the slab: floors are four times the area they used to be, and

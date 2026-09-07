@@ -215,7 +215,31 @@ const CHORES = {
   },
   sendPost: {
     at: 'lift', pose: 'shelfTake', time: [3, 6], weight: 0, stay: [1, 1], neutral: true,
-    takes: 'box',
+    takes: 'box', shared: true,
+  },
+  // A COLLECTION: somebody who does not work here takes a crate off a rack and
+  // carries it out of the building. Two legs of `collection` below, and they are
+  // very nearly `fetchBox` and `sendPost` — which is the point. The errand was
+  // already spelled out on this table; what is new is who walks it and that he
+  // is gone at the end of it.
+  //
+  // `trade: true` on both, so neither is on the general list and no employee is
+  // ever dealt one. The Contractor's own `works` is exactly these two, so the
+  // pairing is closed from both ends: only he does this, and he does only this.
+  takeCrate: {
+    at: 'racks', pose: 'server', time: [3, 6], weight: 0, stay: [1, 1],
+    neutral: true, trade: true,
+    then: { pose: 'shelfTake', time: [2.4, 4.0], gives: 'box' },
+  },
+  // ...and out. `exit` is the one thing on this whole table that outlives the
+  // errand: every other job ends with a body going back to what it was doing,
+  // and this one ends with a body that is not on the floor any more. See
+  // `showOut` in enemies.js for what that means and what it deliberately does
+  // not do — he keeps his slot in the roster, because a body's index in
+  // `items` is its name on the wire.
+  leaveFloor: {
+    at: 'lift', pose: 'shelfTake', time: [2.5, 4.5], weight: 0, stay: [1, 1],
+    neutral: true, trade: true, takes: 'box', exit: true, shared: true,
   },
   // A MACHINE'S BREAK, and the only entry on this table that is not work.
   //
@@ -324,6 +348,23 @@ const ROUTINES = {
       { kind: 'sendPost', takes: 'box' },
     ],
   },
+  // ...and the one errand on the table that is not the building's own work: a
+  // man in a coloured suit who came up in the other lift, takes a crate off a
+  // rack, and goes back down with it.
+  //
+  // It is the post run's two legs with a different rack at one end and a
+  // different body walking them, which is as it should be — the routine table
+  // was built so that "walk here, do this, carry that there" is a list rather
+  // than a system. What the Contractor adds is at the ends of it and not in the
+  // middle: he is standing in the departure car when the floor is generated
+  // (`_visitor` in enemies.js) and he is off the floor when the last leg ends.
+  collection: {
+    weight: 2,
+    legs: [
+      { kind: 'takeCrate' },
+      { kind: 'leaveFloor', takes: 'box' },
+    ],
+  },
 };
 const ROUTINE_KINDS = Object.keys(ROUTINES);
 
@@ -364,7 +405,15 @@ const MEETING_WEIGHT = 5;
 // as well as the filing. Note what this is NOT: a split between people and
 // machines. A Clerk Unit uses the copier and a Sysadmin works the rack, because
 // the building does not have two sets of machines in it and a job is a job.
-const GENERAL = KINDS.filter((k) => k !== 'mop' && k !== 'patrol');
+// A TRADE's job is never anybody else's. A janitor mops and security holds a
+// post, and now a contractor collects a crate — three jobs that belong to whoever
+// declares them in `works` and to nobody else.
+//
+// Read off the table rather than listed here, which is a fix rather than a tidy:
+// this was `k !== 'mop' && k !== 'patrol'`, so the next trade job added would
+// have fallen silently onto the general list and been handed to the whole
+// office. `trade: true` on the kind is what says so, once, beside the job.
+const GENERAL = KINDS.filter((k) => !CHORES[k].trade);
 const worksFor = (e) => e.type.works ?? GENERAL;
 
 // How long before the first job of a floor, and how often somebody else is put
@@ -502,33 +551,12 @@ export class Chores {
       ...(enemies.stations?.get('files') ?? []),
     ];
 
-    // Where the post leaves by: the floor a body stands on with the lift doors
-    // in front of it. Not furniture, so it does not come down the workstation
-    // pipe — it is derived from the two cars the floorplan carved (gen/lifts.js)
-    // exactly as the mop and patrol spots are derived from the corridor sample,
-    // and for the same reason: it is a patch of floor rather than a thing.
-    //
-    // `facing` is the direction the doors open into the room, so stepping that
-    // far out of the car puts a body clear of the doorway, and turning back
-    // round (`+ 2`) has them facing the doors. Both cars, and the errand takes
-    // whichever it can reach — a parcel goes down either of them.
-    const lifts = [];
-    for (const car of [enemies.layout?.lifts?.arrival, enemies.layout?.lifts?.departure]) {
-      if (!car) continue;
-      const [fx, fz] = FACING[car.facing & 3];
-      // WALKED OUT UNTIL A BODY FITS, rather than measured. `fits` is the walk
-      // grid eroded by a body's radius, so every tile touching the car's front
-      // wall is out of it — a standoff picked by eye landed one tile short and
-      // `floodTo` came back false for every post run on every floor, silently,
-      // because a route to a tile nothing can stand on is no route.
-      for (let out = LIFT_NEAR; out <= LIFT_FAR + 1e-6; out += LIFT_STEP) {
-        const x = car.x + fx * out;
-        const z = car.z + fz * out;
-        if (!nav.fitsAt(nav.tx(x), nav.ty(z))) continue;
-        lifts.push({ x, z, rot: (car.facing + 2) & 3 });
-        break;
-      }
-    }
+    // Where the post leaves by, and where a visitor comes and goes: the floor a
+    // body stands on with the lift doors in front of it. Derived once, in
+    // enemies.js beside the other station pools, because two things want it —
+    // this table's `lift` kinds, and `_visitor`, which stands a man there at the
+    // start of the floor. See `liftSpots` there for what the number has to be.
+    const lifts = enemies.lifts ?? [];
 
     for (const kind of KINDS) {
       const at = CHORES[kind].at;
@@ -823,7 +851,16 @@ export class Chores {
 
   /** Puts a cast body on its first leg. One place, so both paths agree. */
   _commit(worker, legs, routine) {
-    for (const leg of legs) this.busy.add(leg.station);
+    // A SHARED station is not reserved, because it is a PLACE rather than a
+    // machine. Two people can stand at a lift; one of them cannot be at the
+    // copier. It is the same distinction `servery` and `shelves` are kept out of
+    // the pools for — somewhere you stand for four seconds, not somewhere you
+    // sit for a minute — and it had to be made the moment a second errand wanted
+    // a lift: a floor has exactly two lift spots, the post runs held both of them
+    // for the length of an errand each, and a collection could never find one
+    // free. Measured before the flag: both spots `busy` on every sample, and the
+    // contractor stood at the lift wandering for four minutes.
+    for (const leg of legs) if (!CHORES[leg.kind].shared) this.busy.add(leg.station);
     this.live.push(worker);
     const first = legs[0];
     worker.chore = {
@@ -1153,6 +1190,11 @@ export class Chores {
     if (job.takes === 'papers') this.enemies.takePapers?.(e);
     if (job.takes === 'box' && c.crate) { this.enemies.takeCrate?.(e); c.crate = false; }
     if (c.legs && c.leg + 1 < c.legs.length) { this._nextLeg(e); return; }
+    // The errand is over, and for one of them so is being here. `lost` still
+    // runs afterwards, and has to: it is what puts the hinged limbs back, hands
+    // the station to the pool and clears `chore`, none of which stops mattering
+    // because nobody can see him any more.
+    if (job.exit) this.enemies.showOut?.(e);
     this.lost(e);
   }
 

@@ -4,7 +4,9 @@ import {
   centreX, centreZ, CORRIDOR, FACING, FIRST_CONTACT_GAP, STAFF_ONLY, worldX, worldZ,
 } from './gen/layout.js';
 import { buildRig, buildTray, buildCrate, buildCan, buildPapers } from './rigs.js';
-import { TYPES, BYSTANDERS, isMachine, pickType, pickTheme } from './enemy-types.js';
+import {
+  TYPES, BYSTANDERS, CONTRACTOR_SUITS, isMachine, pickType, pickTheme,
+} from './enemy-types.js';
 import { DEATH_TIME, HIT_FLASH, SWING_TIME, animate, die, stand } from './enemy-anim.js';
 import { angleDelta, angleLerp, smoothTo } from './util.js';
 import { makeRng } from './gen/rng.js';
@@ -67,6 +69,16 @@ const SNAP_CAN = 128;
 // with a bundle of paper has been to the printer, and a joiner that cannot see
 // it is watching a different office.
 const SNAP_PAPERS = 256;
+// ...and whether this body has left the building, which is the one flag here
+// that is not about what somebody is holding.
+//
+// A contractor walks into a lift and stops being on the floor (`showOut` below).
+// The errand that does it is a chore, and chores are host-only and cross
+// nothing — so without this bit the host has a man who has gone home and the
+// joiner has one standing in a lift car for the rest of the floor. It is a bit
+// rather than a message for the reason all six above are: it is a fact about a
+// body, and the body is already being sent.
+const SNAP_GONE = 512;
 
 // How far from either player a body has to be before it is worth sending. Well
 // beyond SIGHT, because the joiner can watch somebody walk up a corridor long
@@ -296,6 +308,31 @@ const GUARD_GAP = 0.8;         // metres between two men in one room
  * lobby is also the room you come back to at the end of the floor.
  */
 const ANGRY_RECEPTION = 0.3;
+
+/**
+ * How often a floor has somebody visiting it.
+ *
+ * Two floors in three, which is the same shape of number as the receptionist's
+ * coin one line up and is chosen the same way: often enough that a run meets one
+ * every few floors, rare enough that finding a man in a red suit walking a
+ * corridor with a crate is a thing that happened rather than a thing the game
+ * does. A fixture would also be a lie about him — he does not work here.
+ */
+const VISITOR_CHANCE = 0.66;
+
+// How far out of a lift car a body stands, searched between these two rather
+// than fixed — see `liftSpots`. Near enough to be unmistakably at the lift, far
+// enough to be in the room rather than in the doorway.
+//
+// The far end is 5.2 m rather than the 3.2 it was, and the extra two metres are
+// what let the walk get PAST the reception counter. The counter stands off its
+// wall with a pocket behind it and the lift bank is on another wall, so the band
+// in front of a car regularly ends in furniture — and a search that gives up at
+// 3.2 m either lands in that pocket or finds nothing. It is still a lift lobby:
+// `fitsLifts` asks for ten tiles of depth, so five metres is the room.
+const LIFT_NEAR = 1.4;
+const LIFT_FAR = 5.2;
+const LIFT_STEP = 0.25;
 
 // The canteen's own, in the room the floor arrives in — see _diners. A handful
 // rather than a crowd, and that is the whole tuning: a canteen with fifteen
@@ -600,6 +637,11 @@ export class Enemies {
     // somewhere a machine stands for two seconds, and one of the pools above
     // rather than a pool of its own because it is the same question.
     this.shelves = this.stations.get('shelf') ?? [];
+    // Where a body stands with the lift doors in front of it. Two things want
+    // it — the errands that leave by a lift (chores.js) and `_visitor`, which
+    // stands a man there when the floor is generated — so it is derived here
+    // once rather than in either of them.
+    this.lifts = liftSpots(layout, nav, this.corridors);
     // ...and where they go back. Falling back to the counter itself is not a
     // fudge: a rack that a body cannot stand at is dropped like any other
     // station, and handing your tray back across the counter you took it from is
@@ -711,6 +753,7 @@ export class Enemies {
 
     this._cardOutside(layout, nav, rng, tuning);
     this._receptionist(layout, nav, rng, tuning);
+    this._visitor(layout, nav, rng, tuning);
     this._diners(layout, nav, rng, tuning);
     this._janitors(layout, nav, rng, tuning);
     this._manager(layout, nav, rng, tuning);
@@ -1114,6 +1157,99 @@ export class Enemies {
     // rotate its front from -Z toward +X, which is a negative rotation about Y.
     e.yaw = -at.rot * Math.PI / 2;
     e.group.rotation.y = e.yaw;
+  }
+
+  /**
+   * The man in the coloured suit, standing in the other lift.
+   *
+   * He does not work here. He came up to collect something, and what he does
+   * about it is `collection` in chores.js: walk to a storage rack, take a crate
+   * off it, carry it back to a lift and go down with it. The errand itself is
+   * two legs of the routine table and nothing new — what is new is at the ends
+   * of it, which is this method and `showOut` below.
+   *
+   * PLACED AT FLOOR GENERATION, and that is a co-op decision rather than a
+   * convenience. A body's index in `items` is its name on the wire, so the
+   * roster is only ever APPENDED to and both browsers have to build it in the
+   * same order from the same seed. The alarm response is the one thing that adds
+   * to it mid-floor and it pays for that with a packet per man; a visitor rolled
+   * on the host alone would leave the two rosters different lengths and every
+   * index after his landing on the wrong person.
+   *
+   * So he is dealt with the floor and simply starts somewhere else: AT a lift,
+   * on the spot a body stands with the doors in front of it, which is the same
+   * spot he will come back to. The doors have just closed behind him.
+   *
+   * At it rather than IN it, and that is a fact about the building rather than a
+   * preference. A lift opening is 1.0 m and a body is 0.8 m across on a 0.5 m
+   * grid, so both of the car's door tiles are eroded out of `fits` and the
+   * interior is an island — the player walks in and out of one because their
+   * collision is continuous, and nobody else can. Placed inside the car he
+   * reached 2 tiles of a 14,759-tile floor and stood in them for the whole level.
+   * See `liftSpots`, which is where that is written down and where the spot
+   * comes from.
+   *
+   * The DEPARTURE car if the floor has one, because that is the one the player
+   * is not standing in before they have moved — you come up in one lift and
+   * somebody else has come up in the other.
+   *
+   * Not every floor gets one. He is a thing you come across rather than a
+   * fixture, which is the argument `postrun` makes about itself one line up in
+   * the routine table.
+   */
+  _visitor(layout, nav, rng, tuning) {
+    if (!rng.chance(VISITOR_CHANCE)) return;
+    // The lift he came up in: the departure car's spot if there is one, and the
+    // arrival's if the floor only managed one car. Either is somewhere a body
+    // provably fits, which is the whole reason the list is derived rather than
+    // measured here.
+    const at = this.lifts.find((l) => l.car === layout.lifts?.departure) ?? this.lifts[0];
+    if (!at || !nav.clear(at.x, at.z, RADIUS)) return;
+
+    // His own suit, off the floor's rng so both browsers roll the same one. The
+    // type is CLONED rather than tinted, because `TYPES` entries are shared: one
+    // contractor changing colour would change every contractor on every floor
+    // still standing in memory.
+    const type = { ...TYPES.contractor, suit: rng.pick(CONTRACTOR_SUITS) };
+    const e = this._add(at.x, at.z, rng, tuning, type);
+    // Facing the doors, which is where `rot` already points — he has just turned
+    // round out of the car. Same conversion `_seat` makes: a quarter turn is a
+    // negative rotation about Y.
+    e.yaw = -at.rot * Math.PI / 2;
+    e.group.rotation.y = e.yaw;
+    this.visitor = e;
+  }
+
+  /**
+   * ...and he is gone.
+   *
+   * The last leg of a collection ends at a lift, and what happens then is the one
+   * thing on the chore table that outlives its errand: the body stops being on
+   * the floor. He steps into the car, the doors close, and that is the end of it.
+   *
+   * HE KEEPS HIS SLOT, and that is the whole reason this is four lines rather
+   * than a splice. `index` is a body's name on the wire and every index after a
+   * removed one would shift, so `items` is only ever appended to — which is
+   * stated on `index` itself in `_add`. What "gone" means instead is exactly
+   * what a corpse already means minus the corpse: not drawn, not on the minimap,
+   * not anybody's target, and not ticked.
+   *
+   * The hitboxes are left where they are with their back-reference cleared,
+   * which is `_die`'s own mechanism and is here for its reason as well as its
+   * own: a round should pass through a man who is not there, and the meshes are
+   * the level's to dispose of rather than this method's.
+   *
+   * One way only. Nothing brings him back, on the wire or off it.
+   */
+  showOut(e) {
+    if (!e || e.gone) return;
+    e.gone = true;
+    e.group.visible = false;
+    for (const m of e.hitboxes) m.userData.enemy = null;
+    // Off the map for the reason a rat is: it answers "is there somebody in that
+    // room", and he is not somebody any more.
+    e.offMap = true;
+    if (e.carry) this.takeCrate(e);
   }
 
   /**
@@ -2195,6 +2331,11 @@ export class Enemies {
 
     for (const e of this.items) {
       if (!e.alive) { die(e, dt); continue; }
+      // Somebody who has left the building. Skipped whole rather than made a
+      // corpse — see `showOut`. Without this he keeps his wander loop and walks
+      // the floor invisibly for the rest of it, which is the sort of thing that
+      // costs nothing and shows up two features later as a body opening doors.
+      if (e.gone) continue;
       // Whatever they were sitting on can be shot apart or shoved out from under
       // them, and until this was here neither stood anybody up. See _seatGone.
       if (e.seat) this._seatGone(e);
@@ -3383,8 +3524,22 @@ export class Enemies {
    * the state machine entirely: chores.js owns where this one is going.
    */
   _choreWork(e, dt, dist, sees, hears, target, audio) {
-    const startled = dist < CHORE_STARTLE;
-    if (!startled && !sees && !hears) {
+    // A NEUTRAL DOES NOT LOOK UP, and that is the whole of what this test is
+    // for. The startle exists because of what a hostile at a machine promises:
+    // its back is to you and it has not noticed you YET, and the moment that
+    // stops being true the job is off. Somebody who was never going to shoot you
+    // makes no such promise, so interrupting them costs the promise nothing and
+    // costs the errand everything — a courier walking a parcel to the lift is a
+    // thing you are supposed to be able to stand and watch, and with this test
+    // missing he abandoned it every time the player came within four and a half
+    // metres and went back to wandering. `postrun` has had that bug since it was
+    // written; `collection` is the errand that made it visible, because its whole
+    // point is that you follow the man in the red suit to see where he goes.
+    //
+    // Damage still ends it, in `_damage`, which is the right and only trigger:
+    // the first shot of a firefight stops the building working.
+    const startled = !e.neutral && dist < CHORE_STARTLE;
+    if (e.neutral || (!startled && !sees && !hears)) {
       this.choreTick?.(e, dt, audio);
       return true;
     }
@@ -3780,7 +3935,8 @@ export class Enemies {
         + (e.tray ? SNAP_TRAY : 0)
         + (e.carry ? SNAP_BOX : 0)
         + (e.can ? SNAP_CAN : 0)
-        + (e.papers ? SNAP_PAPERS : 0);
+        + (e.papers ? SNAP_PAPERS : 0)
+        + (e.gone ? SNAP_GONE : 0);
     }
 
     this._snapCursor = i;
@@ -3836,6 +3992,8 @@ export class Enemies {
       // machine it came out of — and it does not need to agree with the host on
       // either. What it must not do is hold the drink in a hand that is not
       // there, so the hash is the index, which both ends have.
+      // One way only, and deliberately: nothing brings somebody back.
+      if ((packed & SNAP_GONE) && !e.gone) this.showOut(e);
       if (!!(packed & SNAP_CAN) !== !!e.can) {
         if (packed & SNAP_CAN) this.giveCan(e, e.index + 1); else this.takeCan(e);
       }
@@ -3934,6 +4092,77 @@ export class Enemies {
   }
 
   dispose() { this.clear(); }
+}
+
+
+/**
+ * Where a body stands to use a lift.
+ *
+ * Not furniture, so it does not come down the workstation pipe — it is derived
+ * from the two cars the floorplan carved (gen/lifts.js) exactly as the mop and
+ * patrol spots are derived from the corridor sample, and for the same reason: it
+ * is a patch of floor rather than a thing.
+ *
+ * `facing` is the direction the doors open into the room, so stepping that far
+ * out of the car puts a body clear of the doorway, and turning back round
+ * (`+ 2`) has them facing the doors.
+ *
+ * WALKED OUT UNTIL A BODY FITS, rather than measured. `fits` is the walk grid
+ * eroded by a body's radius, so every tile touching the car's front wall is out
+ * of it — a standoff picked by eye landed one tile short and `floodTo` came back
+ * false for every post run on every floor, silently, because a route to a tile
+ * nothing can stand on is no route at all.
+ *
+ * **AND FITTING IS NOT THE SAME AS BEING CONNECTED**, which is the second half of
+ * that sentence and was missing. A lift lobby's standable floor is not one
+ * region: the two cars, the doorway apron and the reception counter cut it into
+ * several, and the nearest fitting tile to a car front is very often in the
+ * pocket BETWEEN the car and the counter — standable, and joined to nothing. So
+ * the walk now also requires the tile to be on a field flooded from the corridor
+ * network, which is connected by construction.
+ *
+ * Measured over 24 floors before it: no lobby is sealed and 80–98% of each one's
+ * standable tiles are reachable from outside — so this is a handful of tiles a
+ * room, and the spot picked was in them. It is the same shape of failure
+ * `deskPool` fixed with `fitsAt`, one strictness further on, and it is silent in
+ * the same way: a body stood at the lift for the whole floor, and a cast that can
+ * find no route is indistinguishable from a cast that was never tried.
+ *
+ * WHICH IS ALSO WHY NOBODY STANDS INSIDE A CAR. A lift opening is 1.0 m
+ * (`LIFT_DOOR_W` in gen/lifts.js, and the pocket arithmetic there is why), and a
+ * body is 0.8 m across on a 0.5 m grid — so both of its door tiles are eroded
+ * out of `fits` and the interior is an island of two tiles. The PLAYER walks in
+ * and out of one perfectly well, because their collision is continuous; nobody
+ * else can.
+ *
+ * No spot is an ordinary answer, and it has to be one rather than a fallback to
+ * the unconnected tile: a lift nobody can reach is a post run and a collection
+ * that simply do not happen on this floor, where a lift somebody is standing at
+ * and cannot leave is a body wasted for the whole level.
+ */
+function liftSpots(layout, nav, corridors) {
+  const out = [];
+  // One flood, to a corridor tile. The corridor network is connected by
+  // construction and the lobby's own doorway is never badged (see the note on
+  // `free` in gen/layout.js), so this reaches the lobby even with the building
+  // still shut.
+  const field = corridors.length ? nav.makeField() : null;
+  const joined = field && nav.floodTo(field, corridors[0].x, corridors[0].z);
+
+  for (const car of [layout?.lifts?.arrival, layout?.lifts?.departure]) {
+    if (!car) continue;
+    const [fx, fz] = FACING[car.facing & 3];
+    for (let step = LIFT_NEAR; step <= LIFT_FAR + 1e-6; step += LIFT_STEP) {
+      const x = car.x + fx * step;
+      const z = car.z + fz * step;
+      const tx = nav.tx(x), ty = nav.ty(z);
+      if (!nav.fitsAt(tx, ty)) continue;
+      if (joined && field[ty * nav.W + tx] < 0) continue;
+      out.push({ x, z, rot: (car.facing + 2) & 3, car });
+      break;
+    }
+  }
+  return out;
 }
 
 /**

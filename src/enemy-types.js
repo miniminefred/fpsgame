@@ -44,6 +44,26 @@ export const GUARD = {
 //
 // Multipliers are applied to the floor's base tuning (see tuningFor in
 // game.js), so types scale with depth instead of going obsolete.
+/**
+ * The suits a contractor turns up in.
+ *
+ * Rolled per visit off the floor's own rng, which is what makes it safe in co-op
+ * without a byte on the wire: both browsers generate the same roster from the
+ * same seed in the same order, so both roll the same suit for the same man.
+ *
+ * All six are loud, none is a colour this building's staff wear, and none is
+ * near the Reanimated's green — a bright green suit walking down a corridor is
+ * the one reading that would cost something.
+ */
+export const CONTRACTOR_SUITS = [
+  0xc4142c,   // crimson
+  0xe07b1e,   // orange
+  0x1f8f4e,   // emerald
+  0x7b3fb5,   // purple
+  0xd94f9c,   // pink
+  0x1d7fc4,   // electric blue
+];
+
 export const TYPES = {
   intern: {
     // Cheap, quick, and always in a group. Dies to a look but closes fast.
@@ -311,6 +331,36 @@ export const TYPES = {
     name: 'Receptionist', hp: 0.5, speed: 1.15, damage: 0.6, rate: 1.35, spread: 1.8,
     range: 11, melee: false, scale: 1.0, aimMul: 1.2,
     suit: 0x3b4250, shirt: 0xd8dde3, visor: 0xafa79c, unlockFloor: 1, weight: 0,
+  },
+  contractor: {
+    // NOT STAFF. He comes up in the other lift, walks to a storage rack, takes a
+    // crate off it and goes back down with it — see `_visitor` in enemies.js for
+    // where he starts and `collection` in chores.js for the errand, which is two
+    // legs of the routine table and nothing new at all.
+    //
+    // THE SUIT IS THE POINT. Everybody in this building is in grey, navy, or a
+    // uniform; he is in a colour nobody would wear to an office, and it is a
+    // different one every time (see `CONTRACTOR_SUITS`). That is the whole of how
+    // he reads as somebody visiting rather than somebody who works here, and it
+    // has to carry from across a lobby, because what he is doing — walking, with
+    // a box — is exactly what a Maintenance Worker on a parcel run is doing.
+    //
+    // The visor is a different question and answers the usual one: hue says
+    // threat, so a harmless type needs a colour no hostile wears and no other
+    // neutral has. The palette is nearly full — brown 26°, orange 30°, yellow
+    // 45°, green 112°, teal 162°, cyan 196°, blue 212°, violet 265°, magenta
+    // 318°, rose 354° — and the widest gap left in it is the 67° between the
+    // Courier's yellow and the Reanimated's green. This sits in the middle of
+    // it. Worth knowing that it is 34° off that green rather than a clear field:
+    // the two are told apart by being nothing else alike, a man in a red suit
+    // against a green corpse in a torn one, rather than by the visor alone.
+    name: 'Contractor', hp: 0.6, speed: 1.22, damage: 0, rate: 99, spread: 1,
+    range: 0, melee: false, scale: 1.02, neutral: true,
+    // His errand and nothing else, the way a janitor only ever mops. Both kinds
+    // are `trade` in chores.js, so they are off the general list too — the two
+    // halves of "only he does this, and he does only this".
+    works: ['takeCrate', 'leaveFloor'],
+    suit: 0xc4142c, shirt: 0xf1f3f5, visor: 0xbdf03c, unlockFloor: 1, weight: 0,
   },
   worker: {
     // The generator room's docile majority — logged in on the terminals
