@@ -1495,6 +1495,15 @@ export function buildPapers() {
 }
 
 let crateParts = null;
+// A wooden crate, and the boards it is made of. The overall size is what the
+// carry poses are tuned against (`boxAt` per rig, and the truck's toe plate), so
+// it is the FINISH that changed and not the box: 0.34 x 0.26 x 0.30 is what a
+// crate has measured since it was a cardboard one.
+const CRATE_W = 0.34;
+const CRATE_H = 0.26;
+const CRATE_D = 0.30;
+const BATTEN = 0.026;          // a board's thickness, on the frame and the posts
+const CRATE_LID = 0.5;         // ...how many carry a small carton on top
 
 /**
  * The box a parcel run carries: off a storage rack, into a porter's arms, into
@@ -1515,13 +1524,27 @@ let crateParts = null;
  * triangles — an unbroken brown box at three metres reads as a brown block, and
  * one pale line across the lid reads as a box.
  */
-export function buildCrate() {
+export function buildCrate(key = 0) {
   crateParts ??= {
     geo: {
-      body: new THREE.BoxGeometry(0.34, 0.26, 0.30),
-      tape: new THREE.BoxGeometry(0.05, 0.006, 0.305),
+      body: new THREE.BoxGeometry(CRATE_W, CRATE_H, CRATE_D),
+      // The frame, and it is what makes the thing read as a crate rather than as
+      // a brown box: four corner posts and a rail top and bottom down each face,
+      // standing a few millimetres proud of the boards. Same argument the sack
+      // truck's own note makes about its rungs — the SILHOUETTE is what carries
+      // at the range you see one from, and a crate's silhouette is its frame.
+      post: new THREE.BoxGeometry(BATTEN, CRATE_H + 0.004, BATTEN),
+      railX: new THREE.BoxGeometry(CRATE_W + 0.006, BATTEN, BATTEN),
+      railZ: new THREE.BoxGeometry(BATTEN, BATTEN, CRATE_D + 0.006),
+      // ...and the small carton that rides on top of some of them.
+      lid: new THREE.BoxGeometry(0.17, 0.12, 0.15),
+      tape: new THREE.BoxGeometry(0.04, 0.005, 0.152),
     },
     mat: {
+      // Pine boards, and the frame a shade darker so the two read apart in a
+      // corridor rather than merging into one brown lump.
+      wood: new THREE.MeshStandardMaterial({ color: 0xb08a54, roughness: 0.95 }),
+      frame: new THREE.MeshStandardMaterial({ color: 0x8a6636, roughness: 0.95 }),
       card: new THREE.MeshStandardMaterial({ color: 0x9c7a4e, roughness: 0.92 }),
       tape: new THREE.MeshStandardMaterial({ color: 0xd8cdb4, roughness: 0.8 }),
     },
@@ -1536,8 +1559,27 @@ export function buildCrate() {
     group.add(mesh);
   };
 
-  put(geo.body, mat.card, 0, 0, 0);
-  put(geo.tape, mat.tape, 0, 0.133, 0);
+  put(geo.body, mat.wood, 0, 0, 0);
+  const hw = CRATE_W / 2, hd = CRATE_D / 2, hh = CRATE_H / 2;
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) put(geo.post, mat.frame, sx * hw, 0, sz * hd);
+    put(geo.railZ, mat.frame, sx * hw, hh - BATTEN / 2, 0);
+    put(geo.railZ, mat.frame, sx * hw, -hh + BATTEN / 2, 0);
+  }
+  for (const sz of [-1, 1]) {
+    put(geo.railX, mat.frame, 0, hh - BATTEN / 2, sz * hd);
+    put(geo.railX, mat.frame, 0, -hh + BATTEN / 2, sz * hd);
+  }
+
+  // A small box on top of it, about half the time. HASHED off the key rather
+  // than rolled, for the drink's reason: the errand that hands a crate over is
+  // host-only and the joiner builds its own from one bit on the wire, so a die
+  // here would put a carton on one screen and not the other. Both ends hash the
+  // body's own index and agree without a byte crossing.
+  if (((Math.imul(key >>> 0, 2654435761) >>> 16) & 1023) < 1023 * CRATE_LID) {
+    put(geo.lid, mat.card, 0.02, hh + 0.06, -0.01);
+    put(geo.tape, mat.tape, 0.02, hh + 0.121, -0.01);
+  }
   return group;
 }
 

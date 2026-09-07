@@ -1088,7 +1088,10 @@ export class Enemies {
 
   /** How many employees have downed tools right now — the arrival diners are not
    * counted, because they are not away from a post. */
-  giveCrate(e) { give(e, 'crate', 0); }
+  // Keyed on the body's own index, which is what `applySnapshot` hands the
+  // joiner (see enemy-net.js) — so the crate a joiner builds is the crate the
+  // host built, carton and all, off a bit rather than a description.
+  giveCrate(e) { give(e, 'crate', e.index + 1); }
 
   takeCrate(e) { take(e, 'crate'); }
 

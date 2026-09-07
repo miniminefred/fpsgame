@@ -49,7 +49,9 @@ export const HELD = {
   crate: {
     field: 'carry',
     snap: 64,
-    make: () => buildCrate(),
+    // Keyed, because a crate carries a small carton on top of some of them and
+    // which ones has to be a hash rather than a die — see `buildCrate`.
+    make: (key) => buildCrate(key),
     // Onto the truck's toe plate if this one brought a truck, and into the
     // body's own frame otherwise. Parenting rather than positioning is the whole
     // point: the plate's height is arithmetic in rigs.js, and a box placed at a
