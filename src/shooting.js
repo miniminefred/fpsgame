@@ -3,6 +3,47 @@ import { clamp, clamp01 } from './util.js';
 // Recoil moves the same camera the mouse does, so it obeys the same ceiling.
 import { PITCH_LIMIT } from './input.js';
 
+// --- the cone a shot goes into ----------------------------------------------
+
+const _side = new THREE.Vector3();
+const _up = new THREE.Vector3();
+// Any axis not parallel to the aim will do to get the first perpendicular from,
+// and the second is a cross product away. Straight up is the one to prefer,
+// because a player looking dead up or dead down is the only case it fails at —
+// and PITCH_LIMIT means they cannot.
+const UP = new THREE.Vector3(0, 1, 0);
+const ASIDE = new THREE.Vector3(0, 0, 1);
+
+/**
+ * Nudge an aim into a cone about itself, uniformly over the disc.
+ *
+ * IN THE AIM'S OWN FRAME, and that is the whole of this function. It used to
+ * perturb the WORLD x and y — which is a cone only while you are looking along
+ * z, and along x is the aim's own axis, where a nudge changes the vector's
+ * LENGTH and `normalize` takes it straight back out again. So the pattern
+ * collapsed as you turned: a proper disc facing one way and a vertical line
+ * facing another, on every gun with spread rather than only the shotgun. It is
+ * the same class of mistake as the world-axis `edgeProp` table — a direction
+ * has to be built in the frame it means something in.
+ *
+ * The old third term (a small jitter along z) is gone rather than moved: a
+ * component ALONG the aim is not a direction at all once the result is
+ * normalized, so it never did anything except in whichever facing happened to
+ * make it lateral.
+ */
+export function spreadInto(out, aim, spread) {
+  out.copy(aim);
+  if (!(spread > 0)) return out;
+  const a = Math.random() * Math.PI * 2;
+  // sqrt so the samples are uniform over the disc rather than piled in the
+  // middle of it, which is what makes a shotgun pattern read as a pattern.
+  const r = Math.sqrt(Math.random()) * spread;
+  _side.crossVectors(aim, Math.abs(aim.y) > 0.999 ? ASIDE : UP).normalize();
+  _up.crossVectors(_side, aim).normalize();
+  out.addScaledVector(_side, Math.cos(a) * r).addScaledVector(_up, Math.sin(a) * r);
+  return out.normalize();
+}
+
 // Hitscan shooting: fire rate, ammo/reload, spread, camera recoil, damage.
 //
 // Every shot raycasts from the camera center (where the crosshair is) rather
@@ -198,15 +239,7 @@ export class Shooting {
     for (let p = 0; p < stats.pellets; p++) {
       // Spread: nudge the aim inside a small cone. The first pellet of a
       // multi-pellet shot still gets spread — shotguns are never pinpoint.
-      this._dir.copy(this._aim);
-      if (stats.spread > 0) {
-        const a = Math.random() * Math.PI * 2;
-        const r = Math.sqrt(Math.random()) * stats.spread;
-        this._dir.x += Math.cos(a) * r;
-        this._dir.y += Math.sin(a) * r;
-        this._dir.z += (Math.random() - 0.5) * r * 0.2;
-        this._dir.normalize();
-      }
+      spreadInto(this._dir, this._aim, stats.spread);
 
       const result = this._trace(this._origin, this._dir, stats);
       if (result === 'kill') { hitAny = true; killedAny = true; }
