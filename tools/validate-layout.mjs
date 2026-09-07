@@ -14,6 +14,7 @@
 import {
   generateLayout, TILE, SOLID, ROOM, CORRIDOR, DOOR, isOpen,
   FIRST_CONTACT_GAP, roleBranch, PAD, PROLOGUE_MIN, CORRIDOR_W, DOOR_W,
+  doorsOnRoom,
 } from '../src/gen/layout.js';
 // The furnisher's own list of roles. Adding a room role means touching three
 // unconnected places — the pick lists in assignRoles here, ROLES in rooms.js and
@@ -94,6 +95,9 @@ const IDS = [
   ['6.door-thickness', 'FAIL', 'DOOR          opening is exactly 1 tile thick'],
   ['6.door-width', 'FAIL', 'DOOR          room doorway is exactly 3 tiles wide'],
   ['6.hall-width', 'FAIL', 'DOOR          hall door spans its corridor, wall to wall'],
+  ['6.wide-width', 'FAIL', 'DOOR          the lobby opening is between a doorway and a corridor'],
+  ['6.wide-pocket', 'FAIL', 'DOOR          ...and its wall holds the pocket for both leaves'],
+  ['2.lobby-one-way', 'WARN', 'EXIT          the lobby has ONE doorway onto the office'],
   ['6.hall-swing', 'FAIL', 'DOOR          hall door has wall to fold both leaves back onto'],
   ['6.door-tiles', 'FAIL', 'DOOR          all door tiles have value DOOR(3)'],
   ['6.door-bothsides', 'FAIL', 'DOOR          open floor on BOTH sides of the opening'],
@@ -200,6 +204,7 @@ const stats = {
   roles: new Map(), roleBranch: { longThin: 0, big: 0, mid: 0, small: 0 },
   depth: new Map(), vCorr: new Map(), hCorr: new Map(),
   abutPairs: 0, deadDoors: 0, alcoveDoors: 0, totalDoors: 0, hallDoors: 0, hallLocked: 0,
+  wideDoors: 0, lobbyWays: 0,
   prologue: [],
   orphanTiles: [], noCorridorRooms: 0, totalRooms: 0,
   lockTiers: new Map(), lockCounts: [],
@@ -314,8 +319,20 @@ function validate(seed, floorNumber) {
   if (thinShell) check('4.shell').fail(id, `${thinShell} open tiles inside the ${PAD}-tile exterior shell`);
 
   // ---- 5. rooms -----------------------------------------------------------
-  const doorless = rooms.filter((r) => !r.doors || r.doors.length === 0).length;
-  if (doorless) check('5.room-door').fail(id, `${doorless} rooms with no door`);
+  // A WAY IN, whoever cut it. `r.doors` is only the openings this room cut for
+  // itself, and that stopped being the same question the day the lift lobby
+  // began sealing its own back doors (`oneWayIn` in gen/lifts.js): a room whose
+  // shared doorway was the one that survived has an opening onto it and none of
+  // its own. Measured on the four floors this first failed: every one of them
+  // had exactly one opening on it and its whole floor reachable from the spawn
+  // (132/132, 132/132, 135/135, 168/168), which is a room with a door.
+  //
+  // So the check asks the geometry rather than the bookkeeping. It is the
+  // `11.under-floor` lesson again: the model was right until the data changed
+  // under it, and a sweep that goes on asserting its own arithmetic has stopped
+  // testing the generator.
+  const doorless = rooms.filter((r) => !doorsOnRoom(doors, r).length).length;
+  if (doorless) check('5.room-door').fail(id, `${doorless} rooms with no way in`);
 
   const owner = new Int32Array(W * H).fill(-1);
   let overlap = 0, badTiles = 0, corridorOverlap = 0;
@@ -370,7 +387,17 @@ function validate(seed, floorNumber) {
 
   // ---- 6. doors -----------------------------------------------------------
   let thick = 0, wrongW = 0, notDoor = 0, oneSided = 0, cornered = 0, unreach = 0, dead = 0;
-  let hallW = 0, hallSwing = 0, liftW = 0;
+  let hallW = 0, hallSwing = 0, liftW = 0, wideW = 0, widePocket = 0;
+  // Solid wall beyond each end of an opening, in tiles: the pocket a sliding
+  // leaf retracts into. Capped, because `T` answers SOLID off the grid.
+  const pockets = (d) => {
+    const line = d.vertical ? d.x0 : d.y0;
+    const at = (a) => (d.vertical ? T(line, a) : T(a, line));
+    const out = [0, 0];
+    for (let a = (d.vertical ? d.y0 : d.x0) - 1; out[0] < 12 && !isOpen(at(a)); a--) out[0]++;
+    for (let a = (d.vertical ? d.y1 : d.x1); out[1] < 12 && !isOpen(at(a)); a++) out[1]++;
+    return out;
+  };
   for (const d of doors) {
     const w = d.x1 - d.x0, h = d.y1 - d.y0;
     stats.totalDoors++;
@@ -406,6 +433,17 @@ function validate(seed, floorNumber) {
       // of the car's own front. See LIFT_DOOR_W in gen/lifts.js for why the
       // arithmetic has to close exactly.
       if ((d.vertical ? h : w) !== LIFT_DOOR_W) liftW++;
+    } else if (d.wide) {
+      // The lobby's front door, and the one room doorway in the building that is
+      // not DOOR_W: `oneWayIn` opens it out to as much of a corridor's width as
+      // its wall can hold. Two things to prove — it is between an ordinary
+      // doorway and a corridor, and the wall either side really carries the
+      // pocket each of its two parting leaves retracts into, which is
+      // `slidePocketSide`'s invariant at this larger span.
+      const span = d.vertical ? h : w;
+      if (span < DOOR_W || span > CORRIDOR_W) wideW++;
+      else if (Math.min(...pockets(d)) < Math.ceil(span / 2)) widePocket++;
+      stats.wideDoors++;
     } else if ((d.vertical ? h : w) !== DOOR_W) wrongW++;
 
     let sideA = 0, sideB = 0, tilesOk = true, anyReach = false;
@@ -459,6 +497,18 @@ function validate(seed, floorNumber) {
   if (hallW) check('6.hall-width').fail(id, `${hallW} hall doors not spanning their corridor`);
   if (hallSwing) check('6.hall-swing').fail(id, `${hallSwing} hall doors with a leaf swinging into open floor`);
   if (liftW) check('9.lift-door').fail(id, `${liftW} lift openings not ${LIFT_DOOR_W} tiles wide`);
+  if (wideW) check('6.wide-width').fail(id, `${wideW} lobby openings outside ${DOOR_W}-${CORRIDOR_W} tiles`);
+  if (widePocket) check('6.wide-pocket').fail(id, `${widePocket} lobby openings with nowhere for a leaf to go`);
+
+  // ...and there should be exactly one of them. A WARN rather than a FAIL: an
+  // opening whose sealing would strand something keeps its doorway, which is an
+  // ordinary answer and the right one. Measured at 57 lobbies in 60 down to a
+  // single way in.
+  const lobbyWays = doorsOnRoom(doors, L.spawnRoom).filter((d) => !d.lift).length;
+  stats.lobbyWays += lobbyWays;
+  if (lobbyWays !== 1) {
+    check('2.lobby-one-way').fail(id, `lobby has ${lobbyWays} doorways onto the office`);
+  }
 
   // ---- 8. keycard locks ---------------------------------------------------
   //

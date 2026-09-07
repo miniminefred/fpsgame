@@ -30,8 +30,8 @@
 // file for why it is not written out here — there were two copies of it.
 import './headless.mjs';
 
-const { generateLayout, TILE, WALL_H, CEIL_H, SOLID, ROOM, CORRIDOR, DOOR, isOpen } =
-  await import('../src/gen/layout.js');
+const { generateLayout, TILE, WALL_H, CEIL_H, SOLID, ROOM, CORRIDOR, DOOR, isOpen,
+  doorsOnRoom } = await import('../src/gen/layout.js');
 const { buildLevel } = await import('../src/gen/build.js');
 const { PROPS } = await import('../src/gen/props.js');
 const { MODEL_TABLE } = await import('../src/gen/model-table.js');
@@ -829,8 +829,17 @@ function validate(seed, floorNumber) {
     bump(stats.roomsByRole, r.role);
 
     // Seeds: the tile just inside the room next to each of its door tiles.
+    //
+    // The openings the room is ON, not the ones it CUT. `r.doors` is the second
+    // of those, and the two stopped being the same question when the lift lobby
+    // began sealing its own back doors (`oneWayIn` in gen/lifts.js): a room
+    // whose shared doorway is the one that survived has a way in and nothing in
+    // its own list, and this check then flooded from no seeds at all and
+    // reported a room a body cannot enter. It is `5.room-door` in the layout
+    // sweep, one file along and for the same reason.
+    const ways = doorsOnRoom(doors, r);
     const seeds = [];
-    for (const d of r.doors) {
+    for (const d of ways) {
       for (let y = d.y0; y < d.y1; y++) {
         for (let x = d.x0; x < d.x1; x++) {
           const ns = d.vertical ? [[x - 1, y], [x + 1, y]] : [[x, y - 1], [x, y + 1]];
@@ -876,7 +885,7 @@ function validate(seed, floorNumber) {
     // Same question again, geometrically: how much of the room can a body that
     // stepped through the doorway actually get to?
     const gSeeds = [];
-    for (const d of r.doors) {
+    for (const d of ways) {
       for (let y = d.y0; y < d.y1; y++) {
         for (let x = d.x0; x < d.x1; x++) {
           const ns = d.vertical ? [[x - 1, y], [x + 1, y]] : [[x, y - 1], [x, y + 1]];

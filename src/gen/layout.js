@@ -23,7 +23,7 @@ import {
   prologueRegion,
 } from './locks.js';
 import { planStairs } from './stairs.js';
-import { carveBank } from './lifts.js';
+import { carveBank, oneWayIn } from './lifts.js';
 import {
   band,
   bsp,
@@ -344,10 +344,18 @@ export function generateLayout(seed, floorNumber) {
   // `doorsOnRoom` rather than `spawnRoom.doors`, and for that same reason — a
   // room's own list holds only the doors IT cut, and the one that matters may
   // have been cut by the room next door into a wall they share.
+  //
+  // ...and there is only ONE of them, as wide as a corridor. `oneWayIn` seals
+  // the rest and opens the survivor out: a lobby is the core of the floor and
+  // everything comes through it, so what it wants is a front door rather than
+  // the three or four ordinary 1.5 m holes the carve gives every room. Both
+  // halves of that are allowed to fail — see the note on it in gen/lifts.js.
+  const way = oneWayIn({ tiles, W, H, rooms: live }, doors, spawnRoom);
   for (const d of doorsOnRoom(doors, spawnRoom)) {
     d.free = true;
     d.double = true;
   }
+  void way;
 
   // The canteen only survives as one if the lobby did not take it. `pickLobbyRoom`
   // prefers to leave it alone but falls back rather than fail, and a canteen that
