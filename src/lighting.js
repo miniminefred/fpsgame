@@ -18,6 +18,14 @@ import { getAssets } from './textures.js';
 const POOL = 12;
 const REHOME_INTERVAL = 0.12;  // seconds between reassignments
 const MAX_RANGE = 18;          // metres — beyond this a fixture never gets a light
+// The four corners of a ceiling panel, as offsets from its middle: a fixture has
+// a SIZE, and testing only its centre for line of sight is what made a light you
+// could just see throw nothing at all. See `seen`. A panel is 1.24 x 0.32 m
+// (buildCeilingLights in gen/shell.js), so these are its own ends and sides.
+const PANEL_EDGES = [[0.6, 0], [-0.6, 0], [0, 0.6], [0, -0.6]];
+// ...and what one corner of a tube in view is worth. Not nothing, which is what
+// it used to be worth, and not everything either.
+const PARTIAL_MIN = 0.4;
 
 // Rest levels for the three fill lights. A floor's theme scales all three (see
 // setMood), so they have to be recorded rather than read back off the lights.
@@ -271,6 +279,36 @@ export function createLighting(scene) {
     visible = losClear ?? null;
   }
 
+  // How much of a fixture the player can see, 0 to 1.
+  //
+  // A FIXTURE HAS A SIZE, and the line-of-sight test did not: one grid line from
+  // the player's centre to the fixture's centre, and a fixture whose centre was
+  // occluded threw no light at all. So standing where you can just see a tube —
+  // half a metre inside a doorway, or at the corner of a corridor — you were
+  // looking at a lit panel that was lighting nothing, which is exactly how it
+  // was reported: if you can just barely see a light it does not produce light.
+  //
+  // A ceiling panel is 1.24 m long, so the four extra samples are its own ends
+  // and sides. Only an occluded CENTRE pays for them: a fixture in plain sight
+  // costs one walk, as it always did, and the ones round a corner cost four
+  // more — a handful of grid walks a few times a second, against the twelve
+  // shadow-casting lights this whole scheme exists to avoid.
+  //
+  // Partly visible is DIMMER rather than binary, which is both the honest answer
+  // and what stops a light popping in as you step past a door frame. It never
+  // fades to nothing though (`PARTIAL_MIN`): one corner of a tube in view is
+  // still a tube in view, and the pool is what a room's light is made of.
+  function seen(position, f) {
+    if (!visible) return 1;
+    if (visible(position.x, position.z, f.x, f.z)) return 1;
+    let n = 0;
+    for (const [ox, oz] of PANEL_EDGES) {
+      if (visible(position.x, position.z, f.x + ox, f.z + oz)) n++;
+    }
+    if (!n) return 0;
+    return PARTIAL_MIN + (1 - PARTIAL_MIN) * (n / PANEL_EDGES.length);
+  }
+
   function update(dt, position) {
     // --- contact-shadow light follows the player
     center.set(position.x, 0, position.z);
@@ -301,13 +339,14 @@ export function createLighting(scene) {
       // Distance first — it rejects most of the floor for the price of a
       // multiply, so the line-of-sight walk only runs on nearby fixtures.
       if (d2 > MAX_RANGE * MAX_RANGE) continue;
-      if (visible && !visible(position.x, position.z, f.x, f.z)) continue;
+      const share = seen(position, f);
+      if (share <= 0) continue;
 
       if (best.length < POOL) {
-        best.push({ f, d2 });
+        best.push({ f, d2, share });
         if (best.length === POOL) best.sort((a, b) => a.d2 - b.d2);
       } else if (d2 < best[POOL - 1].d2) {
-        best[POOL - 1] = { f, d2 };
+        best[POOL - 1] = { f, d2, share };
         best.sort((a, b) => a.d2 - b.d2);
       }
     }
@@ -330,7 +369,7 @@ export function createLighting(scene) {
       // moody, it is broken. The SUPPLY is not hedged like that — a tube on
       // quarter power puts out a quarter, and the pool under it has to agree
       // with the panel overhead or one of them is lying.
-      light.intensity = f.intensity * (0.5 + dim * 0.5) * power
+      light.intensity = f.intensity * (0.5 + dim * 0.5) * power * pick.share
         * Math.max(0, 1 - pick.d2 / (edge * 2.5));
     }
   }
