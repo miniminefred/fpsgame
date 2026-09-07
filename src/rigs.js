@@ -407,7 +407,18 @@ function buildHuman(type, rng) {
   const hips = mesh(GEO.hips, lower, 0, 0.96, 0);
   const shirt = mesh(GEO.shirt, mats.pants ? mats.suit : mats.shirt, 0, 1.18, -0.155);
   const head = mesh(GEO.head, mats.skin, 0, 1.63, 0);
-  const visor = mesh(GEO.visor, mats.visor, 0, 1.65, -0.13);
+  // ON THE HEAD, not beside it. The head turns — `patrol` sweeps it, the seated
+  // poses wander it, the walk bobs it — and the face was a sibling of it, so a
+  // guard on his post looked one way and left his eyes hanging in the air where
+  // his head had been. Positioned relative to the head now: it stood at 1.65
+  // against a head at 1.63, so 0.02 above and the same 0.13 forward.
+  //
+  // Nothing else has to change for it. The six hit boxes are raycast
+  // NON-recursively (`intersectObjects(this.hittables, false)` in shooting.js),
+  // so a child of a hit box is not a new way to be shot; and the ragdoll's head
+  // bone lists the head alone, because everything on the head rides with it.
+  const onHead = part(head);
+  const visor = onHead(GEO.visor, mats.visor, 0, 0.02, -0.13);
   const armL = mesh(GEO.arm, upper, -0.32, 1.15, 0);
   const armR = mesh(GEO.arm, upper, 0.32, 1.15, 0);
   const legL = mesh(GEO.leg, lower, -0.12, 0.43, 0);
@@ -443,11 +454,13 @@ function buildHuman(type, rng) {
   // like everything else that faces forward.
   const cap = [];
   if (mats.cap) {
-    cap.push(mesh(GEO.cap, mats.cap, 0, 1.79, 0));
-    cap.push(mesh(GEO.capPeak, mats.cap, 0, 1.76, -0.18));
+    // On the head with the face, and for the same reason: a cap that stays put
+    // while the head turns under it is worse than no cap.
+    cap.push(onHead(GEO.cap, mats.cap, 0, 0.16, 0));
+    cap.push(onHead(GEO.capPeak, mats.cap, 0, 0.13, -0.18));
     // Above the peak, not level with it: the peak stands 4 cm further forward
     // than the crown, so a badge any lower is inside it.
-    if (mats.capBadge) cap.push(mesh(GEO.capBadge, mats.capBadge, 0, 1.80, -0.146));
+    if (mats.capBadge) cap.push(onHead(GEO.capBadge, mats.capBadge, 0, 0.17, -0.146));
   }
 
   // Melee staff drop the gun and swing whatever was on their desk instead — and
@@ -540,7 +553,7 @@ function buildHuman(type, rng) {
     // cone: they are supposed to fly.
     bones: [
       { parts: [torso, hips, shirt], size: [0.5, 0.62, 0.3], at: [0, 1.16, 0], mass: 34 },
-      { parts: [head, visor, ...cap], size: [0.26, 0.28, 0.26], at: [0, 1.63, 0], mass: 5,
+      { parts: [head], size: [0.26, 0.28, 0.26], at: [0, 1.63, 0], mass: 5,
         joint: { to: 0, at: [0, 1.48, 0], angle: 0.65, twist: 0.5 } },
       { parts: [armL], size: [0.14, 0.54, 0.14], at: [-0.32, 1.15, 0], mass: 4,
         joint: { to: 0, at: [-0.27, 1.41, 0], angle: 1.4, twist: 0.8 } },
@@ -582,13 +595,18 @@ function buildRat(type, rng) {
 
   const torso = mesh(GEO.ratBody, mats.suit, 0, H, 0);
   const head = mesh(GEO.ratHead, mats.suit, 0, H + 0.02, -0.16);
-  mesh(GEO.ratSnout, mats.skin, 0, H + 0.005, -0.23);
-  mesh(GEO.ratEar, mats.skin, -0.05, H + 0.075, -0.145);
-  mesh(GEO.ratEar, mats.skin, 0.05, H + 0.075, -0.145);
+  // The face goes ON the head, which `animateRat` nods — snout, ears and eyes
+  // together, because all four used to be siblings of the head and stayed
+  // exactly where they were while it moved. Offsets are what they were, less
+  // the head's own (0, H + 0.02, -0.16).
+  const onHead = part(head);
+  onHead(GEO.ratSnout, mats.skin, 0, -0.015, -0.07);
+  onHead(GEO.ratEar, mats.skin, -0.05, 0.055, 0.015);
+  onHead(GEO.ratEar, mats.skin, 0.05, 0.055, 0.015);
   // Eyes carry the type colour, the way a visor does on everything else — a rat
   // is the one thing on the floor with no visor to put it on.
-  mesh(GEO.ratEye, mats.visor, -0.032, H + 0.035, -0.208);
-  mesh(GEO.ratEye, mats.visor, 0.032, H + 0.035, -0.208);
+  onHead(GEO.ratEye, mats.visor, -0.032, 0.015, -0.048);
+  onHead(GEO.ratEye, mats.visor, 0.032, 0.015, -0.048);
 
   const legs = [
     mesh(GEO.ratLeg, mats.suit, -0.055, 0.025, -0.09),
@@ -950,7 +968,9 @@ function buildRobot(type, rng) {
   mesh(geo.neck, mats.skin, 0,
     (s.torso.y + s.torso.size[1] / 2 + s.pod.y - s.pod.size[1] / 2) / 2, 0);
   const head = mesh(geo.pod, mats.shirt, 0, s.pod.y, 0);
-  const visor = mesh(geo.visor, mats.visor, 0, s.pod.y, -(s.pod.size[2] / 2 + 0.011));
+  // On the pod rather than beside it — the same fix the human rig needed, and
+  // the same reason: the pod IS this rig's head and `patrol` turns it.
+  const visor = part(head)(geo.visor, mats.visor, 0, 0, -(s.pod.size[2] / 2 + 0.011));
 
   const armL = mesh(geo.arm, mats.skin, -s.arm.x, s.arm.y, 0);
   const armR = mesh(geo.arm, mats.skin, s.arm.x, s.arm.y, 0);
@@ -1109,7 +1129,7 @@ function buildRobot(type, rng) {
           mass: s.mass * BONE_SHARE[0],
         },
         {
-          parts: [head, visor], size: s.pod.size, at: [0, s.pod.y, 0],
+          parts: [head], size: s.pod.size, at: [0, s.pod.y, 0],
           mass: s.mass * BONE_SHARE[1],
           joint: { to: 0, at: [0, s.pod.y - s.pod.size[1] / 2, 0], angle: 0.5, twist: 0.4 },
         },
