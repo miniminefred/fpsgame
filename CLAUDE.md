@@ -493,6 +493,60 @@ edgeProp(sink, bounds, 'receptionDesk', rng, sides, 'reception',
   { behind: COUNTER_STAND + COUNTER_CLEAR, stand: COUNTER_STAND, sweep: true });
 ```
 
+### ...and the same rule off the generator: the roster in five files
+`enemies.js` reached **4,162 lines** holding ten unrelated jobs, which is exactly
+the shape `build.js` was in, and it cost the same thing: each of the last three
+features had to be written in three separate places in it. It is five files now,
+none over 1,650 lines:
+
+```
+enemies.js      1,622   the state machine: noticing, chasing, gunfire, damage, death
+roster.js       1,501   who is on the floor, where each of them stands, and the alarm
+breaks.js         575   lunch, and the other kind of break
+stations.js       397   getting a body to a place, and settling it there
+enemy-net.js      261   the roster, over the wire
+enemy-tuning.js    50   the numbers more than one of those five needs
+```
+
+**They are METHODS MIXED ONTO THE PROTOTYPE, not functions taking a roster**, and
+that is a decision rather than a shortcut:
+
+```js
+for (const part of [rosterMethods, netMethods, breakMethods, stationMethods]) {
+  for (const name of Object.keys(part)) {
+    if (Object.hasOwn(Enemies.prototype, name)) throw new Error(`two definitions of ${name}`);
+  }
+  Object.defineProperties(Enemies.prototype, Object.getOwnPropertyDescriptors(part));
+}
+```
+
+`spawn` alone touches twenty-two fields of this class and calls five methods that
+stayed behind. The placement pass is not a component anybody could reuse, it is
+one job of one object — so threading an explicit roster through it would be the
+same coupling with more ceremony, and it would have rewritten every line of all
+five files rather than moving them. Which is the real argument: **moved verbatim,
+`tools/baseline/` can say the split changed nothing, and that is the one thing
+about a split worth having.** It did — SAME on all three layers, roster included,
+which is the layer that spawns two hundred people and runs the floor for forty
+seconds. The duplicate-name check is there because a silently shadowed method is
+the single failure this pattern can have.
+
+**`enemy-tuning.js` is a LEAF and that is what it is for.** `stations.js` needs
+the pace somebody walks to lunch at and `breaks.js` needs the band a seat can be
+found in; with each owning its own numbers the two would import each other, and a
+cycle whose names are read while the modules are still evaluating is a TDZ crash
+rather than a warning. It imports nothing, so nothing can cycle through it — the
+argument `metrics.js` already makes, one scale down.
+
+**What was genuinely duplicated came out as a table, not as a file boundary**
+(`held.js`). A crate, a tray, a can and a bundle of paper were four pairs of
+`give`/`take` methods, four snapshot bits and four `applySnapshot` branches, all
+the same five operations with different meshes. `HELD` is those differences — the
+field, the wire bit, the builder, which node it parents to, and the two that have
+a hook (a can starts a clock, a can taken clears it) — and `give`, `take`,
+`packHeld` and `applyHeld` are the part that was always the same. Adding a fifth
+thing a body can carry is now a row.
+
 ### Proving a change (`tools/snapshot.mjs` + `tools/baseline/`)
 The three validators prove INVARIANTS — a floor is connected, no lock strands the
 exit, no prop stands in a doorway — and a change can hold every one of them while
