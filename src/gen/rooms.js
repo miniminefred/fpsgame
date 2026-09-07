@@ -659,21 +659,34 @@ function presentationRoom(sink, bounds, rng) {
   // door is in never lands — and rows of chairs facing a blank wall is not a
   // presentation room, it is a waiting room. Try both walls and a few positions
   // along each, and rank the seats at whichever one took it.
-  let front = null, dir = 1, rot = 0, placed = false;
+  // `outward` is the quarter turn whose FRONT faces into the room, which is what
+  // the screen and the presenter want; `(outward + 2) & 3` faces the front wall,
+  // which is what the rows want. Naming it for the direction it points is the
+  // whole of the fix here: it was called "facing the front wall" and was the
+  // opposite, so all three read it with the wrong sign and every presentation
+  // room in the building was inside out — the picture buried in the plaster
+  // with its bracket standing 0.16 m out into the room, the presenter looking at
+  // the wall, and the rows watching the back of the room. Measured over 245
+  // rooms: 0 screens against their wall (median 0.310 m off it), 0 presenters
+  // facing the room, 0 of 5,008 chairs facing the screen. It is the same trap
+  // `edgeProp` documents at length and the same one that seated every chair in
+  // the cafeteria backwards — a side number is a direction, so a variable
+  // holding one has to say which.
+  let front = null, dir = 1, outward = 0, placed = false;
   for (const flip of rng.chance(0.5) ? [false, true] : [true, false]) {
     front = flip ? f1 : f0;
     dir = flip ? -1 : 1;                                   // deeper into the room
-    rot = alongX ? (flip ? 0 : 2) : (flip ? 3 : 1);        // facing the front wall
+    outward = alongX ? (flip ? 0 : 2) : (flip ? 3 : 1);
     for (const t of [0.5, 0.3, 0.7, 0.18, 0.82]) {
       const [bx, bz] = at(front + dir * 0.14, a0 + (a1 - a0) * t);
-      if (tryPlace(sink, 'presentationScreen', bx, bz, (rot + 2) & 3, rng)) {
+      if (tryPlace(sink, 'presentationScreen', bx, bz, outward, rng)) {
         // Where the person running it stands: to one side of the screen, out of
         // its way, facing the room. Registered here rather than through
         // `edgeProp`'s WORK_AT table because the screen is not placed by
         // `edgeProp` — it is put on the wall the ROWS decide, not on a wall of
         // its own choosing.
         const [sx, sz] = at(front + dir * 0.9, a0 + (a1 - a0) * t + 1.5);
-        sink.workstation(sx, sz, (rot + 2) & 3, 'board');
+        sink.workstation(sx, sz, outward, 'board');
         placed = true;
         break;
       }
@@ -689,8 +702,9 @@ function presentationRoom(sink, bounds, rng) {
       if (seats >= 5 && s === (seats >> 1)) continue;
       const along = a0 + (a1 - a0) * ((s + 0.5) / seats);
       const [cx, cz] = at(front + dir * (1.6 + r * 1.1), along);
-      if (tryPlace(sink, 'chair', cx, cz, rot, rng)) {
-        sink.workstation(cx, cz, rot, 'meeting');
+      const facing = (outward + 2) & 3;
+      if (tryPlace(sink, 'chair', cx, cz, facing, rng)) {
+        sink.workstation(cx, cz, facing, 'meeting');
       }
     }
   }
