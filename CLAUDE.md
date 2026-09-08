@@ -1525,19 +1525,40 @@ to ignore them, at one in two the visor stops being news.
 about it is the coin, and a seated pose would be promising the wrong thing about both halves
 of it.
 
-**THE COUNTER IS AN L IN THE WALL'S OWN PAINT** (`lCounter` in gen/props.js): a leg along
-the wall it grows out of and a longer one running out into the room, with the receptionist
-standing in the little square inside it. `wall` is the material the shell draws every
-interior wall with, so it is the same colour by construction rather than by a hex matched by
-hand, and it follows the floor's own tint for free. The top stands proud all round and the
-plinth is set back, which are the two shadow lines that stop it reading as one lump.
+**THE COUNTER IS AN L IN THE WALL'S OWN PAINT** (`lCounter` in gen/props.js): a long leg
+ACROSS THE FRONT, 2.2 m out into the lobby, and one return leg back from its end to the
+plaster — with the receptionist in the pocket between it and the wall. `wall` is the material
+the shell draws every interior wall with, so it is the same colour by construction rather
+than by a hex matched by hand, and it follows the floor's own tint for free. The top stands
+proud all round and the plinth is set back, which are the two shadow lines that stop it
+reading as one lump; the deeper setback goes on the faces that are seen.
 
-**Its two legs are TWO COLLIDERS**, and that is the whole reason the square is somewhere
+**THE COUNTER IS THE HALF THAT IS OUT TOWARDS THE ROOM, and it was the other way round for
+its first revision.** The long leg was bedded into the plaster with the void opening into the
+lobby, which is a counter with nothing at all on the room side of it: the void is open, so a
+visitor walks straight into it and stands beside the receptionist rather than across a desk
+from them. Measured over 60 floors before it was rewritten — 59 lobbies had somebody at a
+counter and **not one** of them had any counter between that body and the room; all 59 had
+it only off to one side. After: 48 of 48 (both L sizes), the counter a median 0.80 m in front
+of the body, and the 11 that are still stood at from the side are the one-leg stub, which is
+what that arrangement is for. A reception desk is the one prop in the building somebody
+stands behind, and behind is on the wall side.
+
+**Its two legs are TWO COLLIDERS**, and that is the whole reason the pocket is somewhere
 anybody can be. A prop's collider is what nav blocks, so one rectangle over the footprint
 would fill in its own void and the receptionist would be standing inside a wall.
 
+**How DEEP the pocket has to be is what sizes both Ls**, and it got sharper when the counter
+turned round: the old void was bounded on two sides and could make its 1.5 m up out of open
+lobby floor, where the pocket is bounded on three — the front leg, the return leg and the
+plaster. It is measured from the PLASTER rather than from the prop, because `bounds` insets
+every prop by `SKIRT` and it is the wall tile that blocks: the 2.2 m counter leaves
+0.15 + 2.2 - 0.32 = 2.03 m, which is four clear tile rows, and the 1.7 m one leaves 1.53 m,
+which is exactly three — and three rows leave exactly one row a body's 3x3 fits in. Under
+that there is no standable tile in there at all, which is what the stub is for.
+
 **Where the body goes is ASKED, not derived** (`standableCorner` in gen/placement.js, on
-`sink.standsAt`), and three things about that had to be measured wrong first:
+`sink.standsAt`), and four things about that had to be measured wrong first:
 
 - **It has to be asked AFTER the prop is down.** The legs are what a body has to clear and
   they are not in the blocked mask until `tryPlace` has run — asked before, the void reads
@@ -1547,6 +1568,12 @@ would fill in its own void and the receptionist would be standing inside a wall.
   just as an orthogonal one does.
 - **It has to step a whole TILE.** Half a tile from a tile centre lands exactly on a boundary
   and regularly does not move at all.
+- **...and it has to SNAP to tile centres first** (`sink.snap`). `standsAt` floors a point to
+  a tile and answers about the tile, so stepping a tile at a time off a prop's own middle
+  walks a grid offset from the real one by however that prop happened to land: it asks some
+  tiles twice and never asks their neighbours. Free slack while the void was open on two
+  sides; on the small counter, whose pocket has exactly one standable row, it is the
+  difference between a receptionist and none.
 
 **And it is BY THE DOOR.** `near` on `edgeProp` orders the walls and the slots along them by
 distance to the lobby's one doorway rather than restricting either, so a lobby whose doorway
@@ -1554,10 +1581,11 @@ end is spoken for still gets a counter further along. Median distance from the c
 door: 4.2 m, against 5.9 m before it was ordered.
 
 **Three sizes, which is `wallSpanProp`'s retreat one prop along.** The big L wants nearly
-4 x 5 tiles and lands in 44 lobbies in 60; the small L is the same shape one size down; and
-the one-leg stub covers the 16 that have no square patch anywhere, with the body standing
-BESIDE it (`aside`) rather than in a square it has not got. 59 of 60 lobbies get a counter
-and 51 have somebody standing at it, against 46 for the wall-backed desk this replaced.
+4 x 5 tiles and lands in 34 lobbies in 60; the small L is the same shape one size down and
+takes 14 more; and the one-leg stub covers the last 11, which have no pocket anywhere, with
+the body standing BESIDE it (`aside`) rather than behind a counter it cannot have. 59 of 60
+lobbies get a counter and 55 of the 59 stations are somewhere nav says a body fits, against
+46 for the wall-backed desk this replaced.
 
 A lobby that could not fit any of the three publishes no station and has nobody at one, which
 is an ordinary answer of exactly the kind `carveLift` gives.

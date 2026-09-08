@@ -227,38 +227,45 @@ export function wallSpanProp(sink, bounds, kind, rng, side) {
 /**
  * Somewhere to stand inside an L, and it has to be ASKED rather than derived.
  *
- * The middle of the prop's own footprint is the void between the legs and is
- * where the body belongs — enclosed on two sides, open to the room on the other
- * two. Whether that exact tile clears both legs depends on where the tile grid
- * falls under a prop that is not tile-aligned, so the middle is tried first and
- * then a TILE at a time outward, and `standsAt` is nav's own question asked of
- * the sink.
+ * BEHIND the counter, which is the pocket between its front leg and the wall it
+ * returns to (see `lCounter` in gen/props.js). Whether any given tile of that
+ * pocket clears both legs depends on where the tile grid falls under a prop that
+ * is not tile-aligned, so the pocket is WALKED — nearest the counter's own front
+ * first, because that is where somebody working at one stands — and `standsAt`
+ * is nav's own question asked of the sink.
  *
- * A tile at a time, not half a tile: a body needs its whole 3x3 clear (see
- * `standsAt`), so what matters is which tile it lands in, and stepping half a
- * tile from a tile centre lands exactly on a boundary and regularly does not
- * move at all. The steps go OUT from the wall as well as along it, because the
- * L's mouth is the open corner and the lobby's own floor is what clears a body's
- * far side there — which is what makes a marginal void usable.
+ * A TILE at a time and snapped to tile centres, which are two halves of one
+ * point: a body needs its whole 3x3 clear (see `standsAt`), so what matters is
+ * only which tile it lands in. Stepping off the prop's own middle, which is not
+ * tile aligned, walked some tiles twice and missed their neighbours — and on the
+ * small counter, whose pocket is exactly three rows deep and has exactly one
+ * standable row in it, that is the difference between a receptionist and none.
+ * `sink.snap` is also the better station: a tile centre is the point `fits` was
+ * answered about.
  *
- * The `spot` it comes back with is a TILE EITHER SIDE of the corner, and that is
- * not about the corner itself — the void is inside the prop's own footprint,
- * which `tryPlace` has already reserved, so nothing can be placed in it. It is
- * about the NEIGHBOURS: `fits` needs the four tiles around a body to be clear
- * too, and the two open sides of an L look out onto the rest of the lobby, where
- * the sofa and the pot plant are placed a few lines later. That is the whole of
- * the difference between 23 standable corners in 44 and all of them — the
- * furnisher's own mask said yes when it was asked, and then a plant landed in
- * the mouth of the L.
+ * The steps go toward the PLASTER as well as along the wall, and that is the
+ * whole of what the rewrite changed here. The old L had its long leg bedded into
+ * the wall with the void opening into the lobby, so the slack was out in the
+ * room; the counter fronts the room now, so the pocket is on the wall side and
+ * so is every candidate.
+ *
+ * The `spot` it comes back with is a TILE EITHER SIDE of the body, and that is
+ * not about the pocket itself — it is inside the prop's own footprint, which
+ * `tryPlace` has already reserved, so nothing can be placed in it. It is about
+ * the NEIGHBOURS: `fits` needs the tiles around a body clear too, and the
+ * pocket's mouth looks out onto the rest of the lobby, where the sofa and the
+ * pot plant are placed a few lines later. That is the whole of the difference
+ * between 23 standable corners in 44 and all of them — the furnisher's own mask
+ * said yes when it was asked, and then a plant landed in the mouth of the L.
  */
 function standableCorner(sink, w, along, standoff, margin) {
-  for (const [da, dd] of [[0, 0], [0, TILE], [TILE, 0], [-TILE, 0],
-    [TILE, TILE], [-TILE, TILE], [0, TILE * 2]]) {
-    // Never back INTO the wall, and never more than a tile past the mouth: a
-    // body two tiles out into the lobby is standing near the counter rather
-    // than at it.
-    if (standoff + dd > standoff + TILE * 2 || Math.abs(da) > margin) continue;
-    const [x, z] = w.seat(along + da, standoff + dd);
+  for (const [da, dd] of [[0, TILE], [0, 0], [0, -TILE],
+    [TILE, TILE], [-TILE, TILE], [TILE, 0], [-TILE, 0], [TILE, -TILE], [-TILE, -TILE]]) {
+    // Never further along than the counter is wide: a body past its own end is
+    // standing next to the counter rather than behind it, which is the stub's
+    // arrangement and not this one's.
+    if (Math.abs(da) > margin) continue;
+    const [x, z] = sink.snap(...w.seat(along + da, standoff + dd));
     if (sink.standsAt(x, z)) {
       return { x, z, spot: [x - TILE, z - TILE, x + TILE, z + TILE] };
     }

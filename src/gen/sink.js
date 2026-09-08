@@ -137,6 +137,23 @@ export function makeSink(layout, batcher, materials, masks) {
     },
 
     /**
+     * ...and the middle of the tile a point falls in, which is where a body
+     * standing on that tile actually stands.
+     *
+     * `standsAt` floors a point to a tile and answers about the tile, so a
+     * caller stepping a TILE at a time off a prop's own middle is walking a grid
+     * that is offset from the real one by however that prop happened to land: it
+     * asks some tiles twice and never asks their neighbours. Snapping first is
+     * what makes such a walk cover a pocket's tiles exactly once — see
+     * `standableCorner` in gen/placement.js, whose small counter has exactly one
+     * standable row and so cannot afford to miss it.
+     */
+    snap(x, z) {
+      return [(Math.floor((x - layout.ox) / TILE) + 0.5) * TILE + layout.ox,
+        (Math.floor((z - layout.oz) / TILE) + 0.5) * TILE + layout.oz];
+    },
+
+    /**
      * Runs `fn` with one prop's reserved floor lent back to it, and takes it
      * again afterwards. For a chair pulled up to a desk, which is the only kind
      * of prop that is SUPPOSED to stand inside another one's reservation.

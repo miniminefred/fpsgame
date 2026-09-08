@@ -1271,12 +1271,15 @@ function liftLobby(sink, bounds, rng, room, doors) {
   // A PROJECTION OF THE WALL, in the wall's own paint: `receptionCounter` is
   // authored with its long axis through its depth, so `edgeProp`'s ordinary
   // standoff — half the depth, which is what backing a prop against a wall means
-  // — runs 2.4 m of it out into the lobby. The whole peninsula is that one fact
-  // about the prop plus `aside` on the station.
+  // — runs 2.2 m of it out into the lobby. The whole peninsula is that one fact
+  // about the prop plus where the station goes.
   //
-  // `aside` rather than `behind`, and it is the one thing here that is not a
-  // look: there is no behind a counter that sticks out into the room, so the
-  // body goes in the crook between it and the wall. See COUNTER_ASIDE.
+  // AND THE COUNTER IS THE HALF THAT IS OUT THERE, with the body behind it. The
+  // two Ls carry their front leg at the room end of that depth and return one
+  // leg to the plaster, so `corner` is what finds the station: the pocket
+  // between the counter and the wall (see `lCounter` in gen/props.js and
+  // `standableCorner`). Only the STUB is stood at from the side — one leg has no
+  // behind, so its body goes in the crook, which is `aside` and COUNTER_ASIDE.
   const walls = rng.shuffle([(bank + 1) & 3, (bank + 3) & 3]).concat((bank + 2) & 3, bank);
   // BY THE DOOR. The lobby has one way in (see `oneWayIn` in gen/lifts.js), and
   // a reception you walk past on your way in is a reception where one across the

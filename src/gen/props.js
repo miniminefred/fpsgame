@@ -65,39 +65,61 @@ function placer(sink, cx, cz, rot) {
  * follows the floor's own tint for free. Both entries in the catalogue call this
  * with their own half-sizes; the shape is the same and only the size differs.
  *
- * TWO OBSTACLES RATHER THAN ONE, and that is the whole of why the square inside
+ * THE COUNTER IS OUT TOWARDS THE ROOM AND THE BODY IS BEHIND IT, which is the
+ * only arrangement of an L that means anything. The long leg runs ACROSS THE
+ * FRONT, at the room end of the footprint — the face you walk up to — and one
+ * return leg goes back from its end to the plaster, leaving the pocket between
+ * it and the wall for whoever works there.
+ *
+ * It was the other way round for its first revision, with the long leg bedded
+ * into the plaster and the void opening into the lobby, and that is a counter
+ * with nothing on the room side of it: the void is open to the room, so a
+ * visitor walks straight into it and stands beside the receptionist rather than
+ * across a desk from them. Measured over 60 floors before this was rewritten:
+ * 59 lobbies had somebody at a counter and NOT ONE of them had any counter
+ * between that body and the room — all 59 had it only off to one side. A
+ * reception desk is the one prop in the building somebody stands behind, and
+ * behind is on the wall side.
+ *
+ * TWO OBSTACLES RATHER THAN ONE, and that is the whole of why the pocket inside
  * it is somewhere anybody can be. A prop's collider is what nav blocks, so one
  * rectangle over the footprint would fill in its own void and the receptionist
  * would be standing inside a wall. A leg each leaves the inside as ordinary
  * floor.
  *
- * WHAT SIZE THE VOID HAS TO BE: `fits` in nav.js is a circle test, so a body
- * needs its whole 3x3 of tiles clear, diagonals included — 1.5 m, plus up to
- * half a tile of alignment slack, before the MIDDLE of the square is standable.
- * Under that, the only spot is at the mouth, which is beside the counter rather
- * than in it. That is the one number the two sizes are chosen against.
+ * WHAT SIZE THE POCKET HAS TO BE: `fits` in nav.js is a circle test, so a body
+ * needs its whole 3x3 of tiles clear, diagonals included — 1.5 m of it. The
+ * pocket is bounded on THREE sides now (the front leg, the return leg and the
+ * plaster) where the old void was bounded on two, so its DEPTH can no longer be
+ * made up out of open lobby floor and is the number both sizes are chosen
+ * against. It is measured from the plaster rather than from the prop, because
+ * `bounds` insets every prop by SKIRT and the wall tile is what blocks: a
+ * 2.2 m counter leaves 0.15 + 2.2 - T = 2.03 m, which is four clear tile rows,
+ * and the 1.7 m one leaves 1.53 m, which is exactly three. Under three there is
+ * no standable tile in there at all, and the stub below is what covers it.
  *
  * Three boxes a leg and both of the shadow lines that stop it reading as one
  * lump: the top stands proud all round and the plinth is set back, so the mass
- * of it appears to float a hand's width off the floor. A transaction counter is
- * 1.06 m — see the heights in CHORE_POSE, which is what a body at one is posed
- * against.
+ * of it appears to float a hand's width off the floor. The deeper setback goes
+ * on whichever faces are SEEN — the front and the open end — since that is
+ * where the shadow line reads. A transaction counter is 1.06 m — see the
+ * heights in CHORE_POSE, which is what a body at one is posed against.
  */
 function lCounter(p, RX, RZ, T = 0.32) {
   const H = 1.06, TOP = 1.12;
   const AX = RX - T, AZ = RZ - T;      // where each leg's inner face falls
-  // Along the wall. Authored facing -Z like everything else, so +z is the face
-  // that beds into the plaster.
-  p.box('wall', -RX, 0.09, AZ + 0.02, RX, H, RZ - 0.02);
-  p.box('wall', -RX + 0.07, 0, AZ + 0.08, RX - 0.07, 0.09, RZ - 0.02);
-  p.box('wall', -RX, H, AZ, RX, TOP, RZ);
-  // ...and out into the room, off the -x end of it.
-  p.box('wall', -RX + 0.02, 0.09, -RZ + 0.02, -AX - 0.02, H, AZ + 0.02);
-  p.box('wall', -RX + 0.02, 0, -RZ + 0.07, -AX - 0.08, 0.09, AZ + 0.02);
-  p.box('wall', -RX, H, -RZ, -AX, TOP, AZ);
-  // One collider per leg, which is what leaves the square standable.
-  p.obstacle(-RX, AZ, RX, RZ, TOP);
-  p.obstacle(-RX, -RZ, -AX, AZ, TOP);
+  // ACROSS THE FRONT. Authored facing -Z like everything else, so -z is the
+  // face the room walks up to and +z is what beds into the plaster.
+  p.box('wall', -RX, 0.09, -RZ + 0.02, RX, H, -AZ - 0.02);
+  p.box('wall', -RX + 0.07, 0, -RZ + 0.08, RX - 0.07, 0.09, -AZ - 0.02);
+  p.box('wall', -RX, H, -RZ, RX, TOP, -AZ);
+  // ...and one return leg back to the plaster, off the -x end of it.
+  p.box('wall', -RX + 0.02, 0.09, -AZ - 0.02, -AX - 0.02, H, RZ - 0.02);
+  p.box('wall', -RX + 0.02, 0, -AZ - 0.02, -AX - 0.08, 0.09, RZ - 0.02);
+  p.box('wall', -RX, H, -AZ, -AX, TOP, RZ);
+  // One collider per leg, which is what leaves the pocket standable.
+  p.obstacle(-RX, -RZ, RX, -AZ, TOP);
+  p.obstacle(-RX, -AZ, -AX, RZ, TOP);
 }
 
 function monitorAt(p, x, z, rng) {
@@ -1027,9 +1049,11 @@ export const PROPS = {
   // generator, one prop along: ask for the thing that reads best, take the thing
   // that fits — and here both are the same thing.
   //
-  // The body stands at the mouth of this one rather than in the middle of it,
-  // and that falls out of `standableCorner` rather than being decided here: its
-  // void is two tiles across, and a body needs three (see `lCounter`).
+  // Its pocket is exactly THREE tile rows deep against the big one's four, and
+  // that falls out of `standableCorner` rather than being decided here: three
+  // rows leave exactly one row a body's 3x3 fits in, the middle one, so this is
+  // the size at which the arithmetic in `lCounter` closes and nothing under it
+  // has a pocket anybody can stand in at all.
   receptionCounterSmall: {
     w: 1.5, d: 1.7, hp: 90, substance: 'wood',
     build(p) { lCounter(p, 0.75, 0.85); },
