@@ -1054,7 +1054,25 @@ export const PROPS = {
     // leg along the wall it grows out of, one running OUT into the room, and the
     // out leg the longer of the two — a counter you walk up to the side of
     // rather than a slab across a corner.
-    w: 1.9, d: 2.2, hp: 90, substance: 'wood',
+    // NOT DESTRUCTIBLE, and that is `beginStatic`'s own opt-out rather than a new
+    // one: with no `hp` it files no destructible record, so `resolve` in
+    // destruction.js names no prop for a round that lands here and the counter is
+    // plain scenery — the same answer a wall gives. `box` and `obstacle` both
+    // write through `record?.`, so it still draws and still collides.
+    //
+    // It earns that by being the fabric of the building rather than furniture: it
+    // is drawn in `wall`, the material the shell paints every interior wall with,
+    // it is a projection OUT of the plaster it matches, and it is the one thing in
+    // the lobby a body is posted behind for the whole floor. A filing cabinet
+    // coming apart is the floor being fought over; a reception counter coming
+    // apart takes the room's only station with it and leaves the receptionist
+    // standing in the open.
+    //
+    // `substance` goes with the hp rather than being left behind. It is read in
+    // exactly one place — the record `beginStatic` no longer files — so keeping it
+    // would be a field no code reads, which is the thing the Sentry Unit's dead
+    // `standing` flag is the warning about.
+    w: 1.9, d: 2.2,
     build(p) { lCounter(p, 0.95, 1.1); },
   },
 
@@ -1074,7 +1092,25 @@ export const PROPS = {
   // the size at which the arithmetic in `lCounter` closes and nothing under it
   // has a pocket anybody can stand in at all.
   receptionCounterSmall: {
-    w: 1.5, d: 1.7, hp: 90, substance: 'wood',
+    // NOT DESTRUCTIBLE, and that is `beginStatic`'s own opt-out rather than a new
+    // one: with no `hp` it files no destructible record, so `resolve` in
+    // destruction.js names no prop for a round that lands here and the counter is
+    // plain scenery — the same answer a wall gives. `box` and `obstacle` both
+    // write through `record?.`, so it still draws and still collides.
+    //
+    // It earns that by being the fabric of the building rather than furniture: it
+    // is drawn in `wall`, the material the shell paints every interior wall with,
+    // it is a projection OUT of the plaster it matches, and it is the one thing in
+    // the lobby a body is posted behind for the whole floor. A filing cabinet
+    // coming apart is the floor being fought over; a reception counter coming
+    // apart takes the room's only station with it and leaves the receptionist
+    // standing in the open.
+    //
+    // `substance` goes with the hp rather than being left behind. It is read in
+    // exactly one place — the record `beginStatic` no longer files — so keeping it
+    // would be a field no code reads, which is the thing the Sentry Unit's dead
+    // `standing` flag is the warning about.
+    w: 1.5, d: 1.7,
     build(p) { lCounter(p, 0.75, 0.85); },
   },
 
@@ -1087,7 +1123,25 @@ export const PROPS = {
   // it has not got. A lobby with nobody in it is worse than a lobby whose
   // counter is a plain one.
   receptionCounterStub: {
-    w: 0.7, d: 1.8, hp: 90, substance: 'wood',
+    // NOT DESTRUCTIBLE, and that is `beginStatic`'s own opt-out rather than a new
+    // one: with no `hp` it files no destructible record, so `resolve` in
+    // destruction.js names no prop for a round that lands here and the counter is
+    // plain scenery — the same answer a wall gives. `box` and `obstacle` both
+    // write through `record?.`, so it still draws and still collides.
+    //
+    // It earns that by being the fabric of the building rather than furniture: it
+    // is drawn in `wall`, the material the shell paints every interior wall with,
+    // it is a projection OUT of the plaster it matches, and it is the one thing in
+    // the lobby a body is posted behind for the whole floor. A filing cabinet
+    // coming apart is the floor being fought over; a reception counter coming
+    // apart takes the room's only station with it and leaves the receptionist
+    // standing in the open.
+    //
+    // `substance` goes with the hp rather than being left behind. It is read in
+    // exactly one place — the record `beginStatic` no longer files — so keeping it
+    // would be a field no code reads, which is the thing the Sentry Unit's dead
+    // `standing` flag is the warning about.
+    w: 0.7, d: 1.8,
     build(p) {
       const H = 1.06, TOP = 1.12;
       p.box('wall', -0.31, 0.09, -0.88, 0.31, H, 0.90);
