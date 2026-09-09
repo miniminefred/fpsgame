@@ -91,13 +91,8 @@ async function build() {
     || ONLY.some((k) => w.name.toLowerCase().includes(k.toLowerCase())));
 
   for (const cfg of wanted) {
-    // A weapon with no GLB builds itself -- slot 1 is a spray can authored in
-    // code (see `sprayCan` in weapons.js). It goes through the same
-    // `buildWeaponRig` and the same `measureMuzzle` as the four downloaded guns,
-    // which is the whole point of this harness: `loadAsync(undefined)` would
-    // have taken the page down on the one weapon whose rig only exists here.
-    const model = cfg.build ? cfg.build() : (await loader.loadAsync(cfg.file)).scene;
-    const rig = buildWeaponRig(cfg, model);
+    const gltf = await loader.loadAsync(cfg.file);
+    const rig = buildWeaponRig(cfg, gltf.scene);
     scene.add(rig);
 
     const muzzle = measureMuzzle(rig, cfg);

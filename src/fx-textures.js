@@ -29,10 +29,8 @@ export function getFx() {
 function build() {
   const scorch = [];
   for (let i = 0; i < SCORCH_VARIANTS; i++) scorch.push(texture(scorchSplat(i * 977 + 13)));
-  const spray = [];
-  for (let i = 0; i < SPRAY_VARIANTS; i++) spray.push(texture(sprayBlob(i * 613 + 41)));
   return {
-    scorch, spray, flash: texture(flashStar()), glow: texture(softGlow()),
+    scorch, flash: texture(flashStar()), glow: texture(softGlow()),
     puddle: texture(wetPatch()),
   };
 }
@@ -240,88 +238,6 @@ function fadeBorder(ctx, px) {
     }
   }
   ctx.putImageData(img, 0, 0);
-}
-
-/**
- * Four spray blobs, for the can in weapon slot 1.
- *
- * WHITE, because the colour is the CAN'S and not the texture's: paint is drawn
- * as one batched mesh with a vertex colour per splat (see `paint` in
- * effects.js), so the sprite carries the SHAPE and the mesh carries the hue. A
- * tinted sprite here would fight it.
- *
- * Three things make it read as aerosol rather than as a sticker, and the third
- * is the one that matters:
- *
- *   core      a soft round mass, dense in the middle and thinning out — which is
- *             what a can does when you hold it still
- *   overspray a scatter of fine dots well outside the core, thickest just past
- *             its edge. A hard-edged blob reads as a decal; the dust around it
- *             is what says the paint arrived through air
- *   runs      a couple of short dribbles off the bottom. They are what stop a
- *             wall of overlapping blobs looking like a texture and make it look
- *             like somebody sprayed it
- *
- * Four variants for the scorch marks' reason: this is the effect the player
- * makes hundreds of and looks straight at, so one sprite repeated is the thing
- * they would notice. `lcg` keeps them the same four every run.
- */
-const SPRAY_VARIANTS = 4;
-
-function sprayBlob(seed) {
-  const S = 128, R = S / 2;
-  const cv = surface(S);
-  const g = cv.getContext('2d');
-  const rnd = lcg(seed);
-
-  // The core, as a stack of soft blobs rather than one gradient — the same
-  // trick the scorch marks use, and for the same reason: a single radial
-  // gradient is perfectly round and nothing sprayed is.
-  for (let i = 0; i < 14; i++) {
-    const a = rnd() * Math.PI * 2;
-    const d = rnd() * R * 0.22;
-    const r = R * (0.36 + rnd() * 0.2);
-    const x = R + Math.cos(a) * d, y = R + Math.sin(a) * d;
-    const grad = g.createRadialGradient(x, y, 0, x, y, r);
-    grad.addColorStop(0, 'rgba(255,255,255,0.30)');
-    grad.addColorStop(0.6, 'rgba(255,255,255,0.14)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = grad;
-    g.beginPath();
-    g.arc(x, y, r, 0, Math.PI * 2);
-    g.fill();
-  }
-
-  // Overspray: fine dust, biased to just outside the core and thinning with
-  // distance, so the blob has no edge anywhere.
-  for (let i = 0; i < 260; i++) {
-    const a = rnd() * Math.PI * 2;
-    const t = rnd();
-    const d = R * (0.34 + t * 0.62);
-    const x = R + Math.cos(a) * d, y = R + Math.sin(a) * d;
-    g.fillStyle = `rgba(255,255,255,${(0.5 * (1 - t) ** 1.6).toFixed(3)})`;
-    g.beginPath();
-    g.arc(x, y, 0.5 + rnd() * 1.3, 0, Math.PI * 2);
-    g.fill();
-  }
-
-  // ...and one or two runs off the bottom. `+y` is down on a canvas, and down
-  // on the splat is down on the wall: `frame` in effects.js spins the quad, so
-  // this is only ever approximately downhill — which is enough, because what
-  // reads is that the paint went SOMEWHERE rather than exactly where.
-  const runs = 1 + ((rnd() * 2) | 0);
-  for (let i = 0; i < runs; i++) {
-    const x = R + (rnd() - 0.5) * R * 0.7;
-    const len = R * (0.25 + rnd() * 0.45);
-    const w = 1.4 + rnd() * 2.2;
-    const grad = g.createLinearGradient(x, R * 1.25, x, R * 1.25 + len);
-    grad.addColorStop(0, 'rgba(255,255,255,0.22)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = grad;
-    g.fillRect(x - w / 2, R * 1.25, w, len);
-  }
-
-  return cv;
 }
 
 // Deterministic noise, so the four scorch variants are the same four every run.

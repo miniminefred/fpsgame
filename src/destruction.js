@@ -259,21 +259,6 @@ export class Destruction {
    * that is about to stop existing is wasted, and a decal left floating where
    * the desk used to be is worse.
    */
-  /**
-   * Whether a raycast hit landed on a destructible at all, asked WITHOUT
-   * damaging it.
-   *
-   * The spray can needs to tell the building from the furniture and has nothing
-   * to do about it either way (see `_trace` in shooting.js: only the building
-   * keeps a mark, because a splat on a desk outlives the desk). It cannot ask
-   * `damageSurface` with nothing in it -- that is the damage path, and it voices
-   * the prop's own impact clip on the way past. Same `resolve` underneath, so
-   * the two can never disagree about which faces belong to a prop.
-   */
-  owns(hit) {
-    return !!resolve(hit);
-  }
-
   damageSurface(hit, dir, damage) {
     const entry = resolve(hit);
     if (!entry) return false;

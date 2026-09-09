@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { PAINT_COLOUR } from './weapons.js';
 import { clamp, clamp01 } from './util.js';
 // Recoil moves the same camera the mouse does, so it obeys the same ceiling.
 import { PITCH_LIMIT } from './input.js';
@@ -109,10 +108,6 @@ export class Shooting {
     this._dir = new THREE.Vector3();
     this._origin = new THREE.Vector3();
     this._muzzle = new THREE.Vector3();
-    // What the can is full of, as a Color once rather than per splat: `paint` in
-    // effects.js writes it straight into a vertex-colour buffer, and that is the
-    // innermost loop of a held trigger.
-    this.paintColour = new THREE.Color(PAINT_COLOUR);
     this._end = new THREE.Vector3();
     this._normal = new THREE.Vector3();
     // PointerLockControls keeps the camera in YXZ, so reading pitch back the
@@ -232,15 +227,8 @@ export class Shooting {
 
     this.weapons.fired();
     this.weapons.muzzleWorld(this._muzzle);
-    // A can hisses and ejects nothing. Both halves matter: `playerShot` also
-    // throws a shell casing on the carpet, and brass off a spray can is the
-    // detail that would give the whole thing away.
-    if (stats.paint) {
-      this.audio.playerSpray(stats);
-    } else {
-      this.audio.playerShot(stats);
-      this.casings?.eject(this.camera, this._muzzle);
-    }
+    this.audio.playerShot(stats);
+    this.casings?.eject(this.camera, this._muzzle);
 
     this.camera.getWorldPosition(this._origin);
     this.camera.getWorldDirection(this._aim);
@@ -266,9 +254,6 @@ export class Shooting {
     // View kick, applied on the camera's local X so it's independent of yaw.
     this.viewKick += this._pitch(stats.kick * (0.8 + Math.random() * 0.4));
 
-    // A hitmarker is a DAMAGE cue and the can does none, so `_trace` returns
-    // null for everything it paints and this never fires. The feedback is the
-    // splat, which is on the wall and stays there.
     if (hitAny) {
       if (killedAny) this.onKill?.();
       this.hud.hitmarker(killedAny);
@@ -296,29 +281,6 @@ export class Shooting {
         this._normal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld);
       } else {
         this._normal.copy(dir).negate();   // no face data — face the shooter
-      }
-
-      // THE CAN, and it returns before any of the damage below rather than
-      // threading a zero through it. What it hits it marks, and that is all it
-      // does: no tracer (a stream of paint is not a round in flight), no impact
-      // spark, no shove on the furniture, no damage anywhere.
-      //
-      // A BODY is painted and a WALL is painted, and they are two different
-      // jobs — see `enemies.paint` for what happens to somebody wearing it.
-      if (stats.paint) {
-        this._netEnd.copy(hit.point);
-        const painted = hit.object.userData.enemy;
-        if (painted) this.enemies.paint(hit.object, this.paintColour);
-        // ...and only the BUILDING keeps a mark, which is the rule the bullet
-        // holes already live by (see the bottom of this function): a splat on a
-        // desk outlives the desk and hangs in the air once it is shot apart.
-        // `isDestructible` is a QUERY and not `onSurfaceHit`, which is the
-        // damage path: asking that one would route a round's worth of nothing
-        // into a prop and voice its impact clip on the way past.
-        else if (!hit.object.userData.dynamic && !this.isDestructible?.(hit)) {
-          this.effects.paint(hit.point, this._normal, this.paintColour);
-        }
-        return null;
       }
 
       this.effects.tracer(this._muzzle, hit.point);

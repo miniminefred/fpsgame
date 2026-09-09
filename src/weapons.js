@@ -21,103 +21,12 @@ import { getFx } from './fx-textures.js';
 // and a rifle round reaching thirty metres arrives with everything it left
 // with. A pistol barely gets to do this at all, which is what makes it read as
 // a pistol. See throwPunch in shooting.js.
-/**
- * The spray can in slot 1, built in code because there is no GLB of one.
- *
- * Authored at its FINAL on-screen size -- 26 mm across and 118 mm tall, a real
- * 400 ml can -- which is what `raw` on the config buys: see `buildWeaponRig`.
- *
- * TILTED, not upright and not levelled like a barrel. A can held straight up is
- * a can somebody is carrying; a can held like a pistol is a gun. What reads as
- * spraying is the middle: the body leant forward so the top comes into the
- * frame and the nozzle points roughly where the crosshair is, which is also how
- * you hold one at a wall.
- *
- * The nozzle is a real stub sticking out of the cap rather than a mark on it,
- * for one concrete reason: `measureMuzzle` averages the frontmost slice of
- * geometry to find where the hiss comes from, so the front-most thing on the
- * model has to BE the nozzle.
- *
- * Its own paint is the colour it sprays (PAINT_COLOUR), because a can whose
- * label does not match what comes out of it is a prop nobody can read.
- */
-function sprayCan() {
-  const R = 0.026, H = 0.118;
-  const steel = new THREE.MeshLambertMaterial({ color: 0xd8dade });
-  const label = new THREE.MeshLambertMaterial({ color: PAINT_COLOUR });
-  const cap = new THREE.MeshLambertMaterial({ color: 0x2b2e33 });
-
-  const can = new THREE.Group();
-  const add = (geo, mat, y, z = 0) => {
-    const m = new THREE.Mesh(geo, mat);
-    m.position.set(0, y, z);
-    can.add(m);
-    return m;
-  };
-
-  // Body, with the label band round the middle and a bare strip of steel top
-  // and bottom -- the same reasoning as the drinks in drinks.js: the band is
-  // what says which colour, and the bare metal is what says it is a can.
-  add(new THREE.CylinderGeometry(R, R, H, 20), steel, 0);
-  add(new THREE.CylinderGeometry(R * 1.02, R * 1.02, H * 0.46, 20), label, 0);
-  // Rolled rim at each end, which is most of what stops it reading as a tube.
-  add(new THREE.CylinderGeometry(R * 1.05, R * 1.05, 0.006, 20), steel, H / 2 - 0.003);
-  add(new THREE.CylinderGeometry(R * 1.05, R * 1.05, 0.006, 20), steel, -H / 2 + 0.003);
-  // Shoulder into the cap.
-  add(new THREE.CylinderGeometry(R * 0.62, R, 0.014, 20), steel, H / 2 + 0.007);
-  add(new THREE.CylinderGeometry(R * 0.62, R * 0.62, 0.016, 16), cap, H / 2 + 0.022);
-  // ...and the nozzle, the frontmost thing on the model. See `measureMuzzle`.
-  const stub = new THREE.Mesh(new THREE.CylinderGeometry(0.0035, 0.0035, 0.016, 8), cap);
-  stub.rotation.x = Math.PI / 2;
-  stub.position.set(0, H / 2 + 0.026, -0.012);
-  can.add(stub);
-
-  can.traverse((o) => { if (o.isMesh) o.castShadow = false; });
-
-  // Leant forward so the nozzle comes round to the front. Wrapped rather than
-  // rotated in place so `buildWeaponRig` still measures and centres the whole
-  // can rather than a tilted bounding box of one part of it.
-  const held = new THREE.Group();
-  held.add(can);
-  held.rotation.x = -0.95;
-  return held;
-}
-
-/**
- * What the can is full of, and the one colour on the floor that is the player's
- * rather than the building's.
- *
- * It is deliberately NOT on the visor ramp and does not have to be, even though
- * it also lands on people: `flashSet` in rigs.js picks the materials a hit flash
- * whitens by filtering for `emissive`, which excludes a visor because a visor is
- * MeshBasicMaterial. So paint tints somebody's clothes and never their eyes, and
- * "hue says threat, shade says which one" survives a floor covered in it.
- */
-export const PAINT_COLOUR = 0xff2d95;
-
 const WEAPONS = [
   {
-    // SLOT 1 IS NOT A GUN. It paints, it does no damage at all, and everything
-    // that follows from that is deliberate:
-    //
-    //   damage 0    so it is never a way to clear a floor. The player carries
-    //               all five slots from the first floor (there is no unlock
-    //               anywhere in this table), so the SMG next door is still the
-    //               starting weapon and nothing about the difficulty moved.
-    //   range 3.2   a can's throw and no further. It is the one weapon you have
-    //               to walk up to something to use.
-    //   auto        a held trigger, because drawing is a stroke rather than a
-    //               shot -- `spread` is what gives it a cone to lay down.
-    //   flash false a hiss and no muzzle flash: see `fired`.
-    //   paint       the one flag shooting.js branches on. See `_trace`.
-    //
-    // `raw` and `build` are the other half of it: this is the only weapon in the
-    // game with no GLB, so it is authored in code at its final on-screen size.
-    // See `sprayCan` and the `raw` path in `buildWeaponRig`.
-    name: 'Spray Can', build: sprayCan, raw: true, length: 0.13, flip: false, yaw: 0,
-    rpm: 780, auto: true, damage: 0, pellets: 1, spread: 0.055,
-    kick: 0.002, punch: 0, throwMul: 0, throwTo: 1, mag: 200, reload: 1.6, range: 3.2,
-    sound: 'extinguisher-jet', flash: false, paint: true,
+    name: 'Pistol', file: 'models/1_pistol.glb', length: 0.30, flip: false, yaw: 0,
+    rpm: 420, auto: false, damage: 34, pellets: 1, spread: 0.004,
+    kick: 0.016, punch: 0.75, throwMul: 1.15, throwTo: 5, mag: 12, reload: 1.1, range: 200,
+    sound: 'pistol-fire',
   },
   {
     name: 'SMG', file: 'models/2_smg.glb', length: 0.42, flip: false, yaw: 0,
@@ -189,11 +98,6 @@ export class Weapons {
 
     const loader = new GLTFLoader();
     WEAPONS.forEach((w, i) => {
-      // Built in code rather than fetched. Straight to the same `_onLoaded` a
-      // GLB lands in, so the rig, the muzzle measurement and the swap all work
-      // on it exactly as they do on the other four -- and /dev-guns.html, which
-      // drives this same builder, shows it beside them without knowing.
-      if (w.build) { this._onLoaded(i, w, w.build()); return; }
       loader.load(
         w.file,
         (gltf) => this._onLoaded(i, w, gltf.scene),
@@ -308,12 +212,6 @@ export class Weapons {
   // Viewmodel response to a shot: bump recoil and light the muzzle flash.
   fired() {
     this.recoil = Math.min(RECOIL_MAX, this.recoil + 1);
-    // A CAN DOES NOT FLASH. Everything below this line builds the muzzle flash
-    // and aims it down the bore; a nozzle has neither, and a burn hanging off
-    // the top of a spray can is the one thing that would make it read as a gun.
-    // The recoil above still runs, because `kick` is nearly zero anyway and the
-    // tiny shake is what makes a held trigger feel like it is doing something.
-    if (this.stats.flash === false) return;
     this.flash = FLASH_TIME;
 
     const p = this.muzzleLocal();
@@ -425,25 +323,14 @@ export function buildWeaponRig(cfg, model) {
   const inner = new THREE.Group();
   inner.add(model);
 
-  // AUTHORED AT ON-SCREEN SIZE, so neither of the two fits below applies. Both
-  // are about a downloaded gun: the auto-orient finds a barrel by taking the
-  // longest horizontal axis, and the scale stretches that axis to `length`. A
-  // spray can has no barrel and its longest axis is the one it stands up on --
-  // measured, the fit would take a 26 mm can, call its diameter the barrel, and
-  // blow it up five times to match. Something written in code can simply be
-  // written the right size, and `sprayCan` is.
-  if (cfg.raw) {
-    inner.rotation.y = cfg.yaw;
-  } else {
-    // Auto-orient: the longest horizontal axis is the barrel — align it to -z.
-    if (size.x >= size.z) inner.rotation.y = Math.PI / 2; // barrel along X -> Z
-    if (cfg.flip) inner.rotation.y += Math.PI;
-    inner.rotation.y += cfg.yaw;
+  // Auto-orient: the longest horizontal axis is the barrel — align it to -z.
+  if (size.x >= size.z) inner.rotation.y = Math.PI / 2; // barrel along X -> Z
+  if (cfg.flip) inner.rotation.y += Math.PI;
+  inner.rotation.y += cfg.yaw;
 
-    // Scale so the barrel reads at the configured on-screen length.
-    const barrelLen = Math.max(size.x, size.z) || 1;
-    inner.scale.setScalar(cfg.length / barrelLen);
-  }
+  // Scale so the barrel reads at the configured on-screen length.
+  const barrelLen = Math.max(size.x, size.z) || 1;
+  inner.scale.setScalar(cfg.length / barrelLen);
 
   const rig = new THREE.Group();
   rig.add(inner);
@@ -466,18 +353,7 @@ export function buildWeaponRig(cfg, model) {
 const MUZZLE_SLICE = 0.07;   // fraction of the model's depth counted as "the end"
 
 export function measureMuzzle(rig, cfg) {
-  // PARENTS AS WELL AS CHILDREN. `updateMatrixWorld` refreshes this subtree and
-  // trusts whatever the ancestors already hold, and the loop below cancels the
-  // camera out by taking every vertex to world space and back through
-  // `rig.worldToLocal` — which only cancels if both ends were computed against
-  // the SAME camera matrix. The four downloaded guns get that for free by
-  // arriving a frame or more into the run, with a camera that has been placed;
-  // the spray can is built synchronously during construction, before the camera
-  // has been anywhere, and came out with the player's own world position left
-  // in it — measured, a 0.12 m can whose muzzle read 1.67 m below the hand.
-  // `updateWorldMatrix(true, true)` walks up first, so it cannot depend on when
-  // it is called.
-  rig.updateWorldMatrix(true, true);
+  rig.updateMatrixWorld(true);
 
   const v = new THREE.Vector3();
   const local = new THREE.Vector3();

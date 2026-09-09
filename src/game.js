@@ -179,12 +179,6 @@ export class Game {
       this.destruction.damageProp(dyn, dir, point, damage);
     this.shooting.onSurfaceHit = (hit, dir, damage) =>
       this.destruction.damageSurface(hit, dir, damage);
-    // Whether that face belongs to a prop, asked without damaging it -- the can
-    // paints the BUILDING and leaves the furniture alone, for the reason a
-    // bullet hole does: a mark on a desk outlives the desk. A separate query
-    // rather than `onSurfaceHit` with nothing in it, because that one is the
-    // damage path and voices the prop's impact clip on the way past.
-    this.shooting.isDestructible = (hit) => this.destruction.owns(hit);
 
     this.enemies.onDeath = (e) => this._onEnemyDeath(e);
     this.doors.onRefused = (door) => this._onDoorRefused(door);
@@ -428,11 +422,6 @@ export class Game {
     // Water is the floor's, the pool of patches is not — same split as debris.
     this.spills?.clear();
     this.casings.clear();
-    // The player's own graffiti, which lasts a floor and not a run: paint is
-    // measured against the walls it was sprayed on, so it cannot outlive them.
-    // Same split as the debris above -- the batched mesh it is drawn in belongs
-    // to `effects` and stays, only what has been written into it goes.
-    this.effects.clearPaint();
     // Cards do not travel between floors. A building where the card you found on
     // eight opens nine has exactly one locked door in it, on floor one.
     this.keycards.clear();

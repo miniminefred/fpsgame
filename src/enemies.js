@@ -69,11 +69,6 @@ const PANIC_SHOUT = [1.6, 3.4];
 // further from you, so it routes through doorways like everything else; when it
 // runs out they go back to whatever they were doing.
 const FLEE_TIME = 8;
-
-// How much of the can lands in one pass. Low, because it is a held trigger at
-// thirteen shots a second: a body sprayed for a moment is marked and still
-// recognisable, and one sprayed for a second is covered. See `paint`.
-const PAINT_TAKE = 0.16;
 const FLEE_SPEED = 1.45;
 const FLEE_AWAY = 4;           // metres a flee destination must gain on you
 // The beat between being seen and being shot at.
@@ -469,69 +464,6 @@ export class Enemies {
   }
 
   // Damage from any source, once it is known who took it and how much.
-  /**
-   * Whatever this body was doing, it is not doing it now — and if it is harmless
-   * it is running. Returns whether it ran, which is the only thing the callers
-   * differ on.
-   *
-   * Lifted out of `_damage` when the spray can arrived, because being PAINTED
-   * asks for exactly this and none of the rest of taking damage. Two callers is
-   * the moment to have one copy: the break has to end for the reason it always
-   * did (a body on a break is out of the state machine, and the frame that stops
-   * being true is the frame its visor stops saying it), the errand and the chore
-   * have to end so nothing is left holding a crate it has walked away from, and
-   * the timer has to be zeroed or the next tick finishes the walk they were
-   * already on instead of picking somewhere away from you.
-   */
-  _downTools(e) {
-    if (e.break) this._lunchEnd(e);
-    if (e.job) this.jobLost?.(e);
-    if (e.chore) this.choreLost?.(e);
-    if (!e.neutral) return false;
-    // They have nothing to fight you with and never did.
-    e.flee = FLEE_TIME;
-    e.wanderTimer = 0;
-    return true;
-  }
-
-  /**
-   * Somebody wearing the player's paint, for the rest of the floor.
-   *
-   * TWO EFFECTS AND THEY DO NOT APPLY TO THE SAME PEOPLE. The paint is cosmetic
-   * and lands on anybody; running away is behavioural and only the harmless do
-   * it — a body walking over to kill you is not going to reconsider because it
-   * is pink, and `_downTools` is what already draws that line.
-   *
-   * IT TINTS `e.flash`, WHICH IS WHY THE VISOR SURVIVES. That set is the one
-   * rigs.js keeps of "the body and what it has on", and `flashSet` builds it by
-   * filtering for `emissive` — so a visor, being MeshBasicMaterial, is not in
-   * it. Paint therefore goes on somebody's clothes and never on their eyes, and
-   * the game's one universal tell (hue says threat, shade says which one) is
-   * still true on a floor covered in the stuff. Nothing else may take that
-   * liberty with the visor, and this one does not either.
-   *
-   * It writes `color` where the hit flash writes `emissive`, so the two never
-   * fight: a painted body still goes white when it is shot and comes back
-   * painted rather than coming back clean.
-   *
-   * NO BOOKKEEPING, and that is the whole of why it lasts. Materials are per
-   * body (see `mats` in rigs.js — a hit flash is one enemy going white), so the
-   * colour IS the state: it paints exactly one person, it survives everything,
-   * and it lasts precisely as long as the body does.
-   *
-   * `lerp` rather than `set`, because one pass leaving somebody unrecognisable
-   * is a worse floor — a Security guard is a dark silhouette with a blue shirt
-   * and that is how you know to be careful. Holding the trigger builds it up,
-   * which is the right relationship between how long you spray and how covered
-   * they are.
-   */
-  paint(part, colour) {
-    const e = part?.userData?.enemy ?? part;
-    if (!e || !e.alive) return;
-    for (const m of e.flash) m.color.lerp(colour, PAINT_TAKE);
-    this._downTools(e);
-  }
-
   _damage(e, damage, hit = null) {
     if (!e.alive) return null;
     e.health -= damage;
@@ -553,8 +485,12 @@ export class Enemies {
     // ...and the ordinary job, for exactly the same reason and in the same
     // breath: nobody carries on typing while they are being shot at.
     if (e.chore) this.choreLost?.(e);
-    if (this._downTools(e)) {
-      // Harmless, and now running. Nothing else to decide.
+    if (e.neutral) {
+      // They have nothing to fight you with and never did. Zeroing the timer
+      // makes the next tick pick a destination away from you instead of
+      // finishing the walk they were already on.
+      e.flee = FLEE_TIME;
+      e.wanderTimer = 0;
     } else if (e.state === 'idle') {
       e.state = 'alert';
       e.timer = 0.15;
