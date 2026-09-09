@@ -1275,8 +1275,8 @@ function liftLobby(sink, bounds, rng, room, doors) {
   // about the prop plus where the station goes.
   //
   // AND THE COUNTER IS THE HALF THAT IS OUT THERE, with the body behind it. The
-  // two Ls carry their front leg at the room end of that depth and return one
-  // leg to the plaster, so `corner` is what finds the station: the pocket
+  // two Ls run their long leg the whole way out and close its nose with a short
+  // return, so `corner` is what finds the station: the pocket
   // between the counter and the wall (see `lCounter` in gen/props.js and
   // `standableCorner`). Only the STUB is stood at from the side — one leg has no
   // behind, so its body goes in the crook, which is `aside` and COUNTER_ASIDE.

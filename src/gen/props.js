@@ -66,10 +66,24 @@ function placer(sink, cx, cz, rot) {
  * with their own half-sizes; the shape is the same and only the size differs.
  *
  * THE COUNTER IS OUT TOWARDS THE ROOM AND THE BODY IS BEHIND IT, which is the
- * only arrangement of an L that means anything. The long leg runs ACROSS THE
- * FRONT, at the room end of the footprint — the face you walk up to — and one
- * return leg goes back from its end to the plaster, leaving the pocket between
- * it and the wall for whoever works there.
+ * only arrangement of an L that means anything. The long leg runs OUT FROM THE
+ * WALL through the whole depth of the footprint — a peninsula you walk up to the
+ * SIDE of — and one short return leg closes its nose, leaving the pocket between
+ * it and the plaster for whoever works there.
+ *
+ * WHICH LEG IS THE UNCUT ONE IS THE WHOLE OF HOW IT READS. It was the other way
+ * round for a revision — the along-the-wall leg spanning the full width at the
+ * room end with the out leg starting behind it — and that is the same L region
+ * cut the other way, so nothing measured wrong and nothing swept red. What it
+ * cost was the shape: the two legs came out 1.9 m and 1.88 m, a matched L, which
+ * is the slab across a corner this prop exists not to be. The catalogue has
+ * promised "the out leg the longer of the two" since it was written and the code
+ * had never done it; cut this way it is 2.2 m against 1.58 m.
+ *
+ * The FOOTPRINT and the POCKET are untouched by that, and deliberately so: the
+ * union of the two legs is the same L either way, so `standableCorner` finds the
+ * same square, the pocket arithmetic below still closes, and not a line of the
+ * placement in `liftLobby` had to move.
  *
  * It was the other way round for its first revision, with the long leg bedded
  * into the plaster and the void opening into the lobby, and that is a counter
@@ -89,7 +103,7 @@ function placer(sink, cx, cz, rot) {
  *
  * WHAT SIZE THE POCKET HAS TO BE: `fits` in nav.js is a circle test, so a body
  * needs its whole 3x3 of tiles clear, diagonals included — 1.5 m of it. The
- * pocket is bounded on THREE sides now (the front leg, the return leg and the
+ * pocket is bounded on THREE sides now (the out leg, the return leg and the
  * plaster) where the old void was bounded on two, so its DEPTH can no longer be
  * made up out of open lobby floor and is the number both sizes are chosen
  * against. It is measured from the plaster rather than from the prop, because
@@ -101,25 +115,30 @@ function placer(sink, cx, cz, rot) {
  * Three boxes a leg and both of the shadow lines that stop it reading as one
  * lump: the top stands proud all round and the plinth is set back, so the mass
  * of it appears to float a hand's width off the floor. The deeper setback goes
- * on whichever faces are SEEN — the front and the open end — since that is
+ * on whichever faces are SEEN — the counter face and the nose — since that is
  * where the shadow line reads. A transaction counter is 1.06 m — see the
  * heights in CHORE_POSE, which is what a body at one is posed against.
  */
 function lCounter(p, RX, RZ, T = 0.32) {
   const H = 1.06, TOP = 1.12;
   const AX = RX - T, AZ = RZ - T;      // where each leg's inner face falls
-  // ACROSS THE FRONT. Authored facing -Z like everything else, so -z is the
-  // face the room walks up to and +z is what beds into the plaster.
-  p.box('wall', -RX, 0.09, -RZ + 0.02, RX, H, -AZ - 0.02);
-  p.box('wall', -RX + 0.07, 0, -RZ + 0.08, RX - 0.07, 0.09, -AZ - 0.02);
-  p.box('wall', -RX, H, -RZ, RX, TOP, -AZ);
-  // ...and one return leg back to the plaster, off the -x end of it.
-  p.box('wall', -RX + 0.02, 0.09, -AZ - 0.02, -AX - 0.02, H, RZ - 0.02);
-  p.box('wall', -RX + 0.02, 0, -AZ - 0.02, -AX - 0.08, 0.09, RZ - 0.02);
-  p.box('wall', -RX, H, -AZ, -AX, TOP, RZ);
+  // OUT INTO THE ROOM, THE WHOLE DEPTH OF THE FOOTPRINT. Authored facing -Z
+  // like everything else, so +z beds into the plaster and -z is the nose of the
+  // peninsula. This is the leg a visitor walks up to the SIDE of, so it is the
+  // one that runs uncut from the wall to the nose and the longer of the two.
+  p.box('wall', -RX + 0.02, 0.09, -RZ + 0.02, -AX - 0.02, H, RZ);
+  p.box('wall', -RX + 0.08, 0, -RZ + 0.08, -AX - 0.02, 0.09, RZ);
+  p.box('wall', -RX, H, -RZ, -AX, TOP, RZ);
+  // ...and one return leg across the NOSE of it, closing the far end of the
+  // pocket. It runs along the wall's own direction and stops at the out leg's
+  // inner face, so what butts into what is the way round the eye reads it: one
+  // long counter with a short return on the end, not two legs of a matched L.
+  p.box('wall', -AX, 0.09, -RZ + 0.02, RX - 0.02, H, -AZ - 0.02);
+  p.box('wall', -AX, 0, -RZ + 0.08, RX - 0.08, 0.09, -AZ - 0.02);
+  p.box('wall', -AX, H, -RZ, RX, TOP, -AZ);
   // One collider per leg, which is what leaves the pocket standable.
-  p.obstacle(-RX, -RZ, RX, -AZ, TOP);
-  p.obstacle(-RX, -AZ, -AX, RZ, TOP);
+  p.obstacle(-RX, -RZ, -AX, RZ, TOP);
+  p.obstacle(-AX, -RZ, RX, -AZ, TOP);
 }
 
 function monitorAt(p, x, z, rng) {
