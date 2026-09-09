@@ -38,6 +38,39 @@ const PROBE_SLOP = 0.012;
 // is a smudge in a crack, and it would still be paying for four raycasts.
 const DECAL_MIN_SPAN = 0.02;
 
+// --- spray paint ------------------------------------------------------------
+//
+// The one thing in this file that is NOT a short-lived effect: paint stays for
+// the rest of the floor, because the player put it there on purpose. That is the
+// whole reason it is built differently from everything above.
+//
+// ONE MESH FOR ALL OF IT, not a pool of meshes. Every other family here has a
+// handful of quads alive at once, so a Mesh each costs nothing; paint is what
+// somebody DRAWS with, so it is hundreds of quads that never retire, and
+// hundreds of meshes is hundreds of draw calls. So there is one geometry with
+// PAINT_QUADS quads preallocated in it, a write cursor, and `setDrawRange` to
+// show only what has been written -- one draw call for a whole floor of it.
+//
+// ...which forces the colour into the GEOMETRY. A material carries one colour
+// and every splat shares this material, so the can's colour is written as a
+// vertex colour per corner and the material merely says `vertexColors`. That is
+// also what would make a second colour cost nothing.
+//
+// It is LIT (MeshLambertMaterial) where a scorch mark is not, and that is a
+// decision rather than a copy: an unlit splat is immune to the room, so a bright
+// tag in a blacked-out corridor would be the brightest thing in it -- exactly
+// the mistake `charOf` in destruction.js documents about leaving a dead control
+// panel unlit. Paint on a wall goes dark when the lights go out. That is what
+// the normal per vertex is for.
+//
+// A ring buffer even so, because "for the duration of the level" has to have a
+// number in it somewhere: at PAINT_QUADS the oldest splat is overwritten. It is
+// set well past what a can holds, so ordinary play never reaches it.
+const PAINT_QUADS = 1400;
+const PAINT_MIN = 0.055;    // metres, half-width of a splat in open wall
+const PAINT_MAX = 0.085;
+const PAINT_LIFT = 0.008;   // off the surface, a hair more than a scorch mark
+
 export class Effects {
   constructor(scene) {
     this.scene = scene;
@@ -59,6 +92,7 @@ export class Effects {
 
     const fx = getFx();
     this.scorches = fx.scorch;
+    this.sprays = fx.spray;
 
     // --- tracers: a thin cylinder whose axis runs along local Z, so it can be
     // aimed with lookAt() and stretched to the shot's length with scale.z.
@@ -112,6 +146,102 @@ export class Effects {
       mesh.matrixAutoUpdate = false;
       return mesh;
     });
+
+    this._buildPaint(scene);
+  }
+
+  // The one batched mesh every splat on the floor is drawn as. See the note by
+  // PAINT_QUADS for why it is one mesh and why the colour lives in the buffer.
+  _buildPaint(scene) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(PAINT_QUADS * 12), 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(PAINT_QUADS * 12), 3));
+    geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(PAINT_QUADS * 8), 2));
+    geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(PAINT_QUADS * 12), 3));
+
+    // Every quad's six indices, written once and never touched again -- the
+    // cursor moves the DRAW RANGE over them rather than rebuilding the index.
+    const index = new Uint32Array(PAINT_QUADS * 6);
+    for (let q = 0; q < PAINT_QUADS; q++) {
+      const v = q * 4, i = q * 6;
+      index[i] = v; index[i + 1] = v + 1; index[i + 2] = v + 2;
+      index[i + 3] = v; index[i + 4] = v + 2; index[i + 5] = v + 3;
+    }
+    geo.setIndex(new THREE.BufferAttribute(index, 1));
+    geo.setDrawRange(0, 0);
+
+    this.paintMesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({
+      map: this.sprays[0], transparent: true, depthWrite: false, vertexColors: true,
+      polygonOffset: true, polygonOffsetFactor: -5, polygonOffsetUnits: -5,
+    }));
+    // World-space vertices, like a scorch mark and for the same reason.
+    this.paintMesh.matrixAutoUpdate = false;
+    this.paintMesh.frustumCulled = false;
+    this.paintMesh.renderOrder = 6;
+    scene.add(this.paintMesh);
+    this.paintCursor = 0;
+    this.paintCount = 0;
+  }
+
+  /**
+   * A splat of paint on the building, kept for the rest of the floor.
+   *
+   * Measured and clipped exactly the way a scorch mark is -- `_reach` on all
+   * four edges, so paint fills up to a door frame and stops dead there instead
+   * of hanging in the opening. That reuse is the reason this lives in effects.js
+   * rather than in a module of its own: the hard part of putting a flat mark on
+   * a wall is knowing where the wall ENDS, and it is already solved here.
+   *
+   * The sprite is spun at random per splat, which is what stops a wall somebody
+   * has swept the can across reading as a row of identical stamps.
+   */
+  paint(point, normal, colour, size = 0) {
+    frame(normal, this._u, this._v, Math.random() * Math.PI * 2);
+    this._nu.copy(this._u).negate();
+    this._nv.copy(this._v).negate();
+
+    const want = size || PAINT_MIN + Math.random() * (PAINT_MAX - PAINT_MIN);
+    const right = this._reach(point, normal, this._u, want);
+    const left = this._reach(point, normal, this._nu, want);
+    const up = this._reach(point, normal, this._v, want);
+    const down = this._reach(point, normal, this._nv, want);
+    if (right + left < DECAL_MIN_SPAN || up + down < DECAL_MIN_SPAN) return;
+
+    const geo = this.paintMesh.geometry;
+    const pos = geo.getAttribute('position');
+    const nrm = geo.getAttribute('normal');
+    const uv = geo.getAttribute('uv');
+    const col = geo.getAttribute('color');
+
+    const q = this.paintCursor;
+    this.paintCursor = (q + 1) % PAINT_QUADS;
+    this.paintCount = Math.min(PAINT_QUADS, this.paintCount + 1);
+
+    this._scratch.copy(point).addScaledVector(normal, PAINT_LIFT);
+    const corners = [[-left, -down], [right, -down], [right, up], [-left, up]];
+    for (let i = 0; i < 4; i++) {
+      const [su, sv] = corners[i];
+      const v = q * 4 + i;
+      this._corner.copy(this._scratch).addScaledVector(this._u, su).addScaledVector(this._v, sv);
+      pos.setXYZ(v, this._corner.x, this._corner.y, this._corner.z);
+      nrm.setXYZ(v, normal.x, normal.y, normal.z);
+      // The texture keeps its centre on the hit, so a clipped splat is a cropped
+      // sprite and never a squeezed one -- the scorch marks' rule.
+      uv.setXY(v, 0.5 + su / (want * 2), 0.5 + sv / (want * 2));
+      col.setXYZ(v, colour.r, colour.g, colour.b);
+    }
+    pos.needsUpdate = true;
+    nrm.needsUpdate = true;
+    uv.needsUpdate = true;
+    col.needsUpdate = true;
+    geo.setDrawRange(0, this.paintCount * 6);
+  }
+
+  /** Every splat gone, for a floor that has ended. */
+  clearPaint() {
+    this.paintCursor = 0;
+    this.paintCount = 0;
+    this.paintMesh.geometry.setDrawRange(0, 0);
   }
 
   /** The floor's geometry, so a scorch mark can find the edges of it. */

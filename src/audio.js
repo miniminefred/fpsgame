@@ -308,6 +308,11 @@ const KIND_SUBSTANCE = { glass: 'glass', panel: 'tube' };
 const DEFAULT_SUBSTANCE = 'wood';
 
 const CASING_DELAY = 0.26;    // seconds after the shot before brass lands
+
+// The can, off the extinguisher's jet: a smaller nozzle is a higher hiss, and
+// the gain is low because it is a held trigger rather than an event.
+const SPRAY_RATE = 1.55;
+const SPRAY_GAIN = 0.34;
 const DEBRIS_DELAY = 0.8;     // ...and before the wreckage stops moving
 
 // How far away a sound is still worth placing. This is not a budget — it is the
@@ -422,6 +427,24 @@ export class GameAudio {
     // Brass lands a moment after the shot, which is most of what sells a gun as
     // a mechanism rather than a sample.
     this.sfx.play('shell-casing', { delay: CASING_DELAY + Math.random() * 0.12 });
+  }
+
+  /**
+   * The can in weapon slot 1, which is a HISS rather than a bang.
+   *
+   * It borrows `extinguisher-jet` rather than having a clip of its own, and that
+   * is a reuse rather than a placeholder: both are a pressurised can letting go
+   * through a small nozzle, which is the same sound with a different amount of
+   * it. Pitched up because the can is a fraction of the size, and mixed well
+   * down for the reason `generator-arc` is -- this is asked for fifteen times a
+   * second for as long as the trigger is held, so it has to sit under the floor
+   * rather than on top of it.
+   *
+   * NOT `playerShot`, which would also throw a shell casing on the carpet.
+   */
+  playerSpray(stats) {
+    this.sfx.play(stats.sound ?? 'extinguisher-jet',
+      { rate: SPRAY_RATE, gain: SPRAY_GAIN });
   }
 
   dryFire() {
