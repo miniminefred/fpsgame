@@ -17,6 +17,21 @@ import { fitsLifts } from './lifts.js';
 // that arrives by standing in the middle of the carpet.
 const LOBBY_MAX = 110;   // m²
 
+// How far off the middle of the slab a lobby may sit, as a fraction of the
+// width — a sixth either way, so the middle third. It is the band the minimap
+// reads as "the middle" rather than a tolerance on the ranking: the whole point
+// of the lobby being where it is, is that a player looking at the map finds the
+// way out at the bottom middle every time.
+const LOBBY_BAND = 1 / 6;
+
+// ...and how far DOWN it has to be, as a fraction of the depth: the bottom
+// third. Asked as a second filter rather than left to `off` because the two
+// halves of "down in the middle" trade against each other — a band on x alone
+// hands a central room higher up the floor to a floor that had a bottom-edge
+// room slightly off-centre, which measured as 98.8% central and only 86.5% down
+// against 97.5% before. Both, then either, then whatever there is.
+const LOBBY_DOWN = 2 / 3;
+
 /**
  * The lift lobby: the room the floor arrives in AND the room it leaves by.
  *
@@ -91,7 +106,6 @@ export function pickLobbyRoom(rooms, tiles, W, H, doors, cafeteria) {
   const spare = onHall.filter((r) =>
     r !== cafeteria && r.areaM2 <= LOBBY_MAX && !fitsGenerator(r, doors));
 
-  const pool = spare.length ? spare : (onHall.length ? onHall : (canHold.length ? canHold : rooms));
   // THE BOTTOM MIDDLE OF THE MAP, which is the middle of the far-z edge: the
   // minimap draws world +z down the screen (`_my` in minimap.js), so the bottom
   // of the map a player is reading is the high-z side of the slab. Measured to
@@ -109,7 +123,53 @@ export function pickLobbyRoom(rooms, tiles, W, H, doors, cafeteria) {
   // the nearest a room could actually get.
   const mx = W / 2, my = H - PAD;
   const off = (r) => (r.cx - mx) ** 2 + (r.cy - my) ** 2;
-  return pool.reduce((best, r) => (off(r) < off(best) ? r : best));
+  const nearest = (pool) => pool.reduce((best, r) => (off(r) < off(best) ? r : best));
+
+  // WHERE IT IS BEATS WHAT IT IS, and that is the inversion. Ranking every
+  // qualifying room by `off` and taking the nearest sounds like it says "the
+  // bottom middle", and it does not: on a floor whose central rooms are all too
+  // big or open onto nobody, the nearest SURVIVOR is whatever sat at the bottom
+  // edge off to one side, or dead centre half way up. Measured over 600 floors,
+  // the lobby landed in the middle third on 84% and in the bottom third on 96%
+  // — and in BOTH on 81%, so about one floor in five put the way out somewhere
+  // a player reading the minimap does not look for it.
+  //
+  // So the box is asked FIRST and the three requirements are relaxed under it,
+  // in the order that costs least: the size cap goes before the canteen and the
+  // canteen before the plant room, because a lobby that is bigger than a lobby
+  // ought to be is still a lobby, where a floor that loses its only canteen or
+  // its one-in-thirty plant room has lost a set piece. 99% now land in the box.
+  const inBox = (r) => Math.abs(r.cx / W - 0.5) <= LOBBY_BAND && r.cy / H >= LOBBY_DOWN;
+  for (const tier of [
+    spare,
+    // ...the size cap dropped: still never the canteen and never the plant room.
+    onHall.filter((r) => r !== cafeteria && !fitsGenerator(r, doors)),
+    // ...then the canteen, which costs that floor its canteen and nothing else.
+    onHall.filter((r) => !fitsGenerator(r, doors)),
+    // ...then a room the plant room could have had, which is the dearest of the
+    // three and so is asked last.
+    onHall,
+    // ...and last, a room with no corridor doorway. NOT `rooms`, which is where
+    // this first had it and is a hole rather than one more relaxation: every
+    // tier above is filtered by `fitsLifts`, and a room that cannot hold the
+    // bank is a floor promising a lift it cannot build. It put the lobby in a
+    // 20 m² room on s1006/f1 — nine tiles on an axis that needs fourteen — whose
+    // departure car then had nowhere to go, so the way down fell back to the lit
+    // pad at the room's centre 1.68 m from the arrival, and `2.exit-apart`
+    // caught it. `rooms` stays where it always was, in the fallback below, which
+    // is reached only when no room on the floor can hold lifts at all.
+    canHold,
+  ]) {
+    const box = tier.filter(inBox);
+    if (box.length) return nearest(box);
+  }
+
+  // NOTHING ANYWHERE IN THE BOTTOM MIDDLE, which is an ordinary answer on a
+  // floor whose rooms simply are not there — back to the strictest tier that
+  // holds anything and the nearest room in it. A floor with an odd lobby is a
+  // floor, and a floor with no arrival room is not.
+  return nearest(spare.length ? spare
+    : (onHall.length ? onHall : (canHold.length ? canHold : rooms)));
 }
 
 // How big a room has to be before it is a canteen rather than a room with a

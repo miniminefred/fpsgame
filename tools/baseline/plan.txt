@@ -34,18 +34,18 @@ plan s1000/f3 ba4f515c
   stairs=3 ac5ab3d2
   lift arrival side=0 75,174,79,177 block=74,173,80,177 at=0.25,42.75
   lift departure side=0 81,174,85,177 block=80,173,86,177 at=3.25,42.75
-plan s1000/f5 d1a93efa
+plan s1000/f5 a9a9dcf2
   W=185 H=233 area=0.9831
-  tiles=33ab21ef
-  spawn=20.5,50.75 exit=20.5,53.75
+  tiles=f8c49b67
+  spawn=2,37.75 exit=2,40.75
   prologue=43104
-  rooms=116 e4632559
+  rooms=116 2287ab95
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=142 58d3be11
+  doors=142 9df9f107
   locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=3 6f5d392b
-  lift arrival side=3 132,216,135,220 block=131,215,135,221 at=20.5,50.75
-  lift departure side=3 132,222,135,226 block=131,221,135,227 at=20.5,53.75
+  stairs=3 162dd56b
+  lift arrival side=3 95,190,98,194 block=94,189,98,195 at=2,37.75
+  lift departure side=3 95,196,98,200 block=94,195,98,201 at=2,40.75
 plan s1000/f8 a2a87248
   W=300 H=231 area=1.2085
   tiles=22591006
@@ -130,18 +130,18 @@ plan s8919/f5 db782fc5
   stairs=3 a74a09b1
   lift arrival side=1 93,158,96,162 block=93,157,97,163 at=-2.5,36.5
   lift departure side=1 93,164,96,168 block=93,163,97,169 at=-2.5,39.5
-plan s8919/f8 7850383d
+plan s8919/f8 8393010a
   W=244 H=219 area=0.9318
-  tiles=5c8b29d3
-  spawn=25,52.5 exit=28,52.5
+  tiles=c9f5a51d
+  spawn=12.25,20.75 exit=12.25,23.75
   prologue=53435
-  rooms=123 87a93742
+  rooms=123 83aebf8c
   roles=breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=169 9b7dc088
+  doors=169 c920ed5a
   locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
   stairs=3 fe2b8e35
-  lift arrival side=0 170,213,174,216 block=169,212,175,216 at=25,52.5
-  lift departure side=0 176,213,180,216 block=175,212,181,216 at=28,52.5
+  lift arrival side=1 145,149,148,153 block=145,148,149,154 at=12.25,20.75
+  lift departure side=1 145,155,148,159 block=145,154,149,160 at=12.25,23.75
 plan s8919/f12 696a62b8
   W=300 H=249 area=1.0014
   tiles=c374567e
@@ -226,18 +226,18 @@ plan s16838/f8 f4071df0
   stairs=3 2422b6e0
   lift arrival side=0 124,197,128,200 block=123,196,129,200 at=-8.75,48.5
   lift departure side=0 130,197,134,200 block=129,196,135,200 at=-5.75,48.5
-plan s16838/f12 e65ba0ac
+plan s16838/f12 3f8e0119
   W=300 H=183 area=0.736
-  tiles=166255b1
-  spawn=7.75,12.25 exit=7.75,15.25
+  tiles=aa011af4
+  spawn=-9,22.5 exit=-6,22.5
   prologue=54899
-  rooms=124 576a799a
+  rooms=124 1f21dad7
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=165 957caaac
-  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  doors=164 053dce83
+  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
   stairs=3 cfcb36f1
-  lift arrival side=3 164,114,167,118 block=163,113,167,119 at=7.75,12.25
-  lift departure side=3 164,120,167,124 block=163,119,167,125 at=7.75,15.25
+  lift arrival side=2 130,135,134,138 block=129,135,135,139 at=-9,22.5
+  lift departure side=2 136,135,140,138 block=135,135,141,139 at=-6,22.5
 plan s16838/f15 fab51eb8
   W=294 H=241 area=0.9372
   tiles=71f8380c
@@ -406,18 +406,18 @@ plan s32676/f12 cfaceda4
   stairs=3 95488242
   lift arrival side=0 77,196,81,199 block=76,195,82,199 at=-21.25,48.25
   lift departure side=0 83,196,87,199 block=82,195,88,199 at=-18.25,48.25
-plan s32676/f15 44d0a29d
+plan s32676/f15 052ff23d
   W=290 H=203 area=0.7787
-  tiles=5c18940d
-  spawn=-39,44.5 exit=-36,44.5
+  tiles=044ad454
+  spawn=-4.25,41.75 exit=-4.25,44.75
   prologue=58869
-  rooms=152 a848ae43
+  rooms=152 2b0b887e
   roles=breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=198 efaac539
-  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=3 ba2529a5
-  lift arrival side=2 65,189,69,192 block=64,189,70,193 at=-39,44.5
-  lift departure side=2 71,189,75,192 block=70,189,76,193 at=-36,44.5
+  doors=197 9ac7e518
+  locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=3 8b3ab9e5
+  lift arrival side=1 135,183,138,187 block=135,182,139,188 at=-4.25,41.75
+  lift departure side=1 135,189,138,193 block=135,188,139,194 at=-4.25,44.75
 plan s40595/f1 60f4d69d
   W=145 H=161 area=0.815
   tiles=68aec999
@@ -550,30 +550,30 @@ plan s48514/f5 892a1e3f
   stairs=3 7685da5f
   lift arrival side=0 122,170,126,173 block=121,169,127,173 at=0.5,41.75
   lift departure side=0 128,170,132,173 block=127,169,133,173 at=3.5,41.75
-plan s48514/f8 32dc9234
+plan s48514/f8 7d3f3356
   W=186 H=215 area=0.6974
-  tiles=546e5060
-  spawn=17.75,32.75 exit=17.75,35.75
+  tiles=71a68c29
+  spawn=-3.75,45.75 exit=-3.75,48.75
   prologue=39989
-  rooms=106 d6e5ad62
+  rooms=106 ec5fba75
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=149 e4c8b5d4
-  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=3 6c85594e
-  lift arrival side=1 127,171,130,175 block=127,170,131,176 at=17.75,32.75
-  lift departure side=1 127,177,130,181 block=127,176,131,182 at=17.75,35.75
-plan s48514/f12 e23a35a0
+  doors=148 9a7a9927
+  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=3 874ffd6c
+  lift arrival side=1 84,197,87,201 block=84,196,88,202 at=-3.75,45.75
+  lift departure side=1 84,203,87,207 block=84,202,88,208 at=-3.75,48.75
+plan s48514/f12 10c25126
   W=257 H=293 area=1.0095
-  tiles=12b43573
-  spawn=29.5,49.25 exit=29.5,52.25
+  tiles=51eb985b
+  spawn=-23,63.75 exit=-23,66.75
   prologue=75300
-  rooms=172 16441d91
+  rooms=172 0aa02a2b
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=221 580c3712
+  doors=221 d5f00ece
   locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=3 562a3e1e
-  lift arrival side=3 186,243,189,247 block=185,242,189,248 at=29.5,49.25
-  lift departure side=3 186,249,189,253 block=185,248,189,254 at=29.5,52.25
+  stairs=3 2c87b6bd
+  lift arrival side=1 81,272,84,276 block=81,271,85,277 at=-23,63.75
+  lift departure side=1 81,278,84,282 block=81,277,85,283 at=-23,66.75
 plan s48514/f15 edc7b599
   W=254 H=204 area=0.6854
   tiles=6430cc23
@@ -598,18 +598,18 @@ plan s56433/f1 00f3747f
   stairs=3 9352981e
   lift arrival side=1 86,100,89,104 block=86,99,90,105 at=-1.5,21
   lift departure side=1 86,112,89,116 block=86,111,90,117 at=-1.5,27
-plan s56433/f2 e97a3f3e
+plan s56433/f2 b79dbee6
   W=186 H=215 area=1.2441
-  tiles=84a572fd
-  spawn=-30.5,48 exit=-27.5,48
+  tiles=e29f7849
+  spawn=2.75,43.25 exit=2.75,46.25
   prologue=39989
-  rooms=88 919bdf64
+  rooms=88 456439c1
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=131 d15d3eaf
-  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=3 9d43c038
-  lift arrival side=2 30,202,34,205 block=29,202,35,206 at=-30.5,48
-  lift departure side=2 36,202,40,205 block=35,202,41,206 at=-27.5,48
+  doors=131 2f7fc555
+  locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=3 99cd716d
+  lift arrival side=3 97,192,100,196 block=96,191,100,197 at=2.75,43.25
+  lift departure side=3 97,198,100,202 block=96,197,100,203 at=2.75,46.25
 plan s56433/f3 9868f5f5
   W=161 H=137 area=0.6154
   tiles=366640d5
@@ -622,18 +622,18 @@ plan s56433/f3 9868f5f5
   stairs=3 d97e1084
   lift arrival side=0 71,131,75,134 block=70,130,76,134 at=-3.75,32
   lift departure side=0 77,131,81,134 block=76,130,82,134 at=-0.75,32
-plan s56433/f5 2ba3baa4
+plan s56433/f5 87e0f5c0
   W=214 H=266 area=1.2983
-  tiles=231bb4f4
-  spawn=25,59.25 exit=28,59.25
+  tiles=166ec0c9
+  spawn=17.25,40.5 exit=17.25,43.5
   prologue=56923
-  rooms=117 4e8e47a7
+  rooms=117 b5917281
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=166 2d1615f8
-  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=3 0e3bb498
-  lift arrival side=2 155,250,159,253 block=154,250,160,254 at=25,59.25
-  lift departure side=2 161,250,165,253 block=160,250,166,254 at=28,59.25
+  doors=165 a80f1d26
+  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=3 2df9d9aa
+  lift arrival side=3 140,212,143,216 block=139,211,143,217 at=17.25,40.5
+  lift departure side=3 140,218,143,222 block=139,217,143,223 at=17.25,43.5
 plan s56433/f8 f2614f8e
   W=230 H=194 area=0.7781
   tiles=a10c6802
@@ -670,18 +670,18 @@ plan s56433/f15 ad085801
   stairs=3 2d223094
   lift arrival side=1 152,249,155,253 block=152,248,156,254 at=11,54
   lift departure side=1 152,255,155,259 block=152,254,156,260 at=11,57
-plan s64352/f1 280b841a
+plan s64352/f1 10857678
   W=177 H=188 area=1.1617
-  tiles=bf7177e0
-  spawn=21,39.5 exit=21,42.5
+  tiles=8d638531
+  spawn=-2,37 exit=-2,40
   prologue=33275
-  rooms=67 b06b78bc
-  roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=89 969a1fd7
+  rooms=67 f613df98
+  roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,manager,meeting,office,openplan,presentation,reception,security,server,storage
+  doors=88 91ac0011
   locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
   stairs=2 1ae1bb52
-  lift arrival side=3 129,171,132,175 block=128,170,132,176 at=21,39.5
-  lift departure side=3 129,177,132,181 block=128,176,132,182 at=21,42.5
+  lift arrival side=1 83,166,86,170 block=83,165,87,171 at=-2,37
+  lift departure side=1 83,172,86,176 block=83,171,87,177 at=-2,40
 plan s64352/f2 6d45cb7a
   W=195 H=135 area=0.819
   tiles=42eb23f2
@@ -694,30 +694,30 @@ plan s64352/f2 6d45cb7a
   stairs=2 9834d709
   lift arrival side=2 105,87,109,90 block=104,87,110,91 at=4.75,10.5
   lift departure side=2 111,87,115,90 block=110,87,116,91 at=7.75,10.5
-plan s64352/f3 cdf783ab
+plan s64352/f3 2aed5f4c
   W=183 H=222 area=1.1334
-  tiles=2c428cbb
-  spawn=16.75,53.25 exit=19.75,53.25
+  tiles=da3e5b6d
+  spawn=-2,23.5 exit=-2,26.5
   prologue=40625
-  rooms=98 72c755ec
+  rooms=98 b840267f
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=132 10194451
-  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=2 9bc101f8
-  lift arrival side=0 123,216,127,219 block=122,215,128,219 at=16.75,53.25
-  lift departure side=0 129,216,133,219 block=128,215,134,219 at=19.75,53.25
-plan s64352/f5 ce6e3d68
+  doors=132 a571d72f
+  locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=2 23be8d68
+  lift arrival side=1 86,156,89,160 block=86,155,90,161 at=-2,23.5
+  lift departure side=1 86,162,89,166 block=86,161,90,167 at=-2,26.5
+plan s64352/f5 c365c271
   W=220 H=211 area=1.0588
-  tiles=f36ed12e
-  spawn=24.75,46.75 exit=24.75,49.75
+  tiles=29c7a0b0
+  spawn=-3.25,21.25 exit=-3.25,24.25
   prologue=46419
-  rooms=105 b4f99d11
-  roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=145 737863ad
+  rooms=105 0f100c8d
+  roles=archive,breakroom,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
+  doors=145 7cb1b865
   locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
   stairs=2 a5115ccd
-  lift arrival side=3 158,197,161,201 block=157,196,161,202 at=24.75,46.75
-  lift departure side=3 158,203,161,207 block=157,202,161,208 at=24.75,49.75
+  lift arrival side=1 102,146,105,150 block=102,145,106,151 at=-3.25,21.25
+  lift departure side=1 102,152,105,156 block=102,151,106,157 at=-3.25,24.25
 plan s64352/f8 b515abb3
   W=209 H=238 area=0.8674
   tiles=8c55a5ed
@@ -802,18 +802,18 @@ plan s72271/f5 0778cda2
   stairs=4 8b8abe62
   lift arrival side=0 144,151,148,154 block=143,150,149,154 at=9.75,33.75
   lift departure side=0 150,151,154,154 block=149,150,155,154 at=12.75,33.75
-plan s72271/f8 9ca0fa62
+plan s72271/f8 2877b801
   W=300 H=208 area=1.0882
-  tiles=6a8a859a
-  spawn=-42.75,45 exit=-42.75,48
+  tiles=50a6a336
+  spawn=1,29.25 exit=4,29.25
   prologue=62399
-  rooms=137 f8810399
+  rooms=137 dfa124f4
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=187 b7e3484e
-  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=4 715fdc89
-  lift arrival side=3 63,192,66,196 block=62,191,66,197 at=-42.75,45
-  lift departure side=3 63,198,66,202 block=62,197,66,203 at=-42.75,48
+  doors=187 c4d8c0e7
+  locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=4 13b410d0
+  lift arrival side=2 150,161,154,164 block=149,161,155,165 at=1,29.25
+  lift departure side=2 156,161,160,164 block=155,161,161,165 at=4,29.25
 plan s72271/f12 bddcb316
   W=285 H=188 area=0.7183
   tiles=dcf8f012
@@ -874,18 +874,18 @@ plan s80190/f3 0188b7af
   stairs=2 793265aa
   lift arrival side=0 87,114,91,117 block=86,113,92,117 at=-2.5,27.75
   lift departure side=0 93,114,97,117 block=92,113,98,117 at=0.5,27.75
-plan s80190/f5 7f53c0cb
+plan s80190/f5 bd98608c
   W=216 H=154 area=0.7587
-  tiles=6922d209
-  spawn=44.75,1 exit=43,5.75
+  tiles=02462a31
+  spawn=-2.25,20 exit=-2.25,23
   prologue=33263
-  rooms=72 80ae0572
+  rooms=72 bee2bd2a
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=105 bf1f1a2f
-  locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=2 b517dae5
-  lift arrival side=3 196,77,199,81 block=195,76,199,82 at=44.75,1
-  lift departure side=0 192,87,196,90 block=191,86,197,90 at=43,5.75
+  doors=105 df314fec
+  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=2 67324429
+  lift arrival side=3 102,115,105,119 block=101,114,105,120 at=-2.25,20
+  lift departure side=3 102,121,105,125 block=101,120,105,126 at=-2.25,23
 plan s80190/f8 6faa443b
   W=300 H=203 area=1.062
   tiles=d8052387
@@ -958,18 +958,18 @@ plan s88109/f3 f16f743b
   stairs=3 88842b74
   lift arrival side=0 98,114,102,117 block=97,113,103,117 at=2.25,27.75
   lift departure side=0 104,114,108,117 block=103,113,109,117 at=5.25,27.75
-plan s88109/f5 d9988866
+plan s88109/f5 1fa684ee
   W=300 H=193 area=1.3206
-  tiles=a08db7d8
-  spawn=-15.75,13.25 exit=-15.75,16.25
+  tiles=2eac10a0
+  spawn=16.25,39.75 exit=16.25,42.75
   prologue=57899
-  rooms=130 c28519b6
+  rooms=130 362d5810
   roles=breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=177 3a2b4493
+  doors=177 7dc90069
   locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=3 7dfebc70
-  lift arrival side=1 117,121,120,125 block=117,120,121,126 at=-15.75,13.25
-  lift departure side=1 117,127,120,131 block=117,126,121,132 at=-15.75,16.25
+  stairs=3 7334699f
+  lift arrival side=3 181,174,184,178 block=180,173,184,179 at=16.25,39.75
+  lift departure side=3 181,180,184,184 block=180,179,184,185 at=16.25,42.75
 plan s88109/f8 14eb705a
   W=279 H=269 area=1.3088
   tiles=5cf27a10
@@ -1006,18 +1006,18 @@ plan s88109/f15 629675b1
   stairs=3 49849fd8
   lift arrival side=1 152,166,155,170 block=152,165,156,171 at=17.25,34.75
   lift departure side=1 152,172,155,176 block=152,171,156,177 at=17.25,37.75
-plan s96028/f1 ff653339
+plan s96028/f1 e519bd1a
   W=179 H=204 area=1.2748
-  tiles=c98a7c2c
-  spawn=14.75,34.25 exit=17.75,34.25
+  tiles=944fc074
+  spawn=-16.5,31 exit=-16.5,34
   prologue=36515
-  rooms=67 94dd5bdb
+  rooms=67 a7407656
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=91 92d0ca7b
-  locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=3 35894228
-  lift arrival side=2 117,169,121,172 block=116,169,122,173 at=14.75,34.25
-  lift departure side=2 123,169,127,172 block=122,169,128,173 at=17.75,34.25
+  doors=91 a13916d4
+  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=3 0f7229d3
+  lift arrival side=1 55,162,58,166 block=55,161,59,167 at=-16.5,31
+  lift departure side=1 55,168,58,172 block=55,167,59,173 at=-16.5,34
 plan s96028/f2 75ac1a59
   W=152 H=138 area=0.6526
   tiles=ba2f656c
@@ -1042,18 +1042,18 @@ plan s96028/f3 f7320b16
   stairs=3 70684cdf
   lift arrival side=0 68,182,72,185 block=67,181,73,185 at=-16.75,44.75
   lift departure side=0 74,182,78,185 block=73,181,79,185 at=-13.75,44.75
-plan s96028/f5 49734d27
+plan s96028/f5 cc5ec17e
   W=190 H=148 area=0.6414
-  tiles=aff824a5
-  spawn=21.75,23.5 exit=21.75,26.5
+  tiles=85300d57
+  spawn=1,27.25 exit=4,27.25
   prologue=28119
-  rooms=51 ae9d71df
+  rooms=51 b59a941b
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=78 3d771f44
-  locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=3 f48f6291
-  lift arrival side=1 137,119,140,123 block=137,118,141,124 at=21.75,23.5
-  lift departure side=1 137,125,140,129 block=137,124,141,130 at=21.75,26.5
+  doors=78 f0b50a99
+  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=3 2eebbef2
+  lift arrival side=0 95,127,99,130 block=94,126,100,130 at=1,27.25
+  lift departure side=0 101,127,105,130 block=100,126,106,130 at=4,27.25
 plan s96028/f8 31c589ce
   W=217 H=246 area=0.9309
   tiles=c87dc0fe
@@ -1078,42 +1078,42 @@ plan s96028/f12 4ee4bdb5
   stairs=3 aa13f0d1
   lift arrival side=1 110,284,113,288 block=110,283,114,289 at=-7,68
   lift departure side=1 110,290,113,294 block=110,289,114,295 at=-7,71
-plan s96028/f15 df634f59
+plan s96028/f15 a2ef365b
   W=285 H=264 area=0.9952
-  tiles=03563a2b
-  spawn=28.5,60 exit=28.5,63
+  tiles=415c65fc
+  spawn=1,26 exit=1,29
   prologue=75239
-  rooms=184 87542dec
+  rooms=184 0740ba63
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=242 499318c2
+  doors=243 dfe66f76
   locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=3 6598d5ee
-  lift arrival side=3 198,250,201,254 block=197,249,201,255 at=28.5,60
-  lift departure side=3 198,256,201,260 block=197,255,201,261 at=28.5,63
-plan s103947/f1 8c97ecfe
+  stairs=3 17d21f16
+  lift arrival side=3 143,182,146,186 block=142,181,146,187 at=1,26
+  lift departure side=3 143,188,146,192 block=142,187,146,193 at=1,29
+plan s103947/f1 7f5dc796
   W=191 H=132 area=0.8802
-  tiles=3f6f61b3
-  spawn=24.25,27.25 exit=27.25,27.25
+  tiles=47a993df
+  spawn=5.5,16 exit=5.5,19
   prologue=25211
-  rooms=57 4ab31dd4
+  rooms=57 6d09c279
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=84 6925bb30
-  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=2 b0d9a595
-  lift arrival side=2 142,119,146,122 block=141,119,147,123 at=24.25,27.25
-  lift departure side=2 148,119,152,122 block=147,119,153,123 at=27.25,27.25
-plan s103947/f2 d9d58b1f
+  doors=84 c5dd4aa5
+  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=2 6098959c
+  lift arrival side=3 105,96,108,100 block=104,95,108,101 at=5.5,16
+  lift departure side=3 105,102,108,106 block=104,101,108,107 at=5.5,19
+plan s103947/f2 21b541fb
   W=151 H=147 area=0.6905
-  tiles=76b8c588
-  spawn=20.5,12.25 exit=20.5,15.25
+  tiles=21c6b2fa
+  spawn=-5.75,10.5 exit=-2.75,10.5
   prologue=22196
-  rooms=40 f90d29d0
-  roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,office,openplan,presentation,reception,security,server,storage
-  doors=69 94ad039d
-  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  rooms=40 aa5cf476
+  roles=archive,breakroom,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
+  doors=69 9e17f33c
+  locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
   stairs=2 d6bcb043
-  lift arrival side=1 115,96,118,100 block=115,95,119,101 at=20.5,12.25
-  lift departure side=1 115,102,118,106 block=115,101,119,107 at=20.5,15.25
+  lift arrival side=2 62,93,66,96 block=61,93,67,97 at=-5.75,10.5
+  lift departure side=2 68,93,72,96 block=67,93,73,97 at=-2.75,10.5
 plan s103947/f3 5f971d1b
   W=188 H=236 area=1.2378
   tiles=4980b8fe
@@ -1174,18 +1174,18 @@ plan s103947/f15 29403b74
   stairs=2 d578f913
   lift arrival side=3 109,264,112,268 block=108,263,112,269 at=-3.5,63
   lift departure side=3 109,270,112,274 block=108,269,112,275 at=-3.5,66
-plan s111866/f1 027ec2b2
+plan s111866/f1 3af2f053
   W=141 H=149 area=0.7335
-  tiles=84bd5306
-  spawn=13.25,35 exit=16.25,35
+  tiles=7c1f0364
+  spawn=-13,13.75 exit=-13,16.75
   prologue=21008
-  rooms=39 823cd7e2
-  roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=58 eb6324c5
+  rooms=39 aa75a3e8
+  roles=archive,breakroom,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
+  doors=58 c4a6094d
   locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=3 d7595fd5
-  lift arrival side=0 95,143,99,146 block=94,142,100,146 at=13.25,35
-  lift departure side=0 101,143,105,146 block=100,142,106,146 at=16.25,35
+  stairs=3 2fb91acf
+  lift arrival side=1 43,100,46,104 block=43,99,47,105 at=-13,13.75
+  lift departure side=1 43,106,46,110 block=43,105,47,111 at=-13,16.75
 plan s111866/f2 675e02c8
   W=189 H=149 area=0.8761
   tiles=0406aeb7
@@ -1222,30 +1222,30 @@ plan s111866/f5 7eb1f841
   stairs=3 d3e733ff
   lift arrival side=1 98,171,101,175 block=98,170,102,176 at=10.25,37.25
   lift departure side=1 98,177,101,181 block=98,176,102,182 at=10.25,40.25
-plan s111866/f8 96cbb4fc
+plan s111866/f8 cdd0db84
   W=254 H=206 area=0.9125
-  tiles=3a1f2b30
-  spawn=-47.5,49.25 exit=-44.5,49.25
+  tiles=7cf979c7
+  spawn=25.25,18 exit=25.25,21
   prologue=52323
-  rooms=111 55f25be1
+  rooms=111 1073a42a
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=148 af3a96b7
+  doors=147 cdf60c33
   locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
   stairs=3 c14dbf13
-  lift arrival side=0 30,200,34,203 block=29,199,35,203 at=-47.5,49.25
-  lift departure side=0 36,200,40,203 block=35,199,41,203 at=-44.5,49.25
-plan s111866/f12 3bf486ea
+  lift arrival side=3 176,137,179,141 block=175,136,179,142 at=25.25,18
+  lift departure side=3 176,143,179,147 block=175,142,179,148 at=25.25,21
+plan s111866/f12 5d7bc63a
   W=285 H=230 area=0.8788
-  tiles=5b573fd0
-  spawn=23,50.5 exit=23,53.5
+  tiles=4e5a5d5a
+  spawn=15.25,31.25 exit=18.25,31.25
   prologue=65549
-  rooms=139 1669dae1
+  rooms=139 01ecf3d3
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=185 61fc4acb
+  doors=185 964a51b5
   locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
   stairs=3 30510249
-  lift arrival side=1 187,214,190,218 block=187,213,191,219 at=23,50.5
-  lift departure side=1 187,220,190,224 block=187,219,191,225 at=23,53.5
+  lift arrival side=2 171,176,175,179 block=170,176,176,180 at=15.25,31.25
+  lift departure side=2 177,176,181,179 block=176,176,182,180 at=18.25,31.25
 plan s111866/f15 efdf944c
   W=298 H=252 area=0.9933
   tiles=8bef9c32
@@ -1270,18 +1270,18 @@ plan s119785/f1 1368cf79
   stairs=2 286d6611
   lift arrival side=3 31,160,34,164 block=30,159,34,165 at=-27.75,37.5
   lift departure side=3 31,166,34,170 block=30,165,34,171 at=-27.75,40.5
-plan s119785/f2 2743eda6
+plan s119785/f2 9662a5ee
   W=225 H=183 area=1.281
-  tiles=c66908ca
-  spawn=33,27.25 exit=33,30.25
+  tiles=88337fc7
+  spawn=6.5,24.25 exit=6.5,27.25
   prologue=41174
-  rooms=92 4e7f46ea
+  rooms=92 da1929e0
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=126 68670213
+  doors=125 05dc9a5f
   locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
   stairs=2 f7c7cf09
-  lift arrival side=3 177,144,180,148 block=176,143,180,149 at=33,27.25
-  lift departure side=3 177,150,180,154 block=176,149,180,155 at=33,30.25
+  lift arrival side=1 124,138,127,142 block=124,137,128,143 at=6.5,24.25
+  lift departure side=1 124,144,127,148 block=124,143,128,149 at=6.5,27.25
 plan s119785/f3 b5346a97
   W=163 H=135 area=0.6139
   tiles=535a6a77
@@ -1378,18 +1378,18 @@ plan s127704/f3 87fe68e5
   stairs=4 f1d80b1e
   lift arrival side=0 159,157,163,160 block=158,156,164,160 at=12.5,38.5
   lift departure side=0 165,157,169,160 block=164,156,170,160 at=15.5,38.5
-plan s127704/f5 9905d028
+plan s127704/f5 8ef79481
   W=172 H=159 area=0.6238
-  tiles=eb65f12d
-  spawn=-20.75,33.75 exit=-20.75,36.75
+  tiles=e2947ede
+  spawn=2.25,26.75 exit=2.25,29.75
   prologue=27347
-  rooms=58 939818ea
-  roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,presentation,reception,security,server,storage
-  doors=88 2a09ab93
-  locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=4 f4c3dba7
-  lift arrival side=3 43,145,46,149 block=42,144,46,150 at=-20.75,33.75
-  lift departure side=3 43,151,46,155 block=42,150,46,156 at=-20.75,36.75
+  rooms=58 55b6440d
+  roles=archive,breakroom,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,presentation,reception,security,storage
+  doors=87 2aab6fda
+  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=4 e4c7c392
+  lift arrival side=1 89,131,92,135 block=89,130,93,136 at=2.25,26.75
+  lift departure side=1 89,137,92,141 block=89,136,93,142 at=2.25,29.75
 plan s127704/f8 79d95e76
   W=269 H=273 area=1.2806
   tiles=0ccf15a4
@@ -1450,18 +1450,18 @@ plan s135623/f2 240a376d
   stairs=4 e4abe6a5
   lift arrival side=2 96,144,100,147 block=95,144,101,148 at=-8,27.5
   lift departure side=2 102,144,106,147 block=101,144,107,148 at=-5,27.5
-plan s135623/f3 172ac71c
+plan s135623/f3 8df20abd
   W=191 H=120 area=0.6394
-  tiles=736cbdf9
-  spawn=-27.75,24.25 exit=-24.75,24.25
+  tiles=066485d9
+  spawn=-2.5,12.5 exit=-2.5,15.5
   prologue=22919
-  rooms=38 6899776d
+  rooms=38 e031e68e
   roles=breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=57 c34b5c98
-  locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  doors=57 030843d9
+  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
   stairs=4 2d452871
-  lift arrival side=2 38,107,42,110 block=37,107,43,111 at=-27.75,24.25
-  lift departure side=2 44,107,48,110 block=43,107,49,111 at=-24.75,24.25
+  lift arrival side=3 89,83,92,87 block=88,82,92,88 at=-2.5,12.5
+  lift departure side=3 89,89,92,93 block=88,88,92,94 at=-2.5,15.5
 plan s135623/f5 778b5d85
   W=260 H=158 area=0.937
   tiles=ae19290c
@@ -1474,30 +1474,30 @@ plan s135623/f5 778b5d85
   stairs=4 5e873d40
   lift arrival side=1 144,144,147,148 block=144,143,148,149 at=7.75,33.5
   lift departure side=1 144,150,147,154 block=144,149,148,155 at=7.75,36.5
-plan s135623/f8 7987acd0
+plan s135623/f8 839bae71
   W=282 H=262 area=1.2884
-  tiles=95d54ce1
-  spawn=22.75,50.5 exit=22.75,53.5
+  tiles=7ae0f91d
+  spawn=9.25,32 exit=9.25,35
   prologue=73883
-  rooms=176 cf4050b6
+  rooms=176 60b9f1b8
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=225 87dd6fb2
-  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  doors=225 f3567aea
+  locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
   stairs=4 0680e12c
-  lift arrival side=1 185,230,188,234 block=185,229,189,235 at=22.75,50.5
-  lift departure side=1 185,236,188,240 block=185,235,189,241 at=22.75,53.5
-plan s135623/f12 8ff6ebb0
+  lift arrival side=3 158,193,161,197 block=157,192,161,198 at=9.25,32
+  lift departure side=3 158,199,161,203 block=157,198,161,204 at=9.25,35
+plan s135623/f12 55861b57
   W=237 H=234 area=0.7435
-  tiles=3b912f09
-  spawn=19,42 exit=19,45
+  tiles=bdc0d391
+  spawn=-8.25,48.25 exit=-5.25,48.25
   prologue=55457
-  rooms=120 97bd6cd3
+  rooms=120 a6a6879f
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=157 7994d23e
-  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=4 2bc7ea91
-  lift arrival side=1 155,199,158,203 block=155,198,159,204 at=19,42
-  lift departure side=1 155,205,158,209 block=155,204,159,210 at=19,45
+  doors=157 710b8298
+  locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=4 a91dff0e
+  lift arrival side=0 100,212,104,215 block=99,211,105,215 at=-8.25,48.25
+  lift departure side=0 106,212,110,215 block=105,211,111,215 at=-5.25,48.25
 plan s135623/f15 41d3b394
   W=218 H=267 area=0.7699
   tiles=1f6cc95d
@@ -1510,18 +1510,18 @@ plan s135623/f15 41d3b394
   stairs=4 3a8bb25a
   lift arrival side=2 117,235,121,238 block=116,235,122,239 at=5,51.5
   lift departure side=2 123,235,127,238 block=122,235,128,239 at=8,51.5
-plan s143542/f1 f597956b
+plan s143542/f1 86dbf9e3
   W=169 H=123 area=0.7257
-  tiles=5bf8d2d1
-  spawn=34.25,28.5 exit=37.25,28.5
+  tiles=618b8ab2
+  spawn=-13.25,28.5 exit=-10.25,28.5
   prologue=20786
-  rooms=36 0af0c6f5
-  roles=breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=55 c6de63f9
-  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=2 3febf1f9
-  lift arrival side=0 151,117,155,120 block=150,116,156,120 at=34.25,28.5
-  lift departure side=0 157,117,161,120 block=156,116,162,120 at=37.25,28.5
+  rooms=36 9bb38f06
+  roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
+  doors=54 e29b87c2
+  locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=2 92327486
+  lift arrival side=0 56,117,60,120 block=55,116,61,120 at=-13.25,28.5
+  lift departure side=0 62,117,66,120 block=61,116,67,120 at=-10.25,28.5
 plan s143542/f2 d2f214ea
   W=230 H=146 area=1.0447
   tiles=4d2d56d5
@@ -1546,30 +1546,30 @@ plan s143542/f3 91f04c25
   stairs=2 4a9512f2
   lift arrival side=0 47,171,51,174 block=46,170,52,174 at=-11,42
   lift departure side=0 53,171,57,174 block=52,170,58,174 at=-8,42
-plan s143542/f5 2f9073d3
+plan s143542/f5 b5a41aac
   W=217 H=157 area=0.7771
-  tiles=43cff8b2
-  spawn=2.25,15 exit=5.25,15
+  tiles=d4e83d38
+  spawn=-25.5,27.25 exit=-25.5,30.25
   prologue=34068
-  rooms=68 3b15eb47
-  roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=99 360e5818
+  rooms=68 68b2a7a4
+  roles=archive,breakroom,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
+  doors=99 cfcafde4
   locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=2 15002657
-  lift arrival side=0 111,107,115,110 block=110,106,116,110 at=2.25,15
-  lift departure side=0 117,107,121,110 block=116,106,122,110 at=5.25,15
-plan s143542/f8 059bf460
+  stairs=2 f2f696b3
+  lift arrival side=1 56,131,59,135 block=56,130,60,136 at=-25.5,27.25
+  lift departure side=1 56,137,59,141 block=56,136,60,142 at=-25.5,30.25
+plan s143542/f8 2fe0aadb
   W=202 H=226 area=0.7961
-  tiles=3de3df4e
-  spawn=-20,54.25 exit=-17,54.25
+  tiles=647067ce
+  spawn=-16,30.75 exit=-13,30.75
   prologue=45651
-  rooms=105 1da2a0c1
+  rooms=105 96a4dabd
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=134 8eb5c2a1
-  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  doors=134 22663abd
+  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
   stairs=2 9a5557e2
-  lift arrival side=0 59,220,63,223 block=58,219,64,223 at=-20,54.25
-  lift departure side=0 65,220,69,223 block=64,219,70,223 at=-17,54.25
+  lift arrival side=2 67,173,71,176 block=66,173,72,177 at=-16,30.75
+  lift departure side=2 73,173,77,176 block=72,173,78,177 at=-13,30.75
 plan s143542/f12 1351f997
   W=300 H=241 area=0.9693
   tiles=92247288
@@ -2014,18 +2014,18 @@ plan s183137/f15 cb4d1306
   stairs=4 bbe100fd
   lift arrival side=2 193,210,197,213 block=192,210,198,214 at=22.5,50
   lift departure side=2 199,210,203,213 block=198,210,204,214 at=25.5,50
-plan s191056/f1 692b9b8d
+plan s191056/f1 e5c9c733
   W=161 H=124 area=0.697
-  tiles=726f304c
-  spawn=13,24 exit=13,27
+  tiles=9f37ae73
+  spawn=-2.25,28.75 exit=0.75,28.75
   prologue=19963
-  rooms=47 dbc3753e
-  roles=archive,breakroom,cafeteria,closet,copyroom,exit,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=71 577f4d16
-  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=3 d2a2eca3
-  lift arrival side=1 105,108,108,112 block=105,107,109,113 at=13,24
-  lift departure side=1 105,114,108,118 block=105,113,109,119 at=13,27
+  rooms=47 38980dd3
+  roles=archive,breakroom,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
+  doors=70 cffbda3e
+  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=3 bd07995d
+  lift arrival side=0 74,118,78,121 block=73,117,79,121 at=-2.25,28.75
+  lift departure side=0 80,118,84,121 block=79,117,85,121 at=0.75,28.75
 plan s191056/f2 da6b1cad
   W=174 H=132 area=0.7145
   tiles=7a597730
@@ -2038,18 +2038,18 @@ plan s191056/f2 da6b1cad
   stairs=3 fee1298a
   lift arrival side=3 88,96,91,100 block=87,95,91,101 at=1.25,16
   lift departure side=3 88,102,91,106 block=87,101,91,107 at=1.25,19
-plan s191056/f3 21d8ddab
+plan s191056/f3 1b52701b
   W=227 H=183 area=1.1589
-  tiles=3f3d76d8
-  spawn=21.5,38.25 exit=21.5,41.25
+  tiles=3f52b555
+  spawn=-14.5,17.25 exit=-14.5,20.25
   prologue=41540
-  rooms=102 015008c8
+  rooms=102 c7e2deeb
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=141 e73d0061
+  doors=140 8ac4aae4
   locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=3 26a1ddab
-  lift arrival side=3 155,166,158,170 block=154,165,158,171 at=21.5,38.25
-  lift departure side=3 155,172,158,176 block=154,171,158,177 at=21.5,41.25
+  stairs=3 b8bb908a
+  lift arrival side=1 83,124,86,128 block=83,123,87,129 at=-14.5,17.25
+  lift departure side=1 83,130,86,134 block=83,129,87,135 at=-14.5,20.25
 plan s191056/f5 286f1f96
   W=237 H=144 area=0.7784
   tiles=7376af73
@@ -2386,18 +2386,18 @@ plan s222732/f3 e209a685
   stairs=2 d9c29f68
   lift arrival side=0 112,142,116,145 block=111,141,117,145 at=0.75,34.75
   lift departure side=0 118,142,122,145 block=117,141,123,145 at=3.75,34.75
-plan s222732/f5 22b1196b
+plan s222732/f5 c6745ded
   W=169 H=209 area=0.8056
-  tiles=d96323d0
-  spawn=-26.75,50 exit=-23.75,50
+  tiles=82a1eb42
+  spawn=8.5,42.75 exit=8.5,45.75
   prologue=35320
-  rooms=71 bd70e193
-  roles=archive,breakroom,cafeteria,closet,copyroom,exit,generator,itbay,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=99 48385c20
+  rooms=71 233e2347
+  roles=archive,breakroom,cafeteria,closet,copyroom,exit,generator,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
+  doors=99 e4433618
   locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
   stairs=2 15429725
-  lift arrival side=0 29,203,33,206 block=28,202,34,206 at=-26.75,50
-  lift departure side=0 35,203,39,206 block=34,202,40,206 at=-23.75,50
+  lift arrival side=1 100,188,103,192 block=100,187,104,193 at=8.5,42.75
+  lift departure side=1 100,194,103,198 block=100,193,104,199 at=8.5,45.75
 plan s222732/f8 0a0ac5bb
   W=280 H=270 area=1.3184
   tiles=594e9773
@@ -2410,30 +2410,30 @@ plan s222732/f8 0a0ac5bb
   stairs=2 017d02ff
   lift arrival side=0 170,208,174,211 block=169,207,175,211 at=16,37.25
   lift departure side=0 176,208,180,211 block=175,207,181,211 at=19,37.25
-plan s222732/f12 05cc1102
+plan s222732/f12 94f572df
   W=278 H=184 area=0.6858
-  tiles=b3d648df
-  spawn=-29.5,43.75 exit=-26.5,43.75
+  tiles=5dc4112f
+  spawn=1.5,34.25 exit=4.5,34.25
   prologue=51151
-  rooms=124 808b9c07
+  rooms=124 8a33f9e1
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=164 225dec25
+  doors=164 efca0f76
   locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
   stairs=2 dfed2d87
-  lift arrival side=0 78,178,82,181 block=77,177,83,181 at=-29.5,43.75
-  lift departure side=0 84,178,88,181 block=83,177,89,181 at=-26.5,43.75
-plan s222732/f15 63c2c4a3
+  lift arrival side=0 140,159,144,162 block=139,158,145,162 at=1.5,34.25
+  lift departure side=0 146,159,150,162 block=145,158,151,162 at=4.5,34.25
+plan s222732/f15 7dc5c235
   W=300 H=244 area=0.9683
-  tiles=4838d9ab
-  spawn=-26.75,54 exit=-26.75,57
+  tiles=8cd80380
+  spawn=-18.5,41.25 exit=-15.5,41.25
   prologue=73199
-  rooms=176 dc9f3590
+  rooms=176 502dd21e
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=238 3aceb4e0
+  doors=237 14e28078
   locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
   stairs=2 75fdbcde
-  lift arrival side=3 95,228,98,232 block=94,227,98,233 at=-26.75,54
-  lift departure side=3 95,234,98,238 block=94,233,98,239 at=-26.75,57
+  lift arrival side=0 111,203,115,206 block=110,202,116,206 at=-18.5,41.25
+  lift departure side=0 117,203,121,206 block=116,202,122,206 at=-15.5,41.25
 plan s230651/f1 7fe55aed
   W=229 H=136 area=1.0873
   tiles=a4ddb05c
@@ -2470,18 +2470,18 @@ plan s230651/f3 dbdece14
   stairs=3 bdf07994
   lift arrival side=0 104,131,108,134 block=103,130,109,134 at=3.25,32
   lift departure side=0 110,131,114,134 block=109,130,115,134 at=6.25,32
-plan s230651/f5 be04b567
+plan s230651/f5 628a65af
   W=162 H=206 area=0.7612
-  tiles=3762ced5
-  spawn=21,49.25 exit=24,49.25
+  tiles=11cf0454
+  spawn=-13.5,28.25 exit=-10.5,28.25
   prologue=33371
-  rooms=67 b37b1373
-  roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=92 b324b4c4
+  rooms=67 1d8fd1a7
+  roles=archive,breakroom,closet,copyroom,exit,itbay,manager,meeting,office,openplan,presentation,reception,security,server,storage
+  doors=91 950079d8
   locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=3 b4abf799
-  lift arrival side=0 121,200,125,203 block=120,199,126,203 at=21,49.25
-  lift departure side=0 127,200,131,203 block=126,199,132,203 at=24,49.25
+  stairs=3 b721990f
+  lift arrival side=0 52,158,56,161 block=51,157,57,161 at=-13.5,28.25
+  lift departure side=0 58,158,62,161 block=57,157,63,161 at=-10.5,28.25
 plan s230651/f8 97eb4996
   W=209 H=226 area=0.8237
   tiles=c0d679a4
@@ -2518,18 +2518,18 @@ plan s230651/f15 71b58fea
   stairs=3 767ff60c
   lift arrival side=0 175,258,179,261 block=174,257,180,261 at=20,61.25
   lift departure side=0 181,258,185,261 block=180,257,186,261 at=23,61.25
-plan s238570/f1 f02c6044
+plan s238570/f1 e8eb5d89
   W=181 H=193 area=1.2196
-  tiles=80e457de
-  spawn=-23.75,46 exit=-20.75,46
+  tiles=2acec86a
+  spawn=-12.25,14.5 exit=-9.25,14.5
   prologue=34932
-  rooms=75 7d5bfa6d
+  rooms=75 2c70a834
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=109 841f3ceb
+  doors=109 c23a8052
   locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
   stairs=3 55eb9494
-  lift arrival side=0 41,187,45,190 block=40,186,46,190 at=-23.75,46
-  lift departure side=0 47,187,51,190 block=46,186,52,190 at=-20.75,46
+  lift arrival side=2 64,124,68,127 block=63,124,69,128 at=-12.25,14.5
+  lift departure side=2 70,124,74,127 block=69,124,75,128 at=-9.25,14.5
 plan s238570/f2 bad16703
   W=188 H=206 area=1.2048
   tiles=cc7d4fb4
@@ -2578,18 +2578,18 @@ plan s238570/f8 3a85d5f0
   stairs=3 b567689d
   lift arrival side=3 145,168,148,172 block=144,167,148,173 at=-1.75,36.75
   lift departure side=3 145,174,148,178 block=144,173,148,179 at=-1.75,39.75
-plan s238570/f12 25651603
+plan s238570/f12 f7ff2355
   W=277 H=272 area=1.0101
-  tiles=48ea7e60
-  spawn=21,60.5 exit=21,63.5
+  tiles=a43c919e
+  spawn=-1,41.5 exit=-2.75,46.25
   prologue=75343
-  rooms=177 7a17c78c
+  rooms=177 58f43d19
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=221 cf870123
-  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  doors=221 f8fa733e
+  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
   stairs=3 26dd5798
-  lift arrival side=1 179,255,182,259 block=179,254,183,260 at=21,60.5
-  lift departure side=1 179,261,182,265 block=179,260,183,266 at=21,63.5
+  lift arrival side=3 135,217,138,221 block=134,216,138,222 at=-1,41.5
+  lift departure side=0 131,227,135,230 block=130,226,136,230 at=-2.75,46.25
 plan s238570/f15 98d4538c
   W=300 H=230 area=0.9127
   tiles=850df73b
@@ -2626,18 +2626,18 @@ plan s246489/f2 7374be19
   stairs=2 d87b9d27
   lift arrival side=1 80,124,83,128 block=80,123,84,129 at=-2,23.75
   lift departure side=1 80,130,83,134 block=80,129,84,135 at=-2,26.75
-plan s246489/f3 caa36292
+plan s246489/f3 976709da
   W=199 H=126 area=0.6995
-  tiles=0496d6ad
-  spawn=20.5,24.5 exit=20.5,27.5
+  tiles=801f3551
+  spawn=-13.75,29.25 exit=-10.75,29.25
   prologue=25073
-  rooms=38 888caead
-  roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=60 d31d9fd6
-  locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=2 0332604a
-  lift arrival side=3 139,110,142,114 block=138,109,142,115 at=20.5,24.5
-  lift departure side=3 139,116,142,120 block=138,115,142,121 at=20.5,27.5
+  rooms=38 0d4037a2
+  roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,openplan,presentation,reception,security,server,storage
+  doors=60 66eaab90
+  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=2 89d95fb3
+  lift arrival side=0 70,120,74,123 block=69,119,75,123 at=-13.75,29.25
+  lift departure side=0 76,120,80,123 block=75,119,81,123 at=-10.75,29.25
 plan s246489/f5 155ecc0c
   W=254 H=168 area=0.9733
   tiles=8ac42167
@@ -2650,18 +2650,18 @@ plan s246489/f5 155ecc0c
   stairs=2 7b943168
   lift arrival side=2 105,154,109,157 block=104,154,110,158 at=-10,35.75
   lift departure side=2 111,154,115,157 block=110,154,116,158 at=-7,35.75
-plan s246489/f8 c9a7458a
+plan s246489/f8 9abbfe8f
   W=191 H=195 area=0.6495
-  tiles=12709bb0
-  spawn=12.5,41.75 exit=12.5,44.75
+  tiles=70427470
+  spawn=2.25,15.5 exit=5.25,15.5
   prologue=37244
-  rooms=62 ecc2ec30
+  rooms=62 2250d074
   roles=breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=91 b5161332
-  locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  doors=91 cb30ce04
+  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
   stairs=2 38ef2b23
-  lift arrival side=1 119,179,122,183 block=119,178,123,184 at=12.5,41.75
-  lift departure side=1 119,185,122,189 block=119,184,123,190 at=12.5,44.75
+  lift arrival side=2 98,127,102,130 block=97,127,103,131 at=2.25,15.5
+  lift departure side=2 104,127,108,130 block=103,127,109,131 at=5.25,15.5
 plan s246489/f12 72ae165b
   W=265 H=232 area=0.8242
   tiles=4d3492e4
@@ -2722,18 +2722,18 @@ plan s254408/f3 98b43d75
   stairs=3 fb4c76ea
   lift arrival side=3 100,167,103,171 block=99,166,103,172 at=-7.5,34.75
   lift departure side=3 100,173,103,177 block=99,172,103,178 at=-7.5,37.75
-plan s254408/f5 5ae598e8
+plan s254408/f5 66ca5169
   W=230 H=240 area=1.259
-  tiles=6cb0b2b4
-  spawn=-24,57.75 exit=-21,57.75
+  tiles=fdee9e84
+  spawn=-1.75,31 exit=-1.75,34
   prologue=55199
-  rooms=120 f95add1d
+  rooms=120 aa26c8ee
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=169 4d501a3a
+  doors=169 9381a5d1
   locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
   stairs=3 d93549ac
-  lift arrival side=0 65,234,69,237 block=64,233,70,237 at=-24,57.75
-  lift departure side=0 71,234,75,237 block=70,233,76,237 at=-21,57.75
+  lift arrival side=1 110,180,113,184 block=110,179,114,185 at=-1.75,31
+  lift departure side=1 110,186,113,190 block=110,185,114,191 at=-1.75,34
 plan s254408/f8 706dfdc9
   W=240 H=273 area=1.1426
   tiles=12b72681
@@ -2758,30 +2758,30 @@ plan s254408/f12 b8ac38ba
   stairs=3 8bca7b4d
   lift arrival side=1 84,207,87,211 block=84,206,88,212 at=-13.5,43.5
   lift departure side=1 84,213,87,217 block=84,212,88,218 at=-13.5,46.5
-plan s254408/f15 21e36e76
+plan s254408/f15 c287e0ec
   W=252 H=299 area=0.9967
-  tiles=50b9d74e
-  spawn=-35.25,67.75 exit=-35.25,70.75
+  tiles=409610f0
+  spawn=14,41.5 exit=17,41.5
   prologue=75347
-  rooms=183 8596ac63
+  rooms=183 dacb38f3
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=233 5836553f
-  locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=3 adb288b7
-  lift arrival side=3 54,283,57,287 block=53,282,57,288 at=-35.25,67.75
-  lift departure side=3 54,289,57,293 block=53,288,57,294 at=-35.25,70.75
-plan s262327/f1 6b311aef
+  doors=233 31c73757
+  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=3 747a79f7
+  lift arrival side=0 152,231,156,234 block=151,230,157,234 at=14,41.5
+  lift departure side=0 158,231,162,234 block=157,230,163,234 at=17,41.5
+plan s262327/f1 4d24a93c
   W=196 H=191 area=1.3069
-  tiles=d584a899
-  spawn=17,36.5 exit=20,36.5
+  tiles=daede9ae
+  spawn=3,31 exit=6,31
   prologue=37435
-  rooms=84 8147d782
+  rooms=84 72635657
   roles=breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=113 0dd656ff
-  locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=4 11c6cc97
-  lift arrival side=2 130,167,134,170 block=129,167,135,171 at=17,36.5
-  lift departure side=2 136,167,140,170 block=135,167,141,171 at=20,36.5
+  doors=112 cba39b80
+  locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=4 4e540065
+  lift arrival side=0 102,156,106,159 block=101,155,107,159 at=3,31
+  lift departure side=0 108,156,112,159 block=107,155,113,159 at=6,31
 plan s262327/f2 83e06f40
   W=163 H=158 area=0.8012
   tiles=272342d3
@@ -2830,18 +2830,18 @@ plan s262327/f8 c99952b5
   stairs=4 35f4098a
   lift arrival side=1 118,180,121,184 block=118,179,122,185 at=-6.25,42
   lift departure side=1 118,186,121,190 block=118,185,122,191 at=-6.25,45
-plan s262327/f12 f700c3f0
+plan s262327/f12 cb85d36d
   W=284 H=266 area=1.0128
-  tiles=392bdf43
-  spawn=27,58.75 exit=30,58.75
+  tiles=d06a3a63
+  spawn=-18.5,64.25 exit=-15.5,64.25
   prologue=75543
-  rooms=184 c32fb2d2
+  rooms=184 e9a72e7f
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=239 97bd9da5
-  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=4 2a7ae2e3
-  lift arrival side=0 194,249,198,252 block=193,248,199,252 at=27,58.75
-  lift departure side=0 200,249,204,252 block=199,248,205,252 at=30,58.75
+  doors=239 5ab0915b
+  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=4 f4180d79
+  lift arrival side=0 103,260,107,263 block=102,259,108,263 at=-18.5,64.25
+  lift departure side=0 109,260,113,263 block=108,259,114,263 at=-15.5,64.25
 plan s262327/f15 a3d9976a
   W=291 H=256 area=0.9854
   tiles=e92b0cb3
@@ -2854,18 +2854,18 @@ plan s262327/f15 a3d9976a
   stairs=4 42e8f585
   lift arrival side=0 143,250,147,253 block=142,249,148,253 at=-0.25,61.75
   lift departure side=0 149,250,153,253 block=148,249,154,253 at=2.75,61.75
-plan s270246/f1 2f1d6149
+plan s270246/f1 b2492bb6
   W=205 H=140 area=1.002
-  tiles=5b7bdcc0
-  spawn=-0.25,11.75 exit=2.75,11.75
+  tiles=d2aa2500
+  spawn=-4.25,25.25 exit=-1.25,25.25
   prologue=28699
-  rooms=53 f4b53c33
-  roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=80 c94da8ad
-  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  rooms=53 93aa8042
+  roles=breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
+  doors=80 1b30d925
+  locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
   stairs=2 e0ca3cfb
-  lift arrival side=0 100,92,104,95 block=99,91,105,95 at=-0.25,11.75
-  lift departure side=0 106,92,110,95 block=105,91,111,95 at=2.75,11.75
+  lift arrival side=0 92,119,96,122 block=91,118,97,122 at=-4.25,25.25
+  lift departure side=0 98,119,102,122 block=97,118,103,122 at=-1.25,25.25
 plan s270246/f2 8c0e9318
   W=186 H=170 area=0.9837
   tiles=92687eb8
@@ -2890,18 +2890,18 @@ plan s270246/f3 63dfb56c
   stairs=2 fa362188
   lift arrival side=1 80,194,83,198 block=80,193,84,199 at=-3,46
   lift departure side=1 80,200,83,204 block=80,199,84,205 at=-3,49
-plan s270246/f5 9e826fe3
+plan s270246/f5 41a0449d
   W=174 H=200 area=0.7937
-  tiles=d5f49fb6
-  spawn=22,47.75 exit=25,47.75
+  tiles=2b44e249
+  spawn=-3.5,47.75 exit=-0.5,47.75
   prologue=34799
-  rooms=77 4b632bfe
+  rooms=77 7bdddd7c
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=105 d32d7a44
+  doors=104 a0965a0d
   locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=2 b0b17f5e
-  lift arrival side=0 129,194,133,197 block=128,193,134,197 at=22,47.75
-  lift departure side=0 135,194,139,197 block=134,193,140,197 at=25,47.75
+  stairs=2 67436ab1
+  lift arrival side=0 78,194,82,197 block=77,193,83,197 at=-3.5,47.75
+  lift departure side=0 84,194,88,197 block=83,193,89,197 at=-0.5,47.75
 plan s270246/f8 f74c02a7
   W=264 H=169 area=0.778
   tiles=496f928a
@@ -2950,18 +2950,18 @@ plan s278165/f1 5573d5de
   stairs=4 e738585b
   lift arrival side=2 46,119,50,122 block=45,119,51,123 at=-8.75,20
   lift departure side=2 52,119,56,122 block=51,119,57,123 at=-5.75,20
-plan s278165/f2 152552be
+plan s278165/f2 a424aa49
   W=193 H=122 area=0.7325
-  tiles=1bd1526a
-  spawn=10.25,12.75 exit=13.25,12.75
+  tiles=2b31efef
+  spawn=-4.5,22 exit=-4.5,25
   prologue=23545
-  rooms=47 a440c536
+  rooms=47 341b151f
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,manager,office,openplan,presentation,reception,security,server,storage
-  doors=69 bcace252
+  doors=68 cb2ac525
   locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=4 024ca302
-  lift arrival side=0 115,85,119,88 block=114,84,120,88 at=10.25,12.75
-  lift departure side=0 121,85,125,88 block=120,84,126,88 at=13.25,12.75
+  stairs=4 ac2232b4
+  lift arrival side=3 86,103,89,107 block=85,102,89,108 at=-4.5,22
+  lift departure side=3 86,109,89,113 block=85,108,89,114 at=-4.5,25
 plan s278165/f3 efc111ca
   W=161 H=188 area=0.8444
   tiles=a0393a86
@@ -3022,18 +3022,18 @@ plan s278165/f15 886556f7
   stairs=4 db78572f
   lift arrival side=2 103,261,107,264 block=102,261,108,265 at=-9.25,57.25
   lift departure side=2 109,261,113,264 block=108,261,114,265 at=-6.25,57.25
-plan s286084/f1 8e797070
+plan s286084/f1 d278df20
   W=176 H=156 area=0.9585
-  tiles=5c5fe784
-  spawn=24.75,32 exit=24.75,35
+  tiles=5cc1d6c7
+  spawn=-5.5,36.75 exit=-2.5,36.75
   prologue=27455
-  rooms=65 a3e583f9
+  rooms=65 0b3f7868
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=91 23c4d093
+  doors=90 8074b0f2
   locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=2 22a98633
-  lift arrival side=3 136,140,139,144 block=135,139,139,145 at=24.75,32
-  lift departure side=3 136,146,139,150 block=135,145,139,151 at=24.75,35
+  stairs=2 a39d31ee
+  lift arrival side=0 75,150,79,153 block=74,149,80,153 at=-5.5,36.75
+  lift departure side=0 81,150,85,153 block=80,149,86,153 at=-2.5,36.75
 plan s286084/f2 743b65d5
   W=197 H=136 area=0.8335
   tiles=1d6d1e95
@@ -3058,18 +3058,18 @@ plan s286084/f3 bef26653
   stairs=2 90944da3
   lift arrival side=0 155,159,159,162 block=154,158,160,162 at=13.25,36.5
   lift departure side=0 161,159,165,162 block=160,158,166,162 at=16.25,36.5
-plan s286084/f5 23a7b111
+plan s286084/f5 656d0ba9
   W=280 H=190 area=1.2134
-  tiles=c082a505
-  spawn=-27.75,35 exit=-27.75,38
+  tiles=0910ce82
+  spawn=10,19.25 exit=13,19.25
   prologue=53199
-  rooms=115 546d1f76
+  rooms=115 9e1db0d0
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=151 fc10db27
-  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=2 95aa0027
-  lift arrival side=1 83,163,86,167 block=83,162,87,168 at=-27.75,35
-  lift departure side=1 83,169,86,173 block=83,168,87,174 at=-27.75,38
+  doors=150 6168a80f
+  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=2 7d47c36d
+  lift arrival side=0 158,132,162,135 block=157,131,163,135 at=10,19.25
+  lift departure side=0 164,132,168,135 block=163,131,169,135 at=13,19.25
 plan s286084/f8 b67df024
   W=256 H=185 area=0.8259
   tiles=5cccf036
@@ -3094,18 +3094,18 @@ plan s286084/f12 6c1aece8
   stairs=2 840f44bc
   lift arrival side=3 129,247,132,251 block=128,246,132,252 at=11,58.5
   lift departure side=3 129,253,132,257 block=128,252,132,258 at=11,61.5
-plan s286084/f15 463aaa5a
+plan s286084/f15 ab3628c8
   W=224 H=213 area=0.6311
-  tiles=5c6e2014
-  spawn=26.25,33.25 exit=26.25,36.25
+  tiles=9ee9d70a
+  spawn=12.5,35.5 exit=15.5,35.5
   prologue=47711
-  rooms=98 2f07c159
-  roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=133 8d25d315
-  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=2 a071a25a
-  lift arrival side=1 163,171,166,175 block=163,170,167,176 at=26.25,33.25
-  lift departure side=1 163,177,166,181 block=163,176,167,182 at=26.25,36.25
+  rooms=98 b9a176e8
+  roles=archive,breakroom,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
+  doors=133 a0f3a28d
+  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=2 c530f07e
+  lift arrival side=0 135,176,139,179 block=134,175,140,179 at=12.5,35.5
+  lift departure side=0 141,176,145,179 block=140,175,146,179 at=15.5,35.5
 plan s294003/f1 3bdab5b7
   W=230 H=137 area=1.1001
   tiles=58775506
@@ -3130,18 +3130,18 @@ plan s294003/f2 5c82b19e
   stairs=3 05daa52f
   lift arrival side=3 115,101,118,105 block=114,100,118,106 at=5.25,18.5
   lift departure side=3 115,107,118,111 block=114,106,118,112 at=5.25,21.5
-plan s294003/f3 4f84d48e
+plan s294003/f3 96904fb8
   W=194 H=200 area=1.0825
-  tiles=3c5d4965
-  spawn=-27.75,22.5 exit=-27.75,25.5
+  tiles=b634c1c3
+  spawn=-6.25,39 exit=-6.25,42
   prologue=38799
-  rooms=79 dca2af70
+  rooms=79 7f7b18c5
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=114 390c4731
-  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=3 9bde8e96
-  lift arrival side=1 40,143,43,147 block=40,142,44,148 at=-27.75,22.5
-  lift departure side=1 40,149,43,153 block=40,148,44,154 at=-27.75,25.5
+  doors=115 8ca81cc8
+  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=3 22b5592e
+  lift arrival side=3 83,176,86,180 block=82,175,86,181 at=-6.25,39
+  lift departure side=3 83,182,86,186 block=82,181,86,187 at=-6.25,42
 plan s294003/f5 96676e46
   W=203 H=191 area=0.8843
   tiles=4b51fe6f
@@ -3178,18 +3178,18 @@ plan s294003/f12 18285cca
   stairs=3 82327227
   lift arrival side=1 154,241,157,245 block=154,240,158,246 at=4.75,57
   lift departure side=1 154,247,157,251 block=154,246,158,252 at=4.75,60
-plan s294003/f15 8896c33b
+plan s294003/f15 df13b1ab
   W=275 H=197 area=0.7166
-  tiles=022d0b8f
-  spawn=39.75,47 exit=42.75,47
+  tiles=74da2579
+  spawn=1.25,37 exit=4.25,37
   prologue=54174
-  rooms=117 4c937b1a
+  rooms=117 c9646f6a
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=163 d11cb7e9
-  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=3 8fe208a2
-  lift arrival side=0 215,191,219,194 block=214,190,220,194 at=39.75,47
-  lift departure side=0 221,191,225,194 block=220,190,226,194 at=42.75,47
+  doors=163 42788430
+  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=3 c4cda262
+  lift arrival side=0 138,171,142,174 block=137,170,143,174 at=1.25,37
+  lift departure side=0 144,171,148,174 block=143,170,149,174 at=4.25,37
 plan s301922/f1 dd18cf9b
   W=204 H=130 area=0.9258
   tiles=c9b97c67
@@ -3274,30 +3274,30 @@ plan s301922/f15 20612300
   stairs=2 75496504
   lift arrival side=0 169,253,173,256 block=168,252,174,256 at=17,58.75
   lift departure side=0 175,253,179,256 block=174,252,180,256 at=20,58.75
-plan s309841/f1 35a59803
+plan s309841/f1 2c90a688
   W=156 H=175 area=0.9531
-  tiles=820e136f
-  spawn=21,41.5 exit=24,41.5
+  tiles=ed3cfa84
+  spawn=-9.25,15.25 exit=-9.25,18.25
   prologue=27299
-  rooms=50 0059f045
+  rooms=50 d9bff521
   roles=breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=76 6a448eec
+  doors=77 0d607fa3
   locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=2 d2dff021
-  lift arrival side=0 118,169,122,172 block=117,168,123,172 at=21,41.5
-  lift departure side=0 124,169,128,172 block=123,168,129,172 at=24,41.5
-plan s309841/f2 2a4732c7
+  stairs=2 00d3a924
+  lift arrival side=1 58,116,61,120 block=58,115,62,121 at=-9.25,15.25
+  lift departure side=1 58,122,61,126 block=58,121,62,127 at=-9.25,18.25
+plan s309841/f2 194c5027
   W=163 H=175 area=0.8874
-  tiles=f3db3e47
-  spawn=19.5,35.75 exit=19.5,38.75
+  tiles=a32b5c4f
+  spawn=-10,15.25 exit=-10,18.25
   prologue=28524
-  rooms=55 1e2ef9eb
+  rooms=55 ab626998
   roles=breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=80 57073fc9
-  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=2 c0aefd2b
-  lift arrival side=1 119,157,122,161 block=119,156,123,162 at=19.5,35.75
-  lift departure side=1 119,163,122,167 block=119,162,123,168 at=19.5,38.75
+  doors=80 59ce38fd
+  locks=black!,blue!,grey!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=2 5f5c031b
+  lift arrival side=1 60,116,63,120 block=60,115,64,121 at=-10,15.25
+  lift departure side=1 60,122,63,126 block=60,121,64,127 at=-10,18.25
 plan s309841/f3 dedad039
   W=185 H=150 area=0.7742
   tiles=6b579d59
@@ -3322,18 +3322,18 @@ plan s309841/f5 f054073a
   stairs=2 01468b77
   lift arrival side=3 124,143,127,147 block=123,142,127,148 at=5.75,32.75
   lift departure side=3 124,149,127,153 block=123,148,127,154 at=5.75,35.75
-plan s309841/f8 fb01036b
+plan s309841/f8 be31adfa
   W=268 H=177 area=0.8272
-  tiles=7d8f3974
-  spawn=22,37 exit=25,37
+  tiles=8c88fa30
+  spawn=14.75,20.25 exit=14.75,23.25
   prologue=47435
-  rooms=93 7de1bf0b
+  rooms=93 846fba3b
   roles=archive,breakroom,cafeteria,closet,copyroom,exit,itbay,mailroom,manager,meeting,office,openplan,presentation,reception,security,server,storage
-  doors=134 398c4128
-  locks=black!,blue!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
-  stairs=2 c0f45866
-  lift arrival side=0 176,161,180,164 block=175,160,181,164 at=22,37
-  lift departure side=0 182,161,186,164 block=181,160,187,164 at=25,37
+  doors=134 8bfeb005
+  locks=black!,blue!,grey!,grey!,grey!,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,white,yellow!
+  stairs=2 1089e939
+  lift arrival side=3 162,127,165,131 block=161,126,165,132 at=14.75,20.25
+  lift departure side=3 162,133,165,137 block=161,132,165,138 at=14.75,23.25
 plan s309841/f12 1e842065
   W=300 H=235 area=0.9451
   tiles=74f8efba

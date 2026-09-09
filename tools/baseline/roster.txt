@@ -85,176 +85,177 @@ roster s1000/f1 31670447
     82 Janitor at=-40.75,-13.5,0 yaw=2.223 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=160
     83 Janitor at=-39.75,-15,0 yaw=3.1705 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=160
     84 Manager at=-40.585,-29.5055,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=desk chore=- job=- held=- card=- break=0 hp=270
-roster s1000/f5 6eb30d32
-  roster=167 hostile=155 open=149 keyed=0
-     0 Analyst at=-29.665,-44.5924,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=140
-     1 Sysadmin at=6.1256,27.7854,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=112
-     2 Security at=-14,-22,0 yaw=0.7806 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
-     3 Security at=-13.5,-15.5,0 yaw=0.1209 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
-     4 Security at=-6.0283,-15.5437,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
-     5 Sysadmin at=0.3284,-30.0236,0 yaw=4.8197 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=112
-     6 Security at=-4.9785,14.5115,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
-     7 Intern at=17.0488,19.8674,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=56
-     8 Intern at=-29.132,-53.5442,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=server job=- held=- card=grey break=0 hp=56
-     9 Reanimated at=-42,13,0 yaw=2.6862 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=grey break=0 hp=336
-    10 Reanimated at=-21,-43,0 yaw=5.9859 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
-    11 Security at=-24,53.7338,0 yaw=-3.1416 s=wander alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
-    12 Security at=-29,56,0 yaw=0.264 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
-    13 Reanimated at=26,-14,0 yaw=5.3375 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
-    14 Sysadmin at=-12.0432,46,0 yaw=1.5709 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=112
-    15 Analyst at=-19.5959,7.3389,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=computer job=- held=- card=white break=0 hp=140
-    16 Analyst at=-15.25,4.35,0 yaw=0 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=140
-    17 Analyst at=-20.6358,4.1163,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=140
-    18 Analyst at=-6.5,38.8729,0 yaw=-3.1416 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=140
-    19 Sysadmin at=32.5,4,0 yaw=5.2198 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=grey break=0 hp=112
-    20 Reanimated at=-30,27,0 yaw=2.5134 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
-    21 Analyst at=18.5199,20.1298,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=140
-    22 Sysadmin at=3.2868,30.8607,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=112
-    23 Security at=-43.4971,23.5244,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
-    24 Analyst at=-37.5,33.6383,0 yaw=3.1416 s=wander alive=1 gone=0 seat=- chore=mop job=- held=- card=white break=0 hp=140
-    25 Intern at=-32.1509,25,0 yaw=1.5708 s=wander alive=1 gone=0 seat=- chore=computer job=- held=- card=white break=0 hp=56
-    26 Sysadmin at=-41.835,-51.937,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=112
-    27 Facilities at=22.0126,-10.0247,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=210
-    28 Sysadmin at=-13.4592,46,0 yaw=1.5708 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=112
-    29 Analyst at=-21.1603,-53.1029,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=computer job=- held=- card=white break=0 hp=140
-    30 Sysadmin at=-24,1.353,0 yaw=-9.4248 s=wander alive=1 gone=0 seat=- chore=stowBox job=- held=crate card=white break=0 hp=112
-    31 Intern at=6.45,54.15,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=56
-    32 Reanimated at=6,50,0 yaw=3.576 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
-    33 Reanimated at=-3,48.5,0 yaw=5.1292 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
-    34 Reanimated at=39.5,53,0 yaw=0.0026 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
-    35 Security at=-37.5,5.5292,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
-    36 Analyst at=32.9673,-18.8383,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=140
-    37 Facilities at=-33.35,51.15,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=210
-    38 Security at=-6.0001,40.9575,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
-    39 Sysadmin at=6.1842,-14.6548,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=server job=- held=- card=white break=0 hp=112
-    40 Sysadmin at=-29.1303,-55.2371,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=server job=- held=- card=grey break=0 hp=112
-    41 Sysadmin at=43.2111,-52.335,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=112
-    42 Security at=-43.2829,-32.9317,0 yaw=5.852 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
-    43 Intern at=-3.8399,-49.5,0 yaw=1.5708 s=wander alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=56
-    44 Facilities at=-29.65,-23.85,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=210
-    45 Facilities at=-33.35,-14.85,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=210
-    46 Security at=-28.6868,-21.0473,0 yaw=2.3558 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
-    47 Security at=-35,-22,0 yaw=4.0187 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
-    48 Analyst at=-34.6672,2.8912,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=140
-    49 Facilities at=-18.95,52.85,0 yaw=0 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=210
-    50 Analyst at=6.45,-33.15,0 yaw=0 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=140
-    51 Analyst at=6.45,-30.15,0 yaw=0 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=140
-    52 Analyst at=6.45,-18.15,0 yaw=0 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=140
-    53 Facilities at=-0.4144,32.6238,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=computer job=- held=- card=white break=0 hp=210
-    54 Sysadmin at=-30.5351,-49.5,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=mop job=- held=- card=white break=0 hp=112
-    55 Sysadmin at=-5,49.4718,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=mop job=- held=- card=white break=0 hp=112
-    56 Analyst at=-35.1663,-1.335,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=140
-    57 Reanimated at=34,55.5,0 yaw=6.1994 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
-    58 Sysadmin at=-29.65,-26.85,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=112
-    59 Intern at=33.5,32,0 yaw=2.0328 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=56
-    60 Analyst at=40,29,0 yaw=3.3974 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=140
-    61 Analyst at=12,-31.5605,0 yaw=3.1416 s=wander alive=1 gone=0 seat=- chore=vending job=- held=- card=white break=0 hp=140
-    62 Analyst at=14.835,-20.3448,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=140
-    63 Analyst at=-5,-32.4694,0 yaw=9.4248 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=140
-    64 Analyst at=-2.5941,-26.853,0 yaw=5.8643 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=140
-    65 Analyst at=-5,-30.8396,0 yaw=3.1416 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=140
-    66 Security at=-31,-30.5,-2.1667 yaw=1.4079 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
-    67 Security at=-29,-30,0 yaw=2.6862 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
-    68 Security at=-34,-33.5,0 yaw=5.123 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
-    69 Sysadmin at=37.5,-5.4491,0 yaw=0 s=wander alive=1 gone=0 seat=- chore=vending job=- held=- card=white break=0 hp=112
-    70 Facilities at=27.4601,-36.523,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=white break=0 hp=210
-    71 Facilities at=27.6237,-54.5809,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=210
-    72 Sysadmin at=30.4559,-38.5,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=white break=0 hp=112
-    73 Analyst at=-43.9829,-32.3578,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=computer job=- held=- card=white break=0 hp=140
-    74 Sysadmin at=7.6771,31.0226,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=112
-    75 Facilities at=32.8903,-12.8122,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=packing job=- held=- card=white break=0 hp=210
-    76 Security at=38.3982,-2.3453,0 yaw=0.4029 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
-    77 Sysadmin at=-6.5,36.3064,0 yaw=3.1416 s=wander alive=1 gone=0 seat=- chore=computer job=- held=- card=white break=0 hp=112
-    78 Reanimated at=4.1374,10.5173,0 yaw=5.1758 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
-    79 Sysadmin at=-25,55.444,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=mop job=- held=- card=white break=0 hp=112
-    80 Analyst at=18.1056,30.4,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=140
-    81 Analyst at=18.7632,32.1448,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=present job=- held=- card=white break=0 hp=140
-    82 Facilities at=-24.0299,14.9966,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=mop job=- held=- card=white break=0 hp=210
-    83 Analyst at=-13.5333,23.5,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=mop job=- held=- card=white break=0 hp=140
-    84 Analyst at=-19.407,27.0448,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=140
-    85 Analyst at=40.335,55.2371,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=140
-    86 Security at=43.5,39.5,0 yaw=3.5831 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
-    87 Security at=12,-14.4406,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
-    88 Facilities at=28.15,51.15,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=210
-    89 Facilities at=29.1732,46,0 yaw=-4.7124 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=210
-    90 Facilities at=-10.3854,-10,0 yaw=-4.7122 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=210
-    91 Sysadmin at=-15.295,-34,0 yaw=0 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=112
-    92 Sysadmin at=-13.4769,-34.689,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=present job=- held=- card=white break=0 hp=112
-    93 Intern at=19.8167,29.3,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=56
-    94 Analyst at=19.8167,-15.2,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=140
-    95 Analyst at=19.8167,-16.3,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=140
-    96 Reanimated at=43,-41,0 yaw=5.8797 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
-    97 Reanimated at=40.5,-43.5,0 yaw=2.6446 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
-    98 Analyst at=15.4862,19.9173,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=140
-    99 Sysadmin at=14.6833,30.4,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=112
-   100 Intern at=-12.1193,39.6413,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=computer job=- held=can card=white break=0 hp=56
-   101 Sysadmin at=-15.25,39.65,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=112
-   102 Sysadmin at=-11.1623,29.1239,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=112
-   103 Security at=37.5,-30.9766,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
-   104 Facilities at=43.5,9.5,0 yaw=3.0304 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=210
-   105 Facilities at=37.5,20.4656,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=white break=0 hp=210
-   106 Intern at=23.6192,-4.6015,0 yaw=-5.4344 s=wander alive=1 gone=0 seat=- chore=vending job=- held=can card=white break=0 hp=56
-   107 Facilities at=5.7303,-9.9999,0 yaw=-4.7132 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=can card=white break=0 hp=210
-   108 Facilities at=12.021,1.5529,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=mop job=- held=- card=white break=0 hp=210
-   109 Sysadmin at=-43.165,14.6386,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=112
-   110 Analyst at=-42.6171,19.1238,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=grey break=0 hp=140
-   111 Facilities at=31.9029,-54.355,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=- job=- held=can card=white break=0 hp=210
-   112 Facilities at=-10.4757,-49.5,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=mop job=- held=- card=white break=0 hp=210
-   113 Analyst at=-43.1872,8.5147,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=140
-   114 Intern at=-15.25,36.65,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=56
-   115 Intern at=14.1332,44.5,0 yaw=-4.7124 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=56
-   116 Sysadmin at=-41.7887,7.6208,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=112
-   117 Security at=-43.5,51,0 yaw=1.4392 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
-   118 Security at=-38.5,54.9768,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
-   119 Analyst at=-11.55,49.85,0 yaw=0 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=140
-   120 Reanimated at=42.2772,49.0971,0 yaw=0.2512 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
-   121 Intern at=-29.65,-14.85,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=56
-   122 Intern at=-28.8618,-2.6905,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=56
-   123 Security at=-24,-13.5541,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
-   124 Reanimated at=-20,-28,0 yaw=2.7544 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
-   125 Security at=-43.5,-19,0 yaw=5.5081 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
-   126 Security at=-38.5132,-19.5196,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
-   127 Intern at=31.8135,-34.2828,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=packing job=- held=- card=white break=0 hp=56
-   128 Facilities at=31.8609,-55.1539,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=- job=- held=can card=white break=0 hp=210
-   129 Sysadmin at=-24.7116,-31.5854,0 yaw=-3.8533 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=can card=white break=0 hp=112
-   130 Security at=-2,21,0 yaw=4.7046 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
-   131 Reanimated at=-31,-32.5,0 yaw=3.5439 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
-   132 Analyst at=-22.6458,-8.5,0 yaw=1.5708 s=wander alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=140
-   133 Sysadmin at=-6.5,-16.7575,0 yaw=3.1416 s=wander alive=1 gone=0 seat=- chore=vending job=- held=- card=white break=0 hp=112
-   134 Intern at=43.0532,1.8398,0 yaw=1.533 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=56
-   135 Intern at=42.6119,-21.6227,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=- job=- held=can card=white break=0 hp=56
-   136 Intern at=42.8971,1.8801,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=grey break=0 hp=56
-   137 Sysadmin at=-14.2804,46,0 yaw=-4.7124 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=can card=grey break=0 hp=112
-   138 Analyst at=-1.4512,-8.5,0 yaw=-4.7124 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=can card=grey break=0 hp=140
-   139 Analyst at=16.3944,-16.3,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=140
-   140 Security at=-13.0337,45.5,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
-   141 Security at=7.74,-14.4492,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=desk chore=- job=- held=- card=- break=0 hp=238
-   142 Security at=7,-12,0 yaw=6.2728 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=238
-   143 Security at=5,-12.5,0 yaw=4.3173 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=238
-   144 Panicking Staffer at=37.4846,-34.1435,0 yaw=-2.9166 s=wander alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=42
-   145 Courier at=-10.075,-34,0 yaw=0 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=- break=0 hp=84
-   146 Courier at=22.5003,-27.8489,0 yaw=-3.1461 s=wander alive=1 gone=0 seat=- chore=sendPost job=- held=crate card=- break=0 hp=84
-   147 Courier at=16.3006,-12.3005,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=present job=- held=- card=- break=0 hp=84
-   148 Courier at=-9.205,-34,0 yaw=0 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=- break=0 hp=84
-   149 Office Rat at=23.2706,-38.1872,0 yaw=-6.5687 s=wander alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=7
-   150 Floor Unit at=14.3231,-38.4967,0 yaw=1.5596 s=wander alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=56
-   151 Sysadmin at=24,33.0441,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=white break=0 hp=112
-   152 Analyst at=-20.6051,39.4711,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=140
-   153 Facilities at=-29.65,-17.85,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=210
-   154 Facilities at=-39,13.0369,0 yaw=-6.2832 s=wander alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=210
-   155 Receptionist at=14.5,51,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=70
-   156 Contractor at=12,41.0669,0 yaw=-3.1416 s=wander alive=1 gone=0 seat=- chore=leaveFloor job=- held=crate+truck card=- break=0 hp=84
-   157 Staff on Break at=-13.8,16.03,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=table chore=- job=- held=tray card=- break=1 hp=70
-   158 Staff on Break at=-12.1,12.73,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=table chore=- job=- held=tray card=- break=1 hp=70
-   159 Staff on Break at=-13.8,20.57,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=table chore=- job=- held=tray card=- break=1 hp=70
-   160 Staff on Break at=-12.1,13.97,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=table chore=- job=- held=tray card=- break=1 hp=70
-   161 Janitor at=24.1067,39.0683,0 yaw=2.9543 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=yellow break=0 hp=224
-   162 Janitor at=36.5,1.5,0 yaw=3.223 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=yellow break=0 hp=224
-   163 Janitor at=-6,-41.9527,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=mop job=- held=- card=yellow break=0 hp=224
-   164 Janitor at=-29,21.5,0 yaw=2.6057 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=224
-   165 Janitor at=-30,21,0 yaw=4.8898 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=224
-   166 Manager at=43.165,18.1544,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=desk chore=- job=- held=- card=- break=0 hp=378
-roster s1000/f9 7cb930ca
+roster s1000/f5 e14995a5
+  roster=168 hostile=154 open=148 keyed=0
+     0 Facilities at=-29.65,-20.85,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=210
+     1 Sysadmin at=-12.9734,-38,0 yaw=4.7124 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=grey break=0 hp=112
+     2 Reanimated at=26.5,-15,0 yaw=1.9111 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
+     3 Sysadmin at=-15.25,38.35,0 yaw=0 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=112
+     4 Security at=-25.0008,21.033,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
+     5 Analyst at=-42.6803,14.3346,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=server job=- held=- card=white break=0 hp=140
+     6 Intern at=19.2101,44.4432,0 yaw=1.4136 s=wander alive=1 gone=0 seat=- chore=vending job=- held=- card=white break=0 hp=56
+     7 Sysadmin at=14.6833,-13.7,0 yaw=0 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=112
+     8 Facilities at=-11.7103,29.1351,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=210
+     9 Sysadmin at=-29.665,-54.1422,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=112
+    10 Analyst at=17.3,-35.2,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=grey break=0 hp=140
+    11 Sysadmin at=26.835,0.5283,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=112
+    12 Intern at=-10.623,-52.4709,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=56
+    13 Reanimated at=-0.5,2,0 yaw=3.576 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
+    14 Security at=-0.5,5,0 yaw=4.4111 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
+    15 Intern at=-37.5,0.8552,0 yaw=3.1416 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=56
+    16 Sysadmin at=7.665,-5.8846,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=112
+    17 Analyst at=-0.95,-22.85,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=140
+    18 Analyst at=-37.5,-37.6248,0 yaw=3.1416 s=wander alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=140
+    19 Analyst at=17.3,-27.2,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=140
+    20 Facilities at=-24.0001,-42.9413,0 yaw=-3.1411 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=210
+    21 Analyst at=-5,-14.022,0 yaw=-6.2831 s=wander alive=1 gone=0 seat=- chore=stowBox job=- held=crate card=white break=0 hp=140
+    22 Analyst at=-11.55,-13.15,0 yaw=0 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=140
+    23 Security at=-21.5,-14,0 yaw=1.0642 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
+    24 Security at=-5.0001,-21.2728,0 yaw=6.2825 s=wander alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
+    25 Security at=-9.5,-22,0 yaw=5.0261 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
+    26 Facilities at=-5,21.12,0 yaw=-3.1416 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=210
+    27 Intern at=6.8967,27.7837,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=56
+    28 Facilities at=17.9025,-22.165,0 yaw=0 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=210
+    29 Sysadmin at=31.8912,0.835,0 yaw=0 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=112
+    30 Facilities at=-15.25,2.65,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=210
+    31 Analyst at=-43.4272,29.165,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=140
+    32 Security at=-30.5,10.5,0 yaw=6.1458 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
+    33 Sysadmin at=2.75,-28.85,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=112
+    34 Reanimated at=-42,2.5,0 yaw=0.5092 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
+    35 Intern at=-35,-18.9701,0 yaw=6.2832 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=56
+    36 Security at=41,-54,0 yaw=3.223 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
+    37 Facilities at=-38,23.0373,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=white break=0 hp=210
+    38 Intern at=-40.9815,20.1242,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=56
+    39 Intern at=-29.6564,-53.4677,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=computer job=- held=- card=white break=0 hp=56
+    40 Security at=-42.5,-27,0 yaw=2.1577 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
+    41 Sysadmin at=28.15,39.9,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=grey break=0 hp=112
+    42 Facilities at=12.0482,45,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=mop job=- held=- card=white break=0 hp=210
+    43 Analyst at=15.5229,55.1623,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=140
+    44 Analyst at=6.45,52.85,0 yaw=0 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=140
+    45 Facilities at=-18.95,55.85,0 yaw=0 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=210
+    46 Sysadmin at=-33.35,51.15,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=112
+    47 Sysadmin at=-29.0525,44.5,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=white break=0 hp=112
+    48 Reanimated at=26,13.5,0 yaw=1.7484 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
+    49 Intern at=12,-0.7179,0 yaw=3.1416 s=wander alive=1 gone=0 seat=- chore=computer job=- held=- card=white break=0 hp=56
+    50 Analyst at=-33.35,-20.85,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=140
+    51 Sysadmin at=6.8469,5.165,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=112
+    52 Analyst at=19.3954,55.1794,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=140
+    53 Sysadmin at=6.8561,-45.1419,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=computer job=- held=- card=white break=0 hp=112
+    54 Facilities at=20.1554,-28.5,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=present job=- held=- card=white break=0 hp=210
+    55 Security at=23,-24.0428,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
+    56 Sysadmin at=-43.2059,8.5049,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=112
+    57 Reanimated at=-42.5,6.5,0 yaw=5.1758 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
+    58 Sysadmin at=1.4682,-37.038,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=white break=0 hp=112
+    59 Analyst at=14.6833,-15.9,0 yaw=0 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=grey break=0 hp=140
+    60 Analyst at=13.8278,-14.8,0 yaw=0 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=grey break=0 hp=140
+    61 Facilities at=-24,-0.8769,0 yaw=3.1416 s=wander alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=210
+    62 Analyst at=12,-30.6932,0 yaw=9.4248 s=wander alive=1 gone=0 seat=- chore=vending job=- held=- card=white break=0 hp=140
+    63 Security at=-15,13.5,0 yaw=3.8996 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
+    64 Intern at=-20.4109,20.63,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=- job=- held=can card=white break=0 hp=56
+    65 Security at=-33.5,-43.5,0 yaw=2.8144 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
+    66 Security at=-34.5,-45.5,0 yaw=4.7079 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
+    67 Intern at=-9.8621,-54.8157,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=56
+    68 Intern at=-10.6346,-54.8774,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=56
+    69 Intern at=24.0128,-32.9727,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=white break=0 hp=56
+    70 Reanimated at=18,41,0 yaw=4.3737 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
+    71 Security at=11,53.9659,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
+    72 Security at=13.0583,46,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
+    73 Analyst at=40.5001,-29.246,0 yaw=0.0008 s=wander alive=1 gone=0 seat=- chore=mop job=- held=- card=white break=0 hp=140
+    74 Analyst at=-5.774,-38,0 yaw=-4.7124 s=wander alive=1 gone=0 seat=- chore=stowBox job=- held=crate card=white break=0 hp=140
+    75 Reanimated at=40.5,-35,0 yaw=5.8797 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
+    76 Analyst at=42,0.5,0 yaw=3.0388 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=140
+    77 Analyst at=42.085,3.1178,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=140
+    78 Analyst at=43.4909,3.135,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=140
+    79 Intern at=-10.075,-34,0 yaw=0 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=56
+    80 Sysadmin at=-13.5524,-34.6872,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=present job=- held=- card=white break=0 hp=112
+    81 Sysadmin at=-28.8608,19.8117,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=112
+    82 Reanimated at=42.2325,42.0508,0 yaw=0.8366 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
+    83 Reanimated at=40.5,40,0 yaw=4.061 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
+    84 Reanimated at=39.5,37.5,0 yaw=1.9409 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
+    85 Sysadmin at=-24,-18.4494,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=white break=0 hp=112
+    86 Sysadmin at=-28.8625,-4.6792,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=112
+    87 Reanimated at=32.5,-14,0 yaw=3.8923 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
+    88 Intern at=36.0937,-21.2889,0 yaw=0.5372 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=can card=white break=0 hp=56
+    89 Intern at=32.8511,-15.1461,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=56
+    90 Sysadmin at=16.2,-31.2,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=112
+    91 Facilities at=-5,2.2954,0 yaw=-3.1416 s=wander alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=210
+    92 Analyst at=-16.165,-32.9,0 yaw=0 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=140
+    93 Analyst at=16.2,-32.8,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=140
+    94 Intern at=-0.335,31.1179,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=56
+    95 Facilities at=43.5,12.5,0 yaw=3.5005 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=210
+    96 Security at=8.5,-14.5,0 yaw=6.193 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
+    97 Security at=-2.9666,-9.5,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
+    98 Security at=12,-19.4728,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
+    99 Intern at=3.2821,31.8592,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=56
+   100 Analyst at=-37.5445,-13.0393,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=white break=0 hp=140
+   101 Analyst at=40.5639,49.3647,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=140
+   102 Analyst at=14.7839,51.3526,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=140
+   103 Facilities at=19.8513,48.8098,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=210
+   104 Sysadmin at=14.4882,44.5,0 yaw=1.5708 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=112
+   105 Facilities at=-25.0001,-28.0331,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=white break=0 hp=210
+   106 Facilities at=-24,3.6163,0 yaw=3.1416 s=wander alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=210
+   107 Analyst at=-24,-24.6412,0 yaw=3.1416 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=grey break=0 hp=140
+   108 Security at=11.9803,16.5325,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
+   109 Facilities at=-38.4685,-14.4627,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=grey break=0 hp=210
+   110 Facilities at=-33.35,-23.85,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=grey break=0 hp=210
+   111 Analyst at=-33.35,-26.85,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=140
+   112 Security at=26,-52.5,0 yaw=1.774 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
+   113 Security at=23.042,-53.0354,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
+   114 Facilities at=-16.165,-34,0 yaw=0 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=210
+   115 Security at=-20,-45,0 yaw=5.0095 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
+   116 Security at=-17,-41.5,0 yaw=3.4106 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
+   117 Intern at=-41.7907,7.6394,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=56
+   118 Intern at=31.6483,-24.6873,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=packing job=- held=crate card=white break=0 hp=56
+   119 Intern at=37.5049,-20.4885,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=can card=white break=0 hp=56
+   120 Facilities at=13.8278,-15.9,0 yaw=0 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=210
+   121 Facilities at=22.4484,-8.3319,0 yaw=0.1553 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=can card=white break=0 hp=210
+   122 Facilities at=33.1862,-30.464,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=packing job=- held=- card=white break=0 hp=210
+   123 Facilities at=23.5974,-38,0 yaw=1.5708 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=grey break=0 hp=210
+   124 Analyst at=-43.1723,34.1403,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=140
+   125 Analyst at=-33.35,27.9,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=140
+   126 Analyst at=42.5,-3.5,0 yaw=5.4801 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=140
+   127 Analyst at=41,-5,0 yaw=1.9517 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=140
+   128 Sysadmin at=38.9626,-12.9931,0 yaw=4.7654 s=wander alive=1 gone=0 seat=- chore=printer job=- held=- card=grey break=0 hp=112
+   129 Security at=22.9998,-6.0266,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
+   130 Security at=11.9861,-6.9849,0 yaw=-0.0744 s=wander alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
+   131 Analyst at=14.6833,-12.6,0 yaw=0 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=140
+   132 Analyst at=13.8278,-13.7,0 yaw=0 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=140
+   133 Sysadmin at=24.0513,-49,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=mop job=- held=- card=white break=0 hp=112
+   134 Sysadmin at=27.9118,-48.0001,0 yaw=1.5712 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=112
+   135 Analyst at=18.4,-26.4,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=140
+   136 Facilities at=-8.335,-34,0 yaw=0 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=210
+   137 Reanimated at=-41.5,10.5,0 yaw=0.8489 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=336
+   138 Intern at=-12.685,-32.9,0 yaw=0 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=56
+   139 Security at=24,-12.4625,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
+   140 Security at=12,-31.1774,0 yaw=3.1416 s=wander alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=238
+   141 Security at=-35.4704,-38.5,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
+   142 Security at=37.5,-44.5,0 yaw=5.014 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
+   143 Security at=-42.3736,15.0735,0 yaw=4.0441 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=238
+   144 Security at=-41.0716,15.2218,0 yaw=3.0677 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=238
+   145 Security at=-40.9741,13.6925,0 yaw=0.5578 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=238
+   146 Panicking Staffer at=-37.5,-8.0886,0 yaw=-12.4807 s=wander alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=42
+   147 Panicking Staffer at=-3.1424,44.4978,0 yaw=-1.6754 s=wander alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=42
+   148 Courier at=18.7523,-17.6906,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=present job=- held=- card=- break=0 hp=84
+   149 Courier at=19.5,-24.8,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=- break=0 hp=84
+   150 Courier at=-42.6918,13.785,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=- break=0 hp=84
+   151 Courier at=7.6743,30.1952,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=- break=0 hp=84
+   152 Courier at=23.8018,-31.6771,0 yaw=-4.1703 s=wander alive=1 gone=0 seat=- chore=sendPost job=- held=crate card=- break=0 hp=84
+   153 Courier at=30.7053,-36.9998,0 yaw=1.5662 s=wander alive=1 gone=0 seat=- chore=sendPost job=- held=crate card=- break=0 hp=84
+   154 Office Rat at=18.7231,-37,0 yaw=-1.5705 s=wander alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=7
+   155 Floor Unit at=-7.8181,-38.0343,0 yaw=1.6912 s=wander alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=56
+   156 Security at=8.0355,45.9923,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
+   157 Security at=-7.4675,45.4614,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=238
+   158 Receptionist at=-2.5,40,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=70
+   159 Contractor at=11,-19.1476,0 yaw=-6.2832 s=wander alive=1 gone=0 seat=- chore=- job=- held=truck card=- break=0 hp=84
+   160 Staff on Break at=-13.8,9.43,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=table chore=- job=- held=tray card=- break=1 hp=70
+   161 Staff on Break at=-12.1,19.33,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=table chore=- job=- held=tray card=- break=1 hp=70
+   162 Janitor at=-37.3497,-51.0675,0 yaw=5.6231 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=yellow break=0 hp=224
+   163 Janitor at=24,13.5336,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=mop job=- held=- card=yellow break=0 hp=224
+   164 Janitor at=10.5,-19.786,0 yaw=3.1416 s=wander alive=1 gone=0 seat=- chore=mop job=- held=- card=yellow break=0 hp=224
+   165 Janitor at=-18,29,0 yaw=4.6992 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=224
+   166 Janitor at=-20,27.5,0 yaw=0.3242 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=224
+   167 Manager at=42.7492,16.335,0 yaw=0 s=idle alive=1 gone=0 seat=desk chore=- job=- held=- card=- break=0 hp=378
+roster s1000/f9 ed423535
   roster=231 hostile=214 open=208 keyed=0
      0 Reanimated at=42.25,69.5,0 yaw=2.8448 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
      1 Reanimated at=11.75,52.5,0 yaw=0.7111 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
@@ -273,7 +274,7 @@ roster s1000/f9 7cb930ca
     14 Reanimated at=28.25,-6.5,0 yaw=0.2512 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
     15 Intern at=10.7636,-60,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=mop job=- held=- card=white break=0 hp=72
     16 Intern at=-60.6916,24.1351,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=72
-    17 Security at=-47.75,61.5,0 yaw=1.7017 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
+    17 Security at=-44.2795,62.0032,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=306
     18 Reanimated at=-11.75,-19,0 yaw=2.7544 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
     19 Security at=-17.25,-17,0 yaw=5.5081 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
     20 Sysadmin at=-55.75,53.5515,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=mop job=- held=- card=white break=0 hp=144
@@ -286,7 +287,7 @@ roster s1000/f9 7cb930ca
     27 Sysadmin at=-8.75,-13.9857,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=white break=0 hp=144
     28 Sysadmin at=-2.3333,-8.8629,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=144
     29 Facilities at=-19.2099,8.4731,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=mop job=- held=- card=white break=0 hp=270
-    30 Security at=-62.25,-1.5,0 yaw=6.1594 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
+    30 Security at=-57.7873,-4.4948,0 yaw=4.7472 s=wander alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=306
     31 Analyst at=2.1818,-32.1784,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=180
     32 Facilities at=41.75,19.85,0 yaw=0 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=270
     33 Facilities at=51.8,15.15,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=270
@@ -295,14 +296,14 @@ roster s1000/f9 7cb930ca
     36 Intern at=53.55,5.85,0 yaw=0 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=72
     37 Reanimated at=55.25,-0.5,0 yaw=2.7604 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
     38 Reanimated at=58.75,-4.5,0 yaw=1.1347 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
-    39 Intern at=22.75,32.7204,0 yaw=-0.0004 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=72
+    39 Intern at=22.75,20.2761,0 yaw=0 s=wander alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=72
     40 Facilities at=-3.085,27.4097,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=270
     41 Security at=-22.2511,-51.9693,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=306
     42 Sysadmin at=-28.45,-50.35,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=144
     43 Security at=-30.75,-38.5,0 yaw=0.6911 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
     44 Security at=-41.25,-45,0 yaw=0.5933 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
     45 Sysadmin at=-32.15,-41.35,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=144
-    46 Sysadmin at=-44.25,13.6315,0 yaw=6.2832 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=144
+    46 Sysadmin at=-47.8803,19.9889,0 yaw=4.6339 s=wander alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=144
     47 Security at=-41.25,-9,0 yaw=1.9436 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
     48 Reanimated at=-3.25,-20,0 yaw=4.9847 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
     49 Reanimated at=9.75,15,0 yaw=6.2373 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
@@ -310,7 +311,7 @@ roster s1000/f9 7cb930ca
     51 Manager at=0.85,65.15,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=486
     52 Facilities at=-59.75,66,0 yaw=2.6649 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=270
     53 Intern at=-52.2806,-60.4976,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=grey break=0 hp=72
-    54 Sysadmin at=5.7499,24.667,0 yaw=-0.001 s=wander alive=1 gone=0 seat=- chore=mop job=- held=can card=white break=0 hp=144
+    54 Sysadmin at=0.6461,26.7859,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=- job=- held=can card=white break=0 hp=144
     55 Reanimated at=-33.25,11.5,0 yaw=4.7378 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=grey break=0 hp=432
     56 Facilities at=-38.9022,-53.3713,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=computer job=- held=- card=white break=0 hp=270
     57 Reanimated at=56.75,23.5,0 yaw=0.9192 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
@@ -320,8 +321,8 @@ roster s1000/f9 7cb930ca
     61 Reanimated at=-28.75,4,0 yaw=1.905 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
     62 Intern at=50.55,-15.85,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=72
     63 Sysadmin at=50.55,-9.85,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=144
-    64 Reanimated at=-39.2022,46.1842,0 yaw=3.3549 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
-    65 Intern at=7.25,-50.466,0 yaw=0 s=wander alive=1 gone=0 seat=- chore=mop job=- held=- card=white break=0 hp=72
+    64 Reanimated at=-39.25,46,0 yaw=3.3549 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
+    65 Intern at=2.9306,-36.5,0 yaw=-1.5708 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=72
     66 Reanimated at=-18.25,-54,0 yaw=4.501 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
     67 Intern at=-28.45,-41.35,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=72
     68 Facilities at=-17.6,-44.35,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=270
@@ -334,39 +335,39 @@ roster s1000/f9 7cb930ca
     75 Reanimated at=-17.25,68,0 yaw=4.3724 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
     76 Security at=-4.5873,13.1032,0 yaw=5.0267 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
     77 Sysadmin at=58.382,51.1987,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=144
-    78 Manager at=-57.8286,42.5084,0 yaw=4.759 s=wander alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=486
+    78 Manager at=-59.25,46,0 yaw=3.8917 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=486
     79 Security at=-42.278,-60.5,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=306
     80 Analyst at=-59.4868,-45.7057,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=180
-    81 Manager at=-22.2518,-61.7599,0 yaw=-3.1311 s=wander alive=1 gone=0 seat=- chore=packing job=- held=- card=white break=0 hp=486
+    81 Manager at=-23.25,-58.9512,0 yaw=-3.1416 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=486
     82 Intern at=9.75,66.5,0 yaw=2.9918 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=72
     83 Security at=16.25,67.5,0 yaw=3.5499 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
     84 Security at=9.75,63.5,0 yaw=0.8497 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
     85 Analyst at=14.25,61.65,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=180
-    86 Manager at=-12.7088,27.9968,0 yaw=4.6967 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=486
+    86 Manager at=-9.2502,38.028,0 yaw=3.1427 s=wander alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=486
     87 Manager at=-18.8666,36.0872,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=486
     88 Manager at=-13.2405,35.8364,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=computer job=- held=- card=white break=0 hp=486
     89 Reanimated at=-19.75,22.5,0 yaw=1.9612 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
     90 Security at=-52.25,-40,0 yaw=0.4042 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
     91 Security at=-48.75,-40,0 yaw=1.4665 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
     92 Sysadmin at=-39.0397,-13.3268,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=144
-    93 Sysadmin at=-9.25,-16.3626,0 yaw=-3.1416 s=wander alive=1 gone=0 seat=- chore=printer job=- held=can card=white break=0 hp=144
+    93 Sysadmin at=-4.9333,-22,0 yaw=-1.5708 s=wander alive=1 gone=0 seat=- chore=bench job=- held=can card=white break=0 hp=144
     94 Facilities at=13.25,48,0 yaw=3.866 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=270
-    95 Intern at=5.7506,50.041,0 yaw=9.4135 s=wander alive=1 gone=0 seat=- chore=packing job=- held=- card=white break=0 hp=72
+    95 Intern at=2.5624,45.3429,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=packing job=- held=- card=white break=0 hp=72
     96 Manager at=12.25,49.5,0 yaw=1.4727 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=486
     97 Sysadmin at=44.8583,32.309,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=144
     98 Sysadmin at=57.25,-3.15,0 yaw=0 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=144
     99 Facilities at=28.7615,-18.6451,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=270
    100 Reanimated at=61.25,-29,0 yaw=5.1904 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
    101 Facilities at=32.7932,-60.5034,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=mop job=- held=- card=white break=0 hp=270
-   102 Security at=34.75,-57.0592,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=306
+   102 Security at=36.5938,-66.4921,0 yaw=2.9365 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
    103 Security at=41.75,-65,0 yaw=4.3125 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
    104 Security at=-29.3994,19.2752,0 yaw=2.2715 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
-   105 Manager at=-59.1244,-10.2182,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=- job=- held=can card=white break=0 hp=486
+   105 Manager at=-55.3102,-8.6244,0 yaw=-0.836 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=can card=white break=0 hp=486
    106 Analyst at=5.7232,8.5006,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=white break=0 hp=180
    107 Intern at=11.75,-27.945,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=72
    108 Intern at=10.65,-31.425,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=72
    109 Facilities at=11.75,-25.335,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=270
-   110 Intern at=-39.9528,-4.714,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=72
+   110 Intern at=-35.6828,-2.5,0 yaw=7.8544 s=wander alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=72
    111 Intern at=-34.05,-6.22,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=72
    112 Intern at=2.3659,-47.8012,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=72
    113 Intern at=10.65,-25.335,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=72
@@ -381,21 +382,21 @@ roster s1000/f9 7cb930ca
    122 Security at=11.25,24,0 yaw=2.3666 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
    123 Analyst at=-59.6128,21.0658,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=180
    124 Facilities at=-61.25,27.5,0 yaw=2.5045 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=270
-   125 Facilities at=22.75,8.115,0 yaw=0 s=wander alive=1 gone=0 seat=- chore=vending job=- held=- card=white break=0 hp=270
+   125 Facilities at=22.75,16.1937,0 yaw=0 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=270
    126 Security at=19.25,31,0 yaw=6.1925 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
    127 Security at=19.2856,28.3309,0 yaw=0.7838 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
    128 Sysadmin at=42.0068,68.3966,0 yaw=4.8465 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=144
    129 Sysadmin at=33.75,35.5194,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=white break=0 hp=144
-   130 Sysadmin at=28.0065,45.5029,0 yaw=4.7466 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=144
+   130 Sysadmin at=22.7512,42.7874,0 yaw=6.2953 s=wander alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=144
    131 Reanimated at=-38.75,35,0 yaw=3.38 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
    132 Reanimated at=-35.25,39,0 yaw=5.5679 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
-   133 Analyst at=-33.25,35,0 yaw=5.0142 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=180
-   134 Intern at=-61.25,14,0 yaw=1.4993 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=72
+   133 Analyst at=-34.2432,37.3908,0 yaw=3.1009 s=wander alive=1 gone=0 seat=- chore=fetchBox job=- held=- card=white break=0 hp=180
+   134 Intern at=-60.8877,20.5831,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=72
    135 Intern at=-50.2509,12.86,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=72
    136 Reanimated at=55.8903,-66.0481,0 yaw=1.0227 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
    137 Reanimated at=53.925,-68.541,0 yaw=1.3917 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
    138 Analyst at=46.7629,69.3346,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=computer job=- held=- card=white break=0 hp=180
-   139 Intern at=13.8354,-23.5,0 yaw=-7.8539 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=can card=white break=0 hp=72
+   139 Intern at=13.2369,-22,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=can card=white break=0 hp=72
    140 Sysadmin at=-49.7504,13.1338,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=144
    141 Reanimated at=-42.25,6,0 yaw=2.364 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
    142 Manager at=25.5361,-46.8098,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=bench job=- held=- card=grey break=0 hp=486
@@ -411,10 +412,10 @@ roster s1000/f9 7cb930ca
    152 Sysadmin at=55.9166,-65.2368,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=present job=- held=- card=grey break=0 hp=144
    153 Sysadmin at=53.05,-70.665,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=144
    154 Sysadmin at=55.25,-67.185,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=144
-   155 Analyst at=21.4054,47.7604,0 yaw=4.2403 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=180
-   156 Analyst at=16.75,50.5,0 yaw=1.7039 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=180
-   157 Facilities at=16.75,46.5,0 yaw=1.7295 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=270
-   158 Analyst at=37.0968,56.5,0 yaw=1.5708 s=wander alive=1 gone=0 seat=- chore=bench job=- held=can card=white break=0 hp=180
+   155 Analyst at=22.75,57.279,0 yaw=3.1416 s=wander alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=180
+   156 Analyst at=16.75,49.7701,0 yaw=0.1546 s=wander alive=1 gone=0 seat=- chore=vending job=- held=- card=white break=0 hp=180
+   157 Facilities at=19.5495,47.4981,0 yaw=4.6905 s=wander alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=270
+   158 Analyst at=41.8397,56.5448,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=- job=- held=can card=white break=0 hp=180
    159 Analyst at=34.7496,52.5524,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=mop job=- held=- card=white break=0 hp=180
    160 Security at=34.75,64.9822,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=306
    161 Reanimated at=28.309,-50.2405,0 yaw=1.4927 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
@@ -422,7 +423,7 @@ roster s1000/f9 7cb930ca
    163 Manager at=9.05,-68.4,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=486
    164 Manager at=21.25,-37.5984,0 yaw=3.1416 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=486
    165 Facilities at=17.05,-64,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=270
-   166 Facilities at=-52.25,25.5,0 yaw=1.4133 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=270
+   166 Facilities at=-48.2132,23.0006,0 yaw=-1.565 s=wander alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=270
    167 Reanimated at=50.25,29.5,0 yaw=0.3702 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=grey break=0 hp=432
    168 Analyst at=51.8,24.15,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=white break=0 hp=180
    169 Analyst at=52.7455,30.5928,0 yaw=2.9541 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=180
@@ -430,7 +431,7 @@ roster s1000/f9 7cb930ca
    171 Reanimated at=1.75,-63,0 yaw=3.5061 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
    172 Security at=-55.0188,67.1581,0 yaw=2.5855 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
    173 Manager at=-45.1461,63.2279,0 yaw=4.0502 s=wander alive=1 gone=0 seat=- chore=vending job=- held=- card=white break=0 hp=486
-   174 Manager at=-44.25,-26.131,0 yaw=9.4248 s=wander alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=486
+   174 Manager at=-29.0473,-35,0 yaw=4.7124 s=wander alive=1 gone=0 seat=- chore=packing job=- held=- card=white break=0 hp=486
    175 Security at=40.4744,45.9451,0 yaw=4.23 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
    176 Intern at=21.25,-24.2908,0 yaw=6.2832 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=72
    177 Manager at=-50.9476,13.1348,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=486
@@ -444,7 +445,7 @@ roster s1000/f9 7cb930ca
    185 Facilities at=11.75,-31.425,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=270
    186 Manager at=-35.85,-50.35,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=grey break=0 hp=486
    187 Analyst at=54.15,-65.445,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=white break=0 hp=180
-   188 Security at=-44.2558,34.4525,0 yaw=6.2468 s=wander alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=306
+   188 Security at=-49.25,36,0 yaw=3.2776 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
    189 Intern at=-4.3158,12.7411,0 yaw=3.5328 s=wander alive=1 gone=0 seat=- chore=deskWork job=- held=- card=white break=0 hp=72
    190 Reanimated at=-35.9718,6.042,0 yaw=0.5877 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
    191 Analyst at=-27.2567,20.8564,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=printer job=- held=- card=white break=0 hp=180
@@ -452,24 +453,24 @@ roster s1000/f9 7cb930ca
    193 Security at=-13.75,66,0 yaw=2.9761 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
    194 Security at=-12.25,70.5,0 yaw=1.8265 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
    195 Reanimated at=14.75,14.5,0 yaw=0.4629 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
-   196 Security at=10.7936,8.5,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=patrol job=- held=- card=blue break=0 hp=306
-   197 Analyst at=-44.25,-3.6073,0 yaw=-3.1416 s=wander alive=1 gone=0 seat=- chore=bench job=- held=- card=white break=0 hp=180
+   196 Security at=10.7936,8.5,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
+   197 Analyst at=-44.25,-3.6073,0 yaw=-3.1416 s=wander alive=1 gone=0 seat=- chore=mop job=- held=- card=white break=0 hp=180
    198 Reanimated at=-52.75,-10,0 yaw=3.7841 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=432
    199 Facilities at=10.25,36.5,0 yaw=0.269 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=270
    200 Security at=-8.75,24.5,0 yaw=2.9256 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
    201 Security at=-61.49,-44.5095,0 yaw=-4.7124 s=idle alive=1 gone=0 seat=desk chore=- job=- held=- card=- break=0 hp=306
    202 Security at=-58.25,-44,0 yaw=4.4961 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=306
    203 Security at=-59.0667,-45.0249,0 yaw=5.8697 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=306
-   204 Panicking Staffer at=-44.25,-32.3342,0 yaw=0 s=wander alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=54
+   204 Panicking Staffer at=-60.7913,8.5004,0 yaw=1.5394 s=wander alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=54
    205 Courier at=40.5452,46.5388,0 yaw=5.0368 s=wander alive=1 gone=0 seat=- chore=fetchPost job=- held=- card=- break=0 hp=108
    206 Courier at=-59.8344,-44.7996,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=- chore=server job=- held=- card=- break=0 hp=108
    207 Courier at=29.8075,-22,0 yaw=-4.7124 s=wander alive=1 gone=0 seat=- chore=sendPost job=- held=crate card=- break=0 hp=108
    208 Courier at=-39.085,-8.1971,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=- break=0 hp=108
    209 Courier at=19.45,-68.4,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=meeting chore=attend job=- held=- card=- break=0 hp=108
    210 Courier at=37.2777,49.3184,0 yaw=-0.9271 s=wander alive=1 gone=0 seat=- chore=fetchPost job=- held=- card=- break=0 hp=108
-   211 Courier at=3.744,57.5,0 yaw=-1.5708 s=wander alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=108
-   212 Office Rat at=14.8431,-36.5,0 yaw=14.1367 s=wander alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=9
-   213 Floor Unit at=43.2521,20.6144,0 yaw=3.135 s=wander alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=72
+   211 Courier at=5.743,56.2075,0 yaw=-0.2028 s=wander alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=108
+   212 Office Rat at=10.6811,-60.9984,0 yaw=11.1116 s=wander alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=9
+   213 Floor Unit at=43.7359,20.8276,0 yaw=2.2937 s=wander alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=72
    214 Security at=6.5992,49.4704,0 yaw=2.7052 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
    215 Security at=6.75,64,0 yaw=2.4957 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=blue break=0 hp=306
    216 Facilities at=2.5657,45.3588,0 yaw=0 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=white break=0 hp=270
@@ -480,10 +481,10 @@ roster s1000/f9 7cb930ca
    221 Staff on Break at=-39.58,55.8,0 yaw=0 s=idle alive=1 gone=0 seat=table chore=- job=- held=tray card=- break=1 hp=90
    222 Staff on Break at=-31.98,63.7,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=table chore=- job=- held=tray card=- break=1 hp=90
    223 Staff on Break at=-26.38,54.1,0 yaw=-3.1416 s=idle alive=1 gone=0 seat=table chore=- job=- held=tray card=- break=1 hp=90
-   224 Staff on Break at=-33.2533,47.4673,0 yaw=4.5386 s=wander alive=1 gone=0 seat=- chore=printer job=- held=- card=- break=0 hp=90
+   224 Staff on Break at=-52.649,50.2223,0 yaw=4.3027 s=wander alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=90
    225 Staff on Break at=-41.4905,45.335,0 yaw=0 s=idle alive=1 gone=0 seat=desk chore=deskWork job=- held=- card=- break=0 hp=90
    226 Janitor at=-7.75,5.471,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=- chore=mop job=- held=- card=yellow break=0 hp=288
-   227 Janitor at=-52.5391,-23.6446,0 yaw=3.3775 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=yellow break=0 hp=288
+   227 Janitor at=-52.75,-23.5,0 yaw=3.3775 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=yellow break=0 hp=288
    228 Janitor at=11.75,-17,0 yaw=1.5359 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=288
    229 Janitor at=10.25,-16.5,0 yaw=1.4936 s=idle alive=1 gone=0 seat=- chore=- job=- held=- card=- break=0 hp=288
    230 Manager at=61.415,-67.9638,0 yaw=-1.5708 s=idle alive=1 gone=0 seat=desk chore=- job=- held=- card=- break=0 hp=486
