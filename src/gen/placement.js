@@ -796,7 +796,20 @@ export function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES, as = null, 
         // whose receptionist was displaced by its own pot plant is a lobby with
         // a counter and nobody at it.
         if (crook) {
-          sink.workstation(crook.x, crook.z, side, at, sink.placed());
+          // A QUARTER TURN OFF THE PROP'S OWN FACING, because the face a visitor
+          // walks up to is not the one the prop points at. The long leg runs the
+          // whole depth out from the wall (see `lCounter`), so what somebody
+          // leans over is its FLANK — local -x, the side the pocket is on — and
+          // a body left on `side` faces down the length of its own counter at
+          // the return leg, with the visitor at its elbow. `QUARTER` gives the
+          // facing per rot as -z, +x, +z, -x, and local -x under rot `side`
+          // lands on `side + 3` for all four sides.
+          // ...and only for the two Ls. The STUB has no pocket and no second
+          // leg: its body stands off whichever flank came out free, so there is
+          // no one flank to turn towards and `side` — looking out along the leg,
+          // the way the counter faces — is still the right answer there.
+          sink.workstation(crook.x, crook.z,
+            opts.corner ? (side + 3) & 3 : side, at, sink.placed());
         } else {
           const reach = opts.behind ? (standoff - opts.stand) : -(standoff + WORK_REACH);
           const [ox, oz] = QUARTER[side](0, reach);
