@@ -293,17 +293,43 @@ function freeAside(sink, w, along, off, out, first) {
   // counter, which is a real place to be greeted from and is regularly the only
   // tile of the four that is free: it is the one furthest into the room, and
   // what takes the others is the band of floor kept clear along the wall.
-  let fallback = null;
-  for (const [sign, depth] of [[first, out], [-first, out], [first, out + TILE],
-    [-first, out + TILE]]) {
-    const [x, z] = w.seat(along + sign * off, depth);
-    // A whole TILE rather than a body's own square. `fits` in nav.js refuses any
-    // tile orthogonally touching a blocked one, so proving 0.4 m of clearance
-    // here published stations a body could not stand in — 8 of 40 before this.
-    const spot = [x - TILE, z - TILE, x + TILE, z + TILE];
-    if (sink.canPlace(...spot)) return { x, z, spot };
-    fallback ??= { x, z, spot };
+  // TWO TESTS, NOT ONE, and this is the half that was missing. `canPlace` asks
+  // whether a PROP may go on these tiles — is the floor unclaimed — and that is
+  // not the same question as whether a BODY fits on them: it reads `occupied`
+  // and `reserved`, where a body needs the 3x3 of open unblocked tiles that
+  // `standsAt` asks about and `fits` in nav.js will hold it to at runtime. So a
+  // spot could be proved free, claimed, published, and then refused by the
+  // roster — measured over 200 floors, 20 lobbies had a station the
+  // receptionist could not stand at and so had NOBODY at the counter.
+  //
+  // Free AND standable is still the answer wanted; standable but claimed is
+  // better than a station nav will drop, because what is claimed here is a
+  // reservation rather than a prop — `standsAt` has already proved nothing is
+  // actually standing there.
+  //
+  // ...and it sweeps a step either way ALONG the counter as well, which is 12
+  // candidates where this used to try 4. The order keeps the original four
+  // first, so a lobby this already got right is unchanged.
+  let fits = null, fallback = null;
+  for (const slide of [0, TILE, -TILE]) {
+    for (const depth of [out, out + TILE]) {
+      for (const sign of [first, -first]) {
+        const [x, z] = w.seat(along + slide + sign * off, depth);
+        // A whole TILE rather than a body's own square. `fits` in nav.js refuses
+        // any tile orthogonally touching a blocked one, so proving 0.4 m of
+        // clearance here published stations a body could not stand in — 8 of 40
+        // before this.
+        const spot = [x - TILE, z - TILE, x + TILE, z + TILE];
+        const here = { x, z, spot };
+        if (sink.standsAt(x, z)) {
+          if (sink.canPlace(...spot)) return here;
+          fits ??= here;
+        }
+        fallback ??= here;
+      }
+    }
   }
+  if (fits) return fits;
   // NOTHING FREE, and the answer is still a station rather than no counter.
   // `standable` in enemies.js nudges a station that is a place to STAND
   // backwards along its own facing to find floor — which here is further out
