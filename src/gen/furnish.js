@@ -13,6 +13,8 @@ import {
   centreZ,
   CORRIDOR,
   DOOR_CLEAR,
+  isOpen,
+  NEIGHBOURS,
   tileX,
   tileY,
   worldX,
@@ -400,7 +402,7 @@ function reserveStairRoutes(layout, mouths, stampTiles) {
       : [Math.floor((r.x0 + r.x1) / 2), band(r.y0, r.y1)];
     // Every doorway, not just the nearest: a room with two ways in should not have
     // one of them lead to a staircase you cannot reach.
-    for (const m of list) reserveLane(plan.room, foot, m.at, stampTiles);
+    for (const m of list) reserveLane(layout, plan.room, foot, m.at, stampTiles);
   }
 }
 
@@ -409,24 +411,126 @@ function reserveThroughRoutes(layout, mouths, stampTiles) {
     if (list.length < 2 || !list.some((m) => m.through)) continue;
     // Every other doorway back to the first one, so the lanes of a room with
     // three doors still meet rather than forming two separate legs.
-    for (let i = 1; i < list.length; i++) reserveLane(room, list[0].at, list[i].at, stampTiles);
+    for (let i = 1; i < list.length; i++) {
+      reserveLane(layout, room, list[0].at, list[i].at, stampTiles);
+    }
   }
 }
 
-// An L of reserved floor between two tiles of one room: along z at `a`, then
-// along x at `b`. Both legs are widened toward the room's inside, because a
-// doorway sits against a wall and a lane hanging half in the plaster is 0.5 m.
-
-// An L of reserved floor between two tiles of one room: along z at `a`, then
-// along x at `b`. Both legs are widened toward the room's inside, because a
-// doorway sits against a wall and a lane hanging half in the plaster is 0.5 m.
-function reserveLane(room, [ax, ay], [bx, by], stampTiles) {
+/**
+ * A lane of reserved floor between two tiles of one room.
+ *
+ * An L by preference — along z at `a`, then along x at `b` — with both legs
+ * widened toward the room's inside, because a doorway sits against a wall and a
+ * lane hanging half in the plaster is 0.5 m.
+ *
+ * THE L IS ONLY A ROUTE IF THE ROOM IS A CLEAR RECTANGLE, and one room in the
+ * building is not: a lift car is a tiny room carved INTO its lobby (see
+ * gen/lifts.js), so the lobby's own rect has two blocks of SOLID standing in the
+ * middle of it. The L is then reserved straight through them, which is the worst
+ * of both — it protects tiles nothing can walk on, and it leaves the floor the
+ * route actually runs over free to be furnished.
+ *
+ * That is not a hypothetical. `oneWayIn` seals every doorway of a lobby but one,
+ * except where sealing would strand something (3 lobbies in 60 keep a second
+ * one), so a lobby really can be the only way into the room behind it. On
+ * s148308955/f10 the surviving second doorway was an office's only way out, the
+ * L to the lobby's front door ran through the near car — 8 solid tiles, and the
+ * office's mouth reached 12 of the L's 46 open tiles with the front door not
+ * among them — and the reception counter then legally took the 2 m strip beside
+ * the cars, which was the walk. 1.7 m of counter across 2.5 m of room leaves
+ * 0.65 m against the 0.8 m of square body needed to pass: the office was sealed,
+ * a hostile spawned in it, and the floor could never be cleared. That is
+ * `5.geom-connected` in tools/validate-props.mjs, the same check and the same
+ * failure the crate-and-shelving copyroom had.
+ *
+ * So the L is TESTED and not assumed, and a room it does not cross is walked
+ * instead. Testing rather than always walking is deliberate: the L is right for
+ * every ordinary BSP rectangle, and reserving the same tiles it always did is
+ * what keeps this fix to the floors that were broken.
+ */
+function reserveLane(layout, room, a, b, stampTiles) {
+  const [ax, ay] = a, [bx, by] = b;
   const wide = (v, lo, hi) => Math.max(lo, Math.min(v, hi - LANE + 1));
   const laneY = wide(ay, room.y0, room.y1 - 1);
   const laneX = wide(bx, room.x0, room.x1 - 1);
 
-  stampTiles(Math.min(ax, bx), laneY, Math.max(ax, bx), laneY + LANE - 1);
-  stampTiles(laneX, Math.min(ay, by), laneX + LANE - 1, Math.max(ay, by));
+  const legs = [
+    [Math.min(ax, bx), laneY, Math.max(ax, bx), laneY + LANE - 1],
+    [laneX, Math.min(ay, by), laneX + LANE - 1, Math.max(ay, by)],
+  ];
+  for (const r of laneConnects(layout, legs, a, b) ? legs : walkedLane(layout, room, a, b, legs)) {
+    stampTiles(...r);
+  }
+}
+
+// Does a body get from `a` to `b` without leaving these rects? Open tiles only —
+// a rect covering a wall or a lift car is covering nothing you can walk on.
+function laneConnects(layout, rects, [ax, ay], [bx, by]) {
+  const { W, tiles } = layout;
+  const inRects = (tx, ty) =>
+    rects.some(([x0, y0, x1, y1]) => tx >= x0 && tx <= x1 && ty >= y0 && ty <= y1);
+  const walkable = (tx, ty) => inRects(tx, ty) && isOpen(tiles[ty * W + tx]);
+  if (!walkable(ax, ay) || !walkable(bx, by)) return false;
+
+  const seen = new Set([ay * W + ax]);
+  const q = [[ax, ay]];
+  for (let head = 0; head < q.length; head++) {
+    const [x, y] = q[head];
+    if (x === bx && y === by) return true;
+    for (const [dx, dy] of NEIGHBOURS) {
+      const nx = x + dx, ny = y + dy, k = ny * W + nx;
+      if (seen.has(k) || !walkable(nx, ny)) continue;
+      seen.add(k);
+      q.push([nx, ny]);
+    }
+  }
+  return false;
+}
+
+/**
+ * ...and when the L is not a route, the route is walked and widened.
+ *
+ * A shortest walk over the room's own open tiles, with a LANE-wide box stamped
+ * around each tile of it. Not clipped to the room, on purpose: a walk that runs
+ * along a wall would otherwise be reserved two tiles wide, and LANE's own note
+ * is about why two is not enough. A tile of plaster marked "keep clear" costs
+ * nothing.
+ *
+ * A room with no walk at all between its own two doorways hands back the L,
+ * which is what this has always reserved and no worse than before.
+ */
+function walkedLane(layout, room, [ax, ay], [bx, by], legs) {
+  const { W, tiles } = layout;
+  const walkable = (tx, ty) =>
+    tx >= room.x0 && tx < room.x1 && ty >= room.y0 && ty < room.y1
+    && isOpen(tiles[ty * W + tx]);
+  if (!walkable(ax, ay) || !walkable(bx, by)) return legs;
+
+  const from = new Map([[ay * W + ax, -1]]);
+  const q = [[ax, ay]];
+  let found = false;
+  for (let head = 0; head < q.length && !found; head++) {
+    const [x, y] = q[head];
+    for (const [dx, dy] of NEIGHBOURS) {
+      const nx = x + dx, ny = y + dy, k = ny * W + nx;
+      if (from.has(k) || !walkable(nx, ny)) continue;
+      from.set(k, y * W + x);
+      if (nx === bx && ny === by) { found = true; break; }
+      q.push([nx, ny]);
+    }
+  }
+  if (!found) return legs;
+
+  // Split either side of the walk rather than halved, so an even LANE would come
+  // out LANE wide rather than one short.
+  const back = Math.floor((LANE - 1) / 2), fwd = LANE - 1 - back;
+  const rects = [];
+  for (let k = by * W + bx; k >= 0; k = from.get(k)) {
+    const tx = k % W, ty = (k - tx) / W;
+    rects.push([tx - back, ty - back, tx + fwd, ty + fwd]);
+  }
+  return rects;
 }
 
 // --- the way out ------------------------------------------------------------
