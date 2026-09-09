@@ -32,7 +32,7 @@
 // and far more certain than teaching each one to ignore it.
 
 import {
-  bfs, centreX, centreZ, CORRIDOR, DOOR, isOpen, rectHasTile, sealDoor, SOLID, ROOM, tileAt,
+  bfs, centreX, centreZ, CORRIDOR, DOOR, isOpen, rectHasTile, sealDoor, SOLID, ROOM, TILE, tileAt,
 } from './tiles.js';
 import { CORRIDOR_W } from './carve.js';
 import { doorsOnRoom } from './locks.js';
@@ -191,9 +191,24 @@ export function carveBank(layout, room, doors, prefer, seed) {
   // it is not a floor. Measured at 2 in 60.
   const arrival = carveLift(layout, room, doors, prefer, seed, -BLOCK_A / 2);
   if (!arrival) return { arrival: null, departure: null };
+  // ...AND A CAR'S WIDTH BETWEEN THEM, which the bank above gets for free by
+  // standing the two side by side and this path had nothing at all enforcing.
+  // The bias aims them at opposite halves of the wall and that is a preference,
+  // not a proof: the wall it lands on need not be the one the bias was measured
+  // against, so the second car could come to rest a tile and a half from the
+  // first. Two lifts nearly on the same spot is a floor you descend from the
+  // moment you arrive — `2.exit-apart` in tools/validate-layout.mjs fails it at
+  // exactly this distance, and the number is imported from the same CAR_W so the
+  // carve and the check cannot drift apart.
+  //
+  // A departure that cannot be placed far enough is left NULL, which is already
+  // an ordinary answer here: the way down falls back to the lit pad on the
+  // carpet it was before there were cars at all. A worse lobby beats a floor
+  // whose exit is inside its own entrance.
   return {
     arrival,
-    departure: carveLift(layout, room, doors, arrival.side, seed, BLOCK_A / 2),
+    departure: carveLift(layout, room, doors, arrival.side, seed, BLOCK_A / 2,
+      { x: arrival.x, z: arrival.z, min: CAR_W * TILE }),
   };
 }
 
@@ -232,7 +247,7 @@ function uncarve(layout, doors, lift) {
  * always been. A floor with no lift in it is a worse floor; a floor that fails
  * to generate is not a floor.
  */
-export function carveLift(layout, room, doors, prefer, seed, bias = 0) {
+export function carveLift(layout, room, doors, prefer, seed, bias = 0, apart = null) {
   const { tiles, W, H } = layout;
 
   // What was reachable before, so the carve can be proved to have taken nothing
@@ -253,7 +268,16 @@ export function carveLift(layout, room, doors, prefer, seed, bias = 0) {
     // a room whose own doorway happens to be dead behind the middle of it.
     for (const a0 of offsets(geom, bias)) {
       const lift = tryCarve(layout, room, doors, side, geom, a0, before, seed);
-      if (lift) return lift;
+      if (!lift) continue;
+      // FAR ENOUGH FROM THE OTHER CAR, when there is one to be far from. Only
+      // `carveBank`'s fallback passes this, and only for the second of the two:
+      // see the note there. The undo is `tryCarve`'s own, the same one that lets
+      // the bank abandon a slot the pair will not fit in.
+      if (apart && Math.hypot(lift.x - apart.x, lift.z - apart.z) < apart.min) {
+        uncarve(layout, doors, lift);
+        continue;
+      }
+      return lift;
     }
   }
   return null;
