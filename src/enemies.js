@@ -903,7 +903,25 @@ export class Enemies {
     // Held above the seat branch because it is the same answer for the same
     // reason, and `flee` releases it the same way: shoot at them and they are an
     // ordinary neutral running for a door, like anybody else at a desk.
-    if (e.type.posted && e.flee <= 0) { e.state = 'idle'; return; }
+    if (e.type.posted) {
+      if (e.flee <= 0) { e.state = 'idle'; return; }
+      // OFF THE POST — AND THE STATE HAS TO SAY SO, which is the half of the
+      // seat branch below that this one was missing. Holding `idle` is what
+      // keeps them at the counter, and falling straight through on `flee`
+      // released the MOVEMENT without ever releasing the state: `_stroll` walked
+      // them to a door while `animate` still read `idle`, and `moving` there is
+      // exactly `chase || fight || wander`. So the walk cycle never ran and the
+      // phase advanced at the idle 1.4 rather than 9 — a man running for the
+      // door in the standing pose, with the idle sway on. Measured: shot on
+      // s5000/f1 he covered 5.65 m in a second and a half, `idle` for every
+      // frame of it.
+      //
+      // Once rather than every frame, so the ordinary wander loop below owns him
+      // from the next one and can repick on its own timer. `_repick` for the
+      // seat branch's reason: a body that has been stood at a counter since the
+      // floor was generated has no destination and no field to descend.
+      if (e.state === 'idle') { e.state = 'wander'; this._repick(e); return; }
+    }
 
     if (e.seat) {
       if (e.flee <= 0) { e.state = 'idle'; return; }
