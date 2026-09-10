@@ -17,13 +17,6 @@ const DOOR_T = 0.09;           // panel thickness
 // face of the wall it is inside. Those two faces coplanar is a shimmering rectangle
 // of door on the end of a wall, which is a worse artefact than the 3 cm of panel
 // edge standing in the next room that this replaces.
-
-// How far short of the end of its pocket a fully-retracted panel stops.
-//
-// Not slack: it is what keeps the panel's far face from landing exactly on the far
-// face of the wall it is inside. Those two faces coplanar is a shimmering rectangle
-// of door on the end of a wall, which is a worse artefact than the 3 cm of panel
-// edge standing in the next room that this replaces.
 const POCKET_CLEAR = 0.02;
 
 export const DOOR_PANEL_H = DOOR_H - 0.04;
@@ -31,26 +24,7 @@ export const DOOR_PANEL_H = DOOR_H - 0.04;
 // One unit cube behind every door in the building. Each door scales it, so there
 // is nothing per-door about the geometry, and the three builders below were each
 // allocating one of these per floor for themselves.
-
-// One unit cube behind every door in the building. Each door scales it, so there
-// is nothing per-door about the geometry, and the three builders below were each
-// allocating one of these per floor for themselves.
 const DOOR_GEO = new THREE.BoxGeometry(1, 1, 1);
-
-/**
- * Everything about a doorway that does not depend on what is hung in it.
- *
- * There are three door builders in this file — one panel on a runner, two hinged
- * leaves, two parting leaves — and they differ ONLY in the meshes and in how
- * those meshes move. Where the opening is in world metres, how wide it is, the
- * collider that fills it when shut and the tiles it occupies are the same three
- * questions for all three, and each builder used to answer them for itself.
- *
- * The collider is the one worth pulling out on its own account: it is load
- * bearing in two directions at once, being what the player walks into and — by
- * having its `top` dropped below the floor rather than being removed — how every
- * door in this game says "walk through me" (see player.js).
- */
 
 /**
  * Everything about a doorway that does not depend on what is hung in it.
@@ -108,17 +82,6 @@ function doorway(layout, d) {
  * nothing and says nothing, which is the shape of the bug `5.lock-sealed`
  * caught in the pass that assigns them.
  */
-
-/**
- * ...and registering one, which is the other end of the same sentence.
- *
- * `moving` is whatever doors.js needs to animate this kind — a `mesh` for a
- * panel, `panels` for a parting pair, `leaves` for a hinged pair. Everything
- * else on a door record is the same for all three, the badge reader included:
- * a doorway asked for a lock and not given a reader is a lock that seals
- * nothing and says nothing, which is the shape of the bug `5.lock-sealed`
- * caught in the pass that assigns them.
- */
 function addDoor(doors, colliders, readers, d, geom, moving) {
   colliders.push(geom.collider);
   doors.push({
@@ -145,12 +108,6 @@ function doorPanel(materials, d, width, x, z) {
   mesh.receiveShadow = true;
   return mesh;
 }
-// Which doorways get a panel. Where a retracted one goes — and why some
-// openings cannot take one at all — is slidePocketSide's business, in layout.js,
-// because assignLocks has to ask the same question before it badges a room. A
-// floor with a few open doorways on it reads as a floor with a few open doorways
-// on it, which is what an office looks like anyway.
-
 // Which doorways get a panel. Where a retracted one goes — and why some
 // openings cannot take one at all — is slidePocketSide's business, in layout.js,
 // because assignLocks has to ask the same question before it badges a room. A
@@ -193,21 +150,6 @@ export function buildSlidingDoors(layout, scene, materials, doors, colliders, re
     });
   }
 }
-
-/**
- * The doors across the corridors: two leaves on hinges, no runner.
- *
- * Why they swing at all is layout.js's story (see cutHallDoors) — there is no
- * wall beside a corridor to pocket a panel into. What that buys here is that a
- * leaf needs nothing built for it: it turns about its own hinge into corridor
- * air the generator has already proved is clear.
- *
- * Both leaves are ONE door as far as doors.js is concerned. They share a sensor
- * because they are one doorway, they share a sound because two identical door
- * noises a millisecond apart is a flam rather than a pair of doors, and they
- * share a collider because two leaves shut is exactly the opening. They share
- * one badge reader too, for the same reason: it is one doorway.
- */
 
 /**
  * The doors across the corridors: two leaves on hinges, no runner.
@@ -341,28 +283,6 @@ export function fitLiftDoors(layout, lift, scene, materials, doors, colliders) {
  * reader on the way out of the lobby is the one lock in the game that can shut
  * the player in holding nothing.
  */
-
-/**
- * The lobby's own doors: a pair, and never locked.
- *
- * The one doorway in the building the player meets before they have moved, and
- * the one they walk back to. A single panel sliding sideways out of a lift lobby
- * reads as a cupboard being opened; two leaves parting in the middle is a way
- * out of a lobby, and it is the same statement the two cars behind them are
- * making one wall back.
- *
- * The leaves are the cars', with one difference that is the whole of this
- * function: a car's front was BUILT round its pocket and a room's wall was not,
- * so how far each leaf may run is measured (`slidePocketRun`) rather than
- * assumed. A short pocket leaves a hand's width of leaf standing in the opening
- * rather than putting the far end of it out in the next room, which is the trade
- * every sliding panel in this building already makes and for the same reason.
- *
- * Never badged, and that is settled in gen/layout.js rather than here — the
- * lobby's doorways are marked `free` before a single lock is assigned, because a
- * reader on the way out of the lobby is the one lock in the game that can shut
- * the player in holding nothing.
- */
 export function buildDoubleDoors(layout, scene, materials, doors, colliders, readers) {
   for (const d of layout.doors) {
     if (!d.double || d.hall || d.lift) continue;
@@ -379,37 +299,9 @@ const READER_H = 1.15;         // metres up the jamb — where your hand goes
 // Hall doors only: how far back along the corridor the reader sits from the door
 // line, and how deep into the side wall — the rest of the plate stands proud of
 // it. See add().
-
-// Hall doors only: how far back along the corridor the reader sits from the door
-// line, and how deep into the side wall — the rest of the plate stands proud of
-// it. See add().
 const READER_STEP = 0.45;
 
 const READER_PROUD = 0.06;
-
-/**
- * A badge reader beside every badged doorway.
- *
- * The panel on a locked door looks exactly like the panel on an unlocked one,
- * and a door that silently refuses to open reads as a bug rather than as a lock.
- * So the lock is stated on the wall before you are close enough for the sensor
- * to have decided anything, and it states two separate things: the lamp says
- * locked or open, in red and green, and the plate around it is the colour of the
- * card that opens it. Which card you need is a question you want answered from
- * the far end of a corridor; whether you have already been through is one you
- * only ask standing in front of it.
- *
- * Each is sunk into the jamb at the end of the opening and pokes a couple of
- * centimetres out of BOTH faces of the wall, because a doorway has two sides and
- * you may well arrive at either.
- *
- * Two InstancedMeshes for the whole floor, plate and lamp, rather than a mesh
- * each. White is on every door in the building, so this went from a handful of
- * readers to two hundred of them, and two hundred little boxes is two hundred
- * more draw calls than a floor should spend on door furniture. Instancing also
- * makes turning one green a colour write rather than a material, which is what
- * lets a single card pickup relight the entire floor in one frame.
- */
 
 /**
  * A badge reader beside every badged doorway.

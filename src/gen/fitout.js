@@ -48,19 +48,6 @@ const SIGN_PROUD = 0.015;
  * Three of the four are batched, because they never move. The doors are meshes,
  * for the reason every other door in the building is.
  */
-
-/**
- * The fit-out of the two cars gen/lifts.js cut into the floorplan.
- *
- * Everything STRUCTURAL about a car is already standing before this runs — the
- * shell built its walls out of SOLID tiles, the floor pass laid its floor, the
- * ceiling pass covered it and buildDoorFrames put a frame and a header round its
- * opening — so what is left is the four things that make a box with a hole in it
- * read as a lift: a lining, a rail, a light of its own, and doors that part.
- *
- * Three of the four are batched, because they never move. The doors are meshes,
- * for the reason every other door in the building is.
- */
 export function buildLifts(layout, batcher, materials, scene, doors, colliders, fixtures,
   destructibles) {
   for (const lift of [layout.lifts?.arrival, layout.lifts?.departure]) {
@@ -74,17 +61,6 @@ export function buildLifts(layout, batcher, materials, scene, doors, colliders, 
     fitLiftDoors(layout, lift, scene, materials, doors, colliders);
   }
 }
-
-// The inside of the car: brushed panel on the three walls you can see, a rail
-// across the back of it, and a lit ceiling.
-//
-// The light is the part that earns its place. A car is a sealed box in the
-// middle of a room, so the room's own ceiling fixtures are on the wrong side of
-// its walls and the pool that follows the player (see lighting.js) has nothing
-// in there to home onto — the floor opened on a black cupboard with a doorway in
-// it. One fixture inside, and it is also the only light in the building that is
-// GUARANTEED to be the first thing switched on, because the player is standing
-// under it before they have moved.
 
 // The inside of the car: brushed panel on the three walls you can see, a rail
 // across the back of it, and a lit ceiling.

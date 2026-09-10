@@ -65,40 +65,6 @@ const LOBBY_DOWN = 2 / 3;
  * nothing to do with them. Which room is the lobby already varies with the floor,
  * because the floorplan it is picked out of does.
  */
-
-/**
- * The lift lobby: the room the floor arrives in AND the room it leaves by.
- *
- * Both cars stand in it, which is what a building core is, and it is picked
- * NEAREST THE MIDDLE OF THE SLAB for the same reason a real one is there — every
- * wing of the floor is then the same walk away, and clearing a floor is a loop
- * out and back rather than a diagonal march from one corner to the far one.
- *
- * Three requirements, and only the last of them is about size:
- *
- *  - It can hold the whole bank. Everything about the arrival and the departure
- *    is the two cars, so a room that cannot take both is not a lobby.
- *  - It has a doorway onto a CORRIDOR. Those are the doors you go through to
- *    find the rest of the office, and it is also the part of the floor the
- *    prologue is measured over — a lobby whose only way out is somebody's office
- *    starts the floor by walking through a stranger's office to reach the
- *    building.
- *  - It is not the canteen and not a room the plant room could have had. Both
- *    are set pieces that want the biggest rooms on the floor and both are rare;
- *    a lobby is a modest room by nature, so it should never be the thing that
- *    takes one of them away.
- *
- * Each requirement is dropped in turn if nothing survives it, rather than
- * failing: a floor with an odd lobby is a floor, and a floor with no arrival
- * room is not.
- *
- * Deterministic — the qualifying room nearest the middle — rather than a draw,
- * and that is the argument `pickCafeteria` and `assignLocks` both make: this
- * runs before the floor's own rng has been spent on anything, so a die here
- * would re-roll the contents of every room in the building off a number that has
- * nothing to do with them. Which room is the lobby already varies with the floor,
- * because the floorplan it is picked out of does.
- */
 export function pickLobbyRoom(rooms, tiles, W, H, doors, cafeteria) {
   const canHold = rooms.filter(fitsLifts);
   const onHall = canHold.filter((r) =>
@@ -177,42 +143,9 @@ export function pickLobbyRoom(rooms, tiles, W, H, doors, cafeteria) {
 // anywhere to go. A long thin room of the same area comes out as a corridor
 // with a servery at one end, which is why the short side is asked for
 // separately.
-
-// How big a room has to be before it is a canteen rather than a room with a
-// counter in it, and how deep before the rows behind the queue lane have
-// anywhere to go. A long thin room of the same area comes out as a corridor
-// with a servery at one end, which is why the short side is asked for
-// separately.
 const CAFE_MIN_AREA = 85;    // m²
 
 const CAFE_MIN_SHORT = 12;   // tiles, so 6 m
-
-/**
- * The floor's canteen, and the room the player arrives in.
- *
- * Picked before anything else about the floor is decided, because it BECOMES the
- * spawn room — and the exit's distance ranking, every lock, the prologue and
- * where a staircase may go are all measured from the spawn.
- *
- * The corridor doorway is the load-bearing requirement rather than the size. This
- * is the room the player is standing in holding nothing at all, so the way out of
- * it has to be the part of the floor the prologue is measured over; a big room
- * whose only door opens into somebody's office starts the floor by walking
- * through a stranger's office to reach the building.
- *
- * And it stays off any room the plant room could have had. The generator wants
- * the biggest, most rectangular room on the floor and only about one floor in
- * thirty rolls one that qualifies at all, so a canteen claiming rooms by size
- * would quietly cost the game its rarest set piece on the few floors that have
- * it. Generator-capable rooms are a last resort here, not the first pick.
- *
- * Deterministic — the biggest room that qualifies — rather than a draw, and that
- * is the same argument assignLocks makes: this runs before the floor's rng has
- * been spent on anything at all, so a die here would re-roll the contents of
- * every room in the building off a number that has nothing to do with them.
- * Which room is the canteen already varies with the floor, because the floorplan
- * it is picked out of does.
- */
 
 /**
  * The floor's canteen, and the room the player arrives in.
@@ -254,27 +187,11 @@ export function pickCafeteria(rooms, tiles, W, doors) {
 // Where the role ladder splits. Aspect is tested before area on purpose: a long
 // thin room is a service room whatever its floor area, and testing area first
 // made that branch unreachable.
-
-// Where the role ladder splits. Aspect is tested before area on purpose: a long
-// thin room is a service room whatever its floor area, and testing area first
-// made that branch unreachable.
 const LONG_THIN = 1.9;   // longest side / shortest side
 
 const BIG_ROOM = 85;     // m², open plan and canteens
 
 const MID_ROOM = 40;     // m², the meeting-room band
-
-/**
- * Which branch of the role table a room's shape lands in.
- *
- * Exported because `validate-layout.mjs` reports this distribution, and its own
- * copy of the ladder had drifted: it tested area before aspect and used 2.1 for
- * the aspect cut, so it reported zero long-thin rooms on every sweep while the
- * generator was in fact producing thousands of them — which is the whole
- * storage/archive/utility supply. A tool asserting its own wrong number back at
- * the generator is exactly the failure FIRST_CONTACT_GAP is a monument to, so
- * there is one ladder now and both ends call it.
- */
 
 /**
  * Which branch of the role table a room's shape lands in.
@@ -304,16 +221,6 @@ export function roleBranch(r) {
 // what it is can actually be placed and falls back to a cupboard when it cannot.
 // A small room is a private office by default instead, which is what a small
 // room in an office building is.
-
-// What each branch may be. Long-thin rooms furnish as ranks with an aisle
-// between them, which is why they are back-of-house whatever their area.
-//
-// `utility` is NOT in here and that is the point of it: it is not a room you
-// roll, it is what a room turns out to be when nothing else will go in it. See
-// `furnish` in gen/rooms.js, which asks whether the one prop that makes a room
-// what it is can actually be placed and falls back to a cupboard when it cannot.
-// A small room is a private office by default instead, which is what a small
-// room in an office building is.
 const ROLE_PICKS = {
   longThin: ['storage', 'copyroom', 'server', 'storage', 'archive', 'mailroom'],
   big: ['openplan', 'openplan', 'openplan', 'presentation'],
@@ -328,13 +235,6 @@ const ROLE_PICKS = {
   // space goes: five in eight rather than three.
   small: ['office', 'office', 'office', 'office', 'office', 'copyroom', 'storage', 'breakroom'],
 };
-
-// Whether a room could be the plant room. Named rather than written inline in
-// the wants list below, because pickCafeteria has to ask the same question to
-// keep off the one room a generator could have had — and two copies of a
-// predicate this specific is how the sweep ends up certifying a floor the
-// generator never builds. See FIRST_CONTACT_GAP for the version of this that
-// shipped.
 
 // Whether a room could be the plant room. Named rather than written inline in
 // the wants list below, because pickCafeteria has to ask the same question to

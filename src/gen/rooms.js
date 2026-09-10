@@ -53,22 +53,6 @@ export function furnish(sink, room, bounds, rng, doors, theme = null) {
  * they are composed around (see fitsGenerator and pickCafeteria), and the three
  * behind a card are chosen from rooms big enough by `assignLocks`.
  */
-
-/**
- * The one prop that makes a room what it is.
- *
- * A copy room is a room with copiers in it. Take the copiers out — because the
- * doorway aprons and the through-route lane between two openings have eaten the
- * only walls it had — and what is left is not a copy room with less in it, it is
- * a cupboard the generator has labelled a copy room. Which is what `utility` is,
- * and why it is not on any of the pick lists in gen/layout.js: it is not rolled,
- * it is what a room falls back to.
- *
- * Only the roles with a defining prop are here. A lobby is a lobby with nothing
- * in it, a generator room and a cafeteria have already been proved to fit what
- * they are composed around (see fitsGenerator and pickCafeteria), and the three
- * behind a card are chosen from rooms big enough by `assignLocks`.
- */
 const DEFINES = {
   openplan: 'desk',
   office: 'desk',
@@ -83,19 +67,6 @@ const DEFINES = {
   mailroom: 'shelving',
   reception: 'receptionDesk',
 };
-
-/**
- * Whether a room could actually take the prop its role is about.
- *
- * Asked of the SINK rather than of the room's size, and that is the whole value
- * of it: a 40 m² copy room whose every wall is inside a doorway apron has plenty
- * of square metres and nowhere to put a copier. `canPlace` is the same test
- * `tryPlace` is about to run, so this cannot certify a placement that then fails.
- *
- * Every wall in turn, at the same standoff `edgeProp` would use — nothing is
- * placed and nothing is reserved, so a room that passes is furnished exactly as
- * it was before.
- */
 
 /**
  * Whether a room could actually take the prop its role is about.
@@ -130,17 +101,6 @@ function fits(sink, bounds, role) {
   }
   return false;
 }
-
-// How much of the building has cardboard lying about in it, and how much.
-//
-// Every role gets this on top of its own recipe, which is the point: a delivery
-// that never got put away is not a kind of room, it is a thing that has happened
-// in three rooms out of five. Rolled per room rather than spread evenly, so some
-// rooms are clear and some have a small pile — and the pile is what makes an
-// office readable as somewhere people work rather than somewhere props were
-// placed. They are the one prop the player can shove out of the way, shoot to
-// nothing, or walk through the middle of while the staff flatten them (see
-// `crushable` in props.js).
 
 // How much of the building has cardboard lying about in it, and how much.
 //
@@ -437,10 +397,6 @@ function storage(sink, bounds, rng) {
 // Paper, in every form the building keeps it: binders on shelves, the cabinets
 // nobody has opened this decade, and the bench where it is actually dealt with —
 // a small printer, a calculator and the trays it comes in and goes out of.
-
-// Paper, in every form the building keeps it: binders on shelves, the cabinets
-// nobody has opened this decade, and the bench where it is actually dealt with —
-// a small printer, a calculator and the trays it comes in and goes out of.
 function archive(sink, bounds, rng) {
   // `'files'` rather than `'shelf'`, and the difference is what a rack is FOR.
   // A storeroom's shelving is where the building's stock lives, so a parcel run
@@ -486,10 +442,6 @@ function copyRoom(sink, bounds, rng) {
 // Racks in ranks, tight enough that the aisles between them are the only floor —
 // and one terminal, because somebody has to be able to sit down and talk to all
 // of this.
-
-// Racks in ranks, tight enough that the aisles between them are the only floor —
-// and one terminal, because somebody has to be able to sit down and talk to all
-// of this.
 function serverRoom(sink, bounds, rng) {
   // The terminal first, before the ranks have taken the floor — the archive's
   // bench lesson in a second room, and a sharper one here because a rack aisle
@@ -516,10 +468,6 @@ function serverRoom(sink, bounds, rng) {
 // Where the hardware comes to be fixed: a row of benches down a wall, half of
 // them with something open on them (see `workbench` in gen/props.js), somewhere
 // to put the parts, and the boxes they came in.
-
-// Where the hardware comes to be fixed: a row of benches down a wall, half of
-// them with something open on them (see `workbench` in gen/props.js), somewhere
-// to put the parts, and the boxes they came in.
 function itBay(sink, bounds, rng) {
   const { x0, z0, x1, z1 } = bounds;
   // A ROW rather than two benches and a shelf of odds and ends. A bench is 2 m,
@@ -534,16 +482,6 @@ function itBay(sink, bounds, rng) {
   scatter(sink, bounds, ['crateStack', 'carton', 'crate'], 14, rng);
   if (rng.chance(0.4)) edgeProp(sink, bounds, 'extinguisher', rng);
 }
-
-// Goods in, goods out: shelves of parcels, and the crates they came in stacked
-// where the trolley stopped.
-//
-// The shelves publish a `mail` station, which is where the post is collected
-// from — see the `postrun` routine in chores.js. It is its own kind rather than
-// the storeroom's `shelf` or the archive's `files`, because what comes off one
-// of these is somebody's parcel and it leaves the building: a stocktake that
-// took a box off the mailroom rack and put it on another one would be the post
-// being filed instead of sent.
 
 // Goods in, goods out: shelves of parcels, and the crates they came in stacked
 // where the trolley stopped.
@@ -618,21 +556,6 @@ function utilityRoom(sink, bounds, rng) {
   wallClutter(sink, bounds, ['shelving', 'lockers', 'recyclingBin'], 26, rng);
   scatter(sink, bounds, ['crateStack', 'trashCan'], 14, rng);
 }
-
-// Rows of seats facing a big screen at the front, with an aisle up the middle so
-// the room reads as a room somebody presents in rather than a furniture
-// warehouse — and so it reads that way from the doorway, before anything in it
-// has moved.
-//
-// A screen rather than a whiteboard, and the difference is that it is ON: a lit
-// 2.4 m rectangle is the one thing in a grey office that says LOOK HERE, which
-// is what the whole seating plan is pointed at. The whiteboard stays where it
-// belongs, in the meeting room, where somebody writes on it.
-//
-// The screen publishes a `board` station like a whiteboard does (see WORK_AT),
-// and every chair here is registered as a `meeting` seat — so a meeting can be
-// held in this room too, with one body at the screen and the rest sitting in the
-// rows. Same cast, same poses; see `_tryMeeting` in chores.js.
 
 // Rows of seats facing a big screen at the front, with an aisle up the middle so
 // the room reads as a room somebody presents in rather than a furniture
@@ -730,12 +653,6 @@ function reception(sink, bounds, rng) {
   }
   if (rng.chance(0.5)) edgeProp(sink, bounds, 'plant', rng);
 }
-
-// A desk in the dead centre of a 4.5 m room leaves only ~0.65 m of standable
-// floor either side once the player's radius is taken off both edges, and a
-// single cabinet dropped at a random wall then closes one of them and cuts the
-// room in half. So the desk goes against a wall like a real one, and only rooms
-// with space to spare get a free-standing island.
 
 // A desk in the dead centre of a 4.5 m room leaves only ~0.65 m of standable
 // floor either side once the player's radius is taken off both edges, and a
@@ -870,15 +787,6 @@ function broomCloset(sink, bounds, rng) {
 // below is placed against whatever wall it left. The rest reads as the crew
 // that works this room: monitoring terminals rather than desks, and the
 // crates and spares an industrial space accumulates.
-
-// The generator room: a big double-height plant room (see generatorRoomCut in
-// gen/build.js) built around the one prop that matters. It goes in FIRST and
-// against a wall like anything else load-bearing in here — same reasoning as
-// the camera desk in securityOffice: a room this size open in the middle
-// reads as a hangar with a box in it, not a plant room, and every other item
-// below is placed against whatever wall it left. The rest reads as the crew
-// that works this room: monitoring terminals rather than desks, and the
-// crates and spares an industrial space accumulates.
 function generatorRoom(sink, bounds, rng, room, doors) {
   // Dead opposite the room's one door (see the `generator` fits predicate in
   // gen/layout.js, which guarantees there's exactly one) — walk in and it's
@@ -911,23 +819,6 @@ function generatorRoom(sink, bounds, rng, room, doors) {
   if (rng.chance(0.5)) edgeProp(sink, bounds, 'extinguisher', rng);
   scatter(sink, bounds, ['crateStack', 'crate', 'pallet'], 26, rng);
 }
-
-// The staff canteen, and the room the floor puts you down in — see
-// pickCafeteria in gen/roles.js, which is what makes it the spawn room.
-//
-// It is a set piece the way the plant room is, and the composition is the whole
-// of it: the servery runs the far wall corner to corner, the strip in front of
-// it is left clear because that is where a queue would stand, and the seating
-// behind that is laid in ROWS facing the counter. Rows rather than the `canteen`
-// role's scatter of round tables, because rows are what make the servery the END
-// of the room instead of one wall of four — the same argument the generator's
-// wall-to-wall placement rests on.
-//
-// It is the ONLY canteen now. There used to be a mid-sized `canteen` role as
-// well — round tables and stools, somewhere on the floor to eat — and having
-// both meant a floor with two rooms making the same statement, one of them
-// composed and one of them scattered. This is the composed one, so it is the one
-// that stayed.
 
 // The staff canteen, and the room the floor puts you down in — see
 // pickCafeteria in gen/roles.js, which is what makes it the spawn room.
@@ -1188,29 +1079,6 @@ function lobby(sink, bounds, rng) {
  * comes out with a counter and nobody behind it. Measured at 2 floors in 13
  * before the pocket was widened, with the counter standing there perfectly.
  */
-
-/**
- * Where the receptionist stands, and how much floor the counter leaves past
- * them. Both measured out from the room's furnishing bounds, which are already
- * 0.15 m off the plaster.
- *
- * These are NAV numbers rather than a look, and they are the tile grid rather
- * than a taste. `standable` in enemies.js holds a station to a whole tile of
- * `fits`, and `fits` is the walk grid eroded by a body's radius — a 0.4 m body
- * on a 0.5 m tile reaches 0.15 m into each neighbour, so a tile orthogonally
- * touching a blocked one is not somewhere a body can be put. The receptionist's
- * tile therefore needs an open tile on BOTH sides of it, the wall on one hand
- * and the counter on the other, which makes three tiles the shallowest pocket
- * there is: [wall][open][body][open][counter]. 1.25 m off the plaster is the
- * middle of the third tile, and the counter's back face lands at 2.05, which is
- * inside the fifth.
- *
- * Cut to two tiles it does not merely get tight, it gets SILENT. `standable`
- * nudges a station backwards to find floor and backwards here is into the wall,
- * so nothing recovers it: the station is dropped from the pool and the lobby
- * comes out with a counter and nobody behind it. Measured at 2 floors in 13
- * before the pocket was widened, with the counter standing there perfectly.
- */
 const COUNTER_STAND = 1.25 - 0.15;
 
 const COUNTER_CLEAR = 0.8;
@@ -1232,22 +1100,6 @@ const COUNTER_CLEAR = 0.8;
  * tile grid, so adding them at the call site is how they stay independent.
  */
 const COUNTER_ASIDE = 1.0;
-
-/**
- * The lift lobby: the room the floor arrives in, leaves by, and is greeted in.
- *
- * Both cars are already standing in it before this runs — they are shell, cut
- * into the floorplan itself (see gen/lifts.js) — so what the furnisher adds is
- * the front of house around them: a counter to be greeted at, a plant, and
- * somewhere to wait that you are not going to wait in.
- *
- * `room.liftSide` is which wall the bank took, and the counter keeps off it: a
- * reception desk backed against the lifts is a desk with its back to the only
- * thing in the room. It goes on one of the two walls beside them first, which is
- * where a real one is — you come out of the car, and it is on your left or your
- * right — and only then on the wall opposite, which is the one the doors out are
- * usually cut in.
- */
 
 /**
  * The lift lobby: the room the floor arrives in, leaves by, and is greeted in.

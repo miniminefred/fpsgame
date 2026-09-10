@@ -56,13 +56,6 @@ export function furnishRooms(layout, sink, rng, workstations, theme) {
 // floor space nothing else wanted. Not the spawn room (nowhere to hide a punch
 // line before the player has even moved) or the exit (the last thing seen on
 // the way out is the objective, not the joke).
-
-// How a cow got into an office block is not this file's problem either — see
-// the `cow` entry in gen/props.js. One floor in COW_CHANCE gets one, in one
-// random room, tried after every room is furnished so it only ever claims
-// floor space nothing else wanted. Not the spawn room (nowhere to hide a punch
-// line before the player has even moved) or the exit (the last thing seen on
-// the way out is the objective, not the joke).
 const COW_CHANCE = 0.15;
 
 export function placeCow(layout, sink, rng) {
@@ -130,23 +123,6 @@ export function furnishCorridors(layout, sink, rng) {
  * five on the next. Spaced out too, because two of these in earshot of each
  * other is one racket rather than two.
  */
-
-/**
- * One to three washing machines, in the corridors.
- *
- * A pass of its own rather than another entry in `furnishCorridors`'s `kinds`
- * list, because that pass walks a 7-tile grid at 40% and would deal a dozen of
- * them to a big floor. This is a joke and the codebase already knows the rule
- * for those — one per floor is a joke, two is a running joke, three is a fleet
- * (see `roomba` in enemy-types.js) — so it is capped at three and scaled by how
- * much building there is.
- *
- * A SHUFFLED LIST rather than darts, which is the lesson cameras.js and
- * conveyors.js both paid for: a corridor tile that survives every test is a few
- * percent of a floor, so throwing darts delivers one machine on this floor and
- * five on the next. Spaced out too, because two of these in earshot of each
- * other is one racket rather than two.
- */
 export function placeWashers(layout, sink, rng) {
   const { W, H, tiles } = layout;
   const want = Math.min(WASHER_MAX,
@@ -170,10 +146,6 @@ export function placeWashers(layout, sink, rng) {
     if (tryPlace(sink, 'washingMachine', x, z, rng.int(0, 3), rng)) placed.push({ x, z });
   }
 }
-
-// Three at the very most, and never nearer than this to each other — see the
-// note above. The gap is well past the clip's own audible range (WASHER_AUDIBLE
-// in audio.js), so two are never heard as one.
 
 // Three at the very most, and never nearer than this to each other — see the
 // note above. The gap is well past the clip's own audible range (WASHER_AUDIBLE
@@ -337,21 +309,6 @@ function doorMouths(layout) {
   }
   return mouths;
 }
-
-/**
- * A clear walk from a room's doorway to the foot of its stairs.
- *
- * The floor at the bottom of a flight is already reserved, but being clear is not the
- * same as being CONNECTED: the furnisher is free to line the flight's open side with
- * desks, and then the approach is a 3x2 pocket with a staircase in it. The nav sweep
- * found exactly that — a flood coming down from an attic reached 23 tiles of the
- * ground floor and stopped, because a body cannot get out of the stairwell.
- *
- * So the route itself is reserved, from the approach to a doorway, which is the same
- * thing `reserveThroughRoutes` does for a room you have to walk through and for the
- * same reason. It is also better level design than the alternative: the way to the
- * stairs is a route rather than a gap between two filing cabinets.
- */
 
 /**
  * A clear walk from a room's doorway to the foot of its stairs.

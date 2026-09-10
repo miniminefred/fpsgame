@@ -64,19 +64,6 @@ const GLASS_OFFSET = 0.03;     // metres the glazing sits in front of the sky
 // halves of the same tube and must name the same colour — see LAMP_COLD /
 // LAMP_WARM in textures.js, which is where both are defined so they cannot
 // drift apart again.
-
-// Not every room got the same refit. The rooms staff and visitors see are lit
-// with cool white panels; the rooms nobody was ever meant to stand in still have
-// the old warm tubes in them, running a little dimmer and a long way yellower.
-//
-// It is a small difference on any one fixture and a large one across a room, and
-// it does the job three walls of signage would otherwise have to: you can tell
-// from the doorway whether you have walked into somewhere that matters.
-// A grade is one lamp: the material its panel is drawn with, the colour of the
-// light that panel casts, and how hard it casts it. `key` and `color` are two
-// halves of the same tube and must name the same colour — see LAMP_COLD /
-// LAMP_WARM in textures.js, which is where both are defined so they cannot
-// drift apart again.
 const FRONT_OF_HOUSE = { key: 'panel', color: LAMP_COLD, intensity: 16 };
 
 const BACK_OF_HOUSE = { key: 'panelWarm', color: LAMP_WARM, intensity: 12 };
@@ -199,17 +186,9 @@ function only(tiles, cut) {
 // Tiles with a stairwell's hole taken out of them, for the surface it passes
 // through. Masking the tile VALUES rather than adding a predicate, because
 // maskToRects tests what it is handed and knows nothing about where it came from.
-
-// Tiles with a stairwell's hole taken out of them, for the surface it passes
-// through. Masking the tile VALUES rather than adding a predicate, because
-// maskToRects tests what it is handed and knows nothing about where it came from.
 function masked(tiles, cut) {
   return cut ? tiles.map((t, i) => (cut[i] ? SOLID : t)) : tiles;
 }
-
-// The generator room's own tile footprint — see buildLevel's cuts.ceiling/roof.
-// At most one room on the floor has this role, but the loop costs nothing to
-// leave general.
 
 // The generator room's own tile footprint — see buildLevel's cuts.ceiling/roof.
 // At most one room on the floor has this role, but the loop costs nothing to
@@ -233,10 +212,6 @@ export function orMask(a, b) {
 // SOLID tiles immediately next to the generator room's own footprint — its
 // four walls, basically, including the stub either side of its one doorway.
 // Empty (no tiles set) on every floor without one, same as generatorRoomCut.
-
-// SOLID tiles immediately next to the generator room's own footprint — its
-// four walls, basically, including the stub either side of its one doorway.
-// Empty (no tiles set) on every floor without one, same as generatorRoomCut.
 function generatorWallMask(layout) {
   const { W, H, tiles } = layout;
   const footprint = generatorRoomCut(layout);
@@ -253,11 +228,6 @@ function generatorWallMask(layout) {
   }
   return mask;
 }
-
-// One wall pass at a given height, over a tile array that is SOLID only where
-// this pass should draw (see the two calls in buildShell). `building: true`
-// on the taller pass exempts it from validate-props.mjs's furniture height
-// cap the same way an ordinary WALL_H wall already is — see MAX_PROP_TOP.
 
 // One wall pass at a given height, over a tile array that is SOLID only where
 // this pass should draw (see the two calls in buildShell). `building: true`
@@ -337,21 +307,6 @@ export function stampOccupied(mask, layout, x0, z0, x1, z1) {
  * except the holes, and it does not care that the plate extends under the walls.
  * A handful of boxes says exactly that.
  */
-
-/**
- * The floor plate as collision, coarsely: the whole slab with the basement
- * stairwells punched out of it.
- *
- * The floor used to need no collider at all — `_supportHeight` assumed y = 0. Now
- * that a room can exist underneath, the plate has to be a real surface, or a player
- * walking over a basement falls into it through an intact floor.
- *
- * Coarse on purpose. The DRAWN floor is a couple of thousand rectangles, one per run
- * of matching tiles, and handing all of them to the solver as static bodies would be
- * a real cost for no gain: collision only needs to know the plate is at 0 everywhere
- * except the holes, and it does not care that the plate extends under the walls.
- * A handful of boxes says exactly that.
- */
 export function floorPlate(layout) {
   let rects = [{
     x0: worldX(layout, 0), z0: worldZ(layout, 0),
@@ -376,20 +331,6 @@ function floorSlab(layout, r, y, up = true) {
 }
 
 const FRAME_T = 0.06;
-
-// A doorway is three pieces of geometry meeting in the same few centimetres —
-// the wall above it, the header, and the jambs — and every shared plane between
-// them is a z-fight waiting to happen. Two rules keep it clean:
-//
-//  1. The frame LINES the opening rather than sitting flush with its mouth. A
-//     jamb spanning the last tile of wall would put its inner face exactly on
-//     the wall's reveal face, both pointing the same way; moving it just inside
-//     the opening puts the two faces back-to-back instead, where backface
-//     culling deals with them.
-//  2. Nothing abuts — everything OVERLAPS. The wall above starts half a frame
-//     depth *inside* the header, and the jambs run half a frame depth *into* it,
-//     so every buried face ends up strictly inside solid geometry instead of
-//     level with another face.
 
 // A doorway is three pieces of geometry meeting in the same few centimetres —
 // the wall above it, the header, and the jambs — and every shared plane between
@@ -463,10 +404,6 @@ export function buildDoorFrames(layout, batcher, materials, colliders) {
 }
 
 // --- windows ----------------------------------------------------------------
-
-// Walks in from each facade to find the first open tile in every row/column;
-// where a long enough stretch sits at the same depth, that's an outside wall
-// worth glazing.
 
 // Walks in from each facade to find the first open tile in every row/column;
 // where a long enough stretch sits at the same depth, that's an outside wall
@@ -639,13 +576,6 @@ function paneQuad(axis, at, a0, a1, y0, y1, facingPositive) {
 // sample points and come out with no ceiling light at all — a pitch-black
 // office in the middle of a lit floor. Walking the rooms guarantees every one
 // gets at least a fixture at its centre.
-
-// Fixtures are placed per room and then along the corridors, NOT on one global
-// grid. A global grid seems simpler, but rooms are only ~4.5 m across at the
-// smallest and the grid pitch is 4 m, so a room could easily fall between
-// sample points and come out with no ceiling light at all — a pitch-black
-// office in the middle of a lit floor. Walking the rooms guarantees every one
-// gets at least a fixture at its centre.
 export function buildCeilingLights(layout, batcher, materials, fixtures, destructibles) {
   const { W, H, tiles } = layout;
 
@@ -713,39 +643,6 @@ export function buildCeilingLights(layout, batcher, materials, fixtures, destruc
     }
   }
 }
-
-// The generator room's lights, and it is the one room in the building lit from
-// more than one height. Both mounts are the same fixture/destructible shape as
-// an ordinary ceiling panel — kind: 'panel', one light each, shot out or blacked
-// out the same way — they just hang off different surfaces.
-//
-//   The roof, at WALL_H * 2: high bays under the double-height deck (see the
-//   tall roof pass in buildShell). Without them the room is sealed but its
-//   ceiling is 3.8 m above the nearest thing lighting it and comes out nearly
-//   black — which looks exactly like the roofless hole it replaced, so capping
-//   the room and lighting the cap are one change, not two. They carry a longer
-//   `distance` than a suspended panel for the obvious reason: they are twice as
-//   far from the floor they have to reach.
-//
-//   And the underside of the mezzanine, which is built later and lights itself —
-//   see the soffit pass in buildGeneratorMezzanine. It is what lights the half of
-//   the room the deck shades, which the high bays above it cannot reach.
-//
-// There used to be a third: four panels bracketed off the walls at 2.6 m, from
-// when this room had no ceiling at all to hang anything from. Once it had a roof
-// AND a lit soffit they were lighting rooms that were already lit, from a mount
-// nothing else in the building uses — a plant room reads as a plant room because
-// its lights are overhead industrial fittings, not because it has picture lights
-// round the walls.
-/**
- * One downward-facing panel in the generator room, wherever it is mounted: the
- * emissive slab, the fixture the light pool homes onto, and the destructible
- * record that ties the two together so shooting it kills both halves.
- *
- * Shared rather than local to buildGeneratorLights because the mezzanine lights
- * its own underside (see the soffit pass in buildGeneratorMezzanine) and a
- * second copy of this is a second place for a panel to stop being destructible.
- */
 
 // The generator room's lights, and it is the one room in the building lit from
 // more than one height. Both mounts are the same fixture/destructible shape as

@@ -47,38 +47,11 @@ const MAX_LEAF = 26;               // above this a block always splits again
  * than MAX_LEAF even so — the whole point is that the biggest thing on the floor
  * is somewhere people work rather than somewhere they store things.
  */
-
-/**
- * How much of a floor's room area is OPEN FLOOR, and how big one of them gets.
- *
- * An office building is mostly open plan with the cellular offices round the
- * edge of it, and this generator was the other way round: `MAX_LEAF` caps a BSP
- * leaf at 26 tiles a side, so the biggest room a floor could ever have was
- * 13 x 13 m, the median room was 37 m², and 2.5% of rooms came out on the `big`
- * branch at all. Every floor was a warren of small rooms with the occasional
- * slightly larger small room, and "open plan" was a label on a 9 x 8 m office.
- *
- * So a share of each floor's room area is claimed for open floor BEFORE the
- * subdivision reaches it, and a block that qualifies stops splitting whole.
- * Measured against the area the BSP has to hand out rather than against the
- * slab, because corridors and structural core are not somebody's office.
- *
- * The cap is what keeps it an office rather than a warehouse: a block between
- * two corridors can be sixty tiles across on a deep floor, and a 30 x 30 m room
- * with no interior wall in it is a distribution centre. It is a good deal wider
- * than MAX_LEAF even so — the whole point is that the biggest thing on the floor
- * is somewhere people work rather than somewhere they store things.
- */
 export const OPEN_SHARE = 0.4;
 
 const OPEN_LEAF = 44;              // tiles a side — 22 m
 
 const OPEN_MIN = 20;               // ...and 10 m, under which it is just a room
-// How often a qualifying block is taken rather than split again. It is what
-// SPREADS the open floors: the budget alone would hand the first blocks the BSP
-// walks the whole share, and the blocks are walked in a fixed order across the
-// slab, so every open floor on the floor would be in one corner of it.
-
 // How often a qualifying block is taken rather than split again. It is what
 // SPREADS the open floors: the budget alone would hand the first blocks the BSP
 // walks the whole share, and the blocks are walked in a fixed order across the
@@ -90,16 +63,7 @@ export const DOOR_W = 3;           // 1.5 m doorways
 // side of a shared wall each cut their own doorway and the second lands flush
 // against the first, merging them into one 3 m hole with a loose doorpost
 // floating in the middle of it.
-
-// Minimum solid wall left between two openings. Without this, two rooms either
-// side of a shared wall each cut their own doorway and the second lands flush
-// against the first, merging them into one 3 m hole with a loose doorpost
-// floating in the middle of it.
 const DOOR_GAP = 2;
-
-// Doors across the corridors themselves — see cutHallDoors. A range per corridor
-// rather than a count per floor, because what they are for is breaking up the
-// long ones; the short spurs can go without.
 
 // Doors across the corridors themselves — see cutHallDoors. A range per corridor
 // rather than a count per floor, because what they are for is breaking up the
@@ -149,22 +113,6 @@ export function pickLines(rng, min, max, count, sep) {
  * back over itself. Cheaper and far more predictable than discovering the
  * problem later as a hole in the map.
  */
-
-/**
- * Pulls corridors back over any room block that shortening left stranded.
- *
- * Rooms are carved into the blocks between corridors, and every room needs a way
- * out. That works because a block always fronts onto a corridor — until a
- * shortened corridor stops before reaching it, and a block can end up ringed by
- * four solid stretches. BSP then buries its rooms behind each other with no exit
- * at all, and the connectivity repair downstream can only respond by walling the
- * whole block off, which quietly deletes a quarter of the floor.
- *
- * So the frontage is restored here, while corridors are still just numbers and
- * before anything is carved: any unserved block extends one of its neighbours
- * back over itself. Cheaper and far more predictable than discovering the
- * problem later as a hole in the map.
- */
 export function ensureFrontage(vBands, hBands, inner) {
   const xSpans = complement(inner.x0, inner.x1, vBands);
   const ySpans = complement(inner.y0, inner.y1, hBands);
@@ -198,11 +146,6 @@ const overlap = (a0, a1, b0, b1) => Math.min(a1, b1) - Math.max(a0, b0);
 // corridor on the other axis, and the run has to keep covering it with a decent
 // stub either side — a corridor that ended exactly at the junction would read as
 // a T rather than as a corridor that carries on a bit and then stops.
-
-// Stops a corridor short of one or both exterior walls. `must` is the primary
-// corridor on the other axis, and the run has to keep covering it with a decent
-// stub either side — a corridor that ended exactly at the junction would read as
-// a T rather than as a corridor that carries on a bit and then stops.
 export function shorten(rng, b, lo, hi, must) {
   const stub = CORRIDOR_W * 2;
   const latestStart = Math.max(lo, must.lo - stub);
@@ -210,11 +153,6 @@ export function shorten(rng, b, lo, hi, must) {
   if (rng.chance(0.6)) b.from = rng.int(lo, latestStart);
   if (rng.chance(0.6)) b.to = rng.int(earliestEnd, hi);
 }
-
-// A corridor: `lo..hi` is its width across the slab, `from..to` how far it runs
-// along it. Only `from..to` is ever shortened — the width and therefore the room
-// blocks either side of it stay exactly as they were, so a stopped corridor
-// leaves solid structural core behind it rather than a hole in the blocking.
 
 // A corridor: `lo..hi` is its width across the slab, `from..to` how far it runs
 // along it. Only `from..to` is ever shortened — the width and therefore the room
@@ -241,13 +179,6 @@ export function complement(lo, hi, bands) {
   if (cursor < hi) spans.push({ lo: cursor, hi });
   return spans;
 }
-
-/**
- * Subdivides one block into rooms.
- *
- * `open` is the floor's open-plan budget — `{ left }` in tiles, shared by every
- * block on the floor and spent as blocks are claimed. See OPEN_SHARE.
- */
 
 /**
  * Subdivides one block into rooms.
@@ -410,40 +341,6 @@ export function cutDoor(run, rng, tiles, W, doors, room) {
  * hallLocks, which proves a way round before it dares, because a badged door
  * across the one route everybody takes would be a floor locked in half.
  */
-
-/**
- * The doors across the corridors — the ones you walk through rather than into.
- *
- * A floor without them is one continuous open hallway network, which is the one
- * place in the building that reads as a level rather than as an office: real
- * corridors are broken up by fire doors every so often, and having to push
- * through one is what makes a corridor feel like it has a far end.
- *
- * They are the odd ones out in two ways, and both fall out of there being no
- * wall across a corridor to cut a hole in:
- *
- *  - They span the corridor's ENTIRE width, so the opening is a 3 m one rather
- *    than the 1.5 m every room doorway gets. `hall` says so, since the width
- *    invariant is different for them.
- *  - They cannot slide. A retracted panel goes inside the wall beside its
- *    opening (see slidePocketSide) and beside a corridor there is one tile of
- *    wall with somebody's office behind it. So these are two hinged leaves that
- *    swing back flat against the corridor walls, which is what the doors they
- *    are modelled on do anyway.
- *
- * That second point is the whole of the placement rule. A leaf needs the wall it
- * swings back against to actually be there for its own length, which is what
- * `swing` picks a direction for and what the flank sweep below proves. It also
- * does three other jobs for free: it puts the door somewhere the frame has a
- * jamb at both ends, it keeps a leaf from swinging across a room's doorway and
- * sealing it, and it refuses junctions outright, because at a crossing the
- * flanking wall is the other corridor.
- *
- * None of them is ever locked by the room passes. They are not on any room, so
- * the LOCK_PLAN loop in gen/locks.js never sees them; what badges them is
- * hallLocks, which proves a way round before it dares, because a badged door
- * across the one route everybody takes would be a floor locked in half.
- */
 export function cutHallDoors(tiles, W, H, doors, bands, alongY, rng) {
   const at = (x, y) => (x >= 0 && y >= 0 && x < W && y < H ? tiles[y * W + x] : SOLID);
   // `p` walks along the corridor; `k` walks across it. A vertical corridor runs
@@ -492,10 +389,6 @@ export function cutHallDoors(tiles, W, H, doors, bands, alongY, rng) {
     }
   }
 }
-
-// Flood the floor from the corridor network; any room left stranded gets an
-// extra door punched toward reachable floor, and anything still stranded after
-// a few passes is filled back in so the player can never see an orphan room.
 
 // Flood the floor from the corridor network; any room left stranded gets an
 // extra door punched toward reachable floor, and anything still stranded after

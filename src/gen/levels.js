@@ -40,10 +40,6 @@ const UPPER_KINDS = [
 // The same 0.15 m a room keeps off its plaster, for the same reason: the storey's
 // wall ring stands over the wall downstairs, so its inside face is exactly where
 // the room's is.
-
-// The same 0.15 m a room keeps off its plaster, for the same reason: the storey's
-// wall ring stands over the wall downstairs, so its inside face is exactly where
-// the room's is.
 const UPPER_INSET = 0.15;
 
 const TREAD_SKIN = 0.03;      // the walking surface laid over the step's body
@@ -55,19 +51,6 @@ export const FLOOR_SKIN = 0.03;      // flooring laid over the structural deck
 
 // Materials by what the part IS, so the geometry half never names one.
 const PART_MATERIAL = { tread: 'trim', deck: 'trim', wall: 'wall', roof: 'ceiling', lid: 'ceiling' };
-
-/**
- * The staircases, the storeys they climb to, and what is up there.
- *
- * Every box comes from `stairBoxes` in gen/stairs.js rather than being worked out
- * again here, so the picture, the player's collision, the solver and the validators
- * cannot come to different conclusions about where a tread is.
- *
- * Colliders are marked `building`: they are shell, not furniture. Permanent, not
- * destructible, and the props validator audits them as such — a whole storey's
- * floor slab read as a prop fails every dimension a prop has. They also carry
- * `base`, which is what makes the storey possible at all: see gen/stairs.js.
- */
 
 /**
  * The staircases, the storeys they climb to, and what is up there.
@@ -149,11 +132,6 @@ export function buildStairs(layout, batcher, materials, masks, rng) {
 // a hazard strip along the edge you meet coming down. The strip OVERLAPS the tread
 // rather than resting flush on it, for the reason the door frames do: two faces in
 // one plane is a z-fight, two solids that interpenetrate is not.
-
-// A step is a grey body with the building's own floor laid over the top of it, and
-// a hazard strip along the edge you meet coming down. The strip OVERLAPS the tread
-// rather than resting flush on it, for the reason the door frames do: two faces in
-// one plane is a z-fight, two solids that interpenetrate is not.
 function drawStep(batcher, materials, b, plan) {
   batcher.add('trim', materials.trim,
     boxBetween(b.minX, b.base, b.minZ, b.maxX, b.y1 - TREAD_SKIN, b.maxZ));
@@ -183,11 +161,6 @@ function drawPart(batcher, materials, b) {
 // room with something in it. Panels on the same pitch as any other room's, registered
 // as fixtures, so the light pool treats them as the ceiling lights they are. An attic
 // has them under its roof; a basement has them under the floor plate.
-
-// A sealed level has no window and a lid of its own, so without this it is a black
-// room with something in it. Panels on the same pitch as any other room's, registered
-// as fixtures, so the light pool treats them as the ceiling lights they are. An attic
-// has them under its roof; a basement has them under the floor plate.
 function lightLevel(layout, plan, batcher, materials, fixtures) {
   const f = levelFloor(layout, plan);
   const y = plan.dir > 0 ? UPPER_CEIL : -PLATE_T;
@@ -206,23 +179,6 @@ function lightLevel(layout, plan, batcher, materials, fixtures) {
     }
   }
 }
-
-/**
- * Furnishes the attics and the basements, through sinks of their own.
- *
- * A level gets masks of its own and that is the whole trick. The collider list, the
- * loose props and the destruction records are the floor's — a crate in an attic is
- * shot apart exactly like one in the corridor. But "is this tile taken" and "can a
- * body walk here" are questions about a LEVEL, and the answers up there have nothing
- * to do with the answers on the ground: sharing the real masks would have a filing
- * cabinet in an attic make the office beneath it impassable.
- *
- * One sink per direction, because a sink belongs to one level (`masks.level`) — which
- * is also what gives its colliders an underside and keeps them off the nav grid.
- *
- * Nothing is height-limited, unlike a low platform would be: a level has a full
- * room's headroom, so the tall things go up and down there too.
- */
 
 /**
  * Furnishes the attics and the basements, through sinks of their own.

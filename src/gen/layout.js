@@ -93,12 +93,6 @@ const BASE_H_MAX = 252;
 // 60 m has room for the corridor spine and little else, and the prologue pass
 // then starts stripping readers off doorways to find somewhere to stand the
 // first body (see freeThePrologue in gen/locks.js).
-
-// Absolute bounds in tiles, on either axis — 300 on both, so the shape die is
-// free to stand a floor on end. The lower one is not taste: a slab much under
-// 60 m has room for the corridor spine and little else, and the prologue pass
-// then starts stripping readers off doorways to find somewhere to stand the
-// first body (see freeThePrologue in gen/locks.js).
 const SPAN_MIN = 120;
 
 const SPAN_MAX = 300;
@@ -107,31 +101,7 @@ const SPAN_MAX = 300;
 // is meant to come from the enemies rather than from more walking, so a big roll
 // on floor 15 must not quietly hand out a fifth more building than the game has
 // ever had to draw, light and populate.
-
-// And the area of the largest floor the curve ever asks for. The roll varies a
-// floor UNDER that ceiling rather than through it: past floor ~12 the difficulty
-// is meant to come from the enemies rather than from more walking, so a big roll
-// on floor 15 must not quietly hand out a fifth more building than the game has
-// ever had to draw, light and populate.
 const AREA_MAX = BASE_W_MAX * BASE_H_MAX;
-
-/**
- * The slab, in tiles, plus how that came out relative to this depth's usual.
- *
- * `areaRatio` is the part callers want and the reason it is returned rather than
- * recomputed: how many people and how many cameras a floor gets is a question
- * about DENSITY, and both are authored against the typical floor for a depth.
- * 200 staff is a crowd on that floor and a crush on one two-thirds the size.
- * It is measured from the spans that survived the clamps rather than from
- * `scale`, so a floor that hit a bound still reports the area it actually has.
- *
- * On its own stream, and mixed with the floor number, for the same two reasons
- * the locks are (see assignLocks below). Drawing from the floor's own `rng` would
- * shift every later number and re-roll the whole building off a die that has
- * nothing to do with its contents; and a stream of the seed alone would hand
- * every floor of one seed the same shape, which is exactly the variety the
- * validators sweep for.
- */
 
 /**
  * The slab, in tiles, plus how that came out relative to this depth's usual.
@@ -444,21 +414,6 @@ export function generateLayout(seed, floorNumber) {
 const tileOf = (layout, lift, room) => (lift
   ? { x: (lift.tx0 + lift.tx1 - 1) >> 1, y: (lift.ty0 + lift.ty1 - 1) >> 1 }
   : { x: Math.round(room.cx), y: Math.round(room.cy) });
-
-/**
- * Cuts both cars into the lobby, side by side.
- *
- * The bank goes on the wall OPPOSITE the lobby's own doorway when that wall will
- * take it, which is what makes the arrival read as a sequence rather than as a
- * room: the doors part, the lobby is in front of you, and the way into the
- * building is across it and straight ahead. `carveBank` walks the other three
- * walls itself when it has to.
- *
- * The connectivity proof inside `carveLift` is run from a CORRIDOR tile, which
- * has to be outside the room being cut into — the corridor network is connected
- * by construction and every live room opens onto it, so one tile of it is a
- * fixed point the whole floor can be measured from before and after.
- */
 
 /**
  * Cuts both cars into the lobby, side by side.

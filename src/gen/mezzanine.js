@@ -347,21 +347,6 @@ export function buildGeneratorMezzanine(layout, batcher, materials, masks, rng) 
  * deliberately off the nav grid and a desk up here must not make the floor
  * underneath it impassable.
  */
-
-/**
- * The row of workstations along the mezzanine's railing, facing out over the
- * machine.
- *
- * Placed through a sink of its own at deck height rather than drawn into the
- * batch, which is what makes them real: ordinary destructible props with a
- * model, a monitor and a keyboard on them, that come apart when shot like every
- * other desk in the building. Same machinery as furnishLevels uses for an attic
- * — see the note there on why a level needs its own occupancy — with two
- * differences. `reserved` is inverted, so the only tiles the sink will place
- * into are the deck's; and `blocked` is a throwaway, because the mezzanine is
- * deliberately off the nav grid and a desk up here must not make the floor
- * underneath it impassable.
- */
 function dressMezzanine(layout, batcher, materials, masks, rng, m) {
   const { W, H } = layout;
   const { DECK_Y, depth, vLen, vLo, uWall, uSign, alongX, nu0, nu1, nv0, nv1 } = m;

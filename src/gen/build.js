@@ -203,21 +203,6 @@ export function buildLevel(scene, layout, theme = null) {
  * invisible. `sight` is the level's own floor, because a level is one open room with
  * a lid and there is nothing inside it to see through.
  */
-
-/**
- * The second nav layer: every attic and basement at once, plus the stairwells that
- * join them to the ground floor.
- *
- * One layer holds all of them because no two ever overlap — a room gets at most one
- * staircase, so at most one level above or below it. See the note at the top of
- * nav.js for what the layers mean and where they are joined.
- *
- * `cross` is the joint and it is the stairwell and nothing else. `rampY` is how high
- * the flight is at each of those tiles, so a body on the stairs is at the height of
- * the stairs whichever layer it is currently on — which is what makes the crossing
- * invisible. `sight` is the level's own floor, because a level is one open room with
- * a lid and there is nothing inside it to see through.
- */
 function levelNav(layout, levelBlocked) {
   const { W, H } = layout;
   const walk = new Uint8Array(W * H);
