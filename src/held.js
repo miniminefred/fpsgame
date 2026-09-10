@@ -72,9 +72,16 @@ export const HELD = {
   can: {
     field: 'can',
     snap: 128,
-    // The seed picks the flavour AND whether this one came out already shot
-    // through; see `drinkFrom` in drinks.js.
-    make: (key) => buildCan(key),
+    // The seed picks the flavour. It does NOT pick whether this one has a hole
+    // in it: `intact` is what says so, and this is the only place that asks.
+    //
+    // A shot can is stock that was standing behind the glass when a firefight
+    // came down the corridor — which is why the machine's window has one facing
+    // in twenty folded over on a hole, and why the cans thrown out of a machine
+    // that has been blown apart are those same facings. A can that came out of
+    // the FLAP has not been anywhere near a round, and being handed one was
+    // reported as the bug it is. See `buildCan` in rigs.js.
+    make: (key) => buildCan(key, true),
     // HELD, rather than hanging off the bottom of the hand. `drop` is negative,
     // so the can's middle sits 2.6 cm ABOVE the point the hand is at and the
     // fist closes round its lower third — which is how a can is actually

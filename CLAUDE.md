@@ -3291,13 +3291,23 @@ Three things make that affordable, and the first two are the ones worth copying:
   the cylinder and the tell is fat lettering, the wordmark being the one thing on the can with
   a shape the eye already knows.
 
-  **And one can in twenty comes out of the machine already shot through** (`CAN_BROKEN`),
+  **And one can in twenty of the STOCK is already shot through** (`CAN_BROKEN`),
   folded over on the hole with the round's entry on one side and a bigger tear on the other —
   painted on rather than cut, the way the service openings in a corridor wall are. It is a
   joke about the *building* rather than about the drink: this is a floor where firefights go
   through the corridor the machine is standing in, and the stock is behind a glass front. Five
   per cent is the whole of the tuning: rare enough that the first one is a surprise, common
-  enough to be seen at all, against a floor that hands out five or six cans.
+  enough to be seen at all, against a machine holding fifteen facings.
+
+  **...but a can out of the FLAP is never one of them**, and that took a player to say. The
+  hole is a fact about STOCK — the facings behind the glass, and the cans thrown out of a
+  machine that has been blown apart, which are those same facings by construction. A can
+  somebody just bought has not been near a round, and a machine that charges you for a
+  punctured one is a machine with a different joke in it. So `buildCan(seed, intact)` takes
+  the answer from its CALLER, and `HELD.can` in held.js is the only thing that asks — the one
+  path a can takes into a hand. The flavour is untouched either way, so the can you are handed
+  is still the one the window said it would be: measured over 20,000 seeds, 1,003 shot (5.0%),
+  all 1,003 still shot as stock, **0 shot when handed over**, and 0 flavours changed by it.
 
   **The hash it is drawn from has to be MIXED, and that was a real bug waiting.** Two things
   come off one integer, and `seed % 4` and `seed % 20` are not independent — taken straight,

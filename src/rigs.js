@@ -1411,7 +1411,7 @@ function canShapes() {
  * has to come back with the same can in a hand, in a machine's window, and on
  * the carpet in front of a machine that has just been blown apart.
  */
-export function buildCan(seed = 0) {
+export function buildCan(seed = 0, intact = false) {
   canParts ??= {
     geo: canShapes(),
     paint: CAN_FLAVOURS.map((f) => new THREE.MeshStandardMaterial({
@@ -1432,7 +1432,25 @@ export function buildCan(seed = 0) {
   };
 
   const parts = canParts;
-  const { flavour, shot } = drinkFrom(seed);
+  const drink = drinkFrom(seed);
+  const flavour = drink.flavour;
+  // Whether THIS can has the hole in it, which is not the same question as
+  // whether the drink's seed says one in twenty does.
+  //
+  // `drinkFrom` describes a can of STOCK, and a shot one is a joke about the
+  // building: rounds go down the corridor the machine is standing in and the
+  // stock is behind a glass front, so one facing in twenty is folded over on a
+  // hole and the cans thrown out of a machine that has been blown apart are
+  // those same facings (see `_spillStock` in destruction.js). None of that is
+  // true of a can somebody just BOUGHT. A player reported being handed one, and
+  // they were right: the flap is not where the rounds go, and a machine that
+  // charges you for a punctured can is a machine with a different joke in it.
+  //
+  // So the caller says. `intact` is asked for in exactly one place — `HELD.can`
+  // in held.js, the only path a can takes into a hand — and the flavour is
+  // untouched either way, so the can you are handed is still the one the window
+  // said it would be.
+  const shot = drink.shot && !intact;
 
   let label = parts.label.get(flavour);
   if (!label) {
