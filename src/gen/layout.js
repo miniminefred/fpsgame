@@ -48,7 +48,7 @@ import { assignRoles, pickCafeteria, pickLobbyRoom } from './roles.js';
 // has a file of its own.
 export {
   TILE, WALL_H, CEIL_H, DOOR_H, DOOR_CLEAR,
-  SOLID, ROOM, CORRIDOR, DOOR, isOpen, FACING, NEIGHBOURS, NAV_LANE,
+  SOLID, ROOM, CORRIDOR, DOOR, isOpen, FACING, NEIGHBOURS, NAV_LANE, SKIRT,
   worldX, worldZ, centreX, centreZ, tileX, tileY,
   bfs, slidePocketSide, slidePocketRun, doorSide, doorSpan,
   tileAt, siteWalk, wallBeside, fillRect, sealDoor,

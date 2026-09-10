@@ -104,6 +104,25 @@ export const NEIGHBOURS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
  */
 export const NAV_LANE = 3;
 
+/**
+ * How far off the plaster a room's furnishable rectangle starts.
+ *
+ * It lives here for `DOOR_CLEAR`'s reason — it is a fact about the grid that
+ * more than one half of the tree needs, and gen/rooms.js has to UNDO it: a role
+ * is handed `bounds` in world metres and its room in tiles, so recovering one
+ * from the other needs the inset that was applied. gen/placement.js needs it too
+ * now, and importing it from gen/furnish.js would close a cycle
+ * (furnish -> rooms -> placement), which is the TDZ trap enemy-tuning.js exists
+ * to avoid one scale up.
+ *
+ * It is a SAFETY inset rather than a look: it is what stops a prop whose
+ * geometry overhangs its own declared footprint from ending up inside the wall.
+ * A prop that is deliberately backed onto the plaster asks for `flush` in
+ * `edgeProp` and gets the inset subtracted again -- see the reception counter,
+ * which is drawn in the wall's own paint and has to touch it.
+ */
+export const SKIRT = 0.15;
+
 // Tile <-> world helpers. The building is centred on the origin.
 //
 // There are two world positions for a tile and they are half a tile apart:

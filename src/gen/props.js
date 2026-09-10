@@ -1072,8 +1072,14 @@ export const PROPS = {
     // exactly one place — the record `beginStatic` no longer files — so keeping it
     // would be a field no code reads, which is the thing the Sentry Unit's dead
     // `standing` flag is the warning about.
-    w: 1.9, d: 2.2,
-    build(p) { lCounter(p, 0.95, 1.1); },
+    // DEEPER BY THE SKIRT, because the counter is now placed flush against the
+    // plaster (`flush` in edgeProp) and the pocket has to come out the same
+    // depth it always did. It used to be made up of the counter's own 2.2 m plus
+    // the 0.15 m of skirt band behind it; with the back face on the wall that
+    // band is gone, so the prop carries it instead. Four clear tile rows either
+    // way — see `lCounter`, where that arithmetic is written out.
+    w: 1.9, d: 2.35,
+    build(p) { lCounter(p, 0.95, 1.175); },
   },
 
   // ...and the same L one size down, for a lobby that cannot hold the other.
@@ -1110,8 +1116,13 @@ export const PROPS = {
     // exactly one place — the record `beginStatic` no longer files — so keeping it
     // would be a field no code reads, which is the thing the Sentry Unit's dead
     // `standing` flag is the warning about.
-    w: 1.5, d: 1.7,
-    build(p) { lCounter(p, 0.75, 0.85); },
+    // ...and the same 0.15 m the big one gained, for the same reason and rather
+    // more urgently: this size's pocket is EXACTLY three tile rows, which is the
+    // shallowest one a body's 3x3 fits in at all, so placing it flush without
+    // giving the depth back would have taken the receptionist out of every small
+    // lobby in the building.
+    w: 1.5, d: 1.85,
+    build(p) { lCounter(p, 0.75, 0.925); },
   },
 
   // ...and one leg on its own, for the lobbies that have no square patch at all.

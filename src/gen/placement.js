@@ -11,7 +11,7 @@
 // themselves is four chances to get it backwards. Half of them once were.
 
 import { footprintOf, PROPS, QUARTER, tryPlace } from './props.js';
-import { TILE } from './layout.js';
+import { SKIRT, TILE } from './layout.js';
 import { PLAYER_RADIUS } from '../metrics.js';
 
 /**
@@ -599,7 +599,20 @@ export function edgeProp(sink, bounds, kind, rng, sides = ALL_SIDES, as = null, 
   // somebody stands behind, and the model is 0.55 m deep, so with its back on
   // the wall the entire pocket is the 0.15 m of skirting clearance. See
   // COUNTER_STAND for what the number has to be and why it is a nav number.
-  const standoff = fd / 2 + (opts.behind ?? 0);
+  //
+  // ...and `flush` takes the SKIRT back off, which is the difference between a
+  // prop standing against a wall and one that IS the wall. `bounds` is already
+  // inset by that safety margin, so half the depth off the BOUNDS edge leaves
+  // the back face 0.15 m off the plaster — a hand's width of carpet behind
+  // everything in the building, and the sentence above is wrong about it. That
+  // inset is there to keep a prop whose geometry overhangs its own footprint out
+  // of the wall, so a prop that is meant to touch the plaster has to ask for it
+  // back: the reception counter is drawn in `wall`, the shell's own paint, and is
+  // a projection OUT of the plaster it matches, which a 15 cm gap behind it
+  // simply cancels. A player reported it as the desk not being connected to the
+  // wall. It claims no new tiles — the skirt band is inside the room's first
+  // floor tile — so what moves is the geometry and not the reservation.
+  const standoff = fd / 2 + (opts.behind ?? 0) - (opts.flush ? SKIRT : 0);
   const margin = fw / 2;   // so a 3 m table can't hang off the end of the wall
   if (!sides.length) return null;
   // Which side of a peninsula the body is tried on first. Drawn ONCE, out here:

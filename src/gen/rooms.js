@@ -1171,19 +1171,29 @@ function liftLobby(sink, bounds, rng, room, doors) {
     x: bounds.x0 - SKIRT + ((door.x0 + door.x1) / 2 - room.x0) * TILE,
     z: bounds.z0 - SKIRT + ((door.y0 + door.y1) / 2 - room.y0) * TILE,
   } : null;
+  // `flush` on all three: a counter drawn in the wall's own paint has to TOUCH
+  // the wall, and without it every one of them stood 15 cm off the plaster with
+  // a strip of carpet behind it — which cancels the one thing the prop is for and
+  // left the pocket open along its back as well as at its end. Flush, the only
+  // way into it is the one walk gap at the flank, which is what a reception is.
+  // The two Ls carry that 0.15 m in their own depth now (see gen/props.js), so
+  // the pocket is exactly as deep as it was.
   const counter = edgeProp(sink, bounds, 'receptionCounter', rng, walls, 'reception',
-    { corner: true, sweep: true, near })
+    { corner: true, sweep: true, near, flush: true })
     // ...and the same L one size down where the big one will not fit, which is
     // the retreat `wallSpanProp` makes for the generator: ask for the thing that
     // reads best, take the thing the room can hold. Both are the same shape, so
     // what a small lobby loses is the room to stand in the middle of the square
     // rather than the square itself.
     ?? edgeProp(sink, bounds, 'receptionCounterSmall', rng, walls, 'reception',
-      { corner: true, sweep: true, near })
+      { corner: true, sweep: true, near, flush: true })
     // ...and one leg on its own for a lobby with no square patch anywhere, where
     // the body stands beside it instead. See `receptionCounterStub`.
+    // The stub keeps its own depth: nobody stands behind it (`aside` puts the
+    // body in the crook), so there is no pocket to preserve — only the back face
+    // to put on the plaster.
     ?? edgeProp(sink, bounds, 'receptionCounterStub', rng, walls, 'reception',
-      { aside: COUNTER_ASIDE, stand: COUNTER_STAND, sweep: true, near });
+      { aside: COUNTER_ASIDE, stand: COUNTER_STAND, sweep: true, near, flush: true });
   // A plant beside a counter that landed and a plant anywhere at all if it did
   // not — the room still has to read as a lobby rather than as an empty box with
   // two lifts in it.

@@ -16,6 +16,7 @@ import {
   isOpen,
   NAV_LANE,
   NEIGHBOURS,
+  SKIRT,
   tileX,
   tileY,
   worldX,
@@ -23,11 +24,10 @@ import {
 } from './layout.js';
 import { approachRect } from './stairs.js';
 
-// How far off the plaster a room's furnishable rectangle starts. Exported
-// because gen/rooms.js has to undo it: a role is handed `bounds` in world metres
-// and its room in tiles, so recovering one from the other needs the inset that
-// was applied here. One number, one place — see the note on metrics.js.
-export const SKIRT = 0.15;
+// Re-exported rather than declared: it moved to gen/tiles.js when
+// gen/placement.js needed it too, because importing it from here would have
+// closed a cycle. Its own note is there. One number, one place.
+export { SKIRT };
 
 export function furnishRooms(layout, sink, rng, workstations, theme) {
   for (const room of layout.rooms) {
