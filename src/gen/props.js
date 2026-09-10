@@ -1265,6 +1265,7 @@ export const PROPS = {
     w: 2.4, d: 0.22, hp: 45, substance: 'electronic',
     build(p, rng) {
       const Y0 = 0.86, Y1 = 2.24;
+      const d = PROPS.presentationScreen.d;
       // Bezel, then the picture inside it, a couple of centimetres proud so the
       // two faces are never coplanar — see the note on windows in gen/shell.js.
       p.box('metalDark', -1.2, Y0, 0.02, 1.2, Y1, 0.11);
@@ -1279,7 +1280,17 @@ export const PROPS = {
       // Only as deep as the bracket: the screen itself is on the wall, and a
       // 0.22 m obstruction along a wall people are sitting in rows in front of
       // is a row of chairs pushed 0.22 m further back for nothing.
-      p.obstacle(-1.2, 0.02, 1.2, 0.16, Y1);
+      //
+      // Its back face is the DECLARED footprint's, not the bracket's. The
+      // bracket is bedded 0.05 m into the plaster, which is right for a screen
+      // hung on a wall and invisible — but a collider is not allowed to leave
+      // the footprint the placer reserved for it, and the catalogue audit says
+      // so on every floor (`OBSTACLE OUTSIDE FOOTPRINT` in validate-props.mjs,
+      // and 1,860 of these past the 0.15 m wall inset). Nothing about collision
+      // moves: the five centimetres given up are inside a wall, so there is
+      // nowhere on that side for a body to be. A permanent warning is one
+      // nobody reads.
+      p.obstacle(-1.2, 0.02, 1.2, d / 2, Y1);
     },
   },
 
