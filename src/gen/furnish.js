@@ -316,6 +316,18 @@ function doorMouths(layout) {
     const sides = probes
       .map(([px, py]) => ({ room: rooms.find((r) => inside(r, px, py)), at: [px, py] }))
       .filter((s) => s.room);
+    // A LIFT door has one room on BOTH sides of it, and it is not a doorway of
+    // that room in any sense this function is about: a car is a tiny room carved
+    // INTO its lobby (gen/lifts.js), so both probes land in the lobby and the
+    // lobby came out holding two mouths per car, at tiles inside itself. Every
+    // lobby was therefore a room you walk THROUGH — `list.some(m => m.through)`
+    // was true of a lobby with one real doorway — and lanes were reserved from
+    // its front door to the inside of each car, which is floor no route crosses
+    // and the tightest room in the building to be spending it in. Dropping out
+    // is what a hall door already does one branch up, and for the same reason:
+    // it is not in anybody's room. The apron at a car's doors is kept clear
+    // regardless, by the doorway pass above and by the cars being stamped whole.
+    if (sides.length === 2 && sides[0].room === sides[1].room) continue;
     // Two rooms either side means neither of them is a way out on its own.
     const through = sides.length === 2;
     for (const s of sides) {

@@ -1,7 +1,7 @@
-build s1000/f1 5ac2dfca
-  colliders=957 meshes=2505 objects=1318 fixtures=460
-  colliderHash=bae490c5
-  dynamics=445 destructibles=938
+build s1000/f1 671cb176
+  colliders=967 meshes=2419 objects=1302 fixtures=460
+  colliderHash=db625018
+  dynamics=426 destructibles=948
   door at=-41.25,-21 h=2.06 lock=black reader=1 nav=3 col=-42,-21.045,-40.5,-20.955,2.06,- kind=panel travel=1.53 swing=
   door at=-38.75,-13.5 h=2.06 lock=yellow reader=1 nav=3 col=-38.795,-14.25,-38.705,-12.75,2.06,- kind=panel travel=1.53 swing=
   door at=-38.75,-10 h=2.06 lock=white reader=1 nav=3 col=-38.795,-10.75,-38.705,-9.25,2.06,- kind=panel travel=1.53 swing=
@@ -75,14 +75,14 @@ build s1000/f1 5ac2dfca
   door at=9.25,29.75 h=2.06 lock=- reader=0 nav=6 col=9.205,28.25,9.295,31.25,2.06,- kind=parting travel=1.48/1.48 swing=
   door at=1.5,27 h=2.06 lock=- reader=0 nav=2 col=1,26.955,2,27.045,2.06,- kind=parting travel=0.48/0.48 swing=
   door at=4.5,27 h=2.06 lock=- reader=0 nav=2 col=4,26.955,5,27.045,2.06,- kind=parting travel=0.48/0.48 swing=
-  workstations=7db4d205
+  workstations=10e21196
   stationKinds=bench,board,computer,desk,files,lounge,mail,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
   exit=1 cow=0
-  walk=ecd5d28c
-build s1000/f4 69c00c18
-  colliders=1842 meshes=4485 objects=2474 fixtures=894
-  colliderHash=4fe5f0b3
-  dynamics=749 destructibles=1859
+  walk=000cae30
+build s1000/f4 87d07b8e
+  colliders=1840 meshes=4430 objects=2452 fixtures=894
+  colliderHash=cce8ad6e
+  dynamics=728 destructibles=1857
   door at=-60.5,-40 h=2.06 lock=white reader=1 nav=3 col=-60.545,-40.75,-60.455,-39.25,2.06,- kind=panel travel=1.53 swing=
   door at=-62.5,-37 h=2.06 lock=white reader=1 nav=3 col=-63.25,-37.045,-61.75,-36.955,2.06,- kind=panel travel=1.53 swing=
   door at=-60.5,-31.5 h=2.06 lock=white reader=1 nav=3 col=-60.545,-32.25,-60.455,-30.75,2.06,- kind=panel travel=1.53 swing=
@@ -241,10 +241,10 @@ build s1000/f4 69c00c18
   door at=-0.75,26 h=2.06 lock=- reader=0 nav=6 col=-2.25,25.955,0.75,26.045,2.06,- kind=parting travel=1.48/1.48 swing=
   door at=-2.75,32 h=2.06 lock=- reader=0 nav=2 col=-3.25,31.955,-2.25,32.045,2.06,- kind=parting travel=0.48/0.48 swing=
   door at=0.25,32 h=2.06 lock=- reader=0 nav=2 col=-0.25,31.955,0.75,32.045,2.06,- kind=parting travel=0.48/0.48 swing=
-  workstations=d6e891ca
+  workstations=38c5b43b
   stationKinds=bench,board,computer,desk,files,lounge,mail,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
   exit=1 cow=0
-  walk=221a93fd
+  walk=f54cb994
 build s1000/f9 a92b6fc2
   colliders=2734 meshes=6537 objects=3667 fixtures=1284
   colliderHash=5e7b21d8
@@ -488,10 +488,10 @@ build s1000/f9 a92b6fc2
   stationKinds=bench,board,computer,desk,files,lounge,mail,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
   exit=1 cow=0
   walk=04e0209c
-build s8919/f1 e5e13a27
-  colliders=831 meshes=2211 objects=1215 fixtures=417
-  colliderHash=bcc2ad64
-  dynamics=377 destructibles=833
+build s8919/f1 160412c4
+  colliders=834 meshes=2197 objects=1213 fixtures=417
+  colliderHash=2f0385b3
+  dynamics=374 destructibles=836
   door at=-36.75,-26.25 h=2.06 lock=white reader=1 nav=3 col=-36.795,-27,-36.705,-25.5,2.06,- kind=panel travel=1.53 swing=
   door at=-36.75,-18.25 h=2.06 lock=white reader=1 nav=3 col=-36.795,-19,-36.705,-17.5,2.06,- kind=panel travel=1.53 swing=
   door at=-39.75,-15.25 h=2.06 lock=white reader=1 nav=3 col=-40.5,-15.295,-39,-15.205,2.06,- kind=panel travel=1.53 swing=
@@ -564,10 +564,10 @@ build s8919/f1 e5e13a27
   door at=-3.25,24 h=2.06 lock=- reader=0 nav=6 col=-3.295,22.5,-3.205,25.5,2.06,- kind=parting travel=1.48/1.48 swing=
   door at=-0.5,26.75 h=2.06 lock=- reader=0 nav=2 col=-1,26.705,0,26.795,2.06,- kind=parting travel=0.48/0.48 swing=
   door at=2.5,26.75 h=2.06 lock=- reader=0 nav=2 col=2,26.705,3,26.795,2.06,- kind=parting travel=0.48/0.48 swing=
-  workstations=7f2ca8be
+  workstations=c7528f0c
   stationKinds=bench,board,computer,desk,files,lounge,mail,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
   exit=1 cow=0
-  walk=c1dd1c55
+  walk=aadfcfe7
 build s8919/f4 69a84ea3
   colliders=1599 meshes=4366 objects=2409 fixtures=810
   colliderHash=9c06ecc4
@@ -913,10 +913,10 @@ build s8919/f9 8516480e
   stationKinds=bench,board,computer,desk,files,lounge,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
   exit=1 cow=0
   walk=050e4b7e
-build s16838/f1 3b1eda5b
-  colliders=1363 meshes=3572 objects=1917 fixtures=703
-  colliderHash=92aff296
-  dynamics=609 destructibles=1413
+build s16838/f1 0a6c5788
+  colliders=1371 meshes=3487 objects=1881 fixtures=703
+  colliderHash=61f9a804
+  dynamics=582 destructibles=1419
   door at=-48.75,-36.5 h=2.06 lock=black reader=1 nav=3 col=-49.5,-36.545,-48,-36.455,2.06,- kind=panel travel=1.53 swing=
   door at=-38.75,-41.5 h=2.06 lock=white reader=1 nav=3 col=-38.795,-42.25,-38.705,-40.75,2.06,- kind=panel travel=1.53 swing=
   door at=-40.75,-33 h=2.06 lock=white reader=1 nav=3 col=-41.5,-33.045,-40,-32.955,2.06,- kind=panel travel=1.53 swing=
@@ -1021,10 +1021,10 @@ build s16838/f1 3b1eda5b
   door at=3,28.5 h=2.06 lock=- reader=0 nav=4 col=2,28.455,4,28.545,2.06,- kind=parting travel=0.98/0.98 swing=
   door at=0.5,35.5 h=2.06 lock=- reader=0 nav=2 col=0,35.455,1,35.545,2.06,- kind=parting travel=0.48/0.48 swing=
   door at=3.5,35.5 h=2.06 lock=- reader=0 nav=2 col=3,35.455,4,35.545,2.06,- kind=parting travel=0.48/0.48 swing=
-  workstations=8bd10f61
+  workstations=3f595aae
   stationKinds=bench,board,computer,desk,files,lounge,mail,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
-  exit=1 cow=0
-  walk=cb32143c
+  exit=1 cow=1
+  walk=bcde5c66
 build s16838/f4 eb70bd0f
   colliders=1812 meshes=4442 objects=2429 fixtures=848
   colliderHash=cec08ed9
@@ -1296,10 +1296,10 @@ build s16838/f9 f3d49402
   stationKinds=bench,board,computer,desk,files,lounge,mail,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
   exit=1 cow=0
   walk=2d316877
-build s24757/f1 e93dc7f1
-  colliders=737 meshes=2366 objects=1182 fixtures=411
-  colliderHash=c56de69f
-  dynamics=427 destructibles=753
+build s24757/f1 a146bfbf
+  colliders=761 meshes=2360 objects=1164 fixtures=411
+  colliderHash=8b2c831a
+  dynamics=415 destructibles=777
   door at=-24.5,-32.75 h=2.06 lock=white reader=1 nav=3 col=-24.545,-33.5,-24.455,-32,2.06,- kind=panel travel=1.53 swing=
   door at=-21,-31.25 h=2.06 lock=white reader=1 nav=3 col=-21.75,-31.295,-20.25,-31.205,2.06,- kind=panel travel=1.53 swing=
   door at=-16.5,-31.25 h=2.06 lock=white reader=1 nav=3 col=-17.25,-31.295,-15.75,-31.205,2.06,- kind=panel travel=1.53 swing=
@@ -1362,14 +1362,14 @@ build s24757/f1 e93dc7f1
   door at=0.75,24.25 h=2.06 lock=- reader=0 nav=6 col=-0.75,24.205,2.25,24.295,2.06,- kind=parting travel=1.48/1.48 swing=
   door at=0.75,31.25 h=2.06 lock=- reader=0 nav=2 col=0.25,31.205,1.25,31.295,2.06,- kind=parting travel=0.48/0.48 swing=
   door at=3.75,31.25 h=2.06 lock=- reader=0 nav=2 col=3.25,31.205,4.25,31.295,2.06,- kind=parting travel=0.48/0.48 swing=
-  workstations=7d7715d5
+  workstations=9059eecc
   stationKinds=bench,board,computer,desk,files,lounge,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
   exit=1 cow=0
-  walk=1652be98
-build s24757/f4 4ff1bdfd
-  colliders=1129 meshes=2626 objects=1569 fixtures=548
-  colliderHash=647a9b21
-  dynamics=404 destructibles=1103
+  walk=541cc2b5
+build s24757/f4 d89876dd
+  colliders=1123 meshes=2532 objects=1550 fixtures=548
+  colliderHash=90007999
+  dynamics=390 destructibles=1097
   door at=-40.75,-37.75 h=2.06 lock=white reader=1 nav=3 col=-40.795,-38.5,-40.705,-37,2.06,- kind=panel travel=1.53 swing=
   door at=-40.75,-33.25 h=2.06 lock=white reader=1 nav=3 col=-40.795,-34,-40.705,-32.5,2.06,- kind=panel travel=1.53 swing=
   door at=-40.75,-25.75 h=2.06 lock=white reader=1 nav=3 col=-40.795,-26.5,-40.705,-25,2.06,- kind=panel travel=1.53 swing=
@@ -1477,13 +1477,13 @@ build s24757/f4 4ff1bdfd
   door at=-13,30.75 h=2.06 lock=- reader=0 nav=6 col=-14.5,30.705,-11.5,30.795,2.06,- kind=parting travel=1.48/1.48 swing=
   door at=-14.5,38.75 h=2.06 lock=- reader=0 nav=2 col=-15,38.705,-14,38.795,2.06,- kind=parting travel=0.48/0.48 swing=
   door at=-11.5,38.75 h=2.06 lock=- reader=0 nav=2 col=-12,38.705,-11,38.795,2.06,- kind=parting travel=0.48/0.48 swing=
-  workstations=d945a3df
+  workstations=e0b8a5e1
   stationKinds=bench,board,computer,desk,files,lounge,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
   exit=1 cow=0
-  walk=01cef7a1
-build s24757/f9 b37c7c78
+  walk=eb26afc9
+build s24757/f9 9782d96f
   colliders=2828 meshes=6582 objects=3691 fixtures=1244
-  colliderHash=06da5cf2
+  colliderHash=16ebd54a
   dynamics=1122 destructibles=2827
   door at=-66.5,-59 h=2.06 lock=white reader=1 nav=3 col=-66.545,-59.75,-66.455,-58.25,2.06,- kind=panel travel=1.53 swing=
   door at=-68,-52.5 h=2.06 lock=white reader=1 nav=3 col=-68.75,-52.545,-67.25,-52.455,2.06,- kind=panel travel=1.53 swing=
@@ -1721,10 +1721,10 @@ build s24757/f9 b37c7c78
   door at=-8.5,58.25 h=2.06 lock=- reader=0 nav=4 col=-8.545,57.25,-8.455,59.25,2.06,- kind=parting travel=0.98/0.98 swing=
   door at=-5.25,60.5 h=2.06 lock=- reader=0 nav=2 col=-5.75,60.455,-4.75,60.545,2.06,- kind=parting travel=0.48/0.48 swing=
   door at=-2.25,60.5 h=2.06 lock=- reader=0 nav=2 col=-2.75,60.455,-1.75,60.545,2.06,- kind=parting travel=0.48/0.48 swing=
-  workstations=7ac4b519
+  workstations=e53b54bc
   stationKinds=bench,board,computer,desk,files,lounge,mail,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
   exit=1 cow=0
-  walk=90aba488
+  walk=041b246c
 build s32676/f1 1ebb1ad7
   colliders=1097 meshes=2737 objects=1450 fixtures=505
   colliderHash=787e4756
@@ -1958,10 +1958,10 @@ build s32676/f4 fe768716
   stationKinds=bench,board,computer,desk,lounge,mail,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
   exit=1 cow=0
   walk=181ca73a
-build s32676/f9 1b8ba93a
-  colliders=1408 meshes=3431 objects=1888 fixtures=656
-  colliderHash=941f2cf5
-  dynamics=570 destructibles=1364
+build s32676/f9 e05e2598
+  colliders=1415 meshes=3440 objects=1917 fixtures=656
+  colliderHash=73d18d48
+  dynamics=576 destructibles=1371
   door at=-48.25,-33.5 h=2.06 lock=white reader=1 nav=3 col=-49,-33.545,-47.5,-33.455,2.06,- kind=panel travel=1.53 swing=
   door at=-37.75,-36 h=2.06 lock=white reader=1 nav=3 col=-37.795,-36.75,-37.705,-35.25,2.06,- kind=panel travel=1.53 swing=
   door at=-48.75,-30 h=2.06 lock=white reader=1 nav=3 col=-49.5,-30.045,-48,-29.955,2.06,- kind=panel travel=1.53 swing=
@@ -2082,14 +2082,14 @@ build s32676/f9 1b8ba93a
   door at=-4.5,15.5 h=2.06 lock=- reader=0 nav=6 col=-6,15.455,-3,15.545,2.06,- kind=parting travel=1.48/1.48 swing=
   door at=-3,23 h=2.06 lock=- reader=0 nav=2 col=-3.5,22.955,-2.5,23.045,2.06,- kind=parting travel=0.48/0.48 swing=
   door at=0,23 h=2.06 lock=- reader=0 nav=2 col=-0.5,22.955,0.5,23.045,2.06,- kind=parting travel=0.48/0.48 swing=
-  workstations=ae23e047
+  workstations=2a75d58f
   stationKinds=bench,board,computer,desk,files,lounge,mail,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
   exit=1 cow=0
-  walk=6146e284
-build s40595/f1 c77fa6ee
-  colliders=866 meshes=2131 objects=1135 fixtures=395
-  colliderHash=1960e281
-  dynamics=356 destructibles=777
+  walk=57c2e48e
+build s40595/f1 419912c7
+  colliders=871 meshes=2179 objects=1157 fixtures=395
+  colliderHash=241cbb58
+  dynamics=362 destructibles=782
   door at=-19.5,-27 h=2.06 lock=white reader=1 nav=3 col=-19.545,-27.75,-19.455,-26.25,2.06,- kind=panel travel=1.53 swing=
   door at=-22,-31 h=2.06 lock=white reader=1 nav=3 col=-22.75,-31.045,-21.25,-30.955,2.06,- kind=panel travel=1.53 swing=
   door at=-27.5,-16 h=2.06 lock=grey reader=1 nav=3 col=-27.545,-16.75,-27.455,-15.25,2.06,- kind=panel travel=1.53 swing=
@@ -2158,10 +2158,10 @@ build s40595/f1 c77fa6ee
   door at=4.75,29 h=2.06 lock=- reader=0 nav=6 col=3.25,28.955,6.25,29.045,2.06,- kind=parting travel=1.48/1.48 swing=
   door at=0.75,37 h=2.06 lock=- reader=0 nav=2 col=0.25,36.955,1.25,37.045,2.06,- kind=parting travel=0.48/0.48 swing=
   door at=3.75,37 h=2.06 lock=- reader=0 nav=2 col=3.25,36.955,4.25,37.045,2.06,- kind=parting travel=0.48/0.48 swing=
-  workstations=eb716a00
+  workstations=05e40089
   stationKinds=bench,board,computer,desk,files,lounge,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
   exit=1 cow=0
-  walk=7452b7ab
+  walk=a9ea2fb6
 build s40595/f4 23e89f61
   colliders=1742 meshes=4355 objects=2418 fixtures=793
   colliderHash=d263d2c1
@@ -2323,10 +2323,10 @@ build s40595/f4 23e89f61
   stationKinds=bench,board,computer,desk,files,lounge,mail,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
   exit=1 cow=1
   walk=a102417a
-build s40595/f9 143b9b13
-  colliders=2750 meshes=6848 objects=3662 fixtures=1286
-  colliderHash=28115112
-  dynamics=1217 destructibles=2893
+build s40595/f9 52138c1c
+  colliders=2736 meshes=6822 objects=3663 fixtures=1286
+  colliderHash=18c96d9a
+  dynamics=1215 destructibles=2879
   door at=-53.25,-45.75 h=2.06 lock=white reader=1 nav=3 col=-54,-45.795,-52.5,-45.705,2.06,- kind=panel travel=1.53 swing=
   door at=-65.75,-42.25 h=2.06 lock=white reader=1 nav=3 col=-66.5,-42.295,-65,-42.205,2.06,- kind=panel travel=1.53 swing=
   door at=-59.75,-42.25 h=2.06 lock=white reader=1 nav=3 col=-60.5,-42.295,-59,-42.205,2.06,- kind=panel travel=1.53 swing=
@@ -2533,10 +2533,10 @@ build s40595/f9 143b9b13
   door at=-14.5,60.75 h=2.06 lock=- reader=0 nav=6 col=-16,60.705,-13,60.795,2.06,- kind=parting travel=1.48/1.48 swing=
   door at=-15,65.25 h=2.06 lock=- reader=0 nav=2 col=-15.5,65.205,-14.5,65.295,2.06,- kind=parting travel=0.48/0.48 swing=
   door at=-12,65.25 h=2.06 lock=- reader=0 nav=2 col=-12.5,65.205,-11.5,65.295,2.06,- kind=parting travel=0.48/0.48 swing=
-  workstations=f0836940
+  workstations=dd90de6e
   stationKinds=bench,board,computer,desk,files,lounge,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
-  exit=1 cow=1
-  walk=fb29f28d
+  exit=1 cow=0
+  walk=56eb65ff
 build s48514/f1 46187261
   colliders=1156 meshes=2736 objects=1558 fixtures=572
   colliderHash=fecd6162
@@ -2761,10 +2761,10 @@ build s48514/f4 3dac5fb3
   stationKinds=bench,board,computer,desk,files,lounge,mail,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
   exit=1 cow=0
   walk=2f05a5da
-build s48514/f9 49584baf
-  colliders=1537 meshes=3900 objects=2108 fixtures=767
-  colliderHash=2d1e6a75
-  dynamics=664 destructibles=1514
+build s48514/f9 038cac0f
+  colliders=1543 meshes=3866 objects=2107 fixtures=767
+  colliderHash=81737d4d
+  dynamics=665 destructibles=1520
   door at=-53.75,-34.5 h=2.06 lock=white reader=1 nav=3 col=-54.5,-34.545,-53,-34.455,2.06,- kind=panel travel=1.53 swing=
   door at=-51.25,-26 h=2.06 lock=blue reader=1 nav=3 col=-51.295,-26.75,-51.205,-25.25,2.06,- kind=panel travel=1.53 swing=
   door at=-51.25,-20.5 h=2.06 lock=white reader=1 nav=3 col=-51.295,-21.25,-51.205,-19.75,2.06,- kind=panel travel=1.53 swing=
@@ -2906,10 +2906,10 @@ build s48514/f9 49584baf
   door at=-2,34 h=2.06 lock=- reader=0 nav=6 col=-3.5,33.955,-0.5,34.045,2.06,- kind=parting travel=1.48/1.48 swing=
   door at=-5,41.5 h=2.06 lock=- reader=0 nav=2 col=-5.5,41.455,-4.5,41.545,2.06,- kind=parting travel=0.48/0.48 swing=
   door at=-2,41.5 h=2.06 lock=- reader=0 nav=2 col=-2.5,41.455,-1.5,41.545,2.06,- kind=parting travel=0.48/0.48 swing=
-  workstations=7522f5d2
-  stationKinds=bench,board,computer,desk,files,lounge,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
-  exit=1 cow=1
-  walk=57776546
+  workstations=a8f25c15
+  stationKinds=bench,board,computer,desk,files,lounge,mail,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
+  exit=1 cow=0
+  walk=87edbffc
 build s56433/f1 9ba2a038
   colliders=838 meshes=2231 objects=1212 fixtures=422
   colliderHash=b41dd9b7
@@ -2989,10 +2989,10 @@ build s56433/f1 9ba2a038
   stationKinds=bench,board,computer,desk,files,lounge,mail,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
   exit=1 cow=0
   walk=d8b0c987
-build s56433/f4 aa4712ab
-  colliders=1168 meshes=2731 objects=1528 fixtures=552
-  colliderHash=2d70d29d
-  dynamics=448 destructibles=1164
+build s56433/f4 103c92bb
+  colliders=1174 meshes=2789 objects=1539 fixtures=552
+  colliderHash=eb4dfbe9
+  dynamics=455 destructibles=1171
   door at=-48.75,-22.75 h=2.06 lock=grey reader=1 nav=3 col=-49.5,-22.795,-48,-22.705,2.06,- kind=panel travel=1.53 swing=
   door at=-44.75,-17.25 h=2.06 lock=white reader=1 nav=3 col=-44.795,-18,-44.705,-16.5,2.06,- kind=panel travel=1.48 swing=
   door at=-52.25,-19.25 h=2.06 lock=white reader=1 nav=3 col=-53,-19.295,-51.5,-19.205,2.06,- kind=panel travel=1.53 swing=
@@ -3088,14 +3088,14 @@ build s56433/f4 aa4712ab
   door at=-7,17.25 h=2.06 lock=- reader=0 nav=6 col=-8.5,17.205,-5.5,17.295,2.06,- kind=parting travel=1.48/1.48 swing=
   door at=-7.5,22.75 h=2.06 lock=- reader=0 nav=2 col=-8,22.705,-7,22.795,2.06,- kind=parting travel=0.48/0.48 swing=
   door at=-4.5,22.75 h=2.06 lock=- reader=0 nav=2 col=-5,22.705,-4,22.795,2.06,- kind=parting travel=0.48/0.48 swing=
-  workstations=a5dc2266
+  workstations=6e697351
   stationKinds=bench,board,computer,desk,files,lounge,mail,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
-  exit=1 cow=1
-  walk=851487ff
-build s56433/f9 870e5232
-  colliders=1699 meshes=4165 objects=2261 fixtures=774
-  colliderHash=798376a3
-  dynamics=728 destructibles=1763
+  exit=1 cow=0
+  walk=763d32e0
+build s56433/f9 86b43e37
+  colliders=1721 meshes=4091 objects=2259 fixtures=774
+  colliderHash=bd16747b
+  dynamics=706 destructibles=1784
   door at=-51.5,-38.5 h=2.06 lock=black reader=1 nav=3 col=-51.545,-39.25,-51.455,-37.75,2.06,- kind=panel travel=1.48 swing=
   door at=-56.5,-31 h=2.06 lock=white reader=1 nav=3 col=-57.25,-31.045,-55.75,-30.955,2.06,- kind=panel travel=1.53 swing=
   door at=-51.5,-35.5 h=2.06 lock=white reader=1 nav=3 col=-51.545,-36.25,-51.455,-34.75,2.06,- kind=panel travel=1.53 swing=
@@ -3220,7 +3220,7 @@ build s56433/f9 870e5232
   door at=14.25,23.5 h=2.06 lock=- reader=0 nav=6 col=12.75,23.455,15.75,23.545,2.06,- kind=parting travel=1.48/1.48 swing=
   door at=11.25,33.5 h=2.06 lock=- reader=0 nav=2 col=10.75,33.455,11.75,33.545,2.06,- kind=parting travel=0.48/0.48 swing=
   door at=14.25,33.5 h=2.06 lock=- reader=0 nav=2 col=13.75,33.455,14.75,33.545,2.06,- kind=parting travel=0.48/0.48 swing=
-  workstations=8258b941
+  workstations=bfd05664
   stationKinds=bench,board,computer,desk,files,lounge,mail,meeting,printer,reception,server,servery,shelf,sorting,table,trays,vending
   exit=1 cow=0
-  walk=db28848a
+  walk=e1b174f3
