@@ -23,7 +23,7 @@ import {
   NEIGHBOURS,
   STAFF_ONLY,
 } from './gen/layout.js';
-import { BYSTANDERS, pickTheme, pickType, TYPES } from './enemy-types.js';
+import { BYSTANDERS, pickTheme, pickType, takesBreaks, TYPES } from './enemy-types.js';
 import { makeRng } from './gen/rng.js';
 import { LOUNGE_STEP, LUNCH_FIRST, NUDGE_STEP, STAND_NUDGE } from './enemy-tuning.js';
 
@@ -157,6 +157,13 @@ const LIFT_STEP = 0.25;
 const DINERS = [2, 5];
 
 const DINERS_STANDING = [0, 2];
+
+// Tries at drawing somebody who eats — see `_dinerType`. A dart rather than a
+// filtered list because `pickType` is the floor's own weighted draw and must
+// stay the only thing that decides who is on a floor; twelve is well past what
+// an ordinary theme needs (every hostile human eats) and is what an Automated
+// floor, nine tenths machines, needs to fail HONESTLY rather than by one roll.
+const DINER_TYPE_DARTS = 12;
 
 // Metres of the arrival point kept to yourself. The seats are outside it anyway
 // — no table is furnished into the square kept clear where the player
@@ -1226,7 +1233,9 @@ export const rosterMethods = {
       for (let i = rng.int(DINERS[0], DINERS[1]); i > 0; i--) {
         const seat = this._takeDesk(room, (x, z) => nav.clear(x, z, RADIUS), this.tables);
         if (!seat) break;
-        const diner = this._add(seat.x, seat.z, rng, tuning, TYPES.diner);
+        const type = this._dinerType(layout, rng);
+        if (!type) break;
+        const diner = this._add(seat.x, seat.z, rng, tuning, type);
         this._seat(diner, seat, 'table');
         // Half way through the cycle rather than at the start of it: they are
         // already eating when the floor opens, because that is the picture the
@@ -1256,8 +1265,50 @@ export const rosterMethods = {
           spot = { x, z };
         }
         if (!spot) break;
-        this._add(spot.x, spot.z, rng, tuning, TYPES.diner);
+        // ...and these are simply staff who are IN the canteen rather than people
+        // on a break: no seat, no tray, no blue. Which is what the room is now —
+        // one the player finds, staffed like any other.
+        const type = this._dinerType(layout, rng);
+        if (!type) break;
+        this._add(spot.x, spot.z, rng, tuning, type);
       }
+    }
+
+    /**
+     * Somebody to be found at their lunch, or null if this floor has nobody who
+     * eats.
+     *
+     * ORDINARY STAFF, drawn off the floor's own theme like any other body, and
+     * this used to be a type of its own: `TYPES.diner`, "Staff on Break",
+     * permanently harmless and wearing the canteen blue as its own colour. That
+     * made a body which could never come OFF a break as far as the player can
+     * see — `_lunchLook(e, false)` restores `e.type.visor`, and for that type the
+     * type's visor IS the break colour, so a floor opened with four bodies who
+     * ate, stood up, took their trays back and stayed blue-eyed and harmless for
+     * the rest of the floor. A player reported it, and it is the one thing this
+     * game's tells are not allowed to do: the visor has to be live in both
+     * directions.
+     *
+     * It was a leftover of when the canteen was the room the floor PUT YOU DOWN
+     * IN, where everybody in it had to be harmless because you were standing in
+     * the middle of it holding nothing. The arrival is a lift lobby now, so the
+     * canteen is a room you find and is staffed like any other — and four people
+     * at their lunch among the staff is the picture that was wanted anyway.
+     *
+     * Rejected draws are re-rolled rather than substituted, because the pool has
+     * to be the floor's own: `takesBreaks` is the same test the cycle uses, so an
+     * Infestation floor whose staff are four fifths Reanimated really does open on
+     * a thinner canteen, and an Automated one on a nearly empty one. Nobody at all
+     * is an ordinary answer and returns null — a machine floor's canteen with
+     * nobody in it is more honest than a robot at a table with a tray.
+     */,
+
+    _dinerType(layout, rng) {
+      for (let tries = 0; tries < DINER_TYPE_DARTS; tries++) {
+        const type = pickType(layout.floorNumber, rng, this.theme);
+        if (takesBreaks(type)) return type;
+      }
+      return null;
     }
 
     /**

@@ -13,7 +13,7 @@
 // frame somebody stops being harmless.
 
 import { BODY_RADIUS as RADIUS } from './nav.js';
-import { isMachine, TYPES } from './enemy-types.js';
+import { takesBreaks } from './enemy-types.js';
 import { angleLerp, smoothTo } from './util.js';
 import { LUNCH_PACE, SEAT_HIGH, SEAT_LOW } from './enemy-tuning.js';
 
@@ -68,10 +68,18 @@ const EAT_FIRST = [70, 150];   // ...and the arrival canteen's longer first sitt
 
 const DROP_TIME = [1.5, 3];    // putting the tray back
 
-// The canteen blue, taken off the type that wears it permanently rather than
-// written down twice: what "on a break" looks like is one colour in this
-// building, and a second copy of it is a second colour within a week.
-const BREAK_VISOR = TYPES.diner.visor;
+// The canteen blue: what "on a break" looks like, and the one thing in the
+// building that says somebody is not going to shoot back.
+//
+// It used to be read off `TYPES.diner`, the permanently-harmless type the arrival
+// canteen was cast from — one colour, one place, and the argument was sound right
+// up until that type was the thing wearing it. A body whose OWN visor is the
+// break colour can never come off a break as far as the player can see: it is
+// painted blue when it spawns, blue while it eats, and blue again by
+// `_lunchLook(e, false)`, which restores `e.type.visor`. A player reported
+// exactly that. The type is gone (see `_diners` in roster.js) and the colour
+// belongs here, beside the cycle that is the only thing entitled to use it.
+const BREAK_VISOR = 0x5aa9ff;
 
 /**
  * Mixed onto `Enemies.prototype` by enemies.js — see the note beside
@@ -249,12 +257,10 @@ export const breakMethods = {
      */,
 
     _lunchOk(e) {
-      return e.alive && !e.neutral && !e.behindLock && !e.break && !e.seat
+      return e.alive && takesBreaks(e.type)  // the TYPE half — see enemy-types.js
+        && !e.behindLock && !e.break && !e.seat
         && !e.lunchDone              // one break a floor
         && !e.chore                  // ...and nor is anybody already at a machine
-        && !isMachine(e.type)        // a machine has nowhere to put it
-        && !e.type.undead            // ...and this one is off the payroll
-        && !e.type.posted            // ...and this one does not leave the counter
         && !e.keyed                  // an alarm response is not going for lunch
         && e.state === 'idle'        // ...and neither is anybody already in a fight
         && e.layer === 0;

@@ -263,24 +263,6 @@ export const TYPES = {
     range: 0, melee: false, scale: 0.99, neutral: true,
     suit: 0x6b5a1e, shirt: 0xf2c14e, visor: 0xffc93a, unlockFloor: 1, weight: 0,
   },
-  diner: {
-    // On their break in the canteen the floor arrives in — the only people in
-    // the building you meet before you have taken a step, and the reason that
-    // room reads as somewhere people work rather than a set. Sitting down, which
-    // is the whole of what makes them safe to walk past: a chair means harmless
-    // in this building, and these are the first bodies that rule was ever
-    // written for. See _diners in enemies.js.
-    //
-    // A visor of their own, like every other neutral. Hue says threat here and
-    // shade says which one, so a harmless type needs a colour no hostile wears:
-    // the grey ramp is every hostile human, green is the Reanimated, and blue is
-    // nowhere near the courier's yellow or the cleaner's brown at the range you
-    // first see one from — which for these is across a room, seated, before you
-    // have decided anything.
-    name: 'Staff on Break', hp: 0.5, speed: 1.05, damage: 0, rate: 99, spread: 1,
-    range: 0, melee: false, scale: 1.0, neutral: true, dines: true,
-    suit: 0x3f4a59, shirt: 0xc6d0dc, visor: 0x5aa9ff, unlockFloor: 1, weight: 0,
-  },
   receptionist: {
     // Behind the counter in the lift lobby, and the first person on the floor
     // either way — this is the one body you meet before you have gone through a
@@ -462,6 +444,25 @@ export const TYPES = {
  * how it is drawn — a machine does not stop for lunch, whatever shape it is.
  */
 export const isMachine = (type) => !!type.chassis || !!type.machine;
+
+/**
+ * Whether somebody of this type could ever be on a break.
+ *
+ * The TYPE half of `_lunchOk` in breaks.js, which is where the rest of it lives
+ * — that one asks about a body's state (already seated, already at a machine, in
+ * a fight, behind a lock), and this asks about what it IS. It exists because two
+ * places need the same answer: the cycle, which decides who to send, and
+ * `_diners`, which seeds the canteen with people already half way through one.
+ * Both were getting it separately, and the canteen's copy was the reason a floor
+ * opened with a permanently blue-eyed cast — see the note on that in roster.js.
+ *
+ * Nobody harmless, because a break is what MAKES somebody harmless and the visor
+ * has to be able to say so. No machine, which has nowhere to put a tray. Nothing
+ * undead, which is off the payroll. And nobody posted, who does not leave their
+ * counter.
+ */
+export const takesBreaks = (type) =>
+  !type.neutral && !isMachine(type) && !type.undead && !type.posted;
 
 // The neutrals that are not the toilet guy. He is guaranteed on every floor;
 // these fill in around him so the harmless staff are not one repeated joke.

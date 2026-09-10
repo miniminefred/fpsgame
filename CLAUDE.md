@@ -2356,7 +2356,7 @@ Visors answer that same question first and identity second. Every hostile wears 
 — one ramp from near-white (Survey Drone, then Intern) to near-black (Legacy Unit),
 brightest for what dies to a look and darkest for what does not — and the Reanimated wear
 green. The harmless are the only ones in an actual colour: white for the Panicking Staffer,
-brown for the Night Cleaner, yellow for the Courier, blue for the Staff on Break, violet for
+brown for the Night Cleaner, yellow for the Courier, blue for ANYBODY ON A BREAK, violet for
 the Receptionist, chartreuse for the Contractor, teal for the Welder Unit and magenta for the
 Sentry Unit. So hue says threat, shade says which one, and no two types share a visor — and
 the palette is now nearly full, which is a fact to have in hand before adding a neutral. See

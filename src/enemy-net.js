@@ -187,7 +187,13 @@ export const netMethods = {
         // the break bit answers that: on a break, the seat is a canteen table by
         // construction, since that is the only seat a break ever ends at.
         if (!(packed & SNAP_SEAT)) e.seat = null;
-        else e.seat ??= (packed & SNAP_BREAK) || e.type.dines ? 'table' : 'desk';
+        // `|| e.type.dines` used to be the other half of this, for the arrival
+        // canteen's own type — which was seated by the SEED rather than by a
+        // runtime decision, so the break bit was not on the wire for it. That
+        // type is gone (see `_dinerType` in roster.js): the diners are ordinary
+        // staff on an ordinary break now, so they carry the break bit like
+        // everybody else and it answers for them too.
+        else e.seat ??= (packed & SNAP_BREAK) ? 'table' : 'desk';
 
         // The break itself, which is the visor and the empty hands. Kept as a
         // plain flag rather than the host's own `break` object: the joiner runs no
