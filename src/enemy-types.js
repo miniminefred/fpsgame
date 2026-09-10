@@ -168,6 +168,41 @@ export const TYPES = {
     suit: 0x494338, shirt: 0xd97a2e, visor: 0x8f959b, unlockFloor: 1, weight: 0,
   },
 
+  clerk: {
+    // Whatever used to sit at the desk. The baseline machine and the one there
+    // are a hundred of, so its numbers are deliberately near an Analyst's: a
+    // floor of these has to feel like an office being worked, and the ones with
+    // forks and torches read as exceptions to it.
+    name: 'Clerk Unit', hp: 1.15, speed: 1.02, damage: 0.95, rate: 1, spread: 1.15,
+    range: 14, melee: false, scale: 1, chassis: 'clerk', voice: 'robot',
+    // Faster onto a target than the man it replaced, and nowhere near the
+    // Sentry: it was doing a spreadsheet ninety seconds ago too, it just does
+    // not have to put anything down first.
+    aimMul: 0.95,
+    suit: 0x8d949c, shirt: 0x4a5058, visor: 0x949ba3, unlockFloor: 1, weight: 0,
+    // RESTORED, and its absence is the sharpest thing in this file's history.
+    // e6500f7 took the Loader Unit off the roster and deleted this entry along
+    // with it, while leaving `clerk: 0.37` in the Automated share and
+    // `CHASSIS.clerk` in rigs.js — the rig, the biggest slice of the shift, and
+    // five other files' comments all still describing it.
+    //
+    // `themeUsable` requires EVERY share key to resolve, and rightly: a shift's
+    // share is its identity rather than a tilt. So a share naming a type that
+    // does not exist does not thin the shift, it DELETES it — and the Automated
+    // floor could not be drawn at any depth. Measured before this went back:
+    // 0.0% over 16,000 draws a band, at every band. Everything the shift owns
+    // went with it and none of it is small: the machine roster, parcel runs
+    // (jobs.js), the parcel lines, the service openings, the charging docks, the
+    // washing machine that gets off the ground, the Maintenance Workers in the
+    // corridors and the blue tint.
+    //
+    // It was invisible for one reason worth writing down: `pickTheme` returns
+    // `forced` BEFORE it walks the usable list, so `dev.shift('automated')` was
+    // unaffected — every measurement this file's own comments quote about a
+    // machine floor was taken on a pinned one, which is the one way to look at
+    // this shift and not notice it never comes up on its own.
+  },
+
   welder: {
     // On the racks, and getting on with it. The quickest chassis on the floor —
     // it kept the pace it had when it was the thing that ran at you, which is
