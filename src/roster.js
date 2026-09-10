@@ -16,8 +16,11 @@ import {
   centreX,
   centreZ,
   CORRIDOR,
+  DOOR_CLEAR,
+  doorsOnRoom,
   FACING,
   FIRST_CONTACT_GAP,
+  NEIGHBOURS,
   STAFF_ONLY,
 } from './gen/layout.js';
 import { BYSTANDERS, pickTheme, pickType, TYPES } from './enemy-types.js';
@@ -213,6 +216,100 @@ function liftSpots(layout, nav, corridors) {
     }
   }
   return out;
+}
+
+/**
+ * The tiles of one room that are its FLOOR rather than a pocket in it.
+ *
+ * FITTING IS NOT THE SAME AS BEING CONNECTED, which is the lesson `liftSpots`
+ * above paid for and this pool never learned. `nav.clear` and `nav.fitsAt` both
+ * ask about a single tile, and a tile can pass either and still be an island: the
+ * furnisher is free to leave a pocket of floor ringed by its own props, and a
+ * body put down in one stands there for the whole floor. `_spawnPoints`' own
+ * comment has always described that failure exactly — "a tile an enemy can stand
+ * on but never leave, and spawning there makes it a statue" — and then tested for
+ * it with a point test, which cannot see it. Measured over 8 floors: 26 of 1044
+ * bodies stranded, and ALL 26 on tiles that pass `fitsAt` and belong to a pocket
+ * (openplan 9, storage 6, copyroom 5, the lift lobby 4, server 1, security 1).
+ * Nought were the point-test case, so asking `fitsAt` instead would have bought
+ * nothing.
+ *
+ * It is answered INSIDE the room, and the largest region wins rather than the one
+ * holding a doorway — which is a decision, and the two obvious alternatives are
+ * both wrong here:
+ *
+ *   - Flooding the whole floor from the corridors is what `liftSpots` does, and
+ *     at the moment the roster is placed it refuses to staff the building. Every
+ *     reader is still red and a badged door is out of the nav grid, so the flood
+ *     reaches the corridors and almost nothing else. Measured: 2 rooms of 50.
+ *   - Adding the doorways back to the mask does not bridge them either, and the
+ *     reason is worth knowing. `fits` is `walk` eroded by a body radius, so a
+ *     doorway missing from `walk` takes the tiles either side of it out of `fits`
+ *     as well: opening the 3 door tiles leaves the apron blocked and the room
+ *     still sealed. Measured: 266 of 269 doorways blocked, and still 2 rooms of
+ *     50. Doing it properly means re-eroding a copy of `walk` — which is
+ *     `setBadgeTiles` in nav.js, owned by doors.js and not yet called this early.
+ *
+ * So it is anchored on the room's own DOORWAYS, and the seed is walked inward
+ * rather than taken beside the opening — which is the erosion above, handled
+ * instead of worked around. A badged doorway takes a tile of apron either side of
+ * it out of `fits`, so the tile against the opening is no seed at all; the apron
+ * is reserved floor for DOOR_CLEAR tiles before a prop is placed, so stepping in
+ * until a body fits finds the region the doorway really opens onto and stops well
+ * before it could wander into a pocket.
+ *
+ * Anchoring on SIZE instead was tried first and is not good enough: it costs the
+ * same and leaves a third of these standing, because a room's biggest region is
+ * not always the one its door lands in — 26 stranded bodies became 19, with
+ * copyrooms getting slightly worse. Every region a doorway reaches is fair game,
+ * because a room with two doors has two ways in and a body by either of them can
+ * leave by it.
+ */
+function roomFloor(room, nav, doors) {
+  const { W } = nav;
+  const w = room.x1 - room.x0, h = room.y1 - room.y0;
+  if (w <= 0 || h <= 0) return null;
+  const seen = new Uint8Array(w * h);
+  const q = [];
+  const push = (x, y) => {
+    if (x < 0 || y < 0 || x >= w || y >= h) return false;
+    const i = y * w + x;
+    if (seen[i] || !nav.fitsAt(room.x0 + x, room.y0 + y)) return false;
+    seen[i] = 1;
+    q.push(i);
+    return true;
+  };
+
+  // One seed per doorway, stepped inward until a body fits.
+  for (const d of doorsOnRoom(doors, room)) {
+    const cx = Math.floor((d.x0 + d.x1) / 2), cy = Math.floor((d.y0 + d.y1) / 2);
+    // Which side of the opening this room is on, and so which way is inward.
+    const dir = d.vertical
+      ? (d.x0 - 1 >= room.x0 && d.x0 - 1 < room.x1 ? [-1, 0] : [1, 0])
+      : (d.y0 - 1 >= room.y0 && d.y0 - 1 < room.y1 ? [0, -1] : [0, 1]);
+    const from = d.vertical
+      ? [dir[0] < 0 ? d.x0 - 1 : d.x1, cy]
+      : [cx, dir[1] < 0 ? d.y0 - 1 : d.y1];
+    for (let step = 0; step < DOOR_CLEAR; step++) {
+      const tx = from[0] + dir[0] * step - room.x0;
+      const ty = from[1] + dir[1] * step - room.y0;
+      if (push(tx, ty)) break;
+    }
+  }
+  if (!q.length) return null;
+
+  for (let head = 0; head < q.length; head++) {
+    const i = q[head], x = i % w, y = (i - x) / w;
+    for (const [dx, dy] of NEIGHBOURS) push(x + dx, y + dy);
+  }
+
+  // Handed back as a test rather than as a set: the caller has a room and a tile,
+  // and every other spawn test in there is a predicate.
+  return (tx, ty) => {
+    const x = tx - room.x0, y = ty - room.y0;
+    if (x < 0 || y < 0 || x >= w || y >= h) return false;
+    return seen[y * w + x] === 1;
+  };
 }
 
 /**
@@ -1416,6 +1513,16 @@ export const rosterMethods = {
       const workFirst = [...rooms].sort((a, b) => deskless(a) - deskless(b));
 
       const minDist = 14;
+      // A room's main floor, worked out once per room the first time it is asked
+      // for. See `roomFloor`: fitting is not the same as being connected, and
+      // this is the pool that stands most of a floor's staff up.
+      const floors = new Map();
+      const onFloor = (room, tx, ty) => {
+        if (!floors.has(room)) floors.set(room, roomFloor(room, nav, layout.doors));
+        const test = floors.get(room);
+        return !test || test(tx, ty);
+      };
+
       // Where a body may be put down at all. A single walkable tile is not enough:
       // movement tests a whole body radius, so a tile wedged against furniture is
       // one an enemy can stand on but never leave, and spawning there makes it a
@@ -1460,7 +1567,7 @@ export const rosterMethods = {
               if (!nav.walkable(tx, ty)) continue;
 
               const x = nav.wx(tx), z = nav.wz(ty);
-              if (!ok(x, z)) continue;
+              if (!ok(x, z) || !onFloor(room, tx, ty)) continue;
 
               spots.push({ x, z, room });
               break;
