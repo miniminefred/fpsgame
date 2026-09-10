@@ -45,3 +45,50 @@ globalThis.document = {
   createElementNS: () => ({}),
 };
 globalThis.self = globalThis.self ?? globalThis;
+
+/**
+ * Everything the game hands `Destruction` and the roster, stubbed — and a LOG of
+ * what they were asked to do.
+ *
+ * It is a RECORDER rather than a mock, which is the distinction the damage layer
+ * of tools/snapshot.mjs is built on: what a fragment is worth is decided before
+ * it is thrown, so recording the throw is a fact about the game, while where it
+ * comes to rest would be a fact about cannon-es.
+ *
+ * It lives beside the DOM stub for the same reason that one does — there were
+ * two copies of it. snapshot.mjs and probe-kill.mjs both break props, and a
+ * world stub that is missing a method reads as the PROP throwing rather than as
+ * the stub being short: `effects.impact` absent reports three prop kinds as
+ * broken when nothing is wrong with any of them.
+ */
+export const AUDIO = new Proxy({}, { get: () => () => {} });
+
+export function stubWorld() {
+  const log = { bodies: [], spills: [], statics: 0, fixtures: 0, raised: 0 };
+  return {
+    log,
+    physics: {
+      addBox({ size, position, mass }) {
+        log.bodies.push({ x: size.x, y: size.y, z: size.z, mass });
+        return { id: log.bodies.length };
+      },
+      impulse() {}, isSleeping: () => true, remove() {},
+      removeStatic() { log.statics++; },
+      blast() {}, syncMesh() {},
+    },
+    effects: { impact() {}, setSurfaces() {}, removeSurfaces() {} },
+    audio: AUDIO,
+    shooting: {
+      addHittables(list) { log.raised += list.length; },
+      removeHittables(list) { log.raised -= list.length; },
+    },
+    lighting: { removeFixture() { log.fixtures++; }, spark: null },
+    spills: {
+      start(x, y, z, opts) {
+        log.spills.push(`${opts.liquid}${opts.burst ? '!' : ''}`);
+        return { live: true };
+      },
+      feed() {},
+    },
+  };
+}

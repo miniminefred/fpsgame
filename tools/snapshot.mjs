@@ -42,7 +42,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import './headless.mjs';
+import { AUDIO, stubWorld } from './headless.mjs';
 
 const { generateLayout } = await import('../src/gen/layout.js');
 
@@ -204,7 +204,6 @@ const ROSTER_SECONDS = 40;
 const DEAD = [{ x: 0, y: 0, z: 0, layer: 0, dead: true, hurt() {} }];
 // ...and a silent audio bank, because `animate` voices a footfall on every
 // stride and the game never runs without one.
-const AUDIO = new Proxy({}, { get: () => () => {} });
 
 /**
  * A seeded `Math.random`, and without it none of the roster layer is a snapshot
@@ -348,36 +347,11 @@ const GEN_CASES = [[1000, 7], [16838, 1], [103947, 3], [135623, 9]];
  * back. `isSleeping` answers true for the same reason: a sleeping body is one
  * the pool leaves alone, which is what stops `update` syncing a mesh against a
  * transform nothing is maintaining.
+ *
+ * `stubWorld` itself now lives in headless.mjs beside the DOM stub, because
+ * probe-kill.mjs breaks props too and a second copy of it is how three healthy
+ * prop kinds came to be reported as throwing.
  */
-function stubWorld() {
-  const log = { bodies: [], spills: [], statics: 0, fixtures: 0, raised: 0 };
-  return {
-    log,
-    physics: {
-      addBox({ size, position, mass }) {
-        log.bodies.push({ x: size.x, y: size.y, z: size.z, mass });
-        return { id: log.bodies.length };
-      },
-      impulse() {}, isSleeping: () => true, remove() {},
-      removeStatic() { log.statics++; },
-      blast() {}, syncMesh() {},
-    },
-    effects: { impact() {}, setSurfaces() {}, removeSurfaces() {} },
-    audio: AUDIO,
-    shooting: {
-      addHittables(list) { log.raised += list.length; },
-      removeHittables(list) { log.raised -= list.length; },
-    },
-    lighting: { removeFixture() { log.fixtures++; }, spark: null },
-    spills: {
-      start(x, y, z, opts) {
-        log.spills.push(`${opts.liquid}${opts.burst ? '!' : ''}`);
-        return { live: true };
-      },
-      feed() {},
-    },
-  };
-}
 
 /**
  * The middle of a prop, in the frame its boxes are authored in.
