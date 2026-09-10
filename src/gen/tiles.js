@@ -79,6 +79,31 @@ export const FACING = [[0, -1], [1, 0], [0, 1], [-1, 0]];
  */
 export const NEIGHBOURS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
+/**
+ * How wide a gap has to be, IN TILES, for a body to walk it on the nav grid.
+ *
+ * Three, and the third one is not slack. Two tiles is a metre of floor, which is
+ * plenty for the PLAYER — their collision is continuous and a 0.8 m body walks a
+ * 1 m gap. It is not enough for anybody else: the nav grid is eroded by the body
+ * radius per tile (`fits` in nav.js), and that test reaches 0.11 m past the tile
+ * it is centred on, so whether a 1 m gap survives depends on where the tile
+ * boundaries happen to fall in it. What comes out is a gap the player can walk
+ * and the staff cannot.
+ *
+ * It lives here because it is a fact about the grid rather than about any one
+ * placer, and because two very different things need the same number and got it
+ * wrong separately. `reserveClearances` in gen/furnish.js reserves lanes this
+ * wide — the nav sweep found a quarter of all levels unreachable from their own
+ * doorway when it was two. And the cafeteria's TABLE_PITCH did not have it at
+ * all: its tables are STATIC and laid in ranks, so a 1 m along-row gap eroded
+ * shut and turned the whole seating block into parallel lanes joined to nothing.
+ * Measured over 6 floors, 5 with a canteen: 26 of the room's own chairs off any
+ * field flooded from the corridors, and 12 bodies standing on floor they could
+ * not leave — which is a player reporting people stuck in the cafeteria. At
+ * three tiles both are zero and the room loses 5 seats in 942.
+ */
+export const NAV_LANE = 3;
+
 // Tile <-> world helpers. The building is centred on the origin.
 //
 // There are two world positions for a tile and they are half a tile apart:

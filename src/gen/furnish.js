@@ -14,6 +14,7 @@ import {
   CORRIDOR,
   DOOR_CLEAR,
   isOpen,
+  NAV_LANE,
   NEIGHBOURS,
   tileX,
   tileY,
@@ -246,32 +247,10 @@ export function reserveClearances(layout, reserved) {
   reserveStairRoutes(layout, mouths, stampTiles);
 }
 
-/**
- * How wide a reserved lane is, in tiles.
- *
- * Three, and the third one is not slack. Two tiles is a metre of floor no prop can
- * reach into, which is plenty for the PLAYER — their collision is continuous and a
- * 0.8 m body walks a 1 m gap. It is not enough for anybody else: the nav grid is
- * eroded by the body radius per tile (`fits` in nav.js), and that test reaches 0.11 m
- * past the tile it is centred on, so both columns of a two-wide lane are disqualified
- * by whatever is standing beside the lane. The result was a lane the player could walk
- * and the enemies could not — which the nav sweep found as a quarter of all levels
- * being unreachable from their own doorway.
- */
-
-/**
- * How wide a reserved lane is, in tiles.
- *
- * Three, and the third one is not slack. Two tiles is a metre of floor no prop can
- * reach into, which is plenty for the PLAYER — their collision is continuous and a
- * 0.8 m body walks a 1 m gap. It is not enough for anybody else: the nav grid is
- * eroded by the body radius per tile (`fits` in nav.js), and that test reaches 0.11 m
- * past the tile it is centred on, so both columns of a two-wide lane are disqualified
- * by whatever is standing beside the lane. The result was a lane the player could walk
- * and the enemies could not — which the nav sweep found as a quarter of all levels
- * being unreachable from their own doorway.
- */
-const LANE = 3;
+// How wide a reserved lane is: NAV_LANE, because that is what a lane IS — the
+// width a body can actually walk on the nav grid. See its declaration in
+// gen/tiles.js, which is also the number the canteen's ranks are spaced by.
+const LANE = NAV_LANE;
 
 /**
  * A room you have to walk THROUGH keeps a lane between its doorways.
@@ -295,15 +274,6 @@ const LANE = 3;
  * is what the rest of this function already does for the doorways themselves: a
  * floor cannot be furnished into a state it then has to be rescued from.
  */
-/**
- * Every doorway of every room, from the inside.
- *
- * `room.doors` holds only the doors that room CUT (see cutDoor in gen/carve.js), and
- * the one its neighbour cut into it is in the wall all the same — so the sides are
- * recovered from the tiles either side of each opening. A hall door probes two
- * corridor tiles and drops out, which is right: it is not in anybody's room.
- */
-
 /**
  * A room you have to walk THROUGH keeps a lane between its doorways.
  *

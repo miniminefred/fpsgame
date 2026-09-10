@@ -5,7 +5,7 @@
 // "a copier against a wall and some cardboard", and nothing about coordinates.
 
 import { footprintOf, QUARTER, tryPlace } from './props.js';
-import { doorSide, doorsOnRoom, TILE } from './layout.js';
+import { doorSide, doorsOnRoom, NAV_LANE, TILE } from './layout.js';
 import { SKIRT } from './furnish.js';
 import {
   aisles,
@@ -1029,9 +1029,18 @@ function cafeteria(sink, bounds, rng, room, doors) {
   // 2.3 m and STATIC, so the gap between two of them is a gap in a wall the
   // length of the room. At the 2.9 m that looked right it was 0.6 m, which a
   // 0.8 m body does not fit through — a row would have sealed every gangway
-  // behind it off from the next but for the ends. Same lane SCATTER_LANE keeps
-  // beside anything dropped in the middle of a room, and for the same reason.
-  const TABLE_PITCH = 3.3;
+  // behind it off from the next but for the ends.
+  //
+  // ...and 3.3 was the same mistake one notch smaller, which is why this is now
+  // DERIVED rather than typed. A 1 m gap clears a 0.8 m body, so the player
+  // walked it and it looked fine; NAV_LANE is about the grid everybody else
+  // uses, where a 1 m gap survives only if the tile boundaries fall kindly in
+  // it. They mostly do not, so the ranks sealed shut into parallel lanes joined
+  // to nothing: 26 of the room's own chairs unreachable and 12 bodies standing
+  // on floor they could not leave, which is a player reporting people stuck in
+  // the cafeteria. Derived off the table's real footprint like `reach` and
+  // `half` below, never off the catalogue number in the comment above.
+  const TABLE_PITCH = footprintOf(sink, 'canteenTable').w + NAV_LANE * TILE;
 
   const [a0, a1, b0, b1] = rot === 0
     ? [seat.x0, seat.x1, seat.z0, seat.z1]
