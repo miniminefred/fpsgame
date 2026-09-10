@@ -206,7 +206,10 @@ See **Co-op** below.
 index.html        Entry shell: overlay, HUD markup, minimap canvas
 vite.config.js    Dev/preview server pinned to port 8090
 tools/
-  headless.mjs         The DOM stub the real builder needs, for tools without a browser
+  headless.mjs         The DOM stub the real builder needs, for tools without a
+                       browser -- and `stubWorld`, the recorder every tool that
+                       breaks a prop hands to Destruction. Both live here for the
+                       same reason: there were two copies of them
   validate-layout.mjs  Headless floorplan invariants (connectivity, doors, sealing)
   validate-props.mjs   Headless furniture-placement invariants
   validate-nav.mjs     Headless multi-level routing invariants
@@ -214,12 +217,18 @@ tools/
                        built floor, and the roster forty seconds into it -- and
                        diffs it against the committed baselines. The regression
                        test. See "Proving a change" below
-  baseline/            ...those baselines, three text files under version control:
-                       plan.txt, build.txt, roster.txt
+  baseline/            ...those baselines, four text files under version control:
+                       plan.txt, build.txt, roster.txt, damage.txt
   probe-visitor.mjs    Drives the contractor's errand at a fixed 1/60. See
                        "Somebody visiting" below
   probe-chore.mjs      Drives ONE job on the chore table and reports whether its
                        station survived, anybody reached it, and it finished
+  probe-lunch.mjs      Asks the question a player can see: is anybody standing on
+                       floor they cannot LEAVE? See "Lunch" below -- it is what a
+                       report of people stuck in the cafeteria came down to
+  probe-kill.mjs       Shoots everything. Every type in TYPES through the real hit
+                       path, and every prop on a floor rather than the baseline's
+                       sample. See "Proving a change" below
 src/
   main.js         Bootstrap: wires modules, runs the render loop
   game.js         The run: floor progression and difficulty curves
@@ -611,6 +620,32 @@ It earns its keep as a test rather than only as a diff. `deskAgainstWall` kept a
 call to a helper that had been renamed: `npm run build` was perfectly happy with
 it (JavaScript, no types), and the snapshot failed 24 of 24 floors on the spot.
 
+**What it cannot answer is whether a thing works at ALL**, and that is the split
+worth knowing before reaching for it. A baseline says today's wreckage matches
+yesterday's, over whatever the 8 damage floors happened to contain — so a kind it
+never sampled is unproven, and a BODY dying is not in it anywhere.
+`tools/probe-kill.mjs` is that other half and sweeps the vocabulary instead:
+
+```bash
+node tools/probe-kill.mjs         # both sweeps  (also: types, props)
+```
+
+  - **types** — all 24 entries in `TYPES`, shot through the real `enemies.hit`
+    path. Every one has to die, `onDeath` has to fire exactly once, the hostile
+    count may move only for a hostile, and every hitbox has to drop its
+    back-reference to the corpse while keeping `isEnemyPart` — which is what
+    makes the next round pass THROUGH a body rather than being spent on it.
+  - **props** — every destructible and every loose prop on 6 floors rather than
+    the baseline's 30-and-12 sample: 10,818 of them, all breaking, none throwing,
+    3,569 colliders retired and 2,547 handed their nav tiles back. The generator
+    is excluded from those last two by name, because a wreck keeping its collider
+    and its tiles is the design.
+
+It cannot report per catalogue KIND and says so rather than implying otherwise: a
+static destructible records `kind: 'prop'` and its substance, never which entry of
+`PROPS` built it (`gen/sink.js`). `validate-props.mjs --catalogue` is what audits
+the catalogue itself.
+
 Everything is **rounded** before it is written — four decimals, a tenth of a
 millimetre — because a change that reassociates one floating-point expression is
 not a change to the game and must not read as one. A case that THROWS is recorded
@@ -674,6 +709,16 @@ invalidating it. `util.js` holds the scalar helpers (`clamp`, `lerp`, `angleLerp
 `smoothTo`, `dist2`, `hexCss`) that had two to five copies each across twelve files.
 `body-pool.js` holds the lifecycle of a loose body that times out — brass and debris were
 the same five operations written twice, down to the identical comment above both `clear()`s.
+
+**`NAV_LANE` in `gen/tiles.js` is the same argument about a GAP** — how wide one has to
+be, in tiles, for a body to walk it on the nav grid. Three, because two is a metre of
+floor, which the player walks (their collision is continuous) and the staff cannot: `fits`
+erodes by a body radius per tile and reaches 0.11 m past the tile it is centred on, so
+whether a 1 m gap survives depends on where the tile boundaries fall in it. Two very
+different things need that number and got it wrong separately — `reserveClearances`
+reserves lanes this wide, and the canteen's `TABLE_PITCH` did not have it at all and
+sealed its own seating block shut. It lives in the tile vocabulary because it is a fact
+about the grid rather than about any one placer.
 
 `util.js` is scalar-only on purpose. The shared **vectors** are not collected, because
 `destruction.js` documents a real bug caused by two call sites sharing one scratch
@@ -1796,7 +1841,26 @@ handle.**
   registers a workstation, and a canteen chair is somewhere to eat lunch rather than
   somewhere a body works.
 
-After all three: **median 4 tables and 8 chairs** per cafeteria, and none without seating.
+- **...and the ranks are spaced by what a body can WALK, not by what fits**
+  (`TABLE_PITCH`, derived off `NAV_LANE`). This is the fourth one and it is the one a
+  player found: *in cafeteria some people cant get out and are stuck*. The pitch was
+  3.3 m against a 2.3 m table, so a 1 m gap along each rank — which clears a 0.8 m
+  body, so the PLAYER walks it and it looks right. The nav grid holds a body to whole
+  tiles and erodes by its radius, so whether a 1 m gap survives depends on where the
+  tile boundaries fall in it, and mostly they do not. The tables are STATIC, so the
+  ranks sealed: the seating block came out as parallel lanes joined to nothing and to
+  no doorway, `standable` dropped the chairs in them from the pool, and anybody the
+  shift stood in there or `_diners` sat down in there was stuck for the whole floor.
+  Measured over 6 floors, 5 with a canteen: **26 islanded chairs and 12 bodies standing
+  on floor they could not leave, both to 0**, and lunches went UP (12 → 18) because the
+  seats can now be reached. It costs 11% of the seating and no canteen loses its own.
+  The same mistake `LANE` in gen/furnish.js was written to fix, which is why the number
+  is now in one place — see `NAV_LANE` in gen/tiles.js.
+
+After all four: **median 19 tables and 47 chairs** per cafeteria, and none without
+seating. (It was "4 and 8" here for a long time, from before the open-plan budget moved
+which rooms a canteen is picked from — a stale number in this file is worth more
+suspicion than a stale one in the code, because nothing fails when it drifts.)
 
 
 **And it opens with people in it who are not a fight** (`_diners`). Two to five staff at
@@ -1881,6 +1945,34 @@ canteen: there used to be a mid-sized `canteen` role as well — round tables an
 somewhere on the floor to eat — and having both meant a floor with two rooms making the
 same statement, one composed and one scattered. This is the composed one, so it stayed.
 
+**And nobody is stood in a POCKET of a room either** (`roomFloor` in `roster.js`).
+`_spawnPoints` stands most of a floor's staff up, and its own comment has always described
+this failure exactly — "a tile an enemy can stand on but never leave, and spawning there
+makes it a statue" — and then tested for it with `nav.clear`, which is a POINT test and
+cannot see it. Fitting is not the same as being connected, which is the lesson `liftSpots`
+two functions up paid for. Measured over 8 floors: **26 of 1044 bodies standing on floor
+with no route off it, and ALL 26 on tiles that pass `fitsAt`** and belong to a pocket the
+furnisher ringed with its own props. Nought were the point-test case, so tightening `clear`
+to `fitsAt` would have bought nothing.
+
+It is answered INSIDE the room — one bounded BFS per room, anchored on the room's own
+doorways — and the two cheaper anchors are worth knowing because each fails for its own
+reason. Flooding the whole floor from the corridors (what `liftSpots` does) **refuses to
+staff the building** at this point in the frame: every reader is still red, a badged door
+is out of the nav grid, and the flood reaches 2 rooms of 50 (headcount 1044 → 221). Adding
+the doorways back to the mask does not bridge them either, and that is the sharp edge:
+`fits` is `walk` eroded by a body radius, so a doorway missing from `walk` takes the apron
+either side out of `fits` too — opening the 3 door tiles leaves 266 of 269 doorways still
+sealed. The seed is walked INWARD until a body fits instead, which is what `DOOR_CLEAR` of
+reserved apron is there for. And anchoring on the biggest region rather than on a door is
+cheap and not good enough, because a room's largest region is not always the one its door
+lands in.
+
+26 → 13, headcount 1044 → 1037. The 13 left are not this pool's and are two other things:
+7 are in rooms cut off from the corridor ENTIRELY, which no rule inside the room could
+help, and 6 come from the hand placers — the receptionist stands in the pocket behind her
+own counter BY DESIGN. `tools/probe-lunch.mjs` is the instrument.
+
 ### What furniture is never allowed to close (`reserveClearances` in `gen/furnish.js`)
 A tile mask the furnisher may not place into, stamped before a single prop is put down —
 because a floor should not be furnished into a state it then has to be rescued from. Doorways
@@ -1920,6 +2012,34 @@ before the cardboard and red after, and the mechanism was not the cardboard — 
 crates that could have been dealt to any seed. A **690-floor** sweep of the pre-cardboard code
 found nothing, which is how a 1-in-300 fragility hides: the seeds are fixed, so a green sweep
 is evidence about those seeds and not about the generator.
+
+**And a THIRD home, which is the lane itself: a reserved lane has to be a route**
+(`reserveLane`, `laneConnects`, `walkedLane`). The lane between two doorways is an L —
+along z from one, then along x to the other — and that is a route only if the room is a
+clear rectangle. One room in the building is not: a lift car is a tiny room carved INTO
+its lobby (`gen/lifts.js`), so the lobby's own rect has two blocks of SOLID in the middle
+of it, and the L was reserved straight through them. That is the worst of both — it
+protects floor nothing can walk on and leaves the floor the route really runs over free
+to furnish. `5.geom-connected` failed on it: on `s148308955/f10` the L ran through the
+near car (8 solid tiles, and the office's mouth reached 12 of the L's 46 open tiles with
+the front door not among them), the reception counter then legally took the 2 m strip
+beside the cars, and 1.7 m of counter across 2.5 m of room leaves 0.65 m against a 0.8 m
+body. An office sealed, a hostile inside it, and a floor that can never be cleared.
+
+The L is TESTED now rather than assumed, and a room it does not cross is WALKED instead —
+a shortest walk over the room's own open tiles with a `NAV_LANE`-wide box round each tile.
+Testing rather than always walking is the point: the L is right for every ordinary BSP
+room, so the floors that were fine reserve exactly the tiles they always did. The broken L
+is COMMON and the sealed room is rare, which is how it lasted — over 600 floors, 293 of
+16,934 lanes (1.73%) had an L that is not a route and 158 floors had at least one, and
+**every one of the 293 is an `exit` room**. 1 floor in 750 before, 0 in 750 after.
+
+**And a lift door is not a doorway of the lobby at all** (`doorMouths`). It has the same
+room on BOTH sides, so both probes land in the lobby: every lobby counted as a room you
+walk through, and lanes were reserved from its front door to the INSIDE OF EACH CAR.
+Dropping out is what a hall door already does one branch up, and for the same reason — it
+is not in anybody's room. Reserved floor 53.4% → 43.9% of the lobby, and the counter lands
+in 60 of 60 against 59.
 
 ### An office is mostly open floor (`OPEN_SHARE`/`bsp` in `gen/carve.js`)
 An office building is mostly open plan with the cellular offices round the edge of it, and
