@@ -161,14 +161,29 @@ function openPlan(sink, { x0, z0, x1, z1 }, rng) {
       const cz = z0 + padZ + (r + 0.5) * PITCH_Z;
       const facing = rot === 0 ? 1 : -1;
 
-      tryPlace(sink, 'desk', cx, cz, rot, rng);
+      // ONLY IF THE DESK ACTUALLY WENT DOWN. `tryPlace` returns false whenever
+      // the pod's spot is spoken for — a doorway apron, a reserved through-lane,
+      // a neighbour rounded outward to whole tiles — and this ignored the answer
+      // and seated the pod regardless. Three things came of that, and a player
+      // reported the first: a chair pulled up to NOTHING with a desk job
+      // registered at it, so a body was sent to sit there and type at a PC that
+      // does not exist; `seatFacing` naming the wrong prop, because it reads
+      // `sink.placed()` and the last prop the sink really stood up is the pod
+      // next door's desk or a partition (measured 3.7 m to 11 m away), so
+      // `_gone` in chores.js was watching furniture on the other side of the
+      // room; and `_spawnPoints` sizing the room's shift off desks that are not
+      // there. The other three callers of `seatFacing` in this file have always
+      // guarded it. Measured: 10 of 174 seated workers, all of them here.
+      //
       // Through `seatFacing`, which is the same 0.85 m in front of the desk this
       // used to place by hand and one quarter turn different: a chair at the
       // DESK's rotation has its back to the desk, so every pod in the building
       // was a chair somebody would have to sit in backwards. Invisible while
       // they were empty; the moment there was a body in one it was the only
       // thing in the room.
-      seatFacing(sink, 'desk', cx, cz, rot, rng, 0.85);
+      if (tryPlace(sink, 'desk', cx, cz, rot, rng)) {
+        seatFacing(sink, 'desk', cx, cz, rot, rng, 0.85);
+      }
       tryPlace(sink, 'partition', cx, cz + facing * 0.62, 0, rng);
       if (c < cols - 1) tryPlace(sink, 'partition', cx + PITCH_X / 2 - 0.05, cz, 1, rng);
       // No cabinet in the pod. Wherever it went it stood in the cross aisle, and

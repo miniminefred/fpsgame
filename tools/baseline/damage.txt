@@ -1,5 +1,5 @@
-damage s1000/f7 7fd37bad
-  statics=2221 loose=1037 colliders=2197 walk=46281
+damage s1000/f7 a5b864e0
+  statics=2221 loose=1031 colliders=2197 walk=46281
   wreck hulk=#1499 meshes=40 verts=44532 frags=14 mass=560 big=2 arcs=1 nav=108
   s#0 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
   s#74 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
@@ -33,21 +33,21 @@ damage s1000/f7 7fd37bad
   s#2146 prop broke=1 frags=7 mass=86.568 big=0.84 cans=0 nav=+3 statics=1 spill=-
   s#2220 prop broke=1 frags=4 mass=5.2824 big=0.42 cans=0 nav=+0 statics=1 spill=-
   l#0 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#86 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#172 cardboard broke=1 frags=2 mass=2.5526 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#258 plastic broke=1 frags=7 mass=9.6548 big=0.36 cans=0 nav=+0 statics=0 spill=water!
-  l#344 plastic broke=1 frags=7 mass=9.6548 big=0.36 cans=0 nav=+0 statics=0 spill=water!
-  l#430 plastic broke=1 frags=6 mass=2.6563 big=0.58 cans=0 nav=+0 statics=0 spill=-
-  l#516 plastic broke=1 frags=6 mass=2.6563 big=0.58 cans=0 nav=+0 statics=0 spill=-
-  l#602 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#688 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#774 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#860 cardboard broke=1 frags=2 mass=2.5609 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#946 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#1032 plastic broke=1 frags=6 mass=2.6563 big=0.58 cans=0 nav=+0 statics=0 spill=-
-  blackout frags=906 mass=1634.256 big=1.24 fixtures=456 live=120 pending=0
-damage s16838/f1 c161712b
-  statics=1419 loose=582 colliders=1371 walk=28200
+  l#85 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#170 cardboard broke=1 frags=3 mass=2.9273 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#255 cardboard broke=1 frags=3 mass=2.9317 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#340 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#425 wood broke=1 frags=6 mass=3.3208 big=1.04 cans=0 nav=+0 statics=0 spill=-
+  l#510 wood broke=1 frags=6 mass=3.5909 big=1.04 cans=0 nav=+0 statics=0 spill=-
+  l#595 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#680 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#765 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#850 cardboard broke=1 frags=3 mass=2.9349 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#935 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#1020 plastic broke=1 frags=6 mass=2.6563 big=0.58 cans=0 nav=+0 statics=0 spill=-
+  blackout frags=908 mass=1640.0448 big=1.24 fixtures=456 live=120 pending=0
+damage s16838/f1 746c952c
+  statics=1419 loose=577 colliders=1371 walk=28200
   wreck hulk=#919 meshes=40 verts=47604 frags=14 mass=560 big=2 arcs=1 nav=150
   s#0 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
   s#47 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
@@ -81,21 +81,21 @@ damage s16838/f1 c161712b
   s#1363 prop broke=1 frags=14 mass=151.1649 big=1.18 cans=0 nav=+0 statics=1 spill=-
   s#1410 prop broke=1 frags=4 mass=5.2824 big=0.42 cans=0 nav=+0 statics=1 spill=-
   l#0 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#48 cardboard broke=1 frags=4 mass=4.0125 big=0.556 cans=0 nav=+0 statics=0 spill=-
-  l#96 wood broke=1 frags=7 mass=3.7208 big=1.04 cans=0 nav=+0 statics=0 spill=-
+  l#48 cardboard broke=1 frags=3 mass=2.9307 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#96 cardboard broke=1 frags=2 mass=2.5608 big=0.42 cans=0 nav=+0 statics=0 spill=-
   l#144 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
   l#192 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
   l#240 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
   l#288 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
   l#336 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#384 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#384 cardboard broke=1 frags=3 mass=2.9322 big=0.42 cans=0 nav=+0 statics=0 spill=-
   l#432 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
   l#480 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
   l#528 plastic broke=1 frags=7 mass=9.6548 big=0.36 cans=0 nav=+0 statics=0 spill=water!
-  l#576 plastic broke=1 frags=6 mass=2.6563 big=0.58 cans=0 nav=+0 statics=0 spill=-
-  blackout frags=587 mass=1062.864 big=1.24 fixtures=296 live=120 pending=0
-damage s103947/f3 8d168c95
-  statics=1681 loose=623 colliders=1685 walk=32273
+  l#576 plastic broke=1 frags=2 mass=3.4561 big=0.56 cans=0 nav=+0 statics=0 spill=-
+  blackout frags=590 mass=1062.864 big=1.24 fixtures=296 live=120 pending=0
+damage s103947/f3 43ca1a5e
+  statics=1681 loose=615 colliders=1685 walk=32273
   wreck hulk=#1359 meshes=39 verts=39972 frags=14 mass=560 big=2 arcs=1 nav=108
   s#0 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
   s#56 glass broke=1 frags=4 mass=14.1275 big=0.7725 cans=0 nav=+0 statics=0 spill=-
@@ -130,20 +130,20 @@ damage s103947/f3 8d168c95
   s#1680 prop broke=1 frags=3 mass=63.04 big=0.8 cans=0 nav=+0 statics=1 spill=-
   l#0 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
   l#51 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#102 cardboard broke=1 frags=3 mass=2.9284 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#102 wood broke=1 frags=7 mass=3.7208 big=1.04 cans=0 nav=+0 statics=0 spill=-
   l#153 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#204 cardboard broke=1 frags=3 mass=2.9366 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#204 plastic broke=1 frags=3 mass=3.3467 big=0.56 cans=0 nav=+0 statics=0 spill=-
   l#255 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#306 cardboard broke=1 frags=3 mass=2.9354 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#357 cardboard broke=1 frags=3 mass=2.9353 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#306 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#357 cardboard broke=1 frags=3 mass=2.9379 big=0.42 cans=0 nav=+0 statics=0 spill=-
   l#408 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#459 cardboard broke=1 frags=3 mass=2.9369 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#459 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
   l#510 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#561 cardboard broke=1 frags=2 mass=2.5612 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#612 cardboard broke=1 frags=2 mass=4.3557 big=0.4469 cans=0 nav=+0 statics=0 spill=-
-  blackout frags=660 mass=1200.7872 big=1.3 fixtures=333 live=120 pending=0
-damage s135623/f9 6e1fd254
-  statics=2291 loose=830 colliders=2432 walk=45073
+  l#561 cardboard broke=1 frags=3 mass=2.9377 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#612 cardboard broke=1 frags=2 mass=4.358 big=0.4717 cans=0 nav=+0 statics=0 spill=-
+  blackout frags=660 mass=1194.9984 big=1.3 fixtures=333 live=120 pending=0
+damage s135623/f9 7a25c053
+  statics=2291 loose=816 colliders=2432 walk=45073
   wreck hulk=#1309 meshes=42 verts=48060 frags=14 mass=560 big=2 arcs=1 nav=150
   s#0 glass broke=1 frags=4 mass=14.5085 big=0.7933 cans=0 nav=+0 statics=0 spill=-
   s#76 glass broke=1 frags=4 mass=14.5085 big=0.7933 cans=0 nav=+0 statics=0 spill=-
@@ -177,21 +177,20 @@ damage s135623/f9 6e1fd254
   s#2204 prop broke=1 frags=4 mass=50.304 big=0.72 cans=0 nav=+1 statics=1 spill=-
   s#2280 prop broke=1 frags=4 mass=5.2824 big=0.42 cans=0 nav=+0 statics=1 spill=-
   l#0 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#69 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#138 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#207 plastic broke=1 frags=7 mass=9.6548 big=0.36 cans=0 nav=+0 statics=0 spill=water!
-  l#276 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#345 cardboard broke=1 frags=3 mass=2.9338 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#414 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#483 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#552 cardboard broke=1 frags=3 mass=2.9319 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#621 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#690 cardboard broke=1 frags=6 mass=4.2104 big=0.5798 cans=0 nav=+0 statics=0 spill=-
-  l#759 cardboard broke=1 frags=2 mass=2.5506 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#828 plastic broke=1 frags=6 mass=2.6563 big=0.58 cans=0 nav=+0 statics=0 spill=-
-  blackout frags=876 mass=1577.1168 big=1.24 fixtures=440 live=120 pending=0
-damage s1000/f1 434e3c49
-  statics=948 loose=426 colliders=967 walk=18180
+  l#68 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#136 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#204 cardboard broke=1 frags=3 mass=2.9314 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#272 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#340 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#408 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#476 plastic broke=1 frags=3 mass=3.3467 big=0.56 cans=0 nav=+0 statics=0 spill=-
+  l#544 cardboard broke=1 frags=3 mass=2.9365 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#612 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#680 cardboard broke=1 frags=3 mass=2.9314 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#748 plastic broke=1 frags=7 mass=9.6548 big=0.36 cans=0 nav=+0 statics=0 spill=water!
+  blackout frags=875 mass=1582.9056 big=1.24 fixtures=440 live=120 pending=0
+damage s1000/f1 ae740160
+  statics=948 loose=424 colliders=967 walk=18180
   wreck -
   s#0 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
   s#31 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
@@ -228,18 +227,18 @@ damage s1000/f1 434e3c49
   l#35 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
   l#70 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
   l#105 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#140 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#140 plastic broke=1 frags=2 mass=3.4561 big=0.56 cans=0 nav=+0 statics=0 spill=-
   l#175 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#210 cardboard broke=1 frags=2 mass=2.5614 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#210 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
   l#245 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
   l#280 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
   l#315 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#350 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
-  l#385 plastic broke=1 frags=3 mass=3.3467 big=0.56 cans=0 nav=+0 statics=0 spill=-
-  l#420 cardboard broke=1 frags=6 mass=4.2643 big=0.6042 cans=0 nav=+0 statics=0 spill=-
-  blackout frags=356 mass=647.2512 big=1.24 fixtures=178 live=120 pending=0
-damage s8919/f4 fd984c9a
-  statics=1665 loose=732 colliders=1599 walk=33325
+  l#350 cardboard broke=1 frags=2 mass=4.3639 big=0.5488 cans=0 nav=+0 statics=0 spill=-
+  l#385 plastic broke=1 frags=6 mass=2.6563 big=0.58 cans=0 nav=+0 statics=0 spill=-
+  l#420 plastic broke=1 frags=3 mass=3.3467 big=0.56 cans=0 nav=+0 statics=0 spill=-
+  blackout frags=356 mass=635.6736 big=1.24 fixtures=178 live=120 pending=0
+damage s8919/f4 1ce4b36c
+  statics=1665 loose=725 colliders=1599 walk=33325
   wreck -
   s#0 glass broke=1 frags=4 mass=14.5085 big=0.7933 cans=0 nav=+0 statics=0 spill=-
   s#55 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
@@ -273,20 +272,21 @@ damage s8919/f4 fd984c9a
   s#1595 prop broke=1 frags=5 mass=110.6848 big=1 cans=0 nav=+6 statics=1 spill=-
   s#1650 prop broke=1 frags=4 mass=63.44 big=0.8 cans=0 nav=+0 statics=1 spill=-
   l#0 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#61 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#122 wood broke=1 frags=6 mass=3.5909 big=1.04 cans=0 nav=+0 statics=0 spill=-
-  l#183 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#244 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#305 cardboard broke=1 frags=3 mass=2.9365 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#366 cardboard broke=1 frags=2 mass=2.5569 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#427 plastic broke=1 frags=2 mass=3.4561 big=0.56 cans=0 nav=+0 statics=0 spill=-
-  l#488 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#549 cardboard broke=1 frags=3 mass=2.9351 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#610 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#671 plastic broke=1 frags=7 mass=9.6548 big=0.36 cans=0 nav=+0 statics=0 spill=water!
-  blackout frags=686 mass=1230.7104 big=1.3 fixtures=343 live=120 pending=0
-damage s16838/f9 a926b831
-  statics=1547 loose=587 colliders=1504 walk=31314
+  l#60 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#120 wood broke=1 frags=6 mass=3.5909 big=1.04 cans=0 nav=+0 statics=0 spill=-
+  l#180 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#240 cardboard broke=1 frags=3 mass=2.938 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#300 cardboard broke=1 frags=3 mass=2.9344 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#360 cardboard broke=1 frags=3 mass=2.9312 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#420 cardboard broke=1 frags=3 mass=2.9368 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#480 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#540 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#600 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#660 plastic broke=1 frags=7 mass=9.6548 big=0.36 cans=0 nav=+0 statics=0 spill=water!
+  l#720 plastic broke=1 frags=3 mass=3.3467 big=0.56 cans=0 nav=+0 statics=0 spill=-
+  blackout frags=686 mass=1224.9216 big=1.24 fixtures=343 live=120 pending=0
+damage s16838/f9 47b11d54
+  statics=1547 loose=582 colliders=1504 walk=31314
   wreck -
   s#0 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
   s#51 glass broke=1 frags=4 mass=14.1275 big=0.7725 cans=0 nav=+0 statics=0 spill=-
@@ -320,21 +320,21 @@ damage s16838/f9 a926b831
   s#1479 prop broke=1 frags=4 mass=63.44 big=0.8 cans=0 nav=+0 statics=1 spill=-
   s#1530 prop broke=1 frags=3 mass=63.04 big=0.8 cans=0 nav=+0 statics=1 spill=-
   l#0 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#48 cardboard broke=1 frags=2 mass=2.5521 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#48 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
   l#96 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#144 cardboard broke=1 frags=3 mass=2.9363 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#192 cardboard broke=1 frags=3 mass=2.9373 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#144 plastic broke=1 frags=7 mass=9.6548 big=0.36 cans=0 nav=+0 statics=0 spill=water!
+  l#192 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
   l#240 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#288 cardboard broke=1 frags=3 mass=2.9324 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#336 cardboard broke=1 frags=3 mass=2.936 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#288 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#336 cardboard broke=1 frags=2 mass=2.557 big=0.42 cans=0 nav=+0 statics=0 spill=-
   l#384 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
   l#432 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#480 cardboard broke=1 frags=4 mass=4.6366 big=0.5554 cans=0 nav=+0 statics=0 spill=-
-  l#528 plastic broke=1 frags=6 mass=2.6563 big=0.58 cans=0 nav=+0 statics=0 spill=-
-  l#576 cardboard broke=1 frags=2 mass=4.3665 big=0.5913 cans=0 nav=+0 statics=0 spill=-
-  blackout frags=652 mass=1170 big=1.3 fixtures=326 live=120 pending=0
-damage s24757/f2 a55886cc
-  statics=1507 loose=591 colliders=1486 walk=30618
+  l#480 cardboard broke=1 frags=3 mass=2.9283 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#528 plastic broke=1 frags=3 mass=3.3467 big=0.56 cans=0 nav=+0 statics=0 spill=-
+  l#576 plastic broke=1 frags=2 mass=3.4561 big=0.56 cans=0 nav=+0 statics=0 spill=-
+  blackout frags=652 mass=1175.7888 big=1.3 fixtures=326 live=120 pending=0
+damage s24757/f2 713475df
+  statics=1507 loose=587 colliders=1486 walk=30618
   wreck -
   s#0 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
   s#50 glass broke=1 frags=4 mass=14.5085 big=0.7933 cans=0 nav=+0 statics=0 spill=-
@@ -368,16 +368,16 @@ damage s24757/f2 a55886cc
   s#1450 prop broke=1 frags=14 mass=139.6611 big=2.1 cans=0 nav=+6 statics=1 spill=-
   s#1500 prop broke=1 frags=3 mass=63.04 big=0.8 cans=0 nav=+0 statics=1 spill=-
   l#0 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#49 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#98 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#147 cardboard broke=1 frags=3 mass=2.9273 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#196 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#245 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#294 cardboard broke=1 frags=3 mass=2.9326 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#343 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#392 cardboard broke=1 frags=2 mass=2.5571 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#441 cardboard broke=1 frags=2 mass=2.5569 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#490 cardboard broke=1 frags=3 mass=2.9326 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#539 cardboard broke=1 frags=3 mass=2.9369 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#588 plastic broke=1 frags=6 mass=2.6563 big=0.58 cans=0 nav=+0 statics=0 spill=-
-  blackout frags=626 mass=1123.5744 big=1.24 fixtures=313 live=120 pending=0
+  l#48 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#96 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#144 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#192 cardboard broke=1 frags=3 mass=2.9291 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#240 cardboard broke=1 frags=3 mass=2.9376 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#288 cardboard broke=1 frags=3 mass=2.9377 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#336 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#384 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#432 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#480 cardboard broke=1 frags=3 mass=2.9372 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#528 cardboard broke=1 frags=2 mass=2.5531 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#576 cardboard broke=1 frags=2 mass=4.3551 big=0.4404 cans=0 nav=+0 statics=0 spill=-
+  blackout frags=626 mass=1117.7856 big=1.24 fixtures=313 live=120 pending=0

@@ -2671,6 +2671,23 @@ Four things about it were learned by measuring rather than by looking:
   rotation, and the chair has to be a quarter turn round from that (`edgeProp`'s table
   again — see above). Invisible while the pods were empty; the moment there is a body in
   one it is the only thing in the room.
+- **...and then it was placed whether or not its desk was**, which is the same pod one
+  bug along and is what a player reported as *a guy sitting in front of a PC that does
+  not exist*. `openPlan` called `tryPlace(sink, 'desk', …)` and dropped the answer on the
+  floor, then seated the pod regardless — so wherever the spot was spoken for (a doorway
+  apron, a reserved through-lane, a neighbour rounded outward to whole tiles) the room got
+  a chair pulled up to nothing with a **desk job registered at it**. Three costs, and only
+  the first is visible: a body sent to sit and type at thin air; `seatFacing` naming the
+  WRONG prop, because it reads `sink.placed()` and the last prop the sink really stood up
+  is the pod next door's desk or a partition, measured 3.7 m to 11 m away — so `_gone` in
+  chores.js was watching furniture on the other side of the room, and that job could only
+  end by shooting somebody else's desk; and `_spawnPoints` sizing the room's shift off
+  desks that are not there. The other three callers of `seatFacing` in that file have
+  always guarded it, which is the tell that this one was an oversight rather than a
+  decision. Measured: **10 of 174 seated workers were at a prop that is not in front of
+  them, all 10 in a pod, and 250 phantom desk stations over 60 floors (2.5%) — both to
+  zero**, with the desk count unchanged (9,720 → 9,722) because what went is chairs
+  nothing was ever pulled up to.
 - **Which rooms get served before the roster runs out is the whole of where a floor's
   staff are.** The headcount is spread over a hundred-odd rooms and runs out long before
   all of them have had a turn, so the first pass goes to the rooms with desks in them and
