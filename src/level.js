@@ -32,6 +32,18 @@ export class Level {
       seed,
       nav,
       meshes: built.meshes,
+      // The door panels, which a bullet has to stop on. A SEPARATE list from
+      // `meshes` on purpose — that one is also what a decal is clipped against,
+      // and a bullet hole left on a panel that then slides into its pocket
+      // hangs in the middle of the doorway. See the note in gen/build.js.
+      //
+      // This record is hand-built rather than spread from `built`, so a field
+      // added there reaches nobody until it is named here. That cost a real
+      // error rather than a silent miss, which is the good outcome: game.js
+      // spreads this into the hittable list, `[...undefined]` throws, and the
+      // whole list came out EMPTY — no bullet hit anything at all, which the
+      // browser said on the first frame.
+      doorMeshes: built.doorMeshes,
       objects: built.objects,
       colliders: built.colliders,
       // The rectangle the player may not leave. It travels with the colliders

@@ -134,7 +134,13 @@ export function buildLevel(scene, layout, theme = null) {
     meshes.push(...dyn.group.children);
   }
 
-  for (const door of doors) objects.push(door.root);
+  // ...and the panels themselves, kept apart from `meshes` on purpose — see
+  // `doorMeshes` in the returned level.
+  const doorMeshes = [];
+  for (const door of doors) {
+    objects.push(door.root);
+    door.root.traverse((o) => { if (o.isMesh) doorMeshes.push(o); });
+  }
 
   const exitObject = buildExit(scene, layout, fixtures);
   objects.push(exitObject);
@@ -171,7 +177,28 @@ export function buildLevel(scene, layout, theme = null) {
       minZ: layout.oz + TILE + PLAYER_RADIUS,
       maxZ: layout.oz + (layout.H - 1) * TILE - PLAYER_RADIUS,
     },
-    meshes,          // raycast targets for bullets
+    meshes,          // raycast targets for bullets, AND the decal surfaces
+    // The door panels, and they are a SECOND list rather than part of `meshes`
+    // because those two jobs come apart here. A bullet has to stop on a shut
+    // door — it did not, and you could shoot somebody standing behind one from
+    // either side, on all 332 doors of the four floors that were measured. A
+    // DECAL must not be left on one: `meshes` is what `effects.setSurfaces`
+    // clips a mark against, and a bullet hole on a panel that then slides into
+    // its pocket is a hole hanging in the middle of the doorway. Being out of
+    // `surfaces` is what already declines it — `_reach` finds no surface under
+    // its probe, returns 0, and `decal` drops the mark for want of a span.
+    //
+    // Collected by TRAVERSING each door's root rather than by naming fields, so
+    // it does not have to know that a sliding door's root is its panel, a hall
+    // door's is a group of two hinged leaves and the lobby's is two parting
+    // ones — and so a fourth kind is covered the day it is written. The readers
+    // are not in here: they are two InstancedMeshes of their own (see
+    // BadgeReaders), beside the door rather than under it.
+    //
+    // An OPEN door needs no special case. The panel is not moved out of the
+    // way, it is moved INTO the wall beside the opening, so a shot through the
+    // doorway misses it by construction.
+    doorMeshes,
     objects,         // everything added to the scene, for teardown
     colliders,
     dynamics,

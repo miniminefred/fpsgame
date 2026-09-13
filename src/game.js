@@ -524,11 +524,20 @@ export class Game {
     // `enemies.theme` rather than the local, so a dev-pinned shift is honoured.
     this.washers.spawn(level, this.enemies.theme);
 
-    // Bullets stop on this floor's geometry, this floor's occupants, and the
-    // things on its walls looking at them.
+    // Bullets stop on this floor's geometry, its DOORS, this floor's occupants,
+    // and the things on its walls looking at them.
+    //
+    // `doorMeshes` is separate from `level.meshes` and has to be passed here as
+    // well, which is exactly the bug it fixes: a shut door stopped a body and
+    // stopped an enemy SEEING through it (`nav.sight`, closed by doors.js) and
+    // did not stop a round from either side — so you could shoot the staff
+    // through a closed door, and they could not answer. Measured at 0 of 332
+    // doors stopping a bullet over four floors. It is not in `meshes` because
+    // that list is also what a decal is clipped against; see the note on it in
+    // gen/build.js.
     this.shooting.setHittables([
-      ...level.meshes, ...this.enemies.meshes, ...this.cameras.meshes,
-      ...this.conveyors.meshes, ...this.panels.meshes,
+      ...level.meshes, ...level.doorMeshes, ...this.enemies.meshes,
+      ...this.cameras.meshes, ...this.conveyors.meshes, ...this.panels.meshes,
     ]);
     // Scorch marks are clipped to the building only — an enemy standing against
     // a wall is not part of that wall, however flush he is with it.
