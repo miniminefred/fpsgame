@@ -576,7 +576,28 @@ export const BYSTANDERS = [TYPES.courier];
 // joke landing harder rather than a joke out of place.
 export const THEMES = [
   { name: 'Business as usual', weight: 4, light: 1, rats: [1, 1], patrols: [1, 3], boost: {} },
-  { name: 'Infestation', weight: 3, light: 0.34, rats: [4, 6], patrols: [0, 0], share: { reanimated: 0.8 }, boost: { intern: 2 } },
+  // Lit in a sickly green, which is `tint`'s second use after the Automated
+  // floor's cold blue and the same one line of machinery: setTint in lighting.js
+  // carries a colour to the tubes, the pools they cast, the fill between them
+  // and the haze at the end of a corridor, because tinting two of the four reads
+  // as green lights in a beige building rather than as a floor lit in green.
+  //
+  // WHICH green is not free, and the constraint is this theme's own: four fifths
+  // of what is standing here is Reanimated, and the Reanimated are the one thing
+  // on the roster whose visor is a colour rather than a shade of grey. A room lit
+  // at their own hue is a room where the one tell the theme is made of is
+  // camouflage. The visor is a MeshBasicMaterial, so a tint cannot touch it and
+  // it stays exactly the colour it was painted — but staying the same colour as
+  // the wall behind it is not much of a tell, so the light is put a good way
+  // round the wheel from it: H86 S53 L66 against the visor's H112 S100 L65, so
+  // the room is yellow-green and bilious where the visor is a saturated lime.
+  // Measured at the tubes rather than argued about — they go from the building's
+  // own #fff4de to #c2dc95, still plainly lit rather than green panels, and the
+  // haze from #4d545c to #7f9a69. It is the sicklier direction on purpose: a
+  // purer green (H100) came out as overgrowth, and what has happened to this
+  // floor is that something has gone bad in it.
+  { name: 'Infestation', weight: 3, light: 0.34, tint: 0xaed67a,
+    rats: [4, 6], patrols: [0, 0], share: { reanimated: 0.8 }, boost: { intern: 2 } },
   // Nine in ten of what is working this floor is a machine, and the tenth is
   // whoever is left to maintain them. Five chassis rather than one — a floor
   // that is 90% one robot is the floor of one enemy repeated that `share` was
