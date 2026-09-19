@@ -263,8 +263,8 @@ async function warmAssets(THREE, buildLevel) {
   // of its geometry and its materials landed on whichever case first sent
   // somebody to a vending machine. This line is what the comment above has
   // always claimed and the code did not do.
-  const { buildCan, buildCrate, buildPapers, buildTray } = await import('../src/rigs.js');
-  buildCan(0); buildCrate(0); buildPapers(); buildTray();
+  const { buildBox, buildCan, buildCrate, buildPapers, buildTray } = await import('../src/rigs.js');
+  buildCan(0); buildCrate(0); buildBox(0); buildPapers(); buildTray();
 }
 
 /**

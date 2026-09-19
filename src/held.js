@@ -15,7 +15,7 @@
 // reason all three of those give: one builder plus a table of what differs beats
 // four builders that are nearly the same.
 
-import { buildCan, buildCrate, buildPapers, buildTray } from './rigs.js';
+import { buildBox, buildCan, buildCrate, buildPapers, buildTray } from './rigs.js';
 
 // How long somebody keeps the drink they just bought, and it is the whole of the
 // can's lifetime — there is no `_lunchEnd` for a can and nothing else would ever
@@ -49,9 +49,18 @@ export const HELD = {
   crate: {
     field: 'carry',
     snap: 64,
-    // Keyed, because a crate carries a small carton on top of some of them and
-    // which ones has to be a hash rather than a die — see `buildCrate`.
-    make: (key) => buildCrate(key),
+    // WHICH BOX is derived from the body rather than sent, and it is the same
+    // fact `parent` below already turns on: a body wheeling a sack truck is
+    // shipping a timber crate out of the building, and a body carrying it in
+    // both arms has an ordinary cardboard box. One wire bit still covers both,
+    // because whether a type brought a truck comes off the shared seed and both
+    // browsers already agree about it — the `key`-is-hashed argument one level
+    // up. See the note above the two builders in rigs.js.
+    //
+    // Keyed as well, because a crate carries a small carton on top of some of
+    // them and a box wears a shipping label on most of them, and which ones has
+    // to be a hash rather than a die for that same reason.
+    make: (key, e) => (e.load ? buildCrate(key) : buildBox(key)),
     // Onto the truck's toe plate if this one brought a truck, and into the
     // body's own frame otherwise. Parenting rather than positioning is the whole
     // point: the plate's height is arithmetic in rigs.js, and a box placed at a
@@ -130,7 +139,9 @@ export const HELD_KINDS = Object.keys(HELD);
 export function give(e, what, key = 0) {
   const spec = HELD[what];
   if (!spec || e[spec.field]) return;
-  const mesh = spec.make(key);
+  // `e` as well as the key, because one entry may draw itself two ways off a
+  // fact about the body — see `crate` above. Every other `make` ignores it.
+  const mesh = spec.make(key, e);
 
   if (spec.hand) {
     const hash = Math.abs(Math.round(key)) || 1;

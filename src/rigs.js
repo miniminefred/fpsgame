@@ -109,15 +109,17 @@ const BLUNT = {
   torch: { shaft: [0.05, 0.05, 0.26], head: [0.06, 0.06, 0.09], headMat: 'accent', reach: 0.34 },
 };
 
-// The sack truck, in the two numbers its own geometry is built from plus the
-// crate it carries. `CRATE_HALF_H` is half the height of `buildCrate`'s body
-// box, and it is read from here rather than typed twice — a box that sinks into
-// the plate it is standing on is the kind of thing nobody notices for months.
+// The sack truck, in the four numbers its own geometry is built from. Where the
+// LOAD sits is not among them: it is read off `buildCrate`'s own dimensions down
+// the file (`CRATE_H`, `CRATE_D`), because a box that sinks into the plate it is
+// standing on, or through the frame it is leaning against, is the kind of thing
+// nobody notices for months. Half a crate's height was typed here as its own
+// number until the truck's crate got bigger, which is exactly the drift that
+// costs — see `metrics.js` for the same argument at the scale of a whole body.
 const TRUCK_W = 0.42;         // between the uprights
 const TRUCK_PLATE = 0.30;     // how far the toe plate projects
 const TRUCK_WHEEL_R = 0.095;
 const TRUCK_BAR = 0.05;       // how thick the frame is
-const CRATE_HALF_H = 0.13;
 
 /**
  * A sack truck, and the numbers in it are a person's arm rather than a taste.
@@ -203,10 +205,20 @@ function truckOf(mats, ownGeo) {
       mats.truckDark, side * (half + 0.04), -TRUCK_LEN, 0.01, [0, 0, Math.PI / 2]);
   }
 
-  // Where a box rides: on the plate, half a crate up from it. `+ 0.011` clears
-  // the plate's own half thickness so the box sits ON it rather than in it.
+  // Where a box rides: on the plate, half a crate up from it, with its back
+  // against the front face of the uprights. `+ 0.013` clears the plate's own
+  // half thickness so the box sits ON it rather than in it — it said 0.011 and
+  // the plate is 0.026 thick, so the crate has always been two millimetres into
+  // it, which is a comment that had stopped being true rather than a gap
+  // anybody could see.
+  //
+  // The z is measured back from the FRAME rather than off the plate's length,
+  // because what a load on a sack truck rests against is the frame — a crate
+  // deeper than the toe plate overhangs its front and is still resting on the
+  // truck, where one centred on the plate is a crate with the frame driven
+  // through the back of it.
   const load = new THREE.Object3D();
-  load.position.set(0, plateY + 0.011 + CRATE_HALF_H, -TRUCK_PLATE * 0.45);
+  load.position.set(0, plateY + 0.013 + CRATE_H / 2, -TRUCK_BAR / 2 - CRATE_D / 2);
   truck.add(load);
 
   truck.position.set(TRUCK_GRIP[0], TRUCK_GRIP[1], TRUCK_GRIP[2]);
@@ -1515,62 +1527,168 @@ export function buildPapers() {
 }
 
 let crateParts = null;
-// A wooden crate, and the boards it is made of. The overall size is what the
-// carry poses are tuned against (`boxAt` per rig, and the truck's toe plate), so
-// it is the FINISH that changed and not the box: 0.34 x 0.26 x 0.30 is what a
-// crate has measured since it was a cardboard one.
-const CRATE_W = 0.34;
-const CRATE_H = 0.26;
-const CRATE_D = 0.30;
-const BATTEN = 0.026;          // a board's thickness, on the frame and the posts
+let boxParts = null;
+
+// TWO things end up in somebody's hands under one name, and which one it is is
+// DERIVED rather than sent (see `HELD.crate` in held.js): a body wheeling a sack
+// truck gets the big timber crate, and a body carrying it in its arms gets an
+// ordinary cardboard box. That is the same fact the table already used to decide
+// what the thing is PARENTED to, asked once more — so it costs no second wire
+// bit and cannot disagree between two browsers, because whether a type brought a
+// truck comes off the shared seed.
+//
+// It is also the honest reading of the errands. What the contractor does is take
+// a crate OFF A RACK and wheel it out of the building, and the crates on those
+// racks are timber (`crate` in gen/props.js); what everybody else does is carry
+// a parcel across a floor in both arms, and the boxes lying about that floor are
+// cardboard (`carton`, same file). A man walking a corridor cradling a timber
+// packing case reads as a man struggling with the wrong object.
+
+// The timber crate: the one that rides the truck. Three times the volume of the
+// box below, and the size IS the point of the split — what says "this is being
+// shipped out of the building" rather than "this is being carried to a desk" is
+// how big it is against the man pushing it.
+//
+// The depth is picked against the truck rather than freely: the toe plate
+// projects `TRUCK_PLATE` (0.30) and this is 0.34, so the crate stands a few
+// centimetres proud of the toe and reads as loaded rather than as parked. The
+// width is a shade over the plate's own for the same reason. The height is the
+// one free number, and 0.44 is what covers the frame's lower brace while leaving
+// the upper one and the handles showing — a truck whose frame has disappeared
+// behind its load is not a truck, it is a box floating down the corridor.
+const CRATE_W = 0.54;
+const CRATE_H = 0.44;
+const CRATE_D = 0.34;
+const BATTEN = 0.03;           // a board's thickness, on the frame and the posts
 const CRATE_LID = 0.5;         // ...how many carry a small carton on top
 
+// ...and the cardboard box, carried in both arms. These three numbers are what
+// every carry pose in the game is tuned against — `boxAt` per rig, and the
+// animator's own fallback — so they are exactly what a carried box has measured
+// since there was one, and moving them moves every pair of arms on the floor.
+const BOX_W = 0.34;
+const BOX_H = 0.26;
+const BOX_D = 0.30;
+
 /**
- * The box a parcel run carries: off a storage rack, into a porter's arms, into
- * whoever is fixing the belt. See jobs.js.
+ * A stable 0..1 off an integer key, and it is a function for the reason
+ * `drinkFrom` in drinks.js has a long note about: two answers taken off ONE hash
+ * are not independent, and taking them with `%` off an unmixed product is how
+ * 80% of every can in the building came out the same flavour. `salt` is mixed IN
+ * rather than the caller slicing its own bits out of a shared product, and
+ * `Math.imul` is what stops the low bits — the entire output of a multiplicative
+ * hash — being rounded away past a double's 53.
+ */
+function hash01(key, salt) {
+  const h = Math.imul((key >>> 0) ^ Math.imul(salt >>> 0, 0x85ebca6b), 2654435761);
+  return ((h >>> 8) & 0xffff) / 0x10000;
+}
+
+/**
+ * The timber crate a contractor wheels out of the building.
  *
  * Built exactly the way `buildTray` is and for the same two reasons. Geometry
- * and materials are module-level and shared, so the twentieth box of a run costs
- * nothing and there is nothing to dispose when one is put down — dropping the
- * mesh is the whole of it. And it is authored around its own origin, so the
- * animator can put it wherever that rig carries a box without knowing which rig
- * it is (see `boxAt`).
+ * and materials are module-level and shared, so the twentieth crate of a run
+ * costs one Mesh rather than a mesh build, and there is nothing to dispose when
+ * one is put down — dropping the mesh is the whole of it. And it is authored
+ * around its own origin, so the truck can parent it straight to its toe plate
+ * and never position it (see `truckOf`).
  *
- * Cardboard, and deliberately close to the brown the carton prop is painted (see
- * gen/props.js): a box being carried across a floor and a box lying on that
- * floor's carpet are the same object as far as the player is concerned, and what
- * would give this away is the carried one being a colour the building does not
- * otherwise contain. The tape is the only detail on it and it earns its two
- * triangles — an unbroken brown box at three metres reads as a brown block, and
- * one pale line across the lid reads as a box.
+ * WHAT MAKES IT READ AS PLANKS is the framing and not the paint, which is the
+ * argument the sack truck's own note makes about its rungs: at three metres a
+ * crate is a silhouette, and the silhouette of bare timber is a brown block. So
+ * it is boarded the way a packing case is — four corner posts, a rail top,
+ * middle and bottom down every face, and a brace across the two wide ones. The
+ * diagonal is the single most recognisable thing on a crate and costs two boxes.
  */
 export function buildCrate(key = 0) {
   crateParts ??= {
     geo: {
       body: new THREE.BoxGeometry(CRATE_W, CRATE_H, CRATE_D),
-      // The frame, and it is what makes the thing read as a crate rather than as
-      // a brown box: four corner posts and a rail top and bottom down each face,
-      // standing a few millimetres proud of the boards. Same argument the sack
-      // truck's own note makes about its rungs — the SILHOUETTE is what carries
-      // at the range you see one from, and a crate's silhouette is its frame.
       post: new THREE.BoxGeometry(BATTEN, CRATE_H + 0.004, BATTEN),
       railX: new THREE.BoxGeometry(CRATE_W + 0.006, BATTEN, BATTEN),
       railZ: new THREE.BoxGeometry(BATTEN, BATTEN, CRATE_D + 0.006),
+      diag: new THREE.BoxGeometry(Math.hypot(CRATE_W, CRATE_H) * 0.94, BATTEN, BATTEN),
       // ...and the small carton that rides on top of some of them.
-      lid: new THREE.BoxGeometry(0.17, 0.12, 0.15),
-      tape: new THREE.BoxGeometry(0.04, 0.005, 0.152),
+      lid: new THREE.BoxGeometry(0.19, 0.13, 0.16),
+      tape: new THREE.BoxGeometry(0.045, 0.005, 0.162),
     },
     mat: {
       // Pine boards, and the frame a shade darker so the two read apart in a
       // corridor rather than merging into one brown lump.
       wood: new THREE.MeshStandardMaterial({ color: 0xb08a54, roughness: 0.95 }),
       frame: new THREE.MeshStandardMaterial({ color: 0x8a6636, roughness: 0.95 }),
-      card: new THREE.MeshStandardMaterial({ color: 0x9c7a4e, roughness: 0.92 }),
+      card: new THREE.MeshStandardMaterial({ color: 0xa98b62, roughness: 0.92 }),
       tape: new THREE.MeshStandardMaterial({ color: 0xd8cdb4, roughness: 0.8 }),
     },
   };
 
   const { geo, mat } = crateParts;
+  const group = new THREE.Group();
+  const put = (g, m, x, y, z, rotZ = 0) => {
+    const mesh = new THREE.Mesh(g, m);
+    mesh.position.set(x, y, z);
+    if (rotZ) mesh.rotation.z = rotZ;
+    mesh.castShadow = true;
+    group.add(mesh);
+  };
+
+  put(geo.body, mat.wood, 0, 0, 0);
+  const hw = CRATE_W / 2, hd = CRATE_D / 2, hh = CRATE_H / 2;
+  const bands = [hh - BATTEN / 2, 0, -hh + BATTEN / 2];
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) put(geo.post, mat.frame, sx * hw, 0, sz * hd);
+    for (const y of bands) put(geo.railZ, mat.frame, sx * hw, y, 0);
+  }
+  for (const sz of [-1, 1]) {
+    for (const y of bands) put(geo.railX, mat.frame, 0, y, sz * hd);
+    // The brace, corner to corner across the wide face. Mirrored on the far side
+    // so the two never read as one board seen through the crate.
+    put(geo.diag, mat.frame, 0, 0, sz * hd, sz * Math.atan2(CRATE_H, CRATE_W));
+  }
+
+  // A small box on top of it, about half the time. HASHED off the key rather
+  // than rolled, for the drink's reason: the errand that hands a crate over is
+  // host-only and the joiner builds its own from one bit on the wire, so a die
+  // here would put a carton on one screen and not the other. Both ends hash the
+  // body's own index and agree without a byte crossing.
+  if (hash01(key, 1) < CRATE_LID) {
+    put(geo.lid, mat.card, 0.02, hh + 0.065, -0.01);
+    put(geo.tape, mat.tape, 0.02, hh + 0.131, -0.01);
+  }
+  return group;
+}
+
+/**
+ * ...and the ordinary cardboard box, carried in both arms — a parcel run's
+ * parcel, a stocktake's box, the post going out of the building.
+ *
+ * It is the `carton` prop in gen/props.js at carrying size and drawn the same
+ * way, down to the taped seam across the top and the shipping label on one face,
+ * because a box being carried across a floor and a box lying on that floor's
+ * carpet are the same object as far as the player is concerned. What would give
+ * this one away is being a colour or a shape the building does not otherwise
+ * contain — so the brown is `cardboard`'s own out of textures.js rather than one
+ * matched by eye.
+ *
+ * The seam and the label earn their triangles for the crate's reason one size
+ * down: an unbroken brown box at three metres reads as a brown block, and one
+ * pale line across the lid reads as a box.
+ */
+export function buildBox(key = 0) {
+  boxParts ??= {
+    geo: {
+      body: new THREE.BoxGeometry(BOX_W, BOX_H, BOX_D),
+      seam: new THREE.BoxGeometry(0.052, 0.006, BOX_D + 0.004),
+      label: new THREE.BoxGeometry(0.135, 0.09, 0.005),
+    },
+    mat: {
+      card: new THREE.MeshStandardMaterial({ color: 0xa98b62, roughness: 0.94 }),
+      paper: new THREE.MeshStandardMaterial({ color: 0xe8e4d8, roughness: 0.88 }),
+    },
+  };
+
+  const { geo, mat } = boxParts;
   const group = new THREE.Group();
   const put = (g, m, x, y, z) => {
     const mesh = new THREE.Mesh(g, m);
@@ -1579,27 +1697,10 @@ export function buildCrate(key = 0) {
     group.add(mesh);
   };
 
-  put(geo.body, mat.wood, 0, 0, 0);
-  const hw = CRATE_W / 2, hd = CRATE_D / 2, hh = CRATE_H / 2;
-  for (const sx of [-1, 1]) {
-    for (const sz of [-1, 1]) put(geo.post, mat.frame, sx * hw, 0, sz * hd);
-    put(geo.railZ, mat.frame, sx * hw, hh - BATTEN / 2, 0);
-    put(geo.railZ, mat.frame, sx * hw, -hh + BATTEN / 2, 0);
-  }
-  for (const sz of [-1, 1]) {
-    put(geo.railX, mat.frame, 0, hh - BATTEN / 2, sz * hd);
-    put(geo.railX, mat.frame, 0, -hh + BATTEN / 2, sz * hd);
-  }
-
-  // A small box on top of it, about half the time. HASHED off the key rather
-  // than rolled, for the drink's reason: the errand that hands a crate over is
-  // host-only and the joiner builds its own from one bit on the wire, so a die
-  // here would put a carton on one screen and not the other. Both ends hash the
-  // body's own index and agree without a byte crossing.
-  if (((Math.imul(key >>> 0, 2654435761) >>> 16) & 1023) < 1023 * CRATE_LID) {
-    put(geo.lid, mat.card, 0.02, hh + 0.06, -0.01);
-    put(geo.tape, mat.tape, 0.02, hh + 0.121, -0.01);
-  }
+  put(geo.body, mat.card, 0, 0, 0);
+  put(geo.seam, mat.paper, 0, BOX_H / 2 + 0.002, 0);
+  // Seven in ten, which is the chance the prop this is drawn from already uses.
+  if (hash01(key, 2) < 0.7) put(geo.label, mat.paper, 0.01, 0.01, -BOX_D / 2 - 0.001);
   return group;
 }
 
