@@ -78,6 +78,8 @@
         <span><kbd>Left click</kbd> shoot</span>
         <span><kbd>R</kbd> reload</span>
         <span><kbd>1</kbd>–<kbd>5</kbd> weapons</span>
+        <span><kbd>E</kbd> use</span>
+        <span><kbd>F</kbd> drink</span>
       </div>
     </div>
     <!-- Swapped in for the key legend on a touch device. Same job, and the
@@ -140,6 +142,8 @@
         <div id="health-bar"><div id="health-fill"></div></div>
         <div id="health-value">100</div>
       </div>
+      <!-- Change off the desks and drinks out of the machine. See coins.js. -->
+      <div id="pocket"></div>
     </div>
 
     <!-- bottom right: weapon + ammo, with whatever you have badged above it -->
@@ -150,6 +154,8 @@
     </div>
 
     <div id="toast"></div>
+    <!-- What E would do right now, under the crosshair. Empty is hidden. -->
+    <div id="prompt"></div>
   </div>
 
   <!-- Death screen. Also pointer-events: none — the restart click is

@@ -60,7 +60,12 @@ export const HELD = {
     // Keyed as well, because a crate carries a small carton on top of some of
     // them and a box wears a shipping label on most of them, and which ones has
     // to be a hash rather than a die for that same reason.
-    make: (key, e) => (e.load ? buildCrate(key) : buildBox(key)),
+    //
+    // ...and a restock's crate is timber too (`restocking`, set by chores.js): a
+    // large wooden crate of cans going to a drinks machine. A joiner has no way to
+    // know that one and draws it as the box, which is cosmetic and is the one
+    // place this bit covers two things it cannot tell apart.
+    make: (key, e) => (e.load || e.restocking ? buildCrate(key) : buildBox(key)),
     // Onto the truck's toe plate if this one brought a truck, and into the
     // body's own frame otherwise. Parenting rather than positioning is the whole
     // point: the plate's height is arithmetic in rigs.js, and a box placed at a

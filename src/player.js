@@ -31,6 +31,10 @@ const penZ = (pos, b) => Math.min(pos.z - (b.minZ - RADIUS), (b.maxZ + RADIUS) -
 const MOVE_SPEED = 5.6;    // units / second — office corridors, not a racetrack
 const SPRINT_SPEED = 8.4;
 const ACCEL = 14;          // how fast the walk velocity chases the input
+// A drink out of the machine (coins.js) puts a spring in your step for a few
+// seconds. A multiplier on both paces rather than a third one, so sprinting on it
+// is still quicker than walking on it.
+const BOOST_SPEED = 1.3;
 
 const MAX_HEALTH = 100;
 const REGEN_DELAY = 6;     // seconds after being hit before healing starts
@@ -73,6 +77,8 @@ export class Player {
     // that quietly turned itself off would be worse than one that stayed on.
     this.hidden = false;
     this.sinceDamage = REGEN_DELAY;
+    // Seconds of quicker legs left, from a drink. See BOOST_SPEED.
+    this.boost = 0;
     this.onDeath = null;
     // Fired instead of blocking when the thing in the way is loose furniture:
     // (collider, dirX, dirZ) => void. The game turns it into a physics impulse.
@@ -228,6 +234,7 @@ export class Player {
     this.dead = false;
     this.sinceDamage = REGEN_DELAY;
     this.velocityY = 0;
+    this.boost = 0;
   }
 
   takeDamage(amount) {
@@ -250,6 +257,7 @@ export class Player {
   update(dt, camera) {
     const pos = this.object.position;
     this.dt = dt;
+    if (this.boost > 0) this.boost = Math.max(0, this.boost - dt);
 
     // `engaged` rather than `isLocked`: if the browser refused mouse capture the
     // game still has to be playable (see setupPointerLock's fallback look).
@@ -265,7 +273,8 @@ export class Player {
       if (this.keys.right) this._wish.add(this._right);
       if (this.keys.left) this._wish.sub(this._right);
 
-      const speed = this.keys.sprint ? SPRINT_SPEED : MOVE_SPEED;
+      const speed = (this.keys.sprint ? SPRINT_SPEED : MOVE_SPEED)
+        * (this.boost > 0 ? BOOST_SPEED : 1);
       if (this._wish.lengthSq() > 0) this._wish.normalize().multiplyScalar(speed);
 
       // Ease into the target velocity so starting and stopping has some weight.

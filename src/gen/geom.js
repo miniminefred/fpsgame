@@ -183,3 +183,28 @@ export function eraseSpan(span) {
   for (let i = span.start + 1; i < span.start + span.count; i++) pos.setXYZ(i, x, y, z);
   pos.needsUpdate = true;
 }
+
+// ...and the reversible version, for geometry that comes and goes rather than
+// being destroyed: a can bought out of a drinks machine's window and the one a
+// restock puts back in the same slot (see vending.js). The span's own vertices
+// are copied out the first time it is hidden, so showing it again is a straight
+// copy back, and hiding it again costs nothing but the collapse.
+//
+// eraseSpan must still win over both: a machine shot apart with a slot hidden
+// erases the whole prop, and nothing may bring that slot back afterwards — which
+// is why showSpan is only ever called on a prop that is still standing.
+export function hideSpan(span) {
+  if (!span?.mesh || span.count <= 1 || span.hidden) return;
+  const pos = span.mesh.geometry.attributes.position;
+  span.saved ??= pos.array.slice(span.start * 3, (span.start + span.count) * 3);
+  span.hidden = true;
+  eraseSpan(span);
+}
+
+export function showSpan(span) {
+  if (!span?.mesh || !span.hidden || !span.saved) return;
+  const pos = span.mesh.geometry.attributes.position;
+  pos.array.set(span.saved, span.start * 3);
+  pos.needsUpdate = true;
+  span.hidden = false;
+}

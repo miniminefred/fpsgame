@@ -52,6 +52,10 @@ const PERSISTENT = [
   // drops to a hardcoded offset below #mission's bottom edge, which is exactly
   // the sort of number a new line in that block invalidates.
   '#unseen',
+  // Coins and drinks (coins.js), a line under the health bar — the same
+  // "a block got taller" question #unseen asks one corner over. Filled with its
+  // longest sentence below, because it is empty for most of a floor.
+  '#pocket',
 ];
 const TRANSIENT = ['#toast', '#watch'];
 
@@ -102,6 +106,8 @@ function forceEventDriven(doc, on) {
   const role = doc.getElementById('netrole');
   const unseen = doc.getElementById('unseen');
   unseen?.classList.toggle('visible', on);
+  const pocket = doc.getElementById('pocket');
+  if (pocket) pocket.textContent = on ? '14 COINS · 12 DRINKS — F' : '';
   if (toast) {
     toast.classList.toggle('show', on);
     if (on) toast.textContent = LONGEST_TOAST;

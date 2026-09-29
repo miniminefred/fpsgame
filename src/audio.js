@@ -708,6 +708,28 @@ export class GameAudio {
     this._placed('heal', point, { gain: 0.8, rate: 1.35 });
   }
 
+  // --- change and drinks (coins.js, vending.js) -------------------------------
+  //
+  // All three are existing clips re-pitched rather than new ones: a coin is the
+  // keycard's chime up an octave, the machine is a keypad refusal played slow and
+  // low as the can drops, and a drink is the cooler's glug. Worth replacing with
+  // generated takes (see the sound-generation skill) if they read as borrowed.
+
+  /** Loose change picked up off a desk. */
+  coinPickup(point) {
+    this._placed('heal', point, { gain: 0.55, rate: 2.1 });
+  }
+
+  /** A can out of the flap. */
+  vend(point) {
+    this._placed('prop-shove', point, { gain: 0.7, rate: 1.3 });
+  }
+
+  /** ...and down in one. */
+  drink(point) {
+    this._placed('water-glug', point, { gain: 0.75, rate: 1.25 });
+  }
+
   /** Furniture shoved aside by the player walking into it. */
   propShove(point) {
     this._placed('prop-shove', point);

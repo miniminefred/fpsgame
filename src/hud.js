@@ -38,6 +38,11 @@ export class Hud {
     this.ammoEl = $('ammo');
     this.keycardsEl = $('keycards');
 
+    this.pocketEl = $('pocket');
+    this.promptEl = $('prompt');
+    this._pocket = null;   // last text written, so a still frame writes nothing
+    this._prompt = null;
+
     this.markerEl = $('hitmarker');
     this.vignetteEl = $('vignette');
     this.toastEl = $('toast');
@@ -133,6 +138,27 @@ export class Hud {
    * is called every frame and a class toggle that says the same thing sixty
    * times a second is sixty style invalidations for nothing.
    */
+  // Coins and drinks, under the health bar. Nothing at all when both are zero:
+  // most of a floor you have neither, and a row of zeroes is clutter.
+  setPocket(coins, cans) {
+    const text = coins || cans
+      ? `${coins} COIN${coins === 1 ? '' : 'S'} · ${cans} DRINK${cans === 1 ? '' : 'S'}${cans ? ' — F' : ''}`
+      : '';
+    if (text === this._pocket || !this.pocketEl) return;
+    this._pocket = text;
+    this.pocketEl.textContent = text;
+  }
+
+  // What E does where you are standing. Written every frame by game.js, so it
+  // only touches the DOM when the sentence changes.
+  setPrompt(text) {
+    const t = text ?? '';
+    if (t === this._prompt || !this.promptEl) return;
+    this._prompt = t;
+    this.promptEl.textContent = t;
+    this.promptEl.classList.toggle('visible', !!t);
+  }
+
   setUnseen(on) {
     if (on === this._unseen) return;
     this._unseen = on;

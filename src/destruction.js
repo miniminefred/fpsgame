@@ -552,7 +552,9 @@ export class Destruction {
     // fragment — so the two filters are not complements of each other, and the
     // label band belongs to neither pass. See `stock` on the sink.
     const held = entry.stock
-      ? entry.parts.filter((p) => typeof p.stock === 'number') : null;
+      // ...less whatever has already been BOUGHT out of it: a slot that is empty
+      // in the window is empty in the wreckage too. See vending.js.
+      ? entry.parts.filter((p) => typeof p.stock === 'number' && !p.taken) : null;
     const solid = entry.stock ? entry.parts.filter((p) => p.stock == null) : entry.parts;
     if (held?.length && !wrecked) this._spillStock(held, dir, point);
 

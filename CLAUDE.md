@@ -230,6 +230,9 @@ tools/
                        end onto the level. What found that a crate on the landing
                        left the basement's last tread 0.2 m above a floor you
                        could not step onto -- 49 flights in 117
+  probe-vending.mjs    Stock over ten simulated minutes. Headless it finds no
+                       machines (no GLB, so no window is stocked) -- the stock
+                       test is the browser's; see "The window is the stock"
   probe-kill.mjs       Shoots everything. Every type in TYPES through the real hit
                        path, and every prop on a floor rather than the baseline's
                        sample. See "Proving a change" below
@@ -239,6 +242,8 @@ src/
   util.js         Scalar helpers everyone shares: clamp, lerp, angles, hex-to-CSS
   metrics.js      How big a body is and what it can do — the numbers that must agree
   drinks.js       What is in the machine: the four drinks, and which one a seed is
+  vending.js      ...and how many are LEFT: every can bought comes out of the window
+  coins.js        Change on the desks, the player's pocket, and what E and F do
   body-pool.js    The lifecycle of a loose body that times out (brass, debris)
   destruction.js  Everything coming apart: damage routing, debris, its lifecycle
   wreck.js        ...and the one prop that is destroyed and still there: the generator
@@ -367,6 +372,8 @@ leave the build green and the harness silently broken.
 | Left click | Shoot |
 | R | Reload |
 | 1 - 5 | Switch weapon (light to heavy) |
+| E | Pick up a coin / buy a drink at a machine |
+| F | Drink one: +20 health and a few seconds of quicker legs |
 | T | Unseen: on and off the floor's books — **dev server only**, see below |
 | Esc | Release the mouse |
 | Click | Grab the mouse / restart after dying |
@@ -4631,6 +4638,37 @@ machine — a spill rather than a launch, which is what `CAN_THROW`'s 1.4–3.0 
 fragment's 2.2–4.6 is for. Four asleep inside a second and a half. The debris times out at 16 s
 and the cans at 30, so what the floor is left with is the brown patch with the drinks lying in
 it. Descending a floor clears the pool (16 on the next floor's machine, not 13+16).
+
+### The window is the stock (`vending.js` + `coins.js` + `restock` in `chores.js`)
+A machine's window used to be scenery: somebody bought a can and the facing they bought
+stayed behind the glass. Now every can that comes out of a machine comes out of a SLOT,
+and the slot is empty until somebody restocks it.
+
+- **A slot is one facing and its label band** (`slots` on the destructible, built in
+  `endStatic`). Buying one hides its spans (`hideSpan` in gen/geom.js, which keeps the
+  vertices so `showSpan` can put them back) and flags its part `taken`, so a machine shot
+  apart after four sales throws the thirteen cans it still has and not seventeen.
+- **Each stock box carries the span it became** (`b.span` in `box()`), and that is a fix,
+  not tidiness: `boxes` and `spans` are one-for-one ONLY on a prop with no model. A drinks
+  machine's GLB records spans of its own before `dress` draws a box, so the first version
+  indexed by position and sold a shelf and somebody else's label instead of the can.
+- **The staff buy from the same window.** `vending` is `stocked` (never cast at a sold-out
+  machine) and the can handed over is keyed by the slot's seed, so the flavour in the hand
+  is the flavour that left the glass.
+- **`restock` is a routine**: a timber crate off a rack (`fetchStock`, which sets
+  `restocking` so `HELD.crate` draws `buildCrate`), then a machine at or under half its
+  slots (`low`), and every empty slot back when the leg ends (`refill`, in `_finishGo`).
+  Measured in the browser over 1,035 simulated seconds with the building open: 62 cans
+  bought, 9 restocks, 93 cans put back.
+- **Coins** are placed off the floor's SEED, not its rng, so nothing generated moves and
+  both browsers agree where they are. E picks one up (crosshair within ~24°, 2.1 m), E at
+  a machine within 1.3 m of its footprint spends it, F drinks (`DRINK_HEAL`,
+  `DRINK_BOOST` → `player.boost`, a 1.3x on both paces).
+
+Not synced in co-op: which slot was bought and which coins are gone are local, and a
+joiner draws a restock's crate as the cardboard box (one wire bit, two crates). The
+sounds are existing clips re-pitched (`coinPickup`, `vend`, `drink` in audio.js) and are
+worth generating properly.
 
 ### The solver's world is the building's (`GUARD_MARGIN` in `physics.js`)
 The two backstop planes — one under the floor, one over the roof — are **derived from the

@@ -1,6 +1,8 @@
 import { Timer } from 'three';
 import { createRenderer, createScene, createCamera, handleResize } from './scene.js';
 import { createLighting } from './lighting.js';
+import { Vending } from './vending.js';
+import { Coins } from './coins.js';
 import { createInput, onDigitKeys, onKeyPress } from './input.js';
 import { createTouchControls } from './touch.js';
 import { Player } from './player.js';
@@ -98,11 +100,20 @@ const panels = new Panels({ scene });
 // the furniture round them, and the player to hurt. See washers.js.
 const washers = new Washers({ scene, audio, effects, physics, destruction, enemies, player, hud });
 
+// The drinks machines' stock, and the change on the desks that buys from them.
+const vending = new Vending();
+const coins = new Coins(scene);
+
 const game = new Game({
   scene, camera, player, weapons, shooting, enemies,
   effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, spills, doors, casings,
   keycards, wallet, ragdolls, cameras, conveyors, jobs, chores, panels, washers,
+  vending, coins,
 });
+
+// E to pick up and to buy, F to drink. Not dev-only: these are the game's.
+onKeyPress('KeyE', () => game.use());
+onKeyPress('KeyF', () => game.drink());
 
 // Co-op. All three are live from load and none of them touches the game until a
 // channel is actually up: the wire, the panel that drives it, and the play layer
@@ -172,6 +183,8 @@ if (import.meta.env.DEV) {
     chores,
     panels,
     washers,
+    vending,
+    coins,
     touch, net, netplay, coopMenu,
     // One frame of the world by hand, for measuring something without the
     // render loop moving underneath it — and for driving a tab that is not

@@ -1,7 +1,9 @@
+import * as THREE from 'three';
 import { Level, distanceToExit } from './level.js';
 import { makeRng, randomSeed } from './gen/rng.js';
 import { CARDS } from './keycards.js';
 import { pickTheme } from './enemy-types.js';
+import { DRINK_BOOST, DRINK_HEAL } from './coins.js';
 
 // The run: generate a floor, clear it, take the exit down, repeat forever.
 //
@@ -93,7 +95,7 @@ export class Game {
    * `physics` is the exception and stays guarded, because the solver really can
    * be absent and the game is meant to keep running without it.
    */
-  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, spills, doors, casings, keycards, wallet, ragdolls, cameras, conveyors, jobs, chores, panels, washers }) {
+  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, spills, doors, casings, keycards, wallet, ragdolls, cameras, conveyors, jobs, chores, panels, washers, vending, coins }) {
     this.player = player;
     this.weapons = weapons;
     this.shooting = shooting;
@@ -118,6 +120,13 @@ export class Game {
     this.chores = chores;
     this.panels = panels;
     this.washers = washers;
+    // The drinks machines' stock, and the change on the desks that buys it.
+    this.vending = vending;
+    this.coins = coins;
+    this.coins.onChange = () => this.hud.setPocket(this.coins.coins, this.coins.cans);
+    // A staff member's can comes out of the same window the player's does, and
+    // a restock is a chore — so the chore table has to be able to ask.
+    this.chores.vending = vending;
 
     // Co-op. Wired after construction by main.js, because NetPlay needs a Game
     // and a Game would then need a NetPlay — and it is the third genuinely
@@ -409,6 +418,56 @@ export class Game {
     this.netplay?.announceFloor(this.floor, this.level.current.seed, false);
   }
 
+  /**
+   * What E would do right now, if anything: the coin under the crosshair first
+   * (it is the smaller target, and the one you were looking for), then the
+   * machine you are standing at.
+   */
+  _useWhat() {
+    if (this.state !== 'playing' || this.player.dead) return null;
+    const eye = this.player.object.position;
+    const dir = this._lookDir ??= new THREE.Vector3();
+    // Down the camera's own -Z: the way the crosshair points.
+    dir.set(0, 0, -1).applyQuaternion(this.player.object.quaternion);
+    const coin = this.coins.aimed(eye, dir);
+    if (coin) return { prompt: 'E — PICK UP COIN', coin };
+
+    const len = Math.hypot(dir.x, dir.z) || 1;
+    const m = this.vending.near(eye.x, eye.z, dir.x / len, dir.z / len);
+    if (!m) return null;
+    if (!this.vending.left(m)) return { prompt: 'SOLD OUT', machine: null };
+    if (!this.coins.coins) return { prompt: 'NEEDS A COIN', machine: null };
+    return { prompt: 'E — BUY A DRINK', machine: m };
+  }
+
+  /** E. */
+  use() {
+    const what = this._useWhat();
+    if (!what) return;
+    const at = this.player.object.position;
+    if (what.coin) {
+      if (this.coins.pick(what.coin)) this.audio.coinPickup(what.coin);
+      return;
+    }
+    if (!what.machine) return;
+    if (this.vending.take(what.machine) == null) return;
+    this.coins.coins--;
+    this.coins.cans++;
+    this.coins.onChange?.();
+    this.audio.vend(at);
+  }
+
+  /** F: a drink, if there is one. */
+  drink() {
+    if (this.state !== 'playing' || this.player.dead || !this.coins.cans) return;
+    this.coins.cans--;
+    this.coins.onChange?.();
+    this.player.heal(DRINK_HEAL);
+    this.player.boost = DRINK_BOOST;
+    this.hud.setHealth(this.player.health, this.player.maxHealth);
+    this.audio.drink(this.player.object.position);
+  }
+
   nextFloor(given = null) {
     this.floor++;
     const seed = given ?? randomSeed();
@@ -455,6 +514,8 @@ export class Game {
 
     this._initPhysics(level);
     this.destruction.setLevel(level);
+    this.vending.setLevel(level);
+    this.coins.spawn(level);
     // Split rather than concatenated: the building holds still and gets indexed,
     // the loose furniture moves every frame and cannot be. See setColliders.
     this.player.setColliders(level.colliders, this.pushColliders);
@@ -757,6 +818,8 @@ export class Game {
       this.jobs.update(dt);
       this.chores.update(dt);
       this.washers.update(dt);
+      this.coins.update();
+      this.hud.setPrompt(this._useWhat()?.prompt ?? null);
 
       this._checkFloorState(dt, level);
       this._vitals(dt);

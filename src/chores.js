@@ -129,6 +129,10 @@ const CHORES = {
   },
   vending: {
     at: 'vending', pose: 'vending', time: [3.5, 7], weight: 2, stay: [1, 1],
+    // ...and only at a machine with something left in the window, because the
+    // can comes OUT of the window now (vending.js). A man queueing at a machine
+    // that has visibly sold out is the bug this used to be one step earlier.
+    stocked: true,
     // ...and they walk away WITH IT. `gives` is the only thing on this table
     // that outlives the job: everything else here is a pose and a clock, and a
     // can is a thing in somebody's hand for the next half minute (see `giveCan`
@@ -182,6 +186,24 @@ const CHORES = {
   stowBox: {
     at: 'racks', pose: 'shelfTake', time: [4, 8], weight: 0, stay: [1, 1],
     takes: 'box',
+  },
+  // RESTOCKING A DRINKS MACHINE: a wooden crate off a storage rack, carried to a
+  // machine that is running low, and the window filled back up out of it. Two
+  // legs of `restock` below, so both are `weight: 0` for `fetchBox`'s reason.
+  //
+  // `low` is what says WHICH machine: only one down to half its slots is worth
+  // the walk (see LOW_SHARE in vending.js), and a restock cast at a full one is
+  // somebody carrying a crate across the building to put nothing in it. `refill`
+  // is what the leg does when it ends — every empty slot back, the same drink in
+  // the same place — and it is read in `_finishGo`, which is the one moment a
+  // leg's load comes off.
+  fetchStock: {
+    at: 'racks', pose: 'server', time: [4, 8], weight: 0, stay: [1, 1],
+    then: { pose: 'shelfTake', time: [2.4, 4.0], gives: 'stock' },
+  },
+  restock: {
+    at: 'vending', pose: 'shelfTake', time: [6, 10], weight: 0, stay: [1, 1],
+    takes: 'stock', refill: true, low: true,
   },
   // THE MEETING, which is the one thing on this table that is not one body doing
   // one thing. Both kinds are `weight: 0` — neither is ever rolled on its own,
@@ -374,6 +396,17 @@ const ROUTINES = {
       { kind: 'sendPost', takes: 'box' },
     ],
   },
+  // ...and the drinks machines, which empty now: a crate off a rack and into a
+  // machine that has sold half its window. Cast only while some machine on the
+  // floor is low — the `low` leg finds no station otherwise, and the routine
+  // fails before anything is committed.
+  restock: {
+    weight: 3,
+    legs: [
+      { kind: 'fetchStock' },
+      { kind: 'restock', takes: 'stock' },
+    ],
+  },
   // ...and the one errand on the table that is not the building's own work: a
   // man in a coloured suit who came up in the other lift, takes a crate off a
   // rack, and goes back down with it.
@@ -402,7 +435,7 @@ const ROUTINE_KINDS = Object.keys(ROUTINES);
  * written, `crate` is what `HELD` calls it, and the name is also on the wire, in
  * the animator and in three other files. One line here beats touching all of it.
  */
-const HAND_KIND = { box: 'crate', papers: 'papers', can: 'can' };
+const HAND_KIND = { box: 'crate', papers: 'papers', can: 'can', stock: 'crate' };
 
 // How many routines may be running at once. The cap is about the CASTING rather
 // than the walking: three floods a cast against a job's one, and a routine holds
@@ -514,6 +547,10 @@ export class Chores {
     this.effects = effects;
     this.audio = audio;
     this.nav = null;
+    // The drinks machines' stock (vending.js), set by game.js. Null in a harness
+    // that builds a roster without one, and every read of it is guarded: a can
+    // is then handed over as it always was, and nothing is ever restocked.
+    this.vending = null;
 
     this.pools = new Map();   // kind -> the stations it can be done at
     this.busy = new Set();    // ...and the ones somebody is standing at
@@ -962,7 +999,7 @@ export class Chores {
   _free(kind) {
     const pool = this.pools.get(kind);
     if (!pool) return false;
-    for (const station of pool) if (this._usable(station)) return true;
+    for (const station of pool) if (this._usable(station, kind)) return true;
     return false;
   }
 
@@ -985,7 +1022,7 @@ export class Chores {
       // legs. They are not in `busy` yet — nothing is committed until every leg
       // has one — so this is the only thing keeping two legs off one station.
       if (skip?.includes(station)) continue;
-      if (this._usable(station)) return station;
+      if (this._usable(station, kind)) return station;
     }
     return null;
   }
@@ -1183,7 +1220,20 @@ export class Chores {
    */
   _hand(e, beat) {
     if (!beat) return;
-    if (beat.gives) this._give(e, beat.gives);
+    if (beat.gives === 'can' && this.vending) {
+      // Out of the machine's own window, and the can in the hand is the one that
+      // was standing there: its seed is both the flavour and the hand. A station
+      // at no machine we know of hands over a drink as it always did.
+      const m = this.vending.machineFor(e.chore?.prop);
+      if (m) {
+        const seed = this.vending.take(m);
+        if (seed != null) give(e, 'can', seed + 1);
+      } else {
+        this._give(e, beat.gives);
+      }
+    } else if (beat.gives) {
+      this._give(e, beat.gives);
+    }
     // ...and what a beat PUTS DOWN, which the table above has documented since
     // `then` grew a list and which nothing implemented. Every errand until now
     // put its load down by ENDING — `_finishGo` is where `takes` was read, and
@@ -1216,6 +1266,10 @@ export class Chores {
     // flavour a can is are stable for the run and identical in both browsers of
     // a co-op session — the same argument the eating hand makes. A station's
     // coordinates are the floor's, and the floor came from a shared seed.
+    // A restock's crate is the TIMBER one — a large wooden crate of cans, which is
+    // `buildCrate` rather than the cardboard box a stocktake carries (see `make`
+    // on HELD.crate, which reads this).
+    if (what === 'stock') e.restocking = true;
     give(e, kind, this._key(e));
     if (kind === 'crate') e.chore.crate = true;
   }
@@ -1226,6 +1280,7 @@ export class Chores {
     if (kind === 'crate' && !e.chore?.crate) return;
     take(e, kind);
     if (kind === 'crate' && e.chore) e.chore.crate = false;
+    if (kind === 'crate') e.restocking = false;
   }
 
   /** A stable integer for this body at this machine. See `_hand`. */
@@ -1252,6 +1307,9 @@ export class Chores {
     // on a beat, because filing the paperwork IS the leg — there is no separate
     // moment for it — and this is also the one place a routine's last leg
     // reaches, so nothing can walk away still holding it.
+    // A restock empties its crate into the machine, which is the moment the
+    // window fills back up — before the crate comes off, so the two are one beat.
+    if (job.refill && this.vending) this.vending.restock(this.vending.machineFor(c.prop));
     if (job.takes) this._take(e, job.takes);
     if (c.legs && c.leg + 1 < c.legs.length) { this._nextLeg(e); return; }
     // The errand is over, and for one of them so is being here. `lost` still
@@ -1412,7 +1470,7 @@ export class Chores {
     // touched: that is a drink somebody bought, and it is theirs.
     if (e.papers) take(e, 'papers');
     // ...and the crate, only if this errand is what put it there — see `gives`.
-    if (c.crate) { take(e, 'crate'); c.crate = false; }
+    if (c.crate) { take(e, 'crate'); c.crate = false; e.restocking = false; }
     e.chore = null;
 
     const i = this.live.indexOf(e);
@@ -1481,9 +1539,28 @@ export class Chores {
     return !!prop && prop.top < 0;
   }
 
-  /** Free to be sent to: nobody standing at it, and still actually there. */
-  _usable(station) {
-    return !this.busy.has(station) && !this._gone(station);
+  /**
+   * Free to be sent to: nobody standing at it, still actually there, and — for a
+   * kind that cares — a drinks machine in the state the job needs. Without a
+   * `kind` it is the plain question, which is what the meetings ask.
+   */
+  _usable(station, kind = null) {
+    if (this.busy.has(station) || this._gone(station)) return false;
+    return !kind || this._wants(station, kind);
+  }
+
+  /**
+   * Whether this machine is one this job can be done at: something left to buy
+   * for `vending`, and half sold out for a `restock`. A station at no machine
+   * vending.js knows of passes for the first and fails the second — a can
+   * bought there is the old behaviour, a restock there would fill nothing.
+   */
+  _wants(station, kind) {
+    const spec = CHORES[kind];
+    if (!spec?.stocked && !spec?.low) return true;
+    const m = this.vending?.machineFor(this._propFor(station));
+    if (!m) return !spec.low;
+    return spec.low ? this.vending.low(m) : this.vending.left(m) > 0;
   }
 }
 

@@ -875,3 +875,22 @@ body.touch #overlay .touch-keys { display: flex; }
   #gameover .stat label { font-size: 9px; letter-spacing: 2px; }
   #gameover .go-cta { font-size: 11px; letter-spacing: 2.6px; }
 }
+
+/* Change and drinks (coins.js): a quiet line under the health bar. */
+#pocket {
+  margin-top: 5px; min-height: 12px;
+  /* The block's width, never its own: `width: 0; min-width: 100%` takes whatever
+     the health bar made #health and wraps inside it, where the sentence alone
+     widened the block into the weapon chips on a 360 px phone. */
+  width: 0; min-width: 100%;
+  font-size: 11px; font-weight: 600; letter-spacing: 2px;
+  color: #e0b23a; text-shadow: var(--shade);
+}
+/* What E would do, just under the crosshair — the one place the eye already is. */
+#prompt {
+  position: absolute; left: 50%; top: calc(50% + 34px); transform: translateX(-50%);
+  font-size: 12px; font-weight: 600; letter-spacing: 2px; white-space: nowrap;
+  color: var(--ink); text-shadow: var(--shade);
+  opacity: 0; transition: opacity 0.12s;
+}
+#prompt.visible { opacity: 0.9; }

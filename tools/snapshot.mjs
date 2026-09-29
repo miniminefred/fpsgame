@@ -521,6 +521,7 @@ const LAYERS = {
     const { Enemies } = await import('../src/enemies.js');
     const { Chores } = await import('../src/chores.js');
     const { Jobs } = await import('../src/jobs.js');
+    const { Vending } = await import('../src/vending.js');
     const { makeRng } = await import('../src/gen/rng.js');
     const { tuningFor } = await import('../src/game.js');
 
@@ -550,6 +551,11 @@ const LAYERS = {
 
         const chores = new Chores({ enemies, effects: null, audio: AUDIO });
         chores.spawn(nav, enemies, null);
+        // The drinks machines' stock, as game.js wires it: a can bought is a can
+        // out of the window, and a restock is only cast at a machine running low.
+        const vending = new Vending();
+        vending.setLevel(level);
+        chores.vending = vending;
         const jobs = new Jobs({ enemies, effects: null, audio: AUDIO });
         jobs.spawn(nav, enemies, null);
 

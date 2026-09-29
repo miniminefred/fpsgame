@@ -250,6 +250,13 @@ export function makeSink(layout, batcher, materials, masks) {
       // One add() and one box, on the same call and in the same order — which
       // is what lets endStatic hand destruction.js a mask over `spans`.
       record?.boxes.push(b);
+      // ...and the span THIS box became, held on the box itself. Needed because
+      // the one-for-one above is only true of a prop with no model: `model()`
+      // records spans of its own into the same list before `dress` draws a
+      // single box, so on a drinks machine index i of `boxes` is not index i of
+      // `spans` — the first version of the vending slots trusted the index and
+      // hid a shelf and somebody else's label instead of the can that was sold.
+      if (record && stockOn != null) b.span = record.spans[record.spans.length - 1];
     },
 
     /**
@@ -375,6 +382,28 @@ export function makeSink(layout, batcher, materials, masks) {
       batcher.endSpans();
       if (!r.spans.length) return;
 
+      // The parts list first, because the machine's SLOTS point into it: a slot
+      // is one can standing in the window, and what it needs is its own spans (to
+      // hide it when it is bought and show it again when it is restocked — see
+      // vending.js) and its own part (so a machine shot apart with that slot
+      // empty does not throw the can somebody already bought). Each stock box
+      // carries its own span (see box()), and `parts` has the captured debris in
+      // front of the boxes.
+      const parts = (debris ? [...debris, ...r.boxes] : r.boxes)
+        .map((b) => ({ ...b, material: b.material ?? materials[b.key] }));
+      const lead = debris ? debris.length : 0;
+      const slots = [];
+      for (let i = 0; i < r.boxes.length; i++) {
+        const b = r.boxes[i];
+        if (typeof b.stock !== 'number' || !b.span) continue;
+        const spans = [b.span];
+        // A can's label band is drawn on the next call, marked 'trim' — it is
+        // part of this slot and goes when the can does.
+        const label = r.boxes[i + 1];
+        if (label?.stock === 'trim' && label.span) spans.push(label.span);
+        slots.push({ seed: b.stock, part: parts[lead + i], spans, taken: false });
+      }
+
       destructibles.push({
         kind: 'prop',
         // What it is made of, so a bullet into a filing cabinet and a bullet
@@ -409,8 +438,8 @@ export function makeSink(layout, batcher, materials, masks) {
         // A captured box may already carry the colour of the model that was
         // drawn over it (see `paintDebris`); anything else wears the palette it
         // was authored in.
-        parts: (debris ? [...debris, ...r.boxes] : r.boxes)
-          .map((b) => ({ ...b, material: b.material ?? materials[b.key] })),
+        parts,
+        slots: slots.length ? slots : null,
         broken: false,
       });
     },
