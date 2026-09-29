@@ -511,6 +511,23 @@ function landingInside(room, plan) {
   return r.x0 >= room.x0 && r.x1 <= room.x1 && r.y0 >= room.y0 && r.y1 <= room.y1;
 }
 
+/**
+ * The tiles of the LEVEL's floor at the head of the flight, which its furnisher must
+ * leave clear. `approachTiles` is the same promise at the foot, and for a long time
+ * it was the only half kept: the planner proved the landing was there
+ * (`landingInside`) and nothing reserved it, so a crate could be stood on it and the
+ * top tread came out facing a box. On a basement that is the bottom of the stairs,
+ * which is where it was reported — you walk down, stop on the last tread 0.2 m above
+ * the floor, and cannot get off it.
+ */
+export function landingTiles(plan, W, into = []) {
+  const r = landingRect(plan);
+  for (let ty = r.y0; ty < r.y1; ty++) {
+    for (let tx = r.x0; tx < r.x1; tx++) into.push(ty * W + tx);
+  }
+  return into;
+}
+
 function landingRect(plan) {
   if (plan.axis === 'x') {
     return plan.up > 0

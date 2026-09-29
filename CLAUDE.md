@@ -226,6 +226,10 @@ tools/
   probe-lunch.mjs      Asks the question a player can see: is anybody standing on
                        floor they cannot LEAVE? See "Lunch" below -- it is what a
                        report of people stuck in the cafeteria came down to
+  probe-stairs.mjs     Walks the real Player up and down every flight and off the
+                       end onto the level. What found that a crate on the landing
+                       left the basement's last tread 0.2 m above a floor you
+                       could not step onto -- 49 flights in 117
   probe-kill.mjs       Shoots everything. Every type in TYPES through the real hit
                        path, and every prop on a floor rather than the baseline's
                        sample. See "Proving a change" below

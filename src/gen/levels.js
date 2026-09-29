@@ -10,6 +10,7 @@ import { footprintOf, tryPlace } from './props.js';
 import { TILE } from './layout.js';
 import {
   approachTiles,
+  landingTiles,
   levelFloor,
   LOWER_Y,
   PLATE_T,
@@ -218,6 +219,8 @@ export function furnishLevels(layout, batcher, materials, shared, rng) {
     }
     for (const plan of plans) {
       for (const i of stripTiles(plan, W)) reserved[i] = 1;
+      // ...and the floor you step off the flight onto, or the flight ends at a box.
+      for (const i of landingTiles(plan, W)) reserved[i] = 1;
     }
 
     const sink = makeSink(layout, batcher, materials, {
