@@ -59,7 +59,10 @@ const HAIRLINE = 0.01;     // 1 cm — the "small epsilon" for overlap tests
 const REACH_SHARE = 0.25;  // a room must expose at least this share of itself
 const GEOM_SOFT = 0.75;    // ... and losing a quarter of it to furniture is bad
 const CLEAR_R = 1.5;       // metres of clearance owed to spawn and exit
-const MAX_PROP_SIDE = 4.0;
+// A parked car (`car` in gen/props.js, on a garage floor) is 4.56 m nose to tail,
+// which is the longest honest prop there is. The cap is for catching a prop that
+// has accidentally become a BUILDING, and a car is not that.
+const MAX_PROP_SIDE = 4.8;
 const MAX_PROP_TOP = 2.4;
 const MIN_PROP_TOP = 0.05;
 

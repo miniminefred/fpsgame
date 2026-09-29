@@ -7,6 +7,7 @@
 import { footprintOf, QUARTER, tryPlace } from './props.js';
 import { doorSide, doorsOnRoom, NAV_LANE, TILE } from './layout.js';
 import { SKIRT } from './furnish.js';
+import { parkingDeck } from './garage.js';
 import {
   aisles,
   ALL_SIDES,
@@ -66,6 +67,7 @@ const DEFINES = {
   itbay: 'workbench',
   mailroom: 'shelving',
   reception: 'receptionDesk',
+  parking: 'car',
 };
 
 /**
@@ -1224,6 +1226,8 @@ const ROLES = {
   security: securityOffice,
   closet: broomCloset,
   generator: generatorRoom,
+  // A car park's deck (gen/garage.js). Only ever handed out on a garage floor.
+  parking: parkingDeck,
   lobby,
   // The floor arrives in the exit room and leaves by it — they are one room now
   // (see pickLobbyRoom in gen/roles.js), so `exit` is the lift lobby.

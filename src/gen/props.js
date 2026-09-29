@@ -251,6 +251,13 @@ function canRack(p, rng) {
   }
 }
 
+// The paints a parked car comes in (see `car`). Mostly the greys and whites a
+// real car park is full of, with the odd colour so the rows are not one car.
+const CAR_PAINTS = [
+  'carSilver', 'carSilver', 'carWhite', 'carWhite', 'carBlack', 'carGrey',
+  'carRed', 'carBlue', 'carGreen', 'carYellow',
+];
+
 // --- prop catalogue ---------------------------------------------------------
 //
 // `w`/`d` are the footprint reserved before anything is emitted, so they must
@@ -1258,6 +1265,77 @@ export const PROPS = {
       if (rng.chance(0.7)) p.box('plastic', 0.3, H, 0.06, 0.72, H + 0.05, 0.3);
       if (rng.chance(0.6)) p.box('screen', 0.44, H, -0.3, 0.86, H + 0.02, -0.06);
       p.obstacle(-0.99, -0.39, 0.99, 0.39, H);
+    },
+  },
+
+  // A PARKED CAR, in its bay: the one prop on a garage floor (gen/garage.js).
+  //
+  // The footprint is the BAY, not the car — 2.5 x 5 m, a hair under so a
+  // footprint rounded outward to whole tiles is exactly 5 x 10 of them and two
+  // bays snapped to the grid share an edge instead of refusing each other. The
+  // painted lines down both sides are inside it for the same reason `10.geo-fit`
+  // exists: a prop's geometry must not reach past what it declares. The COLLIDER
+  // is the car alone, so the painted gap between two cars is floor.
+  //
+  // Authored facing -Z like everything else: the nose is at -z.
+  //
+  // One bay in five is empty, which is what a car park at work looks like — and
+  // it is the only thing standing between a full deck and a solid block of metal
+  // the player can see nothing past.
+  car: {
+    w: 2.49, d: 4.99, hp: 260, substance: 'metal',
+    build(p, rng) {
+      // The bay: a line down each side, and the kerb stop at the back of it.
+      for (const sx of [-1, 1]) p.box('linePaint', sx * 1.24 - 0.05, 0, -2.45, sx * 1.24 + 0.05, 0.006, 2.45);
+      if (rng.chance(0.2)) return;
+
+      const paint = rng.pick(CAR_PAINTS);
+      // A saloon, or a hatchback whose roof runs further back: the one
+      // silhouette choice, and it is the cabin's length rather than its height,
+      // because a bonnet and a boot either side of the glass is what reads as a
+      // car rather than as a van.
+      const hatch = rng.chance(0.35);
+      const roof = 1.42;
+      const L = 2.2, W = 0.88;
+      const cf = -0.75, cb = hatch ? 1.55 : 1.05;           // cabin front / back
+      p.box(paint, -W, 0.3, -L, W, 0.86, L);                  // body
+      p.box(paint, -W + 0.08, 0.86, cf, W - 0.08, roof, cb); // cabin
+      // Glass: windscreen, rear window, and a window down each side, all a hair
+      // proud of the paint.
+      p.box('carGlass', -W + 0.14, 0.92, cf - 0.04, W - 0.14, roof - 0.07, cf + 0.02);
+      p.box('carGlass', -W + 0.14, 0.92, cb - 0.02, W - 0.14, roof - 0.07, cb + 0.04);
+      for (const sx of [-1, 1]) {
+        p.box('carGlass', sx * (W - 0.08) - 0.02, 0.94, cf + 0.12,
+          sx * (W - 0.08) + 0.02, roof - 0.08, cb - 0.12);
+      }
+      // Wheels, a little proud of the body and mostly under it, and bumpers.
+      for (const sx of [-1, 1]) {
+        for (const sz of [-1.4, 1.4]) {
+          p.box('tyre', sx * W - 0.1, 0, sz - 0.3, sx * W + 0.1, 0.56, sz + 0.3);
+        }
+      }
+      p.box('plastic', -W - 0.02, 0.28, -L - 0.08, W + 0.02, 0.5, -L);
+      p.box('plastic', -W - 0.02, 0.28, L, W + 0.02, 0.5, L + 0.08);
+      // Lights: white at the nose, red at the tail. Unlit, so a dark deck still
+      // has cars in it you can see the shape of.
+      for (const sx of [-1, 1]) {
+        p.box('headlight', sx * 0.66 - 0.16, 0.64, -L - 0.02, sx * 0.66 + 0.16, 0.76, -L + 0.01);
+        p.box('taillight', sx * 0.66 - 0.16, 0.66, L - 0.01, sx * 0.66 + 0.16, 0.78, L + 0.02);
+      }
+      p.obstacle(-W - 0.12, -L - 0.08, W + 0.12, L + 0.08, roof);
+    },
+  },
+
+  // A car park's column, on the strip between two rows parked back to back.
+  // Not destructible — it is the building — and full height, with a band of
+  // hazard paint at bumper height because that is where every one of them has
+  // been hit.
+  pillar: {
+    w: 0.5, d: 0.5, hp: 0, substance: 'panel',
+    build(p) {
+      p.box('concreteWall', -0.22, 0, -0.22, 0.22, 3.0, 0.22);
+      p.box('hazard', -0.235, 0.25, -0.235, 0.235, 0.75, 0.235);
+      p.obstacle(-0.235, -0.235, 0.235, 0.235, 3.0, true);
     },
   },
 

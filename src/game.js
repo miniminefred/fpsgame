@@ -626,7 +626,9 @@ export class Game {
     this.hud.setWatch(0);
     this.descendLock = 1.2;     // grace period so you can't fall straight through
     this.hud.setFloor(this.floor);
-    this.hud.message(`FLOOR ${this.floor} — ${this.enemies.theme?.name ?? ''}`.trim(), 2200);
+    // A car park says so first: it is the building, where the theme is the shift.
+    const where = this.level.current?.layout?.garage ? 'CAR PARK · ' : '';
+    this.hud.message(`FLOOR ${this.floor} — ${where}${this.enemies.theme?.name ?? ''}`.trim(), 2200);
     this._syncObjective();
   }
 

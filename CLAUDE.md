@@ -313,6 +313,8 @@ src/
     locks.js      Badge readers: which door gets which card, and the proofs
     stairs.js     A staircase up a room's wall, and the sealed storey above it
     lifts.js      The bank of two cars, cut into the lobby
+    garage.js     A floor that is a car park: the roll, which rooms park, the
+                  deck layout, the concrete, and a flight drawn as a ramp
     ---- building ----
     build.js      The order the building passes run in
     shell.js      Walls, floors, ceilings, roofs, glazing, door frames, lights
@@ -4638,6 +4640,40 @@ machine — a spill rather than a launch, which is what `CAN_THROW`'s 1.4–3.0 
 fragment's 2.2–4.6 is for. Four asleep inside a second and a half. The debris times out at 16 s
 and the cans at 30, so what the floor is left with is the brown patch with the drinks lying in
 it. Descending a floor clears the pool (16 on the next floor's machine, not 13+16).
+
+### A floor that is a car park (`gen/garage.js`)
+`GARAGE_CHANCE` of floors (design value **0.1**; it is **1.0** while being tested, and the
+committed baselines were written at 1.0 — put it back and `npm run baseline`) are a car
+park. It is a REFIT of an ordinary floor, not a generator of its own, and that is what
+makes it safe: the spine, the BSP, the doors, the locks, the lifts and the stairs are
+planned as on any floor, so every validator invariant still holds, and the three
+validators sweep garage floors green (layout, props, nav) with every flight walkable.
+
+- **Rolled on its own stream** (`rollGarage`), for `floorSpans`' reasons, and BEFORE the
+  stairs, so `planStairs` can take `willPark` as a preference and put the ramps in the
+  decks — a stable sort, only when asked, so an ordinary floor's stairs never move.
+- **Rooms become `parking`** after the stairs (`makeParking`): anything with a short side
+  of 8.5 m that is not back of house (`KEEP`). The security office, the manager, the
+  closet, a storeroom, a break room and the canteen stay, because the keycards, lunch and
+  the restock need them.
+- **`parkingDeck`** lays rows across one axis — row against the wall, lane, two rows
+  back to back with pillars on a strip between them, lane — and tries BOTH axes, keeping
+  whichever parks more. Bays are SNAPPED to the tile grid: a footprint is rounded outward
+  to whole tiles, so two bays at an honest 2.5 m pitch off the grid each claim a sliver of
+  the other and the second is refused. The `car` prop's footprint is the bay (2.49 x 4.99,
+  a hair under so it rounds to exactly 5 x 10 tiles); its collider is the car alone.
+- **What it is made of** goes through `garageKey`: wall → block, carpet → concrete,
+  vinyl → asphalt, ceiling → soffit. The shell and the stair builder ask for the
+  ordinary key and get concrete on this floor.
+- **A flight is drawn as a ramp** (`rampGeometry`) and is still treads underneath — the
+  colliders nav, the player and both validators already agree on. The slab is laid half
+  a riser toward the treads, so a foot is always within a tenth of a metre of it.
+- **The split levels are more car park**: `dressLevel` parks them through the level's own
+  sink, so the landing and the well stay reserved exactly as for crates.
+
+`MAX_PROP_SIDE` in `validate-props.mjs` went from 4.0 to 4.8 for the car, which is
+4.56 m nose to tail: that cap catches a prop that has become a building, and a car
+is not one.
 
 ### The window is the stock (`vending.js` + `coins.js` + `restock` in `chores.js`)
 A machine's window used to be scenery: somebody bought a can and the facing they bought

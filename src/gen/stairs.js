@@ -135,7 +135,7 @@ const PER_FLOOR = [2, 4];
  * the room for it, tried in a shuffled order so a floor's stairs are not all
  * against their room's north wall.
  */
-export function planStairs(tiles, W, H, rooms, spawnRoom, exitRoom, rng) {
+export function planStairs(tiles, W, H, rooms, spawnRoom, exitRoom, rng, prefer = null) {
   const want = rng.int(PER_FLOOR[0], PER_FLOOR[1]);
 
   // Not the generator room: its own walls already stand two storeys tall (see
@@ -143,6 +143,11 @@ export function planStairs(tiles, W, H, rooms, spawnRoom, exitRoom, rng) {
   // built on top of it would want too.
   const pool = rooms.filter((r) => r !== spawnRoom && r !== exitRoom && r.role !== 'generator');
   rng.shuffle(pool);
+  // A car park's ramps go up from its parking decks, so its split levels are more
+  // car park rather than a storeroom over somebody's office (gen/garage.js). A
+  // stable sort, and only when asked: an ordinary floor's pool is exactly the
+  // shuffle it always was, so nothing about its stairs moves.
+  if (prefer) pool.sort((a, b) => (prefer(b) ? 1 : 0) - (prefer(a) ? 1 : 0));
 
   const out = [];
   for (const room of pool) {

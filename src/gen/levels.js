@@ -14,6 +14,7 @@ import {
   levelFloor,
   LOWER_Y,
   PLATE_T,
+  RISER,
   stairBoxes,
   stripTiles,
   UPPER_CEIL,
@@ -21,6 +22,7 @@ import {
 } from './stairs.js';
 import { LIGHT_PITCH } from './shell.js';
 import { makeSink } from './sink.js';
+import { garageKey, parkingDeck, rampGeometry } from './garage.js';
 
 // What ends up on a deck. Storage, because that is what a raised platform in an
 // office is for, and because a deck is the one place worth walking to for what is
@@ -69,9 +71,24 @@ export function buildStairs(layout, batcher, materials, masks, rng) {
   const { W } = layout;
 
   for (const plan of layout.stairs) {
+    // On a car park the flight is DRAWN as a ramp, one sloped slab, and the treads
+    // underneath it are only the body of the wedge — they are still what everybody
+    // walks on (see rampGeometry in gen/garage.js).
+    if (layout.garage) {
+      const key = garageKey(layout, 'carpet');
+      batcher.add(key, materials[key], applyWorldUVs(rampGeometry(layout, plan)));
+    }
     for (const b of stairBoxes(layout, plan)) {
-      if (b.part === 'tread') drawStep(batcher, materials, b, plan);
-      else drawPart(batcher, materials, b);
+      if (b.part === 'tread') {
+        if (layout.garage) {
+          batcher.add('concreteWall', materials.concreteWall, applyWorldUVs(
+            boxBetween(b.minX, b.base, b.minZ, b.maxX, b.y1 - RISER, b.maxZ)));
+        } else {
+          drawStep(batcher, materials, b, plan);
+        }
+      } else {
+        drawPart(batcher, materials, b, layout);
+      }
 
       // `roof`, `lid` and `deck` are the slabs a body can be standing anywhere
       // underneath — furniture inside a storey, or inside the room below an
@@ -148,13 +165,15 @@ function drawStep(batcher, materials, b, plan) {
     alongX ? front + NOSING : b.maxX, b.y1 + 0.004, alongX ? b.maxZ : front + NOSING));
 }
 
-function drawPart(batcher, materials, b) {
-  const key = PART_MATERIAL[b.part];
+function drawPart(batcher, materials, b, layout = null) {
+  const key = garageKey(layout, PART_MATERIAL[b.part]);
   batcher.add(key, materials[key], applyWorldUVs(
     boxBetween(b.minX, b.base, b.minZ, b.maxX, b.y1, b.maxZ)));
   // A level's deck gets flooring laid on it, like a tread does — you walk on it.
+  // On a car park it is a parking deck, and poured like the one below it.
   if (b.part !== 'deck') return;
-  batcher.add('vinyl', materials.vinyl, applyWorldUVs(
+  const floor = layout?.garage ? 'concrete' : 'vinyl';
+  batcher.add(floor, materials[floor], applyWorldUVs(
     boxBetween(b.minX, b.y1 - TREAD_SKIN, b.minZ, b.maxX, b.y1, b.maxZ)));
 }
 
@@ -245,6 +264,14 @@ function dressLevel(layout, plan, sink, rng) {
   const x0 = f.minX + UPPER_INSET, x1 = f.maxX - UPPER_INSET;
   const z0 = f.minZ + UPPER_INSET, z1 = f.maxZ - UPPER_INSET;
   if (x1 - x0 < 0.5 || z1 - z0 < 0.5) return;
+
+  // A car park's split level is more car park: parked the same way as the deck
+  // below it, through the level's own sink, so the ramp's landing and the well
+  // stay clear exactly as they do for crates.
+  if (layout.garage) {
+    parkingDeck(sink, { x0, z0, x1, z1 }, rng);
+    return;
+  }
 
   // Every half-metre cell gets a try, in a shuffled order. Darts were the first
   // version and gave a room of two things or of nine: a spot that survives the fit

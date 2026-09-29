@@ -40,6 +40,11 @@ function build() {
   const carpet = texture(carpetTile());
   const vinyl = texture(vinylTile());
   const ceiling = texture(ceilingTile());
+  // A car park's (see gen/garage.js): poured concrete underfoot, asphalt in the
+  // lanes, bare block walls and the underside of the deck above.
+  const concrete = texture(concreteSlab('#8f8e89', 1800));
+  const asphalt = texture(concreteSlab('#3d3e40', 2600));
+  const block = texture(concreteSlab('#a3a29c', 1200, true));
 
   const std = (map, color, roughness, extra = {}) => new THREE.MeshStandardMaterial({
     map, color, roughness, metalness: 0, ...extra,
@@ -56,6 +61,10 @@ function build() {
       carpet: std(carpet, 0xffffff, 1),
       vinyl: std(vinyl, 0xffffff, 0.62),
       ceiling: std(ceiling, 0xffffff, 0.95),
+      concrete: std(concrete, 0xffffff, 0.9),
+      asphalt: std(asphalt, 0xffffff, 0.95),
+      concreteWall: std(block, 0xffffff, 0.92),
+      soffit: std(concrete, 0xc8c8c4, 0.95),
       trim: flat(0xa9aaa8, 0.75),
       doorframe: flat(0x8e9095, 0.6),
       // The panel that slides in the frame. A shade darker than its own frame
@@ -93,6 +102,21 @@ function build() {
       screenOn: new THREE.MeshBasicMaterial({ color: 0x6fd3ff }),
       led: new THREE.MeshBasicMaterial({ color: 0x7dff9a }),
       hazard: flat(0xc8b23a, 0.8),
+
+      // --- a car park's cars and the paint on its floor (gen/props.js `car`)
+      carSilver: flat(0xa9adb2, 0.35, { metalness: 0.55 }),
+      carWhite: flat(0xe4e4e0, 0.4, { metalness: 0.3 }),
+      carBlack: flat(0x1d1f22, 0.3, { metalness: 0.5 }),
+      carGrey: flat(0x5c6167, 0.35, { metalness: 0.5 }),
+      carRed: flat(0x9e1f1f, 0.35, { metalness: 0.45 }),
+      carBlue: flat(0x1f4a8a, 0.35, { metalness: 0.45 }),
+      carGreen: flat(0x2f5a3a, 0.35, { metalness: 0.45 }),
+      carYellow: flat(0xd1a91e, 0.4, { metalness: 0.35 }),
+      carGlass: flat(0x1c2630, 0.12, { metalness: 0.6 }),
+      tyre: flat(0x1a1a1a, 0.95),
+      headlight: new THREE.MeshBasicMaterial({ color: 0xf2f0dc }),
+      taillight: new THREE.MeshBasicMaterial({ color: 0xb3161b }),
+      linePaint: flat(0xe8e2c8, 0.8),
 
       // --- the stock standing in a vending machine's window
       //
@@ -276,6 +300,38 @@ function vinylTile() {
     g.beginPath(); g.moveTo(0, i * CELL); g.lineTo(PX, i * CELL); g.stroke();
   }
 
+  return c;
+}
+
+// Poured concrete: a flat grey, blotched and speckled. `joints` adds the seams of
+// a block wall, which is all that tells a wall of it from the floor.
+function concreteSlab(base, marks, joints = false) {
+  const [c, g] = makeCanvas();
+  g.fillStyle = base;
+  g.fillRect(0, 0, PX, PX);
+
+  // Broad blotches first, so it reads as a pour rather than as a print.
+  speckle(g, PX, PX, 60, (ctx) => {
+    ctx.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},${0.02 + Math.random() * 0.03})`;
+  }, 40);
+  speckle(g, PX, PX, marks, (ctx) => {
+    const r = Math.random();
+    ctx.fillStyle = r < 0.5 ? 'rgba(255,255,255,0.12)' : 'rgba(30,30,30,0.18)';
+  }, 2);
+
+  if (joints) {
+    g.strokeStyle = 'rgba(60,60,58,0.35)';
+    g.lineWidth = 2;
+    for (let i = 0; i <= 4; i++) {
+      g.beginPath(); g.moveTo(0, i * PX / 4); g.lineTo(PX, i * PX / 4); g.stroke();
+    }
+    for (let row = 0; row < 4; row++) {
+      for (let i = 0; i < 2; i++) {
+        const x = (i + (row % 2) * 0.5) * PX / 2;
+        g.beginPath(); g.moveTo(x, row * PX / 4); g.lineTo(x, (row + 1) * PX / 4); g.stroke();
+      }
+    }
+  }
   return c;
 }
 

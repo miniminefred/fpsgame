@@ -28,6 +28,7 @@ import {
 } from './layout.js';
 import { PLATE_T, punchRects, ROOF_T } from './stairs.js';
 import { FLOOR_SKIN } from './levels.js';
+import { garageKey } from './garage.js';
 
 const BASEBOARD_H = 0.11;
 
@@ -114,7 +115,8 @@ export function buildShell(layout, batcher, materials, colliders, cuts) {
       const z0 = worldZ(layout, r.y0), z1 = worldZ(layout, r.y1);
       batcher.add('trim', materials.trim,
         boxBetween(x0, -PLATE_T, z0, x1, -FLOOR_SKIN, z1), { castShadow: false });
-      batcher.add(key, materials[key], applyWorldUVs(
+      const floorKey = garageKey(layout, key);
+      batcher.add(floorKey, materials[floorKey], applyWorldUVs(
         boxBetween(x0, -FLOOR_SKIN, z0, x1, 0, z1)), { castShadow: false });
     }
   }
@@ -122,7 +124,8 @@ export function buildShell(layout, batcher, materials, colliders, cuts) {
   // Suspended ceiling over everything walkable — except where an attic's stairs come
   // up through it (see stairwellCut in gen/stairs.js).
   for (const r of maskToRects(masked(tiles, cuts.ceiling), W, H, isOpen)) {
-    batcher.add('ceiling', materials.ceiling, applyWorldUVs(floorSlab(layout, r, CEIL_H, false)),
+    const ceilKey = garageKey(layout, 'ceiling');
+    batcher.add(ceilKey, materials[ceilKey], applyWorldUVs(floorSlab(layout, r, CEIL_H, false)),
       { castShadow: false });
   }
 
@@ -239,7 +242,8 @@ function drawWalls(layout, tiles, batcher, materials, colliders, wallH, building
     const x0 = worldX(layout, r.x0), x1 = worldX(layout, r.x1);
     const z0 = worldZ(layout, r.y0), z1 = worldZ(layout, r.y1);
 
-    batcher.add('wall', materials.wall, applyWorldUVs(boxBetween(x0, 0, z0, x1, wallH, z1)));
+    const wallKey = garageKey(layout, 'wall');
+    batcher.add(wallKey, materials[wallKey], applyWorldUVs(boxBetween(x0, 0, z0, x1, wallH, z1)));
     batcher.add('trim', materials.trim,
       boxBetween(x0 - 0.015, 0, z0 - 0.015, x1 + 0.015, BASEBOARD_H, z1 + 0.015));
 
