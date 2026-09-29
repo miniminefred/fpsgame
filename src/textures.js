@@ -110,8 +110,6 @@ function build() {
       carGrey: flat(0x5c6167, 0.35, { metalness: 0.5 }),
       carRed: flat(0x9e1f1f, 0.35, { metalness: 0.45 }),
       carBlue: flat(0x1f4a8a, 0.35, { metalness: 0.45 }),
-      carGreen: flat(0x2f5a3a, 0.35, { metalness: 0.45 }),
-      carYellow: flat(0xd1a91e, 0.4, { metalness: 0.35 }),
       carGlass: flat(0x1c2630, 0.12, { metalness: 0.6 }),
       tyre: flat(0x1a1a1a, 0.95),
       headlight: new THREE.MeshBasicMaterial({ color: 0xf2f0dc }),

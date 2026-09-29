@@ -36,7 +36,8 @@ export function furnish(sink, room, bounds, rng, doors, theme = null) {
   room.role = role;
   const fill = ROLES[role] ?? privateOffice;
   fill(sink, bounds, rng, room, doors, theme);
-  cartons(sink, bounds, rng);
+  // Cardboard is an office's; a parking bay is kept clear for the car.
+  if (role !== 'parking') cartons(sink, bounds, rng);
 }
 
 /**
@@ -67,7 +68,9 @@ const DEFINES = {
   itbay: 'workbench',
   mailroom: 'shelving',
   reception: 'receptionDesk',
-  parking: 'car',
+  // Not `parking`: a bay of the deck with no room for a car is open concrete, not
+  // a cupboard — and a cupboard's shelving on an open deck is a wall across a
+  // passage (see parkingDeck in gen/garage.js).
 };
 
 /**

@@ -52,6 +52,9 @@ for (let i = 0; i < FLOORS; i++) {
     // Walk in from the room's own doorway, down the nav field, to the foot.
     const door = doorsOnRoom(layout.doors, plan.room)[0];
     const TL = 0.5;
+    // A car park's rooms have no doors (gen/garage.js): start at the foot.
+    if (!door) { p.object.position.set(start.x, EYE, start.z); }
+    else {
     const dx0 = layout.ox + ((door.x0 + door.x1) / 2) * TL, dz0 = layout.oz + ((door.y0 + door.y1) / 2) * TL;
     p.object.position.set(dx0, EYE, dz0);
     const field = nav.makeField();
@@ -75,6 +78,7 @@ for (let i = 0; i < FLOORS; i++) {
       console.log(`APPROACH s${seed}/f${floor} ${plan.dir < 0 ? 'down' : 'up'} ${plan.room.role} ` +
         `${routed ? stuckApproach : 'no nav route'} at (${P.x.toFixed(2)},${P.z.toFixed(2)}) foot (${start.x.toFixed(2)},${start.z.toFixed(2)})`);
       p.object.position.set(start.x, EYE, start.z);
+    }
     }
 
     const spec = rampSpec(layout, plan);

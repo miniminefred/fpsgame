@@ -332,7 +332,10 @@ function validate(seed, floorNumber) {
   // `11.under-floor` lesson again: the model was right until the data changed
   // under it, and a sweep that goes on asserting its own arithmetic has stopped
   // testing the generator.
-  const doorless = rooms.filter((r) => !doorsOnRoom(doors, r).length).length;
+  // ...except on a car park, which is knocked through (gen/garage.js): its rooms
+  // are bays of one open deck with no door to go in by, and whether a body can get
+  // into each one is `5.connected` and `5.geom-connected`, which still run.
+  const doorless = L.garage ? 0 : rooms.filter((r) => !doorsOnRoom(doors, r).length).length;
   if (doorless) check('5.room-door').fail(id, `${doorless} rooms with no way in`);
 
   const owner = new Int32Array(W * H).fill(-1);

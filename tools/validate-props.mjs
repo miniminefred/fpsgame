@@ -817,15 +817,18 @@ function validate(seed, floorNumber) {
         }
       }
     }
-    if (!any) geomCutOff.push(`${r.role}#${ri}`);
+    if (!any) geomCutOff.push(`${r.role}#${ri}@${r.x0},${r.y0}`);
   });
   if (geomCutOff.length) {
     check('5.geom-connected').fail(id, `${geomCutOff.length} rooms physically unreachable: ${geomCutOff.slice(0, 3).join(',')}`);
   }
 
   // ---- 4. per-room reachability from its own doorways --------------------
+  // Not on a car park: it is knocked through (gen/garage.js), so its rooms have no
+  // doorways to measure from, and reaching every one of them from the spawn is the
+  // geometric check just above, which does run.
   let dead = 0, low = 0, pocket = 0, gDead = 0, gLow = 0, gSoft = 0, inflation = 0;
-  rooms.forEach((r, ri) => {
+  if (!layout.garage) rooms.forEach((r, ri) => {
     const interior = (r.x1 - r.x0) * (r.y1 - r.y0);
     if (!interior) return;
     stats.totalRooms++;

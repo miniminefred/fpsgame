@@ -24,6 +24,13 @@ import { isOpen, TILE } from './layout.js';
  * is deliberate: `tryPlace` and all 30 props in the catalogue then furnish a second
  * storey without one line of them knowing there is one.
  */
+// Materials whose boxes never cast a shadow worth drawing: paint on the floor,
+// lamps and glass. Out of the shadow pass entirely, which is a draw call per chunk
+// per material saved every frame — and a car park's open deck has the whole floor
+// in the shadow frustum's reach at once (see `car` in gen/props.js).
+const NO_SHADOW = new Set(['linePaint', 'headlight', 'taillight', 'carGlass']);
+const NO_CAST = { castShadow: false };
+
 export function makeSink(layout, batcher, materials, masks) {
   const { W, H, tiles } = layout;
   const { blocked, occupied, reserved, colliders, dynamics, destructibles } = masks;
@@ -246,7 +253,8 @@ export function makeSink(layout, batcher, materials, masks) {
       if (stockOn != null) b.stock = stockOn;
       if (capture) { capture.push(b); return; }
       if (pending) { pending.boxes.push(b); return; }
-      batcher.add(key, materials[key], boxBetween(b.x0, b.y0, b.z0, b.x1, b.y1, b.z1));
+      batcher.add(key, materials[key], boxBetween(b.x0, b.y0, b.z0, b.x1, b.y1, b.z1),
+        NO_SHADOW.has(key) ? NO_CAST : undefined);
       // One add() and one box, on the same call and in the same order — which
       // is what lets endStatic hand destruction.js a mask over `spans`.
       record?.boxes.push(b);

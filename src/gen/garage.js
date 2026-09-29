@@ -1,27 +1,26 @@
 // A floor of the building that is a car park.
 //
-// One floor in ten comes out of the lift into concrete instead of carpet: the big
-// rooms are parking decks with rows of cars in painted bays and pillars down the
-// middle, the corridors are asphalt lanes, and the attics and basements the stairs
+// One floor in ten comes out of the lift into concrete instead of carpet: the
+// whole floor is one parking deck with rows of cars in painted bays and pillars
+// down the middle, the corridors are asphalt lanes, and the attics and basements the stairs
 // already reach (gen/stairs.js) are split-level decks of their own, reached up a
 // concrete ramp and parked full of more cars.
 //
-// It is a REFIT of an office floor rather than a generator of its own, and that is
-// the whole reason it is safe: the corridor spine, the BSP, the doors, the locks,
-// the lifts and the stairs are all planned exactly as on any other floor, so every
-// invariant the three validators prove about a floor is still proved about this
-// one. What changes is what a room is FOR and what the building is made of — both
-// facts the builder already asks about by name.
-//
-// The back of house stays: the security office, the manager, the broom closet, a
-// storeroom, a break room and the canteen. The keycards, the lunch cycle and the
-// restock all need them, and a car park with a staff room off it is a car park.
+// It is planned as an office floor and then KNOCKED THROUGH (`openGarage`): the
+// corridor spine, the BSP and the lift lobby are planned exactly as on any other
+// floor, which is what keeps it connected and gives it its lanes and its column
+// grid, and then every partition and every door but the lobby's comes down. So
+// the whole floor is the car park — one open deck, lanes where the corridors
+// were, parking bays in what were rooms — and there is nothing left to lock:
+// no keycard rooms, no manager, no broom closet. The roster copes with all three
+// being absent, because each of them was always opportunistic.
 
 import * as THREE from 'three';
 import { makeRng } from './rng.js';
 import { tryPlace } from './props.js';
-import { edgeProp, ALL_SIDES } from './placement.js';
 import { RAMP_RUN, RAMP_SLOPE, RISER, rampSpec } from './stairs.js';
+import { CORRIDOR, ROOM, SOLID } from './tiles.js';
+import { doorsOnRoom } from './locks.js';
 
 // TEST: 1.0 while garage floors are being looked at. The design value is 0.1.
 export const GARAGE_CHANCE = 1.0;
@@ -37,31 +36,68 @@ export function rollGarage(seed, floorNumber) {
   return rng() < GARAGE_CHANCE;
 }
 
-// The rooms a car park keeps as what they were. Everything the roster, the locks
-// or the chore table is built around: see the note at the top of this file.
-const KEEP = new Set([
-  'exit', 'cafeteria', 'generator', 'security', 'manager', 'closet',
-  'storage', 'breakroom', 'server', 'mailroom', 'archive',
-]);
-
-// How big a room has to be to be worth parking in: a single row of bays and the
-// lane in front of it, across its short side.
-const MIN_SHORT = 8.5;     // metres
-
 /**
- * Hands the parking decks out. No dice: every room that is big enough and is not
- * one of the kept roles becomes one, so nothing downstream of the planner moves.
- * Runs after locks and stairs, so it can never take a room those passes needed
- * for something else.
+ * Knocks the floor through. Every wall tile standing between two open tiles —
+ * open on both sides across one axis — is a partition, and it comes down; so
+ * does every door but the lobby's. What stays is what stands alone: the
+ * building's own outside wall (open on one side only), the lobby's ring round
+ * the lifts, and every tile where two partitions CROSSED, which has wall on all
+ * four sides and so is left standing as a 0.5 m column. A car park has columns
+ * on a grid, and the BSP's own crossings are that grid.
+ *
+ * Tested against the tiles as they were, so knocking one wall down cannot make
+ * its neighbour look like a partition. Opening only ever adds floor, so the
+ * connectivity proved before this still holds after it.
  */
-export function makeParking(rooms) {
-  for (const r of rooms) if (willPark(r)) r.role = 'parking';
+export function openGarage(tiles, W, H, rooms, doors, lobby) {
+  const before = Uint8Array.from(tiles);
+  const open = (x, y) => x >= 0 && y >= 0 && x < W && y < H && before[y * W + x] !== SOLID;
+  const ring = (x, y) => x >= lobby.x0 - 1 && x <= lobby.x1 && y >= lobby.y0 - 1 && y <= lobby.y1;
+
+  // The doors first, as the floor either side of them: a hall door stood in a
+  // corridor and becomes lane, a room's stood in a wall and becomes deck.
+  const keep = new Set(doorsOnRoom(doors, lobby));
+  for (let i = doors.length - 1; i >= 0; i--) {
+    const d = doors[i];
+    if (keep.has(d)) continue;
+    for (let y = d.y0; y < d.y1; y++) {
+      for (let x = d.x0; x < d.x1; x++) tiles[y * W + x] = d.hall ? CORRIDOR : ROOM;
+    }
+    doors.splice(i, 1);
+  }
+  for (const r of rooms) r.doors = r.doors.filter((d) => keep.has(d));
+
+  // ...and the wall either side of the lobby's own doorway, for as far as its
+  // leaves slide. A double door retracts into the wall beside its opening
+  // (`slidePocketRun`), and the lobby's ring can end before the pocket does —
+  // the wall used to carry on into the office next door. Knocked through, one
+  // lobby in seven had a door with nowhere to put its leaves.
+  const pocket = new Uint8Array(W * H);
+  for (const d of keep) {
+    const reach = Math.max(d.x1 - d.x0, d.y1 - d.y0) + 2;
+    for (let y = d.y0 - reach; y < d.y1 + reach; y++) {
+      for (let x = d.x0 - reach; x < d.x1 + reach; x++) {
+        if (x < 0 || y < 0 || x >= W || y >= H) continue;
+        // Along the door's own wall line only.
+        if (d.vertical ? (x >= d.x0 && x < d.x1) : (y >= d.y0 && y < d.y1)) pocket[y * W + x] = 1;
+      }
+    }
+  }
+
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (before[y * W + x] !== SOLID || ring(x, y) || pocket[y * W + x]) continue;
+      if ((open(x - 1, y) && open(x + 1, y)) || (open(x, y - 1) && open(x, y + 1))) {
+        tiles[y * W + x] = ROOM;
+      }
+    }
+  }
 }
 
-/** Whether a room is going to be a parking deck. Asked by the stair planner too. */
-export function willPark(r) {
-  if (KEEP.has(r.role)) return false;
-  return Math.min(r.wTiles, r.hTiles) * 0.5 >= MIN_SHORT;
+/** Every room a parking deck, and the lobby the lobby. No dice. */
+export function parkingRoles(rooms, lobby) {
+  for (const r of rooms) { r.role = 'parking'; r.forcedRole = true; }
+  lobby.role = 'exit';
 }
 
 // --- the deck ----------------------------------------------------------------
@@ -90,11 +126,12 @@ export function parkingDeck(sink, bounds, rng) {
   const plans = [true, false].map((alongX) => planDeck(bounds, alongX));
   const plan = plans[0].bays * plans[0].rows.length >= plans[1].bays * plans[1].rows.length
     ? plans[0] : plans[1];
-  if (!plan.rows.length || !plan.bays) {
-    // Too shallow for a row and its lane either way: park along the walls.
-    for (let i = 0; i < 4; i++) edgeProp(sink, bounds, 'car', rng, ALL_SIDES);
-    return;
-  }
+  // Too shallow for a row and its lane either way, and it stays open concrete.
+  // It used to fall back to cars along the walls, which is right for a room with
+  // walls and wrong on an open deck: a room this shallow is a PASSAGE between two
+  // parts of the floor, and one 4.5 m car across a 5.5 m gap shut it — sixteen
+  // floors in three hundred had a bay of the deck nobody could get into.
+  if (!plan.rows.length || !plan.bays) return;
   const { alongX, rows, strips } = plan;
   const { x0, z0, x1, z1 } = bounds;
   const [a0, a1, b0] = alongX ? [x0, x1, z0] : [z0, z1, x0];
@@ -114,8 +151,13 @@ export function parkingDeck(sink, bounds, rng) {
   const bays = [];
   for (let a = first; a + BAY_W / 2 <= a1 - GANG + 1e-6; a += BAY_W) bays.push(a);
 
+  const [, , , bEnd] = alongX ? [x0, x1, z0, z1] : [z0, z1, x0, x1];
   for (const row of rows) {
-    const b = snapB(row.c + 0.25);
+    // Snapping rounds DOWN, which near the room's first edge pushes the row out
+    // of the room and half a metre into the lane beyond it. Walked back in.
+    let b = snapB(row.c + 0.25);
+    while (b - BAY_D / 2 < b0 - 1e-6) b += 0.5;
+    while (b + BAY_D / 2 > bEnd + 1e-6) b -= 0.5;
     // A prop is authored facing -Z, so a car on the x axis nosing toward +z is a
     // half turn, and one on the z axis nosing toward +x is a quarter turn.
     const rot = alongX ? (row.face > 0 ? 2 : 0) : (row.face > 0 ? 3 : 1);

@@ -111,7 +111,8 @@ export function buildLevel(scene, layout, theme = null) {
   buildGeneratorMezzanine(layout, batcher, materials,
     { colliders, occupied, dynamics, destructibles, fixtures }, rng);
   furnishRooms(layout, sink, rng, workstations, theme);
-  furnishCorridors(layout, sink, rng);
+  // A car park's corridors are its lanes, and a lane is kept clear for driving.
+  if (!layout.garage) furnishCorridors(layout, sink, rng);
   // After the ordinary corridor clutter, so a machine takes a tile the clutter
   // did not want rather than the other way round: there are at most three of
   // these and a hundred of that, and the one that should lose a contested tile

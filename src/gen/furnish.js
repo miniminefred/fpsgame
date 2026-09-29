@@ -60,6 +60,11 @@ const COW_CHANCE = 0.15;
 
 export function placeCow(layout, sink, rng) {
   if (!rng.chance(COW_CHANCE)) return null;
+  // Not in a car park. Its placement leans on the room's walls to hold it inside
+  // the room, and a knocked-through deck has none, so it came out standing half in
+  // a lane (`9.escaped`, 2 floors in 300). The die is still thrown above, so the
+  // stream is spent the same either way.
+  if (layout.garage) return null;
 
   const candidates = rng.shuffle(
     layout.rooms.filter((r) => r !== layout.spawnRoom && r !== layout.exitRoom));

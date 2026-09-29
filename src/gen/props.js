@@ -253,9 +253,12 @@ function canRack(p, rng) {
 
 // The paints a parked car comes in (see `car`). Mostly the greys and whites a
 // real car park is full of, with the odd colour so the rows are not one car.
+//
+// SIX, and it was ten: every paint is a material, every material is a draw call in
+// every 12 m chunk it appears in, and on an open deck the whole floor is in view.
 const CAR_PAINTS = [
   'carSilver', 'carSilver', 'carWhite', 'carWhite', 'carBlack', 'carGrey',
-  'carRed', 'carBlue', 'carGreen', 'carYellow',
+  'carRed', 'carBlue',
 ];
 
 // --- prop catalogue ---------------------------------------------------------

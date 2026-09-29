@@ -12,7 +12,7 @@
 // because everything downstream asks gen/layout.js for a floor and should not
 // have to know which of five files a constant ended up in.
 
-import { makeParking, rollGarage, willPark } from './garage.js';
+import { openGarage, parkingRoles, rollGarage } from './garage.js';
 import { makeRng } from './rng.js';
 import { clamp } from '../util.js';
 import { bfs, CORRIDOR, doorSide, ROOM, TILE, worldX, worldZ } from './tiles.js';
@@ -293,7 +293,11 @@ export function generateLayout(seed, floorNumber) {
   // all live, so the two are separated by name rather than by accident:
   // `cafeteriaRoom` is where lunch happens and `spawnRoom` is where you come in,
   // and enemies.js reads whichever of the two it actually means.
-  const cafeteria = pickCafeteria(live, tiles, W, doors);
+  // A car park, one floor in ten (gen/garage.js), on its own stream so it moves
+  // nothing drawn off the floor's rng. Rolled here because a car park has no
+  // canteen, and because everything from the lobby on is planned differently.
+  const garage = rollGarage(seed, floorNumber);
+  const cafeteria = garage ? null : pickCafeteria(live, tiles, W, doors);
   const spawnRoom = pickLobbyRoom(live, tiles, W, H, doors, cafeteria);
   const exitRoom = spawnRoom;
   const dist = bfs(tiles, W, H, Math.round(spawnRoom.cx), Math.round(spawnRoom.cy));
@@ -328,13 +332,19 @@ export function generateLayout(seed, floorNumber) {
   }
   void way;
 
+  // ...and on a car park, every wall that is not the building's own or the
+  // lobby's comes down, with every door in it. What is left is one open deck
+  // with lanes where the corridors were and a column wherever two walls crossed.
+  if (garage) openGarage(tiles, W, H, live, doors, spawnRoom);
+
   // The canteen only survives as one if the lobby did not take it. `pickLobbyRoom`
   // prefers to leave it alone but falls back rather than fail, and a canteen that
   // is also the lobby is a canteen the lunch cycle would walk the whole floor to
   // eat in with the player standing in it.
   const cafeteriaRoom = (cafeteria && cafeteria !== spawnRoom) ? cafeteria : null;
 
-  assignRoles(live, spawnRoom, exitRoom, cafeteriaRoom, doors, rng);
+  if (garage) parkingRoles(live, spawnRoom);
+  else assignRoles(live, spawnRoom, exitRoom, cafeteriaRoom, doors, rng);
   // On its own stream, not the floor's. Everything downstream of here — the
   // furniture in every room on the floor — draws from `rng`, so spending a
   // variable number of numbers on picking locks would re-roll the contents of a
@@ -348,14 +358,8 @@ export function generateLayout(seed, floorNumber) {
   // walls were tried before one fitted is several more. Left on the floor's
   // stream, a floor with a staircase would furnish every OTHER room differently
   // from the same floor without one.
-  // A car park, one floor in ten (gen/garage.js), on its own stream so it moves
-  // nothing drawn off the floor's rng. Rolled before the stairs so a car park's
-  // ramps can go up from its decks, and converted after them, so the parking
-  // decks take rooms nothing else needed.
-  const garage = rollGarage(seed, floorNumber);
   const stairs = planStairs(tiles, W, H, live, spawnRoom, exitRoom,
-    makeRng(seed ^ 0x7f4a7c15), garage ? willPark : null);
-  if (garage) makeParking(live);
+    makeRng(seed ^ 0x7f4a7c15));
 
   const layout = {
     seed, floorNumber, W, H, TILE,
