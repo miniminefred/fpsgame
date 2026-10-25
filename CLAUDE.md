@@ -4657,16 +4657,32 @@ their doors slide into (`pocket`; without it one lobby in seven had a door with 
 put its leaves). Every other door goes with its wall. Opening only ever adds floor, so
 nothing proved before it can be undone by it.
 
-- **The corner**: `pickLobbyRoom(..., corner)` takes the room nearest the bottom-LEFT
-  corner instead of the bottom middle, and `pickSecurity` the nearest room to it that is a
-  sensible size and has a door of its own that can hold a panel. `garageLocks` puts blue on
-  it, shaped exactly as `assignLocks` would, so the guards on rounds carry the card and
-  `_security` works unchanged. No manager, no closet, no canteen.
+- **The office block** (`carveOffice`): carved into the deck's bottom-left corner over
+  whatever the BSP put there — its rect is filled solid first and the BSP rooms and doors
+  it lands on are dropped. A 2 m hall runs from the building's west wall to the block's one
+  door out to the car park in its east wall; the lift lobby (18 x 12 tiles, so `fitsLifts`
+  holds) sits south of it against the outer wall behind a `wide` double door, the security
+  office opposite, and one to five offices along both sides — three to seven rooms in all,
+  each with a door onto the hall and, between two offices, sometimes a door through. On its
+  own stream off the seed. `garageLocks` puts blue on the security office, shaped exactly as
+  `assignLocks` would. No manager, no closet, no canteen.
+- **White inside, concrete outside** (`officeMask`, `officeLining` in gen/shell.js): the
+  block's interior and its own partitions get office finishes; its ring — the walls the car
+  park sees — stays concrete with a 1.5 cm plaster lining on every face looking into the
+  block, because a wall tile is one box in one material.
 - **The ramps** (`planRamps`) are two ordinary flight plans carrying a `level`: the lower
   one climbs ground → deck 1, the upper one stands beside it on deck 1 and climbs back the
   other way to deck 2. `RAMP_W` 8 tiles wide. Both levels cover the whole deck; the lower
-  one is `covered`, so it has no roof — the deck above is its lid. Drawn as a sloped slab
-  (`rampGeometry`) over the same treads every staircase has.
+  one is `covered`, so it has no roof — the deck above is its lid. Drawn as a solid WEDGE
+  (`rampGeometry`) over the same treads every staircase has: flat on the floor it starts
+  from, along the nosing line half a riser up, flush with its deck at the top. It was a
+  tilted slab, which ended with a lip at the top and pushed a corner through the floor.
+- **A deck's walking skin stands `DECK_LIFT` (12 mm) above the walls under it**: the deck
+  covers the whole floor, so every wall and column below tops out at exactly its height,
+  and drawn flush their tops flickered through it.
+- **Sound is routed between storeys** (`_placed` in audio.js): source and ear are each put
+  on their layer, so a shot on another deck comes round by the ramp rather than straight
+  through the slab; with no route between them at all it is cut to `THROUGH_SLAB`.
 - **Columns and walls** (`standPillars`): one-metre columns (2 x 2 wall tiles) every
   `PILLAR_PITCH` (7.5 m), plus a few free-standing 4 m concrete walls (one per `WALL_PER`
   tiles of deck) so the deck is not one bare field. Every block stands ALONE on open floor —
