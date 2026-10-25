@@ -65,6 +65,18 @@ const MIN_SPAWN_GAP = FIRST_CONTACT_GAP;
 // the work is whether or not anybody is sitting down at it.
 const DESK_TEAM = 5;
 
+// How much of a floor's headcount each of a car park's upper decks is dealt on top
+// of the ground's (see `_deckShift`), and how far apart two of them are put down.
+// Over the ground's own count, so a car park is busier than an office of one floor:
+// the same people spread over three times the floor read as nobody at all.
+//
+// ...and capped, because a rig is a draw call or six and the deep floors already
+// stand two hundred people on the ground: 0.6 of floor 8's headcount on each deck
+// was 458 bodies on one floor.
+const DECK_SHIFT = 0.6;
+const DECK_MAX = 45;
+const DECK_GAP = 3;
+
 // The harmless staff in the hallways when you arrive, and the one place in the
 // roster where two numbers next to each other are drawn on purpose differently.
 //
@@ -594,6 +606,11 @@ export const rosterMethods = {
         this._add(spot.x, spot.z, rng, tuning, team.type);
       }
 
+      // A car park's upper decks get a shift of their own (gen/garage.js). Before the
+      // security office and the hand-placed crowd, so every set piece after it is
+      // dealt exactly as it is on an ordinary floor.
+      if (layout.garage) this._deckShift(layout, nav, rng, tuning);
+
       this._security(layout, nav, rng, tuning);
 
       // A handful of neutrals on every floor, placed rather than rolled: they are
@@ -702,6 +719,56 @@ export const rosterMethods = {
      * with a security office and nobody outside it is a door with no key. So the
      * theme sets the number and the office sets the floor under it.
      */,
+
+    /**
+     * Staff on a car park's UPPER decks, which an ordinary floor does not have.
+     *
+     * Every other placement on the floor stands people on the ground, because that
+     * is where the rooms are; a car park's two extra decks are whole floors of
+     * parking with nobody on them, and a floor that is three times the size and
+     * staffed like one is three times as empty. So each deck is dealt
+     * `DECK_SHIFT` of the floor's own headcount, in the same teams of one to three
+     * the rooms are, scattered over the deck's own standable floor — never inside
+     * a ramp, and never on top of each other.
+     *
+     * A body's layer is the only thing that has to be set: its height is re-read
+     * off nav every frame (`heightAt` with `e.layer`), and sight, hearing and the
+     * route down the ramps are all per layer already.
+     */
+    _deckShift(layout, nav, rng, tuning) {
+      const deck = layout.deck;
+      if (!deck) return;
+      const want = Math.min(DECK_MAX, Math.round(tuning.count * DECK_SHIFT));
+      for (let layer = 1; layer < nav.L; layer++) {
+        const tiles = [];
+        for (let ty = deck.y0; ty < deck.y1; ty++) {
+          for (let tx = deck.x0; tx < deck.x1; tx++) {
+            if (nav.rampAt[ty * nav.W + tx] >= 0) continue;
+            if (nav.fitsAt(tx, ty, nav.fits, layer)) tiles.push(ty * nav.W + tx);
+          }
+        }
+        if (!tiles.length) continue;
+        rng.shuffle(tiles);
+
+        const placed = [];
+        let team = null, left = 0;
+        for (const i of tiles) {
+          if (placed.length >= want) break;
+          const x = nav.wx(i % nav.W), z = nav.wz((i / nav.W) | 0);
+          if (placed.some((p) => Math.hypot(p.x - x, p.z - z) < DECK_GAP)) continue;
+          if (left <= 0) {
+            team = pickType(layout.floorNumber, rng, this.theme);
+            left = rng.chance(0.45) ? 1 : (rng.chance(0.72) ? 2 : 3);
+          }
+          left--;
+          const e = this._add(x, z, rng, tuning, team);
+          e.layer = layer;
+          e.y = nav.heightAt(x, z, layer);
+          e.group.position.y = e.y;
+          placed.push({ x, z });
+        }
+      }
+    },
 
     _security(layout, nav, rng, tuning) {
       const office = layout.locks?.find((l) => l.tier === 'blue');
