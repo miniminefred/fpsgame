@@ -96,10 +96,25 @@ export function buildShell(layout, batcher, materials, colliders, cuts) {
   // SOLID is 0, so the placeholder for "not part of this pass" has to be
   // anything else — ROOM works fine, maskToRects only ever tests `=== SOLID`.
   const tallMask = generatorWallMask(layout);
-  const normalWalls = tiles.map((t, i) => (t === SOLID && !tallMask[i] ? SOLID : ROOM));
+  // On a car park, the corner of rooms by the lifts keeps an office's finishes —
+  // painted walls, carpet, a suspended ceiling — and everything else is concrete
+  // (gen/garage.js). Null on every other floor, which is then drawn as it always was.
+  const office = officeMask(layout);
+  const inOffice = (i) => !!office?.[i];
+  const normalWalls = tiles.map((t, i) => (t === SOLID && !tallMask[i] && !inOffice(i) ? SOLID : ROOM));
   const tallWalls = tiles.map((t, i) => (t === SOLID && tallMask[i] ? SOLID : ROOM));
   drawWalls(layout, normalWalls, batcher, materials, colliders, WALL_H, false);
   drawWalls(layout, tallWalls, batcher, materials, colliders, WALL_H * 2, true);
+  if (office) {
+    const officeWalls = tiles.map((t, i) => (t === SOLID && inOffice(i) ? SOLID : ROOM));
+    drawWalls(layout, officeWalls, batcher, materials, colliders, WALL_H, false, 'wall');
+  }
+  // Which surface key a tile gets: the office corner's own, or the car park's.
+  const keyAt = (key, officeTiles) => (officeTiles ? key : garageKey(layout, key));
+  const passes = office
+    ? [[tiles.map((t, i) => (inOffice(i) ? t : SOLID)), true],
+      [tiles.map((t, i) => (inOffice(i) ? SOLID : t)), false]]
+    : [[tiles, false]];
 
   // The floor, which is a SLAB and not a sheet. It used to be one plane at y = 0,
   // which is invisible right up until you can see its edge — and a staircase down to
@@ -108,25 +123,29 @@ export function buildShell(layout, batcher, materials, colliders, cuts) {
   // the top of it is what an office floor actually is, and the cut edge reads as
   // exactly that. Carpet in the rooms, vinyl in the corridors and doorways: the
   // change underfoot is the clearest signal of where you are.
-  const floorTiles = masked(tiles, cuts.floor);
-  for (const [key, pick] of [['carpet', (t) => t === ROOM], ['vinyl', (t) => t === CORRIDOR || t === DOOR]]) {
-    for (const r of maskToRects(floorTiles, W, H, pick)) {
-      const x0 = worldX(layout, r.x0), x1 = worldX(layout, r.x1);
-      const z0 = worldZ(layout, r.y0), z1 = worldZ(layout, r.y1);
-      batcher.add('trim', materials.trim,
-        boxBetween(x0, -PLATE_T, z0, x1, -FLOOR_SKIN, z1), { castShadow: false });
-      const floorKey = garageKey(layout, key);
-      batcher.add(floorKey, materials[floorKey], applyWorldUVs(
-        boxBetween(x0, -FLOOR_SKIN, z0, x1, 0, z1)), { castShadow: false });
+  for (const [passTiles, officeTiles] of passes) {
+    const floorTiles = masked(passTiles, cuts.floor);
+    for (const [key, pick] of [['carpet', (t) => t === ROOM], ['vinyl', (t) => t === CORRIDOR || t === DOOR]]) {
+      for (const r of maskToRects(floorTiles, W, H, pick)) {
+        const x0 = worldX(layout, r.x0), x1 = worldX(layout, r.x1);
+        const z0 = worldZ(layout, r.y0), z1 = worldZ(layout, r.y1);
+        batcher.add('trim', materials.trim,
+          boxBetween(x0, -PLATE_T, z0, x1, -FLOOR_SKIN, z1), { castShadow: false });
+        const floorKey = keyAt(key, officeTiles);
+        batcher.add(floorKey, materials[floorKey], applyWorldUVs(
+          boxBetween(x0, -FLOOR_SKIN, z0, x1, 0, z1)), { castShadow: false });
+      }
     }
   }
 
   // Suspended ceiling over everything walkable — except where an attic's stairs come
   // up through it (see stairwellCut in gen/stairs.js).
-  for (const r of maskToRects(masked(tiles, cuts.ceiling), W, H, isOpen)) {
-    const ceilKey = garageKey(layout, 'ceiling');
-    batcher.add(ceilKey, materials[ceilKey], applyWorldUVs(floorSlab(layout, r, CEIL_H, false)),
-      { castShadow: false });
+  for (const [passTiles, officeTiles] of passes) {
+    for (const r of maskToRects(masked(passTiles, cuts.ceiling), W, H, isOpen)) {
+      const ceilKey = keyAt('ceiling', officeTiles);
+      batcher.add(ceilKey, materials[ceilKey], applyWorldUVs(floorSlab(layout, r, CEIL_H, false)),
+        { castShadow: false });
+    }
   }
 
   // The roof, structural rather than the suspended panel below it — a real box,
@@ -186,6 +205,22 @@ function only(tiles, cut) {
   return cut ? tiles.map((t, i) => (cut[i] ? t : SOLID)) : tiles.map(() => SOLID);
 }
 
+// A car park's office corner: the lift lobby and the security office, their walls
+// included, which keep an office's finishes in a concrete building. Null anywhere
+// that is not a car park.
+function officeMask(layout) {
+  if (!layout.garage) return null;
+  const { W, H } = layout;
+  const mask = new Uint8Array(W * H);
+  for (const r of layout.rooms) {
+    if (r.role !== 'exit' && r.role !== 'security') continue;
+    for (let y = Math.max(0, r.y0 - 1); y <= Math.min(H - 1, r.y1); y++) {
+      for (let x = Math.max(0, r.x0 - 1); x <= Math.min(W - 1, r.x1); x++) mask[y * W + x] = 1;
+    }
+  }
+  return mask;
+}
+
 // Tiles with a stairwell's hole taken out of them, for the surface it passes
 // through. Masking the tile VALUES rather than adding a predicate, because
 // maskToRects tests what it is handed and knows nothing about where it came from.
@@ -236,13 +271,13 @@ function generatorWallMask(layout) {
 // this pass should draw (see the two calls in buildShell). `building: true`
 // on the taller pass exempts it from validate-props.mjs's furniture height
 // cap the same way an ordinary WALL_H wall already is — see MAX_PROP_TOP.
-function drawWalls(layout, tiles, batcher, materials, colliders, wallH, building) {
+function drawWalls(layout, tiles, batcher, materials, colliders, wallH, building, paint = null) {
   const { W, H } = layout;
   for (const r of maskToRects(tiles, W, H, (t) => t === SOLID)) {
     const x0 = worldX(layout, r.x0), x1 = worldX(layout, r.x1);
     const z0 = worldZ(layout, r.y0), z1 = worldZ(layout, r.y1);
 
-    const wallKey = garageKey(layout, 'wall');
+    const wallKey = paint ?? garageKey(layout, 'wall');
     batcher.add(wallKey, materials[wallKey], applyWorldUVs(boxBetween(x0, 0, z0, x1, wallH, z1)));
     batcher.add('trim', materials.trim,
       boxBetween(x0 - 0.015, 0, z0 - 0.015, x1 + 0.015, BASEBOARD_H, z1 + 0.015));
