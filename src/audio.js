@@ -886,7 +886,15 @@ export class GameAudio {
    * spend them.
    */
   _placed(name, point, extra = null) {
-    const path = this.nav?.soundPath(point.x, point.z, this._pos.x, this._pos.z);
+    // Which storey the sound and the ear are each on. Routing them both on the
+    // ground — which is what this did — has a shot on the deck overhead arrive
+    // straight down through the slab (gen/garage.js stacks three decks; an attic is
+    // the same problem once). On different layers `losClear` is false unless both
+    // ends are in one stairwell, so soundPath walks the route round instead and the
+    // shot comes out of the ramp it would really travel down.
+    const sLayer = this._layerAt(point.x, point.z, (point.y ?? 0) - SOURCE_DROP);
+    const lLayer = this._layerAt(this._pos.x, this._pos.z, this._pos.y - EAR_DROP);
+    const path = this.nav?.soundPath(point.x, point.z, this._pos.x, this._pos.z, sLayer, lLayer);
 
     this._at.x = path ? path.x : point.x;
     this._at.y = point.y;
@@ -897,16 +905,38 @@ export class GameAudio {
     // No path at all means the source is off the nav field — off the floor, or
     // inside something. Treat it as muffled rather than pretending it is clear.
     opts.muffled = path ? path.occluded : true;
-    opts.gain = (extra?.gain ?? 1) * detourGain(path ? path.detour : 0);
+    opts.gain = (extra?.gain ?? 1) * detourGain(path ? path.detour : 0)
+      // ...and with no route at all between two storeys, a floor slab is most of
+      // a sound's level, not a lowpass on it.
+      * (!path && sLayer !== lLayer ? THROUGH_SLAB : 1);
     opts.rate = extra?.rate ?? 1;
     opts.delay = extra?.delay ?? 0;
     return this.sfx.play(name, opts);
+  }
+
+  /**
+   * The nav layer a point is on, from its height: the ground below `STOREY` and the
+   * nearest storey above it — the rule enemies.js uses for the player.
+   */
+  _layerAt(x, z, y) {
+    if (!this.nav || Math.abs(y) < STOREY) return 0;
+    return Math.max(1, this.nav.layerAtHeight?.(x, z, y) ?? 1);
   }
 }
 
 // Going round two corners costs you the same as walking it. Mirrors the inverse
 // falloff the panner applies to the straight-line part, so the two halves of the
 // journey are attenuated on the same curve.
+// How far the ear is above the feet, so the listener can be put on the right
+// storey; a sound's point is taken as it is — often a body's feet, which is exactly
+// its storey, and never more than a couple of metres over one. And how far off the
+// floor counts as another storey, which is enemies.js's STOREY_GAP.
+const SOURCE_DROP = 0;
+const EAR_DROP = 1.7;
+const STOREY = 2.4;
+// What is left of a sound with a floor slab and no way round between it and you.
+const THROUGH_SLAB = 0.25;
+
 function detourGain(detour) {
   return detour > 0 ? DETOUR_REFERENCE / (DETOUR_REFERENCE + detour) : 1;
 }
