@@ -608,6 +608,10 @@ export function rampGeometry(layout, plan) {
   geo.computeVertexNormals();
   // Filled in by applyWorldUVs, which writes into an attribute rather than adding one.
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array((pos.length / 3) * 2), 2));
+  // ...and INDEXED, like every box it is batched with: mergeGeometries refuses a mix,
+  // and a refused merge drops the whole chunk — the concrete floor round the ramp
+  // simply was not drawn.
+  geo.setIndex([...Array(pos.length / 3).keys()]);
   return geo;
 }
 
