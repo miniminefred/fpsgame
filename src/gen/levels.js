@@ -319,7 +319,10 @@ function dressLevel(layout, plan, sink, rng) {
     // whose columns stop at the floor below it is a deck held up by nothing — and
     // then the cars round them.
     for (const p of layout.pillars ?? []) {
-      tryPlace(sink, 'pillar', layout.ox + (p.x + 0.5) * TILE, layout.oz + (p.y + 0.5) * TILE, 0, rng);
+      const cx = layout.ox + (p.x + p.w / 2) * TILE, cz = layout.oz + (p.y + p.h / 2) * TILE;
+      // A wall runs along x as authored; one running along z is a quarter turn.
+      if (p.kind === 'wall') tryPlace(sink, 'deckWall', cx, cz, p.w > p.h ? 0 : 1, rng);
+      else tryPlace(sink, 'pillar', cx, cz, 0, rng);
     }
     parkingDeck(sink, { x0, z0, x1, z1 }, rng);
     return;

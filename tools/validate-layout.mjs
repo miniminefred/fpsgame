@@ -256,7 +256,10 @@ function validate(seed, floorNumber) {
   // are really for is a room the generator has walled off from itself, and the
   // 9.lift-* checks below put back the part that stopped being proved.
   const lifts = [L.lifts?.arrival, L.lifts?.departure].filter(Boolean);
-  const pillarAt = new Set((L.pillars ?? []).map((p) => p.y * W + p.x));
+  const pillarAt = new Set();
+  for (const p of L.pillars ?? []) {
+    for (let y = p.y; y < p.y + (p.h ?? 1); y++) for (let x = p.x; x < p.x + (p.w ?? 1); x++) pillarAt.add(y * W + x);
+  }
   const inLiftBlock = (x, y) => lifts.some(
     (f) => x >= f.bx0 && x < f.bx1 && y >= f.by0 && y < f.by1)
     // ...and a car park's columns, which are single wall tiles stood on the open

@@ -1334,11 +1334,22 @@ export const PROPS = {
   // hazard paint at bumper height because that is where every one of them has
   // been hit.
   pillar: {
-    w: 0.5, d: 0.5, hp: 0, substance: 'panel',
+    // A metre square, matching the two-tile columns the ground floor stands on the
+    // same grid (`standPillars` in gen/garage.js).
+    w: 0.99, d: 0.99, hp: 0, substance: 'panel',
     build(p) {
-      p.box('concreteWall', -0.22, 0, -0.22, 0.22, 3.0, 0.22);
-      p.box('hazard', -0.235, 0.25, -0.235, 0.235, 0.75, 0.235);
-      p.obstacle(-0.235, -0.235, 0.235, 0.235, 3.0, true);
+      p.box('concreteWall', -0.48, 0, -0.48, 0.48, 3.0, 0.48);
+      p.box('hazard', -0.495, 0.25, -0.495, 0.495, 0.75, 0.495);
+      p.obstacle(-0.495, -0.495, 0.495, 0.495, 3.0, true);
+    },
+  },
+
+  // ...and one of the free-standing walls on the same spots, four metres long.
+  deckWall: {
+    w: 3.99, d: 0.49, hp: 0, substance: 'panel',
+    build(p) {
+      p.box('concreteWall', -1.99, 0, -0.24, 1.99, 3.0, 0.24);
+      p.obstacle(-1.995, -0.245, 1.995, 0.245, 3.0, true);
     },
   },
 

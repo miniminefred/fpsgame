@@ -370,7 +370,7 @@ export function generateLayout(seed, floorNumber) {
   // A car park's columns, last of all the tile passes: they keep off the doors,
   // the two rooms and the ramp pair, so all three have to be decided first.
   const pillars = garage
-    ? standPillars(tiles, W, H, deck, [spawnRoom, security], doors, stairs, live)
+    ? standPillars(tiles, W, H, deck, [spawnRoom, security], doors, stairs, live, seed)
     : [];
 
   const layout = {

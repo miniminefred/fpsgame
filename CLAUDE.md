@@ -4667,10 +4667,24 @@ nothing proved before it can be undone by it.
   other way to deck 2. `RAMP_W` 8 tiles wide. Both levels cover the whole deck; the lower
   one is `covered`, so it has no roof — the deck above is its lid. Drawn as a sloped slab
   (`rampGeometry`) over the same treads every staircase has.
-- **Columns** (`standPillars`): single wall tiles every `PILLAR_PITCH` (7.5 m) on open floor
-  only — all eight neighbours open, off the lanes, and `PILLAR_KEEP` clear of doors, rooms
-  and the ramps — so a column can never close a gap. `layout.pillars` is the grid, and each
-  deck above stands a `pillar` prop on the same spots before its cars are parked.
+- **Columns and walls** (`standPillars`): one-metre columns (2 x 2 wall tiles) every
+  `PILLAR_PITCH` (7.5 m), plus a few free-standing 4 m concrete walls (one per `WALL_PER`
+  tiles of deck) so the deck is not one bare field. Every block stands ALONE on open floor —
+  a ring of open tiles round it, two deep for a wall — off the lanes, and `PILLAR_KEEP`
+  clear of doors, the two rooms, the ramps and every room's centre tile, so none of them can
+  close a gap. `layout.pillars` lists them (`kind` 'column' or 'wall'); each deck above
+  stands a `pillar` or `deckWall` prop on the same spots before its cars are parked.
+- **The office corner keeps an office's finishes** — painted walls, carpet, suspended
+  ceiling — through a second wall, floor and ceiling pass over `officeMask` in
+  gen/shell.js. **The decks look like the ground**: asphalt painted over the ground's own
+  lanes, and a deck's underside in the same soffit concrete (`drawPart` in levels.js).
+- **Every deck is staffed** (`_deckShift` in roster.js): each upper deck is dealt
+  `DECK_SHIFT` of the floor's headcount, capped at `DECK_MAX`, in teams of one to three. A
+  body's `layer` is all that has to be set — height, sight, hearing and the route down are
+  per layer already.
+- **The minimap has one raster per deck** and draws the player's (`enemies.playerLayer`),
+  with only that deck's people on it and no outlines on the parking areas — only the office
+  corner reads as rooms.
 - **Every room is `parking`** (`parkingRoles`) and `parkingDeck` fills it: rows across one
   axis with lanes, both axes tried, bays snapped to the tile grid (a footprint rounds
   outward to whole tiles, so bays at an honest 2.5 m pitch off the grid refuse each other).
@@ -4694,9 +4708,6 @@ pre-garage baselines, roster included.
 
 What the probes say: all 40 ramps on 20 floors walkable by the real `Player` onto their
 deck (`tools/probe-stairs.mjs`, which now starts a body at a ramp's own foot height).
-
-Not done: staff are only spawned on the ground, so the two upper decks are empty until
-somebody follows you up the ramp.
 
 **What it costs to draw.** An open deck puts the whole floor in view with nothing to
 occlude it, and every material is a draw call per 12 m chunk. So the car paints are six,

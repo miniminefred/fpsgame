@@ -207,21 +207,36 @@ export function planRamps(tiles, W, H, deck, kept) {
   ].slice(0, DECKS - 1);
 }
 
-// --- the columns -----------------------------------------------------------------
+// --- the columns, and a few walls -----------------------------------------------
 
 // Every seven and a half metres each way: a car park's structural grid, three bays
-// wide. Stood on the open deck as single wall tiles, so the shell draws them, nav
-// steps round them and the validators measure them exactly as they do any wall.
+// wide. A metre square — two tiles each way — stood on the open deck as wall
+// tiles, so the shell draws them, nav steps round them and the validators measure
+// them exactly as they do any wall.
 const PILLAR_PITCH = 15;
+const PILLAR_SIZE = 2;
 const PILLAR_KEEP = 4;    // tiles a column keeps off doors, rooms and the ramps
 
+// ...and a few free-standing concrete walls, so the deck is not one bare field of
+// cars and columns: a car park has its stair cores, its plant enclosures and its
+// fire walls. Four metres long and a tile thick, one per this many tiles of deck,
+// each with `WALL_MARGIN` of open floor all round it.
+const WALL_LEN = 8;
+const WALL_PER = 2600;
+const WALL_MARGIN = 2;
+
 /**
- * Stands the columns, and returns where they are so the decks above can stand
- * theirs on the same grid. A column only goes where it stands alone on open
- * floor — all eight neighbours open — so it can never close a gap, only stand in
- * the middle of one.
+ * Stands the columns and the walls, and returns where they all are (`kind`
+ * 'column' or 'wall', in tiles) so the decks above can stand theirs on the same
+ * spots and the minimap can draw them.
+ *
+ * Every block goes only where it stands ALONE on open floor — a ring of open tiles
+ * all round it, two deep for a wall — so none of them can close a gap, only stand
+ * in the middle of one. Off the lanes, and `PILLAR_KEEP` clear of doors, the two
+ * rooms, the ramps and every room's centre tile (which half the generator and the
+ * roster use as the one tile that stands for a room).
  */
-export function standPillars(tiles, W, H, deck, kept, doors, ramps, rooms = []) {
+export function standPillars(tiles, W, H, deck, kept, doors, ramps, rooms = [], seed = 0) {
   const avoid = new Uint8Array(W * H);
   const mark = (x0, y0, x1, y1) => {
     for (let y = Math.max(0, y0); y < Math.min(H, y1); y++) {
@@ -232,26 +247,51 @@ export function standPillars(tiles, W, H, deck, kept, doors, ramps, rooms = []) 
   for (const r of kept.filter(Boolean)) mark(r.x0 - 1 - k, r.y0 - 1 - k, r.x1 + 1 + k, r.y1 + 1 + k);
   for (const d of doors) mark(d.x0 - k - 2, d.y0 - k - 2, d.x1 + k + 2, d.y1 + k + 2);
   for (const p of ramps) mark(p.x0 - k - 2, p.y0 - k, p.x1 + k + 2, p.y1 + k);
-  // ...and off every room's CENTRE tile, which half the generator and the roster use
-  // as the one tile that stands for a room (see the centre-tile refusal in
-  // gen/lifts.js): a column there makes a whole parking bay read as unreachable.
   for (const r of rooms) {
     const cx = Math.round(r.cx), cy = Math.round(r.cy);
     mark(cx - 1, cy - 1, cx + 2, cy + 2);
   }
 
+  // Whether a w x h block at (x, y) may stand, with `margin` tiles of open floor
+  // round it.
+  const fits = (x, y, w, h, margin) => {
+    if (x - margin < deck.x0 || y - margin < deck.y0) return false;
+    if (x + w + margin > deck.x1 || y + h + margin > deck.y1) return false;
+    for (let ty = y - margin; ty < y + h + margin; ty++) {
+      for (let tx = x - margin; tx < x + w + margin; tx++) {
+        const t = tiles[ty * W + tx];
+        if (t === SOLID) return false;
+        const inside = tx >= x && tx < x + w && ty >= y && ty < y + h;
+        if (inside && (avoid[ty * W + tx] || t === CORRIDOR)) return false;
+      }
+    }
+    return true;
+  };
+  const stand = (x, y, w, h, kind) => {
+    for (let ty = y; ty < y + h; ty++) for (let tx = x; tx < x + w; tx++) tiles[ty * W + tx] = SOLID;
+    return { x, y, w, h, kind };
+  };
+
   const out = [];
   for (let y = deck.y0 + 7; y < deck.y1 - 2; y += PILLAR_PITCH) {
     for (let x = deck.x0 + 7; x < deck.x1 - 2; x += PILLAR_PITCH) {
-      if (avoid[y * W + x] || tiles[y * W + x] === CORRIDOR) continue;
-      let alone = true;
-      for (let dy = -1; dy <= 1 && alone; dy++) {
-        for (let dx = -1; dx <= 1; dx++) if (tiles[(y + dy) * W + x + dx] === SOLID) { alone = false; break; }
-      }
-      if (!alone) continue;
-      tiles[y * W + x] = SOLID;
-      out.push({ x, y });
+      if (fits(x, y, PILLAR_SIZE, PILLAR_SIZE, 1)) out.push(stand(x, y, PILLAR_SIZE, PILLAR_SIZE, 'column'));
     }
+  }
+
+  // The walls: darts are fine here, because the count is small and a wall that
+  // does not land is simply one fewer. On its own stream off the seed, for the
+  // reason every other planning die is.
+  const rng = makeRng((seed ^ 0x3c6ef372) >>> 0);
+  const want = Math.round(((deck.x1 - deck.x0) * (deck.y1 - deck.y0)) / WALL_PER);
+  for (let tries = 0, placed = 0; placed < want && tries < want * 40; tries++) {
+    const across = rng() < 0.5;
+    const w = across ? WALL_LEN : 1, h = across ? 1 : WALL_LEN;
+    const x = deck.x0 + Math.floor(rng() * (deck.x1 - deck.x0 - w));
+    const y = deck.y0 + Math.floor(rng() * (deck.y1 - deck.y0 - h));
+    if (!fits(x, y, w, h, WALL_MARGIN)) continue;
+    out.push(stand(x, y, w, h, 'wall'));
+    placed++;
   }
   return out;
 }
