@@ -10,7 +10,7 @@ import './headless.mjs';
 
 const { generateLayout } = await import('../src/gen/layout.js');
 const { buildLevel } = await import('../src/gen/build.js');
-const { approachSpot, levelY, rampSpec, FLIGHT_TILES } = await import('../src/gen/stairs.js');
+const { approachSpot, levelY, rampSpec, FLIGHT_TILES, footY } = await import('../src/gen/stairs.js');
 const { Player } = await import('../src/player.js');
 const { NavGrid } = await import('../src/nav.js');
 const { doorsOnRoom } = await import('../src/gen/locks.js');
@@ -53,7 +53,7 @@ for (let i = 0; i < FLOORS; i++) {
     const door = doorsOnRoom(layout.doors, plan.room)[0];
     const TL = 0.5;
     // A car park's rooms have no doors (gen/garage.js): start at the foot.
-    if (!door) { p.object.position.set(start.x, EYE, start.z); }
+    if (!door || footY(plan) !== 0) { p.object.position.set(start.x, footY(plan) + EYE, start.z); }
     else {
     const dx0 = layout.ox + ((door.x0 + door.x1) / 2) * TL, dz0 = layout.oz + ((door.y0 + door.y1) / 2) * TL;
     p.object.position.set(dx0, EYE, dz0);
@@ -77,7 +77,7 @@ for (let i = 0; i < FLOORS; i++) {
       const P = p.object.position;
       console.log(`APPROACH s${seed}/f${floor} ${plan.dir < 0 ? 'down' : 'up'} ${plan.room.role} ` +
         `${routed ? stuckApproach : 'no nav route'} at (${P.x.toFixed(2)},${P.z.toFixed(2)}) foot (${start.x.toFixed(2)},${start.z.toFixed(2)})`);
-      p.object.position.set(start.x, EYE, start.z);
+      p.object.position.set(start.x, footY(plan) + EYE, start.z);
     }
     }
 

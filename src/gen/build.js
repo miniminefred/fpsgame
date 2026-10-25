@@ -84,7 +84,8 @@ export function buildLevel(scene, layout, theme = null) {
   });
   colliders.push(...floorPlate(layout));
   buildDoorFrames(layout, batcher, materials, colliders);
-  buildWindows(layout, batcher, materials, fixtures, destructibles);
+  // A car park is a concrete box: no glazing anywhere (gen/garage.js).
+  if (!layout.garage) buildWindows(layout, batcher, materials, fixtures, destructibles);
   buildCeilingLights(layout, batcher, materials, fixtures, destructibles);
   buildGeneratorLights(layout, batcher, materials, fixtures, destructibles);
   // Doors are their own meshes rather than batched geometry, for the obvious

@@ -18,8 +18,8 @@
 import * as THREE from 'three';
 import { makeRng } from './rng.js';
 import { tryPlace } from './props.js';
-import { RAMP_RUN, RAMP_SLOPE, RISER, rampSpec } from './stairs.js';
-import { CORRIDOR, ROOM, SOLID } from './tiles.js';
+import { FLIGHT_TILES, RAMP_RUN, RAMP_SLOPE, RISER, rampSpec } from './stairs.js';
+import { CORRIDOR, ROOM, SOLID, slidePocketSide } from './tiles.js';
 import { doorsOnRoom } from './locks.js';
 
 // TEST: 1.0 while garage floors are being looked at. The design value is 0.1.
@@ -37,26 +37,38 @@ export function rollGarage(seed, floorNumber) {
 }
 
 /**
- * Knocks the floor through. Every wall tile standing between two open tiles —
- * open on both sides across one axis — is a partition, and it comes down; so
- * does every door but the lobby's. What stays is what stands alone: the
- * building's own outside wall (open on one side only), the lobby's ring round
- * the lifts, and every tile where two partitions CROSSED, which has wall on all
- * four sides and so is left standing as a 0.5 m column. A car park has columns
- * on a grid, and the BSP's own crossings are that grid.
+ * Knocks the floor through, all of it: every tile inside the building's outer wall
+ * comes down to concrete except the rooms that stay rooms (`kept` — the lift lobby
+ * and the security office, tucked into a corner) and the wall either side of their
+ * doors that their panels slide into. Every other door goes with its wall.
  *
- * Tested against the tiles as they were, so knocking one wall down cannot make
- * its neighbour look like a partition. Opening only ever adds floor, so the
- * connectivity proved before this still holds after it.
+ * "Inside the outer wall" is the bounding box of the open floor as planned, which
+ * is the slab less its exterior shell: a car park is one rectangle of deck, so the
+ * unused leaves the BSP left solid come down too. Opening only ever adds floor, so
+ * the connectivity proved before this still holds after it.
+ *
+ * Returns that rectangle, in tiles with an exclusive max — the deck every storey of
+ * the car park stands on.
  */
-export function openGarage(tiles, W, H, rooms, doors, lobby) {
-  const before = Uint8Array.from(tiles);
-  const open = (x, y) => x >= 0 && y >= 0 && x < W && y < H && before[y * W + x] !== SOLID;
-  const ring = (x, y) => x >= lobby.x0 - 1 && x <= lobby.x1 && y >= lobby.y0 - 1 && y <= lobby.y1;
+export function openGarage(tiles, W, H, rooms, doors, kept) {
+  let x0 = W, y0 = H, x1 = 0, y1 = 0;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (tiles[y * W + x] === SOLID) continue;
+      if (x < x0) x0 = x;
+      if (y < y0) y0 = y;
+      if (x + 1 > x1) x1 = x + 1;
+      if (y + 1 > y1) y1 = y + 1;
+    }
+  }
+
+  const ringOf = (r) => (x, y) => x >= r.x0 - 1 && x <= r.x1 && y >= r.y0 - 1 && y <= r.y1;
+  const rings = kept.filter(Boolean).map(ringOf);
+  const inRing = (x, y) => rings.some((f) => f(x, y));
 
   // The doors first, as the floor either side of them: a hall door stood in a
   // corridor and becomes lane, a room's stood in a wall and becomes deck.
-  const keep = new Set(doorsOnRoom(doors, lobby));
+  const keep = new Set(kept.filter(Boolean).flatMap((r) => doorsOnRoom(doors, r)));
   for (let i = doors.length - 1; i >= 0; i--) {
     const d = doors[i];
     if (keep.has(d)) continue;
@@ -67,37 +79,181 @@ export function openGarage(tiles, W, H, rooms, doors, lobby) {
   }
   for (const r of rooms) r.doors = r.doors.filter((d) => keep.has(d));
 
-  // ...and the wall either side of the lobby's own doorway, for as far as its
-  // leaves slide. A double door retracts into the wall beside its opening
-  // (`slidePocketRun`), and the lobby's ring can end before the pocket does —
-  // the wall used to carry on into the office next door. Knocked through, one
-  // lobby in seven had a door with nowhere to put its leaves.
+  // ...and the wall either side of a kept doorway, for as far as its panels slide.
+  // A door retracts into the wall beside its opening (`slidePocketRun`), and a
+  // room's ring can end before the pocket does — the wall used to carry on into
+  // the office next door. Knocked through, one lobby in seven had a door with
+  // nowhere to put its leaves.
   const pocket = new Uint8Array(W * H);
   for (const d of keep) {
     const reach = Math.max(d.x1 - d.x0, d.y1 - d.y0) + 2;
     for (let y = d.y0 - reach; y < d.y1 + reach; y++) {
       for (let x = d.x0 - reach; x < d.x1 + reach; x++) {
         if (x < 0 || y < 0 || x >= W || y >= H) continue;
-        // Along the door's own wall line only.
         if (d.vertical ? (x >= d.x0 && x < d.x1) : (y >= d.y0 && y < d.y1)) pocket[y * W + x] = 1;
       }
     }
   }
 
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      if (before[y * W + x] !== SOLID || ring(x, y) || pocket[y * W + x]) continue;
-      if ((open(x - 1, y) && open(x + 1, y)) || (open(x, y - 1) && open(x, y + 1))) {
-        tiles[y * W + x] = ROOM;
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      const i = y * W + x;
+      if (tiles[i] !== SOLID || inRing(x, y) || pocket[i]) continue;
+      tiles[i] = ROOM;
+    }
+  }
+  return { x0, y0, x1, y1 };
+}
+
+/**
+ * The one room besides the lobby that stays a room: the security office, the
+ * nearest room to the lifts that is a sensible size for one and has a door of its
+ * own (one shared with the lobby would be locked on the way out of it).
+ */
+export function pickSecurity(rooms, tiles, W, H, doors, lobby) {
+  const lobbyDoors = new Set(doorsOnRoom(doors, lobby));
+  const fit = rooms.filter((r) => {
+    if (r === lobby || r.areaM2 < 12 || r.areaM2 > 70) return false;
+    const own = doorsOnRoom(doors, r);
+    if (!own.length || own.some((d) => lobbyDoors.has(d) || d.hall)) return false;
+    // It is locked, so every door it has must be able to hold a panel.
+    return own.every((d) => slidePocketSide(tiles, W, H, d) !== 0);
+  });
+  if (!fit.length) return null;
+  const off = (r) => (r.cx - lobby.cx) ** 2 + (r.cy - lobby.cy) ** 2;
+  return fit.reduce((best, r) => (off(r) < off(best) ? r : best));
+}
+
+/** Every room a parking deck; the lobby the lobby, and security the security office. */
+export function parkingRoles(rooms, lobby, security) {
+  for (const r of rooms) { r.role = 'parking'; r.forcedRole = true; }
+  lobby.role = 'exit';
+  if (security) security.role = 'security';
+}
+
+/**
+ * The car park's only lock: blue, on the security office, which is the card the
+ * guards on rounds carry (`_security` in roster.js). Shaped exactly as
+ * `assignLocks` would hand it over, so everything downstream reads it unchanged.
+ */
+export function garageLocks(doors, security) {
+  if (!security) return [];
+  const own = doorsOnRoom(doors, security);
+  security.lock = 'blue';
+  security.staffOnly = true;
+  for (const d of own) d.lock = 'blue';
+  return [{ room: security, tier: 'blue', doors: own, staffOnly: true }];
+}
+
+// --- the ramps -----------------------------------------------------------------
+
+// How many decks a car park has, counting the ground: the ground, and two stacked
+// on it. The ramp pair in the middle joins them one to the next.
+export const DECKS = 3;
+
+// How wide a ramp is, in tiles: a car park's ramp is driven, so it is a lane wide
+// rather than a staircase wide.
+const RAMP_W = 8;
+// Clear floor kept at both ends of the pair, beyond the foot and the landing.
+const RAMP_CLEAR = 3;
+
+/**
+ * One big ramp in the middle of the floor, in the shape a car park actually has:
+ * a SWITCHBACK. The lower half climbs from the ground to the first deck running
+ * one way, and the upper half sits right beside it climbing from the first deck to
+ * the second running back the other way — so you come off the top of one and turn
+ * round onto the next.
+ *
+ * Each is an ordinary flight plan with a `level` on it (gen/stairs.js), so the
+ * builder, nav and both validators treat them as the attic stairs they are built
+ * like: treads underneath, a deck at the top with a hole in it for the flight.
+ * `deck` is the whole floor, and both levels cover all of it; the lower one is
+ * `covered`, because the upper deck is its lid.
+ */
+export function planRamps(tiles, W, H, deck, kept) {
+  const ft = FLIGHT_TILES;
+  const w = RAMP_W * 2;
+  const near = (x, y) => kept.filter(Boolean).some((r) =>
+    x >= r.x0 - 1 - RAMP_CLEAR && x <= r.x1 + RAMP_CLEAR && y >= r.y0 - 1 - RAMP_CLEAR && y <= r.y1 + RAMP_CLEAR);
+  const clearAt = (x0, y0) => {
+    for (let y = y0 - RAMP_CLEAR; y < y0 + w + RAMP_CLEAR; y++) {
+      for (let x = x0 - RAMP_CLEAR; x < x0 + ft + RAMP_CLEAR; x++) {
+        if (x < deck.x0 || y < deck.y0 || x >= deck.x1 || y >= deck.y1) return false;
+        if (tiles[y * W + x] === SOLID || near(x, y)) return false;
+      }
+    }
+    return true;
+  };
+
+  // The middle of the deck, walked outward until the pair and its clearances fit.
+  const cx = Math.round((deck.x0 + deck.x1) / 2 - ft / 2);
+  const cy = Math.round((deck.y0 + deck.y1) / 2 - w / 2);
+  let at = null;
+  for (let r = 0; r <= 40 && !at; r++) {
+    for (let dy = -r; dy <= r && !at; dy++) {
+      for (let dx = -r; dx <= r && !at; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        if (clearAt(cx + dx, cy + dy)) at = { x: cx + dx, y: cy + dy };
       }
     }
   }
+  if (!at) return [];
+
+  const room = { x0: deck.x0, y0: deck.y0, x1: deck.x1, y1: deck.y1, role: 'parking' };
+  const base = { room, side: 0, axis: 'x', dir: 1, x0: at.x, x1: at.x + ft };
+  return [
+    { ...base, up: 1, level: 1, covered: DECKS > 2, y0: at.y, y1: at.y + RAMP_W },
+    { ...base, up: -1, level: 2, covered: false, y0: at.y + RAMP_W, y1: at.y + w },
+  ].slice(0, DECKS - 1);
 }
 
-/** Every room a parking deck, and the lobby the lobby. No dice. */
-export function parkingRoles(rooms, lobby) {
-  for (const r of rooms) { r.role = 'parking'; r.forcedRole = true; }
-  lobby.role = 'exit';
+// --- the columns -----------------------------------------------------------------
+
+// Every seven and a half metres each way: a car park's structural grid, three bays
+// wide. Stood on the open deck as single wall tiles, so the shell draws them, nav
+// steps round them and the validators measure them exactly as they do any wall.
+const PILLAR_PITCH = 15;
+const PILLAR_KEEP = 4;    // tiles a column keeps off doors, rooms and the ramps
+
+/**
+ * Stands the columns, and returns where they are so the decks above can stand
+ * theirs on the same grid. A column only goes where it stands alone on open
+ * floor — all eight neighbours open — so it can never close a gap, only stand in
+ * the middle of one.
+ */
+export function standPillars(tiles, W, H, deck, kept, doors, ramps, rooms = []) {
+  const avoid = new Uint8Array(W * H);
+  const mark = (x0, y0, x1, y1) => {
+    for (let y = Math.max(0, y0); y < Math.min(H, y1); y++) {
+      for (let x = Math.max(0, x0); x < Math.min(W, x1); x++) avoid[y * W + x] = 1;
+    }
+  };
+  const k = PILLAR_KEEP;
+  for (const r of kept.filter(Boolean)) mark(r.x0 - 1 - k, r.y0 - 1 - k, r.x1 + 1 + k, r.y1 + 1 + k);
+  for (const d of doors) mark(d.x0 - k - 2, d.y0 - k - 2, d.x1 + k + 2, d.y1 + k + 2);
+  for (const p of ramps) mark(p.x0 - k - 2, p.y0 - k, p.x1 + k + 2, p.y1 + k);
+  // ...and off every room's CENTRE tile, which half the generator and the roster use
+  // as the one tile that stands for a room (see the centre-tile refusal in
+  // gen/lifts.js): a column there makes a whole parking bay read as unreachable.
+  for (const r of rooms) {
+    const cx = Math.round(r.cx), cy = Math.round(r.cy);
+    mark(cx - 1, cy - 1, cx + 2, cy + 2);
+  }
+
+  const out = [];
+  for (let y = deck.y0 + 7; y < deck.y1 - 2; y += PILLAR_PITCH) {
+    for (let x = deck.x0 + 7; x < deck.x1 - 2; x += PILLAR_PITCH) {
+      if (avoid[y * W + x] || tiles[y * W + x] === CORRIDOR) continue;
+      let alone = true;
+      for (let dy = -1; dy <= 1 && alone; dy++) {
+        for (let dx = -1; dx <= 1; dx++) if (tiles[(y + dy) * W + x + dx] === SOLID) { alone = false; break; }
+      }
+      if (!alone) continue;
+      tiles[y * W + x] = SOLID;
+      out.push({ x, y });
+    }
+  }
+  return out;
 }
 
 // --- the deck ----------------------------------------------------------------
@@ -105,9 +261,8 @@ export function parkingRoles(rooms, lobby) {
 const BAY_W = 2.5;        // one bay across, which is the `car` prop's footprint
 const BAY_D = 5.0;        // ...and one bay deep
 const LANE = 3.2;         // the drive aisle in front of a row
-const STRIP = 0.8;        // between two rows parked back to back: the pillars
+const STRIP = 0.8;        // between two rows parked back to back
 const GANG = 1.2;         // clear at both ends of every row, so no row is a wall
-const PILLAR_EVERY = 3;   // bays between two pillars down a strip
 
 /**
  * Rows of bays across the room's short side with a lane in front of each, the
@@ -132,7 +287,7 @@ export function parkingDeck(sink, bounds, rng) {
   // parts of the floor, and one 4.5 m car across a 5.5 m gap shut it — sixteen
   // floors in three hundred had a bay of the deck nobody could get into.
   if (!plan.rows.length || !plan.bays) return;
-  const { alongX, rows, strips } = plan;
+  const { alongX, rows } = plan;
   const { x0, z0, x1, z1 } = bounds;
   const [a0, a1, b0] = alongX ? [x0, x1, z0] : [z0, z1, x0];
 
@@ -164,15 +319,6 @@ export function parkingDeck(sink, bounds, rng) {
     for (const a of bays) {
       const [cx, cz] = alongX ? [a, b] : [b, a];
       tryPlace(sink, 'car', cx, cz, rot, rng);
-    }
-  }
-
-  // Pillars down each strip, on the line between two bays.
-  for (const s of strips) {
-    for (let i = PILLAR_EVERY; i < bays.length; i += PILLAR_EVERY) {
-      const a = bays[i] - BAY_W / 2;
-      const [cx, cz] = alongX ? [a, s] : [s, a];
-      tryPlace(sink, 'pillar', cx, cz, 0, rng);
     }
   }
 }

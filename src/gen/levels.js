@@ -288,6 +288,12 @@ function dressLevel(layout, plan, sink, rng) {
   // below it, through the level's own sink, so the ramp's landing and the well
   // stay clear exactly as they do for crates.
   if (layout.garage) {
+    // The columns first, on the same grid as the ones holding this deck up — a deck
+    // whose columns stop at the floor below it is a deck held up by nothing — and
+    // then the cars round them.
+    for (const p of layout.pillars ?? []) {
+      tryPlace(sink, 'pillar', layout.ox + (p.x + 0.5) * TILE, layout.oz + (p.y + 0.5) * TILE, 0, rng);
+    }
     parkingDeck(sink, { x0, z0, x1, z1 }, rng);
     return;
   }

@@ -12,7 +12,9 @@
 // because everything downstream asks gen/layout.js for a floor and should not
 // have to know which of five files a constant ended up in.
 
-import { openGarage, parkingRoles, rollGarage } from './garage.js';
+import {
+  garageLocks, openGarage, parkingRoles, pickSecurity, planRamps, rollGarage, standPillars,
+} from './garage.js';
 import { makeRng } from './rng.js';
 import { clamp } from '../util.js';
 import { bfs, CORRIDOR, doorSide, ROOM, TILE, worldX, worldZ } from './tiles.js';
@@ -298,7 +300,7 @@ export function generateLayout(seed, floorNumber) {
   // canteen, and because everything from the lobby on is planned differently.
   const garage = rollGarage(seed, floorNumber);
   const cafeteria = garage ? null : pickCafeteria(live, tiles, W, doors);
-  const spawnRoom = pickLobbyRoom(live, tiles, W, H, doors, cafeteria);
+  const spawnRoom = pickLobbyRoom(live, tiles, W, H, doors, cafeteria, garage);
   const exitRoom = spawnRoom;
   const dist = bfs(tiles, W, H, Math.round(spawnRoom.cx), Math.round(spawnRoom.cy));
 
@@ -332,10 +334,12 @@ export function generateLayout(seed, floorNumber) {
   }
   void way;
 
-  // ...and on a car park, every wall that is not the building's own or the
-  // lobby's comes down, with every door in it. What is left is one open deck
-  // with lanes where the corridors were and a column wherever two walls crossed.
-  if (garage) openGarage(tiles, W, H, live, doors, spawnRoom);
+  // ...and on a car park, every wall that is not the building's own, the lobby's
+  // or the security office's comes down, with every door in it: one open deck in a
+  // concrete box, with the two rooms that stay rooms in the corner by the lifts.
+  // See gen/garage.js for the rest — the ramps, the columns and the locks.
+  const security = garage ? pickSecurity(live, tiles, W, H, doors, spawnRoom) : null;
+  const deck = garage ? openGarage(tiles, W, H, live, doors, [spawnRoom, security]) : null;
 
   // The canteen only survives as one if the lobby did not take it. `pickLobbyRoom`
   // prefers to leave it alone but falls back rather than fail, and a canteen that
@@ -343,7 +347,7 @@ export function generateLayout(seed, floorNumber) {
   // eat in with the player standing in it.
   const cafeteriaRoom = (cafeteria && cafeteria !== spawnRoom) ? cafeteria : null;
 
-  if (garage) parkingRoles(live, spawnRoom);
+  if (garage) parkingRoles(live, spawnRoom, security);
   else assignRoles(live, spawnRoom, exitRoom, cafeteriaRoom, doors, rng);
   // On its own stream, not the floor's. Everything downstream of here — the
   // furniture in every room on the floor — draws from `rng`, so spending a
@@ -351,23 +355,34 @@ export function generateLayout(seed, floorNumber) {
   // building that has nothing to do with them. It showed up immediately as a
   // mailroom, three hundred metres from the nearest badge reader, furnishing
   // itself shut.
-  const locks = assignLocks(tiles, W, H, live, doors, spawnRoom, exitRoom, dist,
-    makeRng(seed ^ 0x5bf03635));
+  const locks = garage
+    ? garageLocks(doors, security)
+    : assignLocks(tiles, W, H, live, doors, spawnRoom, exitRoom, dist,
+      makeRng(seed ^ 0x5bf03635));
   // Its own stream for the same reason, and the reason bites harder here: how
   // many stairs a floor gets is itself a die, and how many candidate rooms and
   // walls were tried before one fitted is several more. Left on the floor's
   // stream, a floor with a staircase would furnish every OTHER room differently
   // from the same floor without one.
-  const stairs = planStairs(tiles, W, H, live, spawnRoom, exitRoom,
-    makeRng(seed ^ 0x7f4a7c15));
+  const stairs = garage
+    ? planRamps(tiles, W, H, deck, [spawnRoom, security])
+    : planStairs(tiles, W, H, live, spawnRoom, exitRoom, makeRng(seed ^ 0x7f4a7c15));
+  // A car park's columns, last of all the tile passes: they keep off the doors,
+  // the two rooms and the ramp pair, so all three have to be decided first.
+  const pillars = garage
+    ? standPillars(tiles, W, H, deck, [spawnRoom, security], doors, stairs, live)
+    : [];
 
   const layout = {
     seed, floorNumber, W, H, TILE,
     // How much floor this is compared with the usual one at this depth. Read by
     // whoever has to spread a fixed number of things over it — see floorSpans.
     areaRatio,
-    // Whether this floor is a car park — see gen/garage.js.
+    // Whether this floor is a car park — see gen/garage.js — and if it is, the
+    // deck every storey of it covers and the column grid the decks above repeat.
     garage,
+    deck,
+    pillars,
     ox: -W * TILE / 2, oz: -H * TILE / 2,
     tiles, rooms: live, doors,
     spawnRoom, exitRoom,

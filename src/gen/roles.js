@@ -65,7 +65,7 @@ const LOBBY_DOWN = 2 / 3;
  * nothing to do with them. Which room is the lobby already varies with the floor,
  * because the floorplan it is picked out of does.
  */
-export function pickLobbyRoom(rooms, tiles, W, H, doors, cafeteria) {
+export function pickLobbyRoom(rooms, tiles, W, H, doors, cafeteria, corner = false) {
   const canHold = rooms.filter(fitsLifts);
   const onHall = canHold.filter((r) =>
     doorsOnRoom(doors, r).some((d) => opensOntoCorridor(d, W, tiles)));
@@ -87,9 +87,18 @@ export function pickLobbyRoom(rooms, tiles, W, H, doors, cafeteria) {
   // `PAD` off the edge rather than the edge itself, because the outermost tiles
   // are the exterior shell and no room's centre can be in them; the target is
   // the nearest a room could actually get.
-  const mx = W / 2, my = H - PAD;
+  //
+  // ...except on a car park (gen/garage.js), where the lifts and the one room
+  // that stays a room are tucked into the BOTTOM-LEFT CORNER: the rest of the
+  // floor is one open deck, and a lift core in the middle of it would be a block
+  // standing in the parking.
+  const mx = corner ? PAD : W / 2, my = H - PAD;
   const off = (r) => (r.cx - mx) ** 2 + (r.cy - my) ** 2;
   const nearest = (pool) => pool.reduce((best, r) => (off(r) < off(best) ? r : best));
+  if (corner) {
+    for (const tier of [spare, onHall, canHold]) if (tier.length) return nearest(tier);
+    return nearest(rooms);
+  }
 
   // WHERE IT IS BEATS WHAT IT IS, and that is the inversion. Ranking every
   // qualifying room by `off` and taking the nearest sounds like it says "the

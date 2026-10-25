@@ -256,8 +256,13 @@ function validate(seed, floorNumber) {
   // are really for is a room the generator has walled off from itself, and the
   // 9.lift-* checks below put back the part that stopped being proved.
   const lifts = [L.lifts?.arrival, L.lifts?.departure].filter(Boolean);
+  const pillarAt = new Set((L.pillars ?? []).map((p) => p.y * W + p.x));
   const inLiftBlock = (x, y) => lifts.some(
-    (f) => x >= f.bx0 && x < f.bx1 && y >= f.by0 && y < f.by1);
+    (f) => x >= f.bx0 && x < f.bx1 && y >= f.by0 && y < f.by1)
+    // ...and a car park's columns, which are single wall tiles stood on the open
+    // deck on purpose (gen/garage.js `standPillars`). Each stands alone with all
+    // eight neighbours open, so it can never be what cuts a room off.
+    || pillarAt.has(y * W + x);
 
   let unreachableRoomTiles = 0;
   for (const r of rooms) {

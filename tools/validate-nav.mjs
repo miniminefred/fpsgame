@@ -32,8 +32,9 @@ import './headless.mjs';
 const { generateLayout } = await import('../src/gen/layout.js');
 const { buildLevel } = await import('../src/gen/build.js');
 const { NavGrid, BODY_RADIUS } = await import('../src/nav.js');
-const { RISER, TREADS, MAX_TILE_RISE, levelY, stripTiles, approachRect } =
-  await import('../src/gen/stairs.js');
+const {
+  RISER, TREADS, MAX_TILE_RISE, levelY, footY, footLayer, levelLayer, stripTiles, approachRect,
+} = await import('../src/gen/stairs.js');
 
 const args = process.argv.slice(2);
 const argVal = (flag, dflt) => {
@@ -186,9 +187,13 @@ function validate(seed, floorNumber) {
 
   // Wherever the layers are joined, both of them have to be standable there — a
   // join one side of which is thin air is a route that does not exist.
+  //
+  // `cross` is the LOWER of the two layers a join connects (-1 for none): 0 for every
+  // attic and basement, and on a car park the deck an upper ramp stands on.
   for (let i = 0; i < WH; i++) {
-    if (!nav.cross[i]) continue;
-    if (!nav.walk[i] || !nav.walk[WH + i]) {
+    const lo = nav.cross[i];
+    if (lo < 0) continue;
+    if (!nav.walk[lo * WH + i] || !nav.walk[(lo + 1) * WH + i]) {
       check('1.cross').fail(id, 'a join is missing from one of the two layers');
       break;
     }
@@ -196,13 +201,16 @@ function validate(seed, floorNumber) {
   // ...and a join is only ever inside a stairwell, which is the whole point: it is
   // the one place in the building where a body changes level.
   for (let i = 0; i < WH; i++) {
-    if (nav.cross[i] === well[i]) continue;
+    if ((nav.cross[i] >= 0 ? 1 : 0) === well[i]) continue;
     check('1.only-well').fail(id, 'the layers are joined somewhere that is not a stairwell');
     break;
   }
 
   for (const plan of layout.stairs) {
     stats.levels++;
+    // The layers this flight joins: its foot's and its level's. 0 and 1 for every
+    // attic and basement; a car park's upper ramp joins its two decks (gen/garage.js).
+    const LO = footLayer(plan), HI = levelLayer(plan);
     // Where the flight arrives. A body climbing gets here, so this is what "can you
     // get onto the level" means; how much of the level it can then walk to is a
     // separate, softer question (5.share below) because a crate up there blocking a
@@ -210,14 +218,14 @@ function validate(seed, floorNumber) {
     const shaft = stripTiles(plan, W);
     let head = null, headY = -Infinity;
     for (const i of shaft) {
-      const h = Math.abs(nav.heightAt(nav.wx(i % W), nav.wz((i / W) | 0), 1));
+      const h = Math.abs(nav.heightAt(nav.wx(i % W), nav.wz((i / W) | 0), HI) - footY(plan));
       if (h > headY) { headY = h; head = i; }
     }
     // A tile of the level's own FLOOR, not of the shaft: a body in the shaft is on the
     // stairs, and two bodies in one stairwell are allowed to see each other, so
     // testing from there would let the sight checks pass for the wrong reason.
     const onShaft = new Set(shaft);
-    const floor = nearestFit(nav, nav.wx(head % W), nav.wz((head / W) | 0), 1,
+    const floor = nearestFit(nav, nav.wx(head % W), nav.wz((head / W) | 0), HI,
       (tx, ty) => !onShaft.has(ty * W + tx));
     if (!floor) { check('1.layer').fail(id, `a ${plan.room.role} level has no standable floor`); continue; }
 
@@ -228,7 +236,7 @@ function validate(seed, floorNumber) {
     // warning rather than confused with this one — a room whose doorway no body can
     // pass has a stranded staircase, but the staircase is not what is wrong with it.
     const ar = approachRect(plan);
-    const ground = spotIn(nav, { x0: ar.x0, y0: ar.y0, x1: ar.x1, y1: ar.y1 }, 0);
+    const ground = spotIn(nav, { x0: ar.x0, y0: ar.y0, x1: ar.x1, y1: ar.y1 }, LO);
     if (!ground) {
       check('2.reach-up').fail(id, `no standable floor at the foot of a ${plan.room.role} flight`);
       continue;
@@ -240,21 +248,22 @@ function validate(seed, floorNumber) {
     let lo = Infinity, hi = -Infinity;
     for (const i of stripTiles(plan, W)) {
       // Asked the way a body asks: the height of the walking surface at that point.
-      const h = nav.heightAt(nav.wx(i % W), nav.wz((i / W) | 0), 0);
+      const h = nav.heightAt(nav.wx(i % W), nav.wz((i / W) | 0), LO);
       lo = Math.min(lo, h);
       hi = Math.max(hi, h);
     }
     const y = levelY(plan);
     const top = plan.dir > 0 ? hi : lo;
-    if (Math.abs(top - y) > RISER + 1e-6 || Math.abs(plan.dir > 0 ? lo : hi) > RISER + 1e-6) {
+    const bottom = plan.dir > 0 ? lo : hi;
+    if (Math.abs(top - y) > RISER + 1e-6 || Math.abs(bottom - footY(plan)) > RISER + 1e-6) {
       check('3.ramp').fail(id, `flight spans ${lo.toFixed(2)}..${hi.toFixed(2)} m, level at ${y.toFixed(2)}`);
     }
 
     // ---- 2. a route in both directions ----------------------------------
     // Flooded from the level: can anybody standing in the room below get up?
     nav.fieldAge = Infinity;
-    nav.updateField(1, [{ x: floor.x, z: floor.z, layer: 1 }], false);
-    const upDist = nav.pathDistance(ground.x, ground.z, 0);
+    nav.updateField(1, [{ x: floor.x, z: floor.z, layer: HI }], false);
+    const upDist = nav.pathDistance(ground.x, ground.z, LO);
     if (upDist < 0) {
       check('2.reach-up').fail(id, `no route from the ${plan.room.role} floor up to its level`);
     } else {
@@ -263,7 +272,7 @@ function validate(seed, floorNumber) {
       if (!w.arrived) check('2.walk-up').fail(id, `stuck ${Math.hypot(w.x - floor.x, w.z - floor.z).toFixed(1)} m short after ${w.steps} steps`);
       else {
         stats.climbSteps.push(w.steps);
-        const straight = Math.hypot(ground.x - floor.x, ground.z - floor.z) + Math.abs(y);
+        const straight = Math.hypot(ground.x - floor.x, ground.z - floor.z) + Math.abs(y - footY(plan));
         const walked = w.steps * STEP;
         stats.detours.push(walked / Math.max(1, straight));
         if (walked > straight * 3 + TREADS * 0.3) {
@@ -278,14 +287,14 @@ function validate(seed, floorNumber) {
     // ...and the other way, which is not the same question: the field is a
     // different flood and the crossing is taken in the other direction.
     nav.fieldAge = Infinity;
-    nav.updateField(1, [{ x: ground.x, z: ground.z, layer: 0 }], false);
-    if (nav.pathDistance(floor.x, floor.z, 1) < 0) {
+    nav.updateField(1, [{ x: ground.x, z: ground.z, layer: LO }], false);
+    if (nav.pathDistance(floor.x, floor.z, HI) < 0) {
       check('2.reach-down').fail(id, `no route from a ${plan.room.role} level back down`);
     } else {
       // Can anybody get to the stairs from the room's own doorway? A warning, because
       // when it fails it is furniture in a room the props sweep already grumbles
       // about, not the staircase.
-      const mouth = mouthOf(nav, layout, plan.room);
+      const mouth = LO === 0 && !layout.garage ? mouthOf(nav, layout, plan.room) : null;
       if (mouth && nav.pathDistance(mouth.x, mouth.z, 0) < 0) {
         check('5.door').fail(id, `a ${plan.room.role} flight is cut off from its own doorway`);
       }
@@ -294,9 +303,9 @@ function validate(seed, floorNumber) {
       let fit = 0, reached = 0;
       for (let ty = plan.room.y0; ty < plan.room.y1; ty++) {
         for (let tx = plan.room.x0; tx < plan.room.x1; tx++) {
-          if (!nav.fitsAt(tx, ty, nav.fits, 1)) continue;
+          if (!nav.fitsAt(tx, ty, nav.fits, HI)) continue;
           fit++;
-          if (nav.pathDistance(nav.wx(tx), nav.wz(ty), 1) >= 0) reached++;
+          if (nav.pathDistance(nav.wx(tx), nav.wz(ty), HI) >= 0) reached++;
         }
       }
       if (fit && reached / fit < 0.5) {
@@ -313,14 +322,14 @@ function validate(seed, floorNumber) {
     // ---- 4. sight ------------------------------------------------------
     // Across the slab, no. Two bodies in the same stairwell, yes — that is somebody
     // at the foot of a flight looking at somebody at the head of it.
-    if (nav.losClear(ground.x, ground.z, floor.x, floor.z, 0, 1)) {
+    if (nav.losClear(ground.x, ground.z, floor.x, floor.z, LO, HI)) {
       check('4.sight-slab').fail(id, 'saw through a floor slab');
     }
     const wellTiles = stripTiles(plan, W);
     const a = wellTiles[0], b = wellTiles[wellTiles.length - 1];
     const ax = nav.wx(a % W), az = nav.wz((a / W) | 0);
     const bx = nav.wx(b % W), bz = nav.wz((b / W) | 0);
-    if (!nav.losClear(ax, az, bx, bz, 0, 1)) {
+    if (!nav.losClear(ax, az, bx, bz, LO, HI)) {
       check('4.sight-well').fail(id, 'two bodies in one stairwell could not see each other');
     }
   }

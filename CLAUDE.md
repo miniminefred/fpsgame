@@ -4644,50 +4644,64 @@ it. Descending a floor clears the pool (16 on the next floor's machine, not 13+1
 ### A floor that is a car park (`gen/garage.js`)
 `GARAGE_CHANCE` of floors (design value **0.1**; it is **1.0** while being tested, and the
 committed baselines were written at 1.0 — put it back and `npm run baseline`) are a car
-park, and the WHOLE floor is: one open deck, no offices.
+park: **three decks** of open concrete in a solid concrete box with no windows, columns on
+a regular grid, rows of parked cars, a switchback ramp in the middle joining the decks, and
+one small corner of rooms by the lifts — the lift lobby and the security office. On the
+minimap that corner is the only thing drawn as rooms.
 
 **It is planned as an office floor and then knocked through** (`openGarage`), which is
-what keeps it safe. The spine, the BSP and the lift lobby are planned exactly as on any
-floor — so it is connected by construction and it has lanes where the corridors were —
-and then every wall tile with open floor on both sides of one axis comes down, with every
-door but the lobby's. The building's outside wall stays (open on one side only), the
-lobby's ring stays (tested explicitly), and every tile where two partitions CROSSED has
-wall on all four sides and is left standing as a 0.5 m column: the BSP's crossings are
-the car park's column grid. Opening only ever adds floor, so nothing proved before it
-can be undone by it.
+what keeps it safe. The spine, the BSP and the lobby are planned as on any floor — so it is
+connected by construction and it has lanes where the corridors were — and then EVERY tile
+inside the outer wall comes down to concrete except the two kept rooms' rings and the wall
+their doors slide into (`pocket`; without it one lobby in seven had a door with nowhere to
+put its leaves). Every other door goes with its wall. Opening only ever adds floor, so
+nothing proved before it can be undone by it.
 
-- **Every room is `parking`** (`parkingRoles`), no canteen, and with no doors left there is
-  nothing to lock — no keycard rooms, no manager, no closet. `_security`, `_janitors` and
-  `_manager` in roster.js were always opportunistic and simply find nothing.
-- **Rolled on its own stream** (`rollGarage`), for `floorSpans`' reasons, before the
-  canteen is picked.
-- **`parkingDeck`** lays rows across one axis — row against the wall, lane, two rows back
-  to back with pillars on a strip between them, lane — and tries BOTH axes, keeping
-  whichever parks more. Bays are SNAPPED to the tile grid: a footprint is rounded outward
-  to whole tiles, so two bays at an honest 2.5 m pitch off the grid each claim a sliver of
-  the other and the second is refused. The `car` prop's footprint is the bay (2.49 x 4.99,
-  a hair under so it rounds to exactly 5 x 10 tiles); its collider is the car alone.
-- **No cardboard, no corridor furniture and no cow**: bays and lanes are kept clear.
-- **A room too shallow for a row and its lane stays empty**, and that is a fix. It used to
-  fall back to cars along its walls, which is right for a room with walls and wrong on an
-  open deck: a shallow room is a PASSAGE between two parts of the floor, and one 4.5 m car
-  across a 5.5 m gap shut it — `5.geom-connected` failed 16 floors in 300. `parking` is
-  also kept out of `DEFINES`, so a bay with no room for a car is concrete rather than a
-  cupboard whose shelving is a wall across a passage.
-- **The validators know**: `5.room-door` and the per-room door-reach checks (`4.*`) skip a
-  garage floor, which has no doors to measure from. Reaching every room from the spawn
-  (`5.connected`, `5.geom-connected`) still runs, and is the check that matters here.
+- **The corner**: `pickLobbyRoom(..., corner)` takes the room nearest the bottom-LEFT
+  corner instead of the bottom middle, and `pickSecurity` the nearest room to it that is a
+  sensible size and has a door of its own that can hold a panel. `garageLocks` puts blue on
+  it, shaped exactly as `assignLocks` would, so the guards on rounds carry the card and
+  `_security` works unchanged. No manager, no closet, no canteen.
+- **The ramps** (`planRamps`) are two ordinary flight plans carrying a `level`: the lower
+  one climbs ground → deck 1, the upper one stands beside it on deck 1 and climbs back the
+  other way to deck 2. `RAMP_W` 8 tiles wide. Both levels cover the whole deck; the lower
+  one is `covered`, so it has no roof — the deck above is its lid. Drawn as a sloped slab
+  (`rampGeometry`) over the same treads every staircase has.
+- **Columns** (`standPillars`): single wall tiles every `PILLAR_PITCH` (7.5 m) on open floor
+  only — all eight neighbours open, off the lanes, and `PILLAR_KEEP` clear of doors, rooms
+  and the ramps — so a column can never close a gap. `layout.pillars` is the grid, and each
+  deck above stands a `pillar` prop on the same spots before its cars are parked.
+- **Every room is `parking`** (`parkingRoles`) and `parkingDeck` fills it: rows across one
+  axis with lanes, both axes tried, bays snapped to the tile grid (a footprint rounds
+  outward to whole tiles, so bays at an honest 2.5 m pitch off the grid refuse each other).
+  A room too shallow for a row and its lane stays open concrete — it is a passage, and one
+  car across it sealed 16 floors in 300 when it fell back to parking along the walls.
+- **No cardboard, no corridor furniture, no cow** on the deck, and the cow for a real reason:
+  its placement leans on room walls that are not there.
 - **What it is made of** goes through `garageKey`: wall → block, carpet → concrete,
   vinyl → asphalt, ceiling → soffit.
-- **A flight is drawn as a ramp** (`rampGeometry`) and is still treads underneath — the
-  colliders nav, the player and both validators already agree on. The split levels are
-  parked through the level's own sink.
+
+**Three decks needed nav to stop assuming two layers.** Every attic and basement has always
+shared ONE extra layer, because no two overlap; three whole decks on the same tiles cannot.
+So nav is `L` layers deep (`this.L`, 2 on every ordinary floor), `cross` stores the LOWER of
+the two layers a joint connects (or -1), a ramp is the walking surface only on the two
+layers it joins (`spec.lo`) and starts from its own deck (`spec.base`, `footY`), and the
+player's layer off the ground is the NEAREST deck (`layerAtHeight`) — still behind
+`STOREY_GAP`, because somebody on a two-metre rack is in the room, not upstairs. Levels are
+furnished one sink per layer, with `levelBlocked` a mask per layer. **Proved inert on
+ordinary floors**: with garages off, all four snapshot layers read SAME against the
+pre-garage baselines, roster included.
+
+What the probes say: all 40 ramps on 20 floors walkable by the real `Player` onto their
+deck (`tools/probe-stairs.mjs`, which now starts a body at a ramp's own foot height).
+
+Not done: staff are only spawned on the ground, so the two upper decks are empty until
+somebody follows you up the ramp.
 
 **What it costs to draw.** An open deck puts the whole floor in view with nothing to
-occlude it, and every material is a draw call per 12 m chunk. Measured with
-`gl.finish()` on the dev machine: 4–11 ms a frame on the deck against ~4 ms at the lift,
-around 1,000 draw calls, half of them the shadow pass. So the car paints are six, not ten,
-and paint, lamps and glass (`NO_SHADOW` in gen/sink.js) stay out of the shadow pass.
+occlude it, and every material is a draw call per 12 m chunk. So the car paints are six,
+not ten, and paint, lamps and glass (`NO_SHADOW` in gen/sink.js) stay out of the shadow
+pass.
 
 `MAX_PROP_SIDE` in `validate-props.mjs` went from 4.0 to 4.8 for the car, which is
 4.56 m nose to tail: that cap catches a prop that has become a building, and a car

@@ -82,7 +82,7 @@ const { PLAYER_RADIUS: BODY_R, BODY_RADIUS: ENEMY_R, STEP_EPS, BODY_H } =
 // The stairs are interrogated through the generator's OWN geometry, not through a
 // second opinion about where a tread ought to be — see gen/stairs.js, which exists
 // so the picture, the collision and this file read one set of boxes.
-const { stairBoxes, approachTiles, levelY, LOWER_Y, RISER } = await import('../src/gen/stairs.js');
+const { stairBoxes, approachTiles, levelY, footY, LOWER_Y, RISER } = await import('../src/gen/stairs.js');
 
 // ---------------------------------------------------------------------------
 // check bookkeeping (same shape as validate-layout.mjs)
@@ -420,7 +420,9 @@ function validate(seed, floorNumber) {
 
     // `y1` is the surface you put a foot on, going up or going down — a descending
     // tread hangs from the level's floor to its own top.
-    let at = 0;
+    // ...starting from the floor the flight stands on, which is the ground for every
+    // attic and basement and the deck below it for a car park's upper ramp.
+    let at = footY(plan);
     for (const t of treads) {
       const rise = Math.abs(t.y1 - at);
       if (rise <= EPS || rise > STEP_EPS + EPS) {
@@ -442,7 +444,10 @@ function validate(seed, floorNumber) {
         `last tread at ${fmt(at, 3)} m, wanted ${fmt(want, 3)}; deck at ${fmt(deck?.y1 ?? NaN, 3)} m, level at ${fmt(y, 3)} m`);
     }
 
-    if (!approachTiles(plan, W).some((i) => walk[i])) {
+    // `walk` is the ground floor's, so only a flight standing on the ground can be
+    // asked about it here; a car park's upper ramp stands on a deck, and the nav
+    // sweep is what proves a body can get onto it.
+    if (footY(plan) === 0 && !approachTiles(plan, W).some((i) => walk[i])) {
       check('11.stair-foot').fail(id, `nowhere to stand at the foot of a ${plan.room.role} flight`);
     }
   }
@@ -674,6 +679,9 @@ function validate(seed, floorNumber) {
   // ---- 9. props inside their room ---------------------------------------
   let spans = 0, escaped = 0, insetBreak = 0;
   for (const c of furn) {
+    // A car park's decks are parked over the whole floor, so a car up there stands
+    // over whatever room or lane is under it — it belongs to the deck, not to them.
+    if (layout.garage && (c.base ?? 0) > 1) continue;
     const r = tileRange(c, HAIRLINE);
     const owners = new Set();
     let sawCorridor = false, sawDoor = false;
