@@ -7,7 +7,8 @@
 import { LAMP_COLD } from '../textures.js';
 import { applyWorldUVs, boxBetween, slab } from './geom.js';
 import { footprintOf, tryPlace } from './props.js';
-import { CEIL_H, TILE } from './layout.js';
+import { CEIL_H, CORRIDOR, TILE } from './layout.js';
+import { maskToRects } from './rects.js';
 import {
   approachTiles,
   footLayer,
@@ -165,7 +166,9 @@ function drawStep(batcher, materials, b, plan) {
 }
 
 function drawPart(batcher, materials, b, layout = null) {
-  const key = garageKey(layout, PART_MATERIAL[b.part]);
+  // A car park's deck is seen from underneath from the deck below, so it wears the
+  // same concrete soffit the ground floor's ceiling does rather than bare trim.
+  const key = layout?.garage && b.part === 'deck' ? 'soffit' : garageKey(layout, PART_MATERIAL[b.part]);
   batcher.add(key, materials[key], applyWorldUVs(
     boxBetween(b.minX, b.base, b.minZ, b.maxX, b.y1, b.maxZ)));
   // A level's deck gets flooring laid on it, like a tread does — you walk on it.
@@ -174,6 +177,30 @@ function drawPart(batcher, materials, b, layout = null) {
   const floor = layout?.garage ? 'concrete' : 'vinyl';
   batcher.add(floor, materials[floor], applyWorldUVs(
     boxBetween(b.minX, b.y1 - TREAD_SKIN, b.minZ, b.maxX, b.y1, b.maxZ)));
+  // ...and the lanes painted on in asphalt, exactly over the ground floor's own, so
+  // every deck reads as the same floor as the one you arrived on.
+  if (layout?.garage) {
+    for (const r of laneRects(layout)) {
+      const x0 = Math.max(b.minX, r.x0), x1 = Math.min(b.maxX, r.x1);
+      const z0 = Math.max(b.minZ, r.z0), z1 = Math.min(b.maxZ, r.z1);
+      if (x1 - x0 < 1e-3 || z1 - z0 < 1e-3) continue;
+      batcher.add('asphalt', materials.asphalt, applyWorldUVs(
+        boxBetween(x0, b.y1, z0, x1, b.y1 + 0.004, z1)), { castShadow: false });
+    }
+  }
+}
+
+// The ground floor's lanes as world rects, worked out once per floor.
+const LANES = new WeakMap();
+function laneRects(layout) {
+  if (!LANES.has(layout)) {
+    LANES.set(layout, maskToRects(layout.tiles, layout.W, layout.H, (t) => t === CORRIDOR)
+      .map((r) => ({
+        x0: layout.ox + r.x0 * TILE, x1: layout.ox + r.x1 * TILE,
+        z0: layout.oz + r.y0 * TILE, z1: layout.oz + r.y1 * TILE,
+      })));
+  }
+  return LANES.get(layout);
 }
 
 // A sealed level has no window and a lid of its own, so without this it is a black
