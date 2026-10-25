@@ -652,7 +652,17 @@ export class Enemies {
     // top of nav.js. Off the ground floor it is the level's own layer; a metre up
     // a flight it is still whichever layer the field last had them on, and the
     // height comes from the ramp either way.
-    for (const t of targets) t.layer = Math.abs(t.y - EYE) > STOREY_GAP ? 1 : 0;
+    //
+    // Off the ground it is the NEAREST level, which on an ordinary floor is always
+    // layer 1 and on a car park is whichever of its stacked decks they are standing
+    // on (gen/garage.js). STOREY_GAP still decides whether they are off the ground
+    // at all, because a body stood on a two-metre rack is nearer the attic over it
+    // than the floor under it and is still in the room.
+    for (const t of targets) {
+      t.layer = Math.abs(t.y - EYE) > STOREY_GAP
+        ? Math.max(1, this.nav?.layerAtHeight(t.x, t.z, t.y - EYE) ?? 1)
+        : 0;
+    }
     // A corpse is not chased. If everybody is down there is nothing to flood
     // from, and the bodies below simply lose contact and stand down.
     //

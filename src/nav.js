@@ -27,6 +27,13 @@ import { MAX_TILE_RISE, rampHeight } from './gen/stairs.js';
 // a staircase. A flight is one continuous ramp, so a body's HEIGHT inside a
 // stairwell comes from where it is along the flight rather than from its layer
 // (`rampY`), and switching layer half way up is invisible.
+//
+// ...and a car park has MORE than two (gen/garage.js): three whole decks stacked on
+// the same tiles, which no single shared layer can hold. So the count is `this.L`
+// rather than 2, every grid is `L * W * H`, and `cross` stores the LOWER of the two
+// layers a joint connects — every attic and basement joins 0 to 1 exactly as
+// before, and a car park's upper ramp joins 1 to 2. An ordinary floor still has
+// L = 2, so nothing about it moved.
 
 const REPATH_INTERVAL = 0.3;   // seconds between flood fills
 const LOS_STEP = 0.25;         // metres between line-of-sight samples
@@ -60,24 +67,29 @@ export class NavGrid {
     // Layer 0 is the ground floor and layer 1 is every attic and basement — see
     // the note at the top of the file for why one layer holds all of them.
     const levels = nav.levels ?? null;
-    this.walk = new Uint8Array(WH * 2);
+    const extra = levels?.layers ?? [];
+    this.L = Math.max(2, 1 + extra.length);
+    const L = this.L;
+    this.walk = new Uint8Array(WH * L);
     this.walk.set(nav.walk, 0);
-    if (levels) this.walk.set(levels.walk, WH);
+    extra.forEach((layer, k) => this.walk.set(layer.walk, (k + 1) * WH));
 
-    // Where the two layers are joined, which is the stairwells and nothing else.
-    this.cross = levels ? levels.cross : new Uint8Array(WH);
+    // Where layers are joined, which is the stairwells and nothing else: the LOWER
+    // of the two layers a joint connects, or -1.
+    this.cross = levels?.cross ?? new Int8Array(WH).fill(-1);
     // The height of the walking surface. On a level it is that level's floor; inside
     // a stairwell it is the flight, sampled CONTINUOUSLY from the ramp rather than
     // per tile — a body climbing must rise smoothly, not in 33 cm jerks — and the
     // layer does not come into it, because a flight is one surface.
-    this.levelY = levels ? levels.levelY : new Float32Array(WH);
+    this.levelY = new Float32Array(WH * L);
+    extra.forEach((layer, k) => this.levelY.set(layer.levelY, (k + 1) * WH));
     this.ramps = levels ? levels.ramps : [];
     this.rampAt = levels ? levels.rampAt : new Int8Array(WH).fill(-1);
 
     // ...and the same heights at tile centres, which is what the flood and the
     // downhill step compare. Precomputed because they ask per neighbour per tile.
-    this.surfaceY = new Float32Array(WH * 2);
-    for (let layer = 0; layer < 2; layer++) {
+    this.surfaceY = new Float32Array(WH * L);
+    for (let layer = 0; layer < L; layer++) {
       for (let ty = 0; ty < this.H; ty++) {
         for (let tx = 0; tx < this.W; tx++) {
           this.surfaceY[layer * WH + ty * this.W + tx] =
@@ -86,8 +98,8 @@ export class NavGrid {
       }
     }
 
-    this.field = new Int32Array(WH * 2);
-    this.queue = new Int32Array(WH * 2);
+    this.field = new Int32Array(WH * L);
+    this.queue = new Int32Array(WH * L);
     this.fieldAge = Infinity;
     // One hash of every origin the field was last flooded from, so the staleness
     // test is a single comparison however many players there are. See updateField.
@@ -110,8 +122,8 @@ export class NavGrid {
     // the field happily leads an enemy into a 0.4 m gap between two desks that
     // its 0.72 m body then refuses to enter, and it stalls there forever. So we
     // erode the grid by the body radius once per floor and path on that.
-    this.fits = new Uint8Array(WH * 2);
-    for (let layer = 0; layer < 2; layer++) {
+    this.fits = new Uint8Array(WH * L);
+    for (let layer = 0; layer < L; layer++) {
       const base = layer * WH;
       for (let ty = 0; ty < this.H; ty++) {
         for (let tx = 0; tx < this.W; tx++) {
@@ -131,11 +143,11 @@ export class NavGrid {
     // both directions. A filing cabinet is walkable-through-no but see-over-yes;
     // a shut door is the reverse of nothing — it is no to both, but only while
     // it happens to be shut, and doors.js is what knows that. See setSight.
-    this.sight = new Uint8Array(WH * 2);
+    this.sight = new Uint8Array(WH * L);
     for (let i = 0; i < WH; i++) this.sight[i] = isOpen(this.tiles[i]) ? 1 : 0;
     // A level is one open room with a lid — there is nothing inside it to see
     // through, so its own walkable floor is exactly what can be seen across.
-    if (levels) for (let i = 0; i < WH; i++) this.sight[WH + i] = levels.sight[i];
+    extra.forEach((layer, k) => this.sight.set(layer.sight, (k + 1) * WH));
   }
 
   /**
@@ -242,7 +254,7 @@ export class NavGrid {
     if (!any) return;
 
     this.badgeWalk = walk;
-    this.badgeFits = new Uint8Array(this.WH * 2);
+    this.badgeFits = new Uint8Array(this.WH * this.L);
     for (let ty = 0; ty < this.H; ty++) {
       for (let tx = 0; tx < this.W; tx++) {
         const i = ty * this.W + tx;
@@ -250,7 +262,7 @@ export class NavGrid {
         if (this._clearOn(walk, this.wx(tx), this.wz(ty), BODY_RADIUS)) this.badgeFits[i] = 1;
       }
     }
-    this.badgeField = new Int32Array(this.WH * 2);
+    this.badgeField = new Int32Array(this.WH * this.L);
   }
 
   tx(x) { return Math.floor((x - this.ox) / this.TILE); }
@@ -287,8 +299,32 @@ export class NavGrid {
     if (!this.inBounds(tx, ty)) return 0;
     const i = ty * this.W + tx;
     const r = this.rampAt[i];
-    if (r >= 0) return rampHeight(this.ramps[r], x, z);
-    return layer ? this.levelY[i] : 0;
+    // A flight is the surface on the two layers it joins and on no other: a car
+    // park's lower ramp has a whole deck standing over it two layers up.
+    if (r >= 0) {
+      const lo = this.ramps[r].lo ?? 0;
+      if (layer === lo || layer === lo + 1) return rampHeight(this.ramps[r], x, z);
+    }
+    return layer ? this.levelY[layer * this.WH + i] : 0;
+  }
+
+  /**
+   * Which layer somebody whose feet are at `feetY` is standing on: the walkable
+   * layer here whose surface is nearest that height, or the ground. On an ordinary
+   * floor that is the old two-way answer; on a car park it tells three decks apart.
+   */
+  layerAtHeight(x, z, feetY) {
+    const tx = this.tx(x), ty = this.ty(z);
+    if (!this.inBounds(tx, ty)) return 0;
+    const i = ty * this.W + tx;
+    let best = 0;
+    let bestD = Math.abs(feetY - this.heightAt(x, z, 0));
+    for (let layer = 1; layer < this.L; layer++) {
+      if (!this.walk[layer * this.WH + i]) continue;
+      const d = Math.abs(feetY - this.heightAt(x, z, layer));
+      if (d < bestD) { bestD = d; best = layer; }
+    }
+    return best;
   }
 
   /** Which layer a point belongs to if it is standing on a level, else 0. */
@@ -457,7 +493,7 @@ export class NavGrid {
    * begins with `field.fill(-1)`; a field is never read before it is flooded.
    */
   makeField() {
-    return this._spare.pop() ?? new Int32Array(this.WH * 2);
+    return this._spare.pop() ?? new Int32Array(this.WH * this.L);
   }
 
   /**
@@ -469,7 +505,7 @@ export class NavGrid {
    * holding directions he has already followed.
    */
   freeField(field) {
-    if (field && field.length === this.WH * 2) this._spare.push(field);
+    if (field && field.length === this.WH * this.L) this._spare.push(field);
   }
 
   /**
@@ -524,7 +560,8 @@ export class NavGrid {
 
     while (head < tail) {
       const i = queue[head++];
-      const base = i < WH ? 0 : WH;
+      const layer = (i / WH) | 0;
+      const base = layer * WH;
       const j = i - base;                 // the tile, without its layer
       const x = j % W, y = (j / W) | 0;
       const d = field[i] + 1;
@@ -537,8 +574,9 @@ export class NavGrid {
       // ...and the staircase. One step, straight up or down, on the tiles where the
       // two layers are joined — which is what makes a route between floors a route
       // rather than a special case somewhere else in the code.
-      if (cross[j]) {
-        const other = base ? j : WH + j;
+      const lo = cross[j];
+      if (lo >= 0 && (layer === lo || layer === lo + 1)) {
+        const other = (layer === lo ? lo + 1 : lo) * WH + j;
         if (field[other] === -1 && fits[other]) { field[other] = d; queue[tail++] = other; }
       }
     }
@@ -687,8 +725,9 @@ export class NavGrid {
     // new layer wants — otherwise a body switching layer would stall for a frame at
     // the top of every flight.
     const tile = ty * this.W + tx;
-    if (this.cross[tile]) {
-      const other = layer ? 0 : 1;
+    const lo = this.cross[tile];
+    if (lo >= 0 && (layer === lo || layer === lo + 1)) {
+      const other = layer === lo ? lo + 1 : lo;
       const d = field[other * WH + tile];
       if (d >= 0 && d < best && fits[other * WH + tile]) {
         const stepped = this.descendOn(field, x, z, out, fits, other);

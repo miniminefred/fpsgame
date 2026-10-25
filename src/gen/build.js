@@ -12,7 +12,9 @@ import { getAssets } from '../textures.js';
 import { Batcher } from './geom.js';
 import { isOpen, TILE } from './layout.js';
 import { PLAYER_RADIUS } from '../metrics.js';
-import { levelY, rampSpec, roofCollisionCut, stairwellCut, stripTiles } from './stairs.js';
+import {
+  footLayer, levelLayer, levelY, rampSpec, roofCollisionCut, stairwellCut, stripTiles,
+} from './stairs.js';
 import {
   BadgeReaders,
   buildDoubleDoors,
@@ -121,7 +123,11 @@ export function buildLevel(scene, layout, theme = null) {
   const cow = placeCow(layout, sink, rng);
   // Last, and through sinks of their own: a level off the ground floor has its own
   // occupancy and its own nav layer. See furnishLevels.
-  const levelBlocked = new Uint8Array(W * H);
+  // One occupancy mask per nav LAYER rather than one for every level, because a
+  // car park stacks whole decks on the same tiles (gen/garage.js): a car parked on
+  // the top deck must not block the deck under it. An ordinary floor only ever
+  // uses layer 1.
+  const levelBlocked = new Map();
   furnishLevels(layout, batcher, materials,
     { colliders, dynamics, destructibles, levelBlocked }, rng);
 
@@ -233,42 +239,59 @@ export function buildLevel(scene, layout, theme = null) {
  */
 function levelNav(layout, levelBlocked) {
   const { W, H } = layout;
-  const walk = new Uint8Array(W * H);
-  const sight = new Uint8Array(W * H);
-  const cross = new Uint8Array(W * H);
-  const levelYs = new Float32Array(W * H);
+  // One layer for every attic and basement at once, as it always was — plus one per
+  // stacked deck on a car park. `levelLayer` says which a plan's level is on.
+  const count = Math.max(1, ...layout.stairs.map(levelLayer));
+  const layers = Array.from({ length: count }, () => ({
+    walk: new Uint8Array(W * H),
+    sight: new Uint8Array(W * H),
+    levelY: new Float32Array(W * H),
+  }));
+  const cross = new Int8Array(W * H).fill(-1);
   // Which flight a stairwell tile belongs to, so nav can sample that flight's height
   // continuously rather than storing one number per tile and making a body climb in
   // 33 cm jerks.
   const rampAt = new Int8Array(W * H).fill(-1);
   const ramps = [];
 
+  // Every level's floor first, so a ramp that STANDS on a deck (a car park's upper
+  // one) is laid over a floor that is already there.
   for (const plan of layout.stairs) {
+    const k = levelLayer(plan);
+    const layer = layers[k - 1];
+    const blocked = levelBlocked.get(k);
     const room = plan.room;
     for (let ty = room.y0; ty < room.y1; ty++) {
       for (let tx = room.x0; tx < room.x1; tx++) {
         const i = ty * W + tx;
-        levelYs[i] = levelY(plan);
-        sight[i] = 1;
+        layer.levelY[i] = levelY(plan);
+        layer.sight[i] = 1;
         // The level's floor, minus whatever is standing on it.
-        if (!levelBlocked[i]) walk[i] = 1;
+        if (!blocked?.[i]) layer.walk[i] = 1;
       }
-    }
-    // ...and the stairwell, which belongs to both layers and is where they join. All
-    // of it: a body has to be able to stand anywhere on a flight and walk the length
-    // of it. What stops anybody stepping onto the MIDDLE of one — off the edge of the
-    // landing above, or up off the room floor below — is the no-cliff rule in nav.js,
-    // which is also what caught the three-metre teleport that used to happen here.
-    const ramp = ramps.push(rampSpec(layout, plan)) - 1;
-    for (const i of stripTiles(plan, W)) {
-      rampAt[i] = ramp;
-      cross[i] = 1;
-      walk[i] = 1;
-      sight[i] = 1;
     }
   }
 
-  return { walk, sight, cross, rampAt, ramps, levelY: levelYs };
+  // ...and the stairwells, which belong to both layers they join and are where they
+  // join. All of it: a body has to be able to stand anywhere on a flight and walk the
+  // length of it. What stops anybody stepping onto the MIDDLE of one — off the edge
+  // of the landing above, or up off the floor below — is the no-cliff rule in nav.js,
+  // which is also what caught the three-metre teleport that used to happen here.
+  for (const plan of layout.stairs) {
+    const lo = footLayer(plan);
+    const ramp = ramps.push(rampSpec(layout, plan)) - 1;
+    for (const i of stripTiles(plan, W)) {
+      rampAt[i] = ramp;
+      cross[i] = lo;
+      for (const k of [lo, lo + 1]) {
+        if (k === 0) continue;   // the ground's own grid comes from the floorplan
+        layers[k - 1].walk[i] = 1;
+        layers[k - 1].sight[i] = 1;
+      }
+    }
+  }
+
+  return { layers, cross, rampAt, ramps };
 }
 
 // --- shell: walls, floors, ceiling ------------------------------------------

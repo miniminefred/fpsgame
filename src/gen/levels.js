@@ -7,18 +7,17 @@
 import { LAMP_COLD } from '../textures.js';
 import { applyWorldUVs, boxBetween, slab } from './geom.js';
 import { footprintOf, tryPlace } from './props.js';
-import { TILE } from './layout.js';
+import { CEIL_H, TILE } from './layout.js';
 import {
   approachTiles,
+  footLayer,
+  levelLayer,
+  levelY,
   landingTiles,
   levelFloor,
-  LOWER_Y,
-  PLATE_T,
   RISER,
   stairBoxes,
   stripTiles,
-  UPPER_CEIL,
-  UPPER_Y,
 } from './stairs.js';
 import { LIGHT_PITCH } from './shell.js';
 import { makeSink } from './sink.js';
@@ -135,12 +134,12 @@ export function buildStairs(layout, batcher, materials, masks, rng) {
     // the flight — but it stays in the nav grid, which is what lets somebody follow
     // you up it. The grid has a layer for the levels and joins the two at exactly
     // these tiles; see the note at the top of nav.js.
-    for (const i of stripTiles(plan, W)) masks.occupied[i] = 1;
+    if (footLayer(plan) === 0) for (const i of stripTiles(plan, W)) masks.occupied[i] = 1;
     // The floor at the bottom of the flight is reserved from the furnisher but
     // stays in the nav grid — you have to be able to stand there to start
     // climbing, and so does anybody following you. Without it, better than one
     // flight in three came out behind a filing cabinet.
-    for (const i of approachTiles(plan, W)) masks.occupied[i] = 1;
+    if (footLayer(plan) === 0) for (const i of approachTiles(plan, W)) masks.occupied[i] = 1;
 
     lightLevel(layout, plan, batcher, materials, masks.fixtures);
   }
@@ -183,7 +182,10 @@ function drawPart(batcher, materials, b, layout = null) {
 // has them under its roof; a basement has them under the floor plate.
 function lightLevel(layout, plan, batcher, materials, fixtures) {
   const f = levelFloor(layout, plan);
-  const y = plan.dir > 0 ? UPPER_CEIL : -PLATE_T;
+  // Under its own ceiling, whichever storey it is: CEIL_H over the level's floor is
+  // UPPER_CEIL for an attic, -PLATE_T for a basement, and the underside of the next
+  // deck up on a car park.
+  const y = levelY(plan) + CEIL_H;
   const nx = Math.max(1, Math.round((f.maxX - f.minX) / LIGHT_PITCH));
   const nz = Math.max(1, Math.round((f.maxZ - f.minZ) / LIGHT_PITCH));
 
@@ -220,9 +222,18 @@ export function furnishLevels(layout, batcher, materials, shared, rng) {
   if (!layout.stairs.length) return;
   const { W, H } = layout;
 
-  for (const dir of [1, -1]) {
-    const plans = layout.stairs.filter((p) => p.dir === dir);
+  // One sink per LEVEL: every attic together, then every basement together — which
+  // is the order they were always furnished in, so an ordinary floor's rng draws do
+  // not move — and on a car park one per stacked deck (gen/garage.js).
+  const groups = layout.garage
+    ? [...new Set(layout.stairs.map(levelLayer))].sort((a, b) => a - b)
+      .map((k) => layout.stairs.filter((p) => levelLayer(p) === k))
+    : [1, -1].map((dir) => layout.stairs.filter((p) => p.dir === dir && !p.level));
+
+  for (const plans of groups) {
     if (!plans.length) continue;
+    const layerK = levelLayer(plans[0]);
+    if (!shared.levelBlocked.has(layerK)) shared.levelBlocked.set(layerK, new Uint8Array(W * H));
 
     // Reserved is everything EXCEPT this level's own floor, which is the room it
     // belongs to minus the stairwell. Inverted rather than listed because the tile
@@ -241,13 +252,21 @@ export function furnishLevels(layout, batcher, materials, shared, rng) {
       // ...and the floor you step off the flight onto, or the flight ends at a box.
       for (const i of landingTiles(plan, W)) reserved[i] = 1;
     }
+    // ...and a flight that STANDS on this deck — a car park's upper ramp — with the
+    // floor at its foot, exactly as the ground floor keeps its own stairwells clear.
+    for (const plan of layout.stairs) {
+      if (footLayer(plan) !== layerK || footLayer(plan) === 0) continue;
+      for (const i of stripTiles(plan, W)) reserved[i] = 1;
+      for (const i of approachTiles(plan, W)) reserved[i] = 1;
+    }
 
     const sink = makeSink(layout, batcher, materials, {
-      level: dir > 0 ? UPPER_Y : LOWER_Y,
+      level: levelY(plans[0]),
       // A level's own furniture DOES block its own nav layer — it is the floor those
-      // props are standing on. `shared.levelBlocked` is one mask for every level on
-      // the floor, which works because no two of them share a tile.
-      blocked: shared.levelBlocked,
+      // props are standing on. One mask per LAYER: every attic and basement shares
+      // layer 1 because no two of them share a tile, and each stacked deck of a car
+      // park has its own because all of them do.
+      blocked: shared.levelBlocked.get(layerK),
       occupied: new Uint8Array(W * H),
       reserved,
       colliders: shared.colliders,

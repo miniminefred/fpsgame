@@ -86,8 +86,29 @@ export const PLATE_T = LEVEL_Y - CEIL_H;
 const DECK_CLEAR = 0.05;
 const WALL_T = 0.14;
 
-/** The floor a plan's level sits at: an attic above, a basement below. */
-export const levelY = (plan) => (plan.dir > 0 ? UPPER_Y : LOWER_Y);
+/**
+ * The floor a plan's level sits at: an attic above, a basement below — or, on a car
+ * park (gen/garage.js), a deck stacked `plan.level` storeys up. A stacked deck is
+ * the same construction as an attic with its foot on the deck below it rather than
+ * on the ground, which is all `level` changes.
+ */
+export const levelY = (plan) => (plan.level
+  ? plan.level * LEVEL_Y
+  : (plan.dir > 0 ? UPPER_Y : LOWER_Y));
+
+/** ...and the floor its flight STARTS on: the ground, or the deck below a stacked one. */
+export const footY = (plan) => (plan.level ? (plan.level - 1) * LEVEL_Y : 0);
+
+/**
+ * The nav layer a flight's foot stands on. A flight joins this layer to the one
+ * above it (gen/build.js `levelNav`). Every ordinary attic and basement joins the
+ * ground (0) to the one shared level layer (1); a car park's ramps join its decks
+ * one to the next.
+ */
+export const footLayer = (plan) => (plan.level ? plan.level - 1 : 0);
+
+/** ...and the nav layer its level is on: 1 for every attic and basement, k for a deck. */
+export const levelLayer = (plan) => plan.level ?? 1;
 
 export const TREADS = Math.round(LEVEL_Y / RISER);
 // The flight's run in whole tiles, because everything the generator reserves is
@@ -202,6 +223,8 @@ export function planAt(layout, x, z, feetY) {
   const ty = Math.round((z - layout.oz) / TILE - 0.5);
   for (const plan of layout.stairs) {
     if (plan.dir !== dir) continue;
+    // A stacked deck answers for its own storey only.
+    if (plan.level && Math.abs(levelY(plan) - feetY) > LEVEL_Y * 0.5) continue;
     const r = plan.room;
     if (tx >= r.x0 && tx < r.x1 && ty >= r.y0 && ty < r.y1) return plan;
   }
@@ -225,6 +248,9 @@ export function stairwellCut(layout, dir) {
   const cut = new Uint8Array(layout.W * layout.H);
   for (const plan of layout.stairs) {
     if (plan.dir !== dir) continue;
+    // Only a flight that starts on the ground passes through the ground floor's
+    // ceiling or its plate. A car park's upper ramp stands on the deck above.
+    if (footY(plan) !== 0) continue;
     for (const i of stripTiles(plan, layout.W)) cut[i] = 1;
   }
   return cut;
@@ -241,7 +267,7 @@ export function stairwellCut(layout, dir) {
 export function roofCollisionCut(layout) {
   const cut = stairwellCut(layout, 1);
   for (const plan of layout.stairs) {
-    if (plan.dir < 0) continue;
+    if (plan.dir < 0 || footY(plan) !== 0) continue;
     const r = plan.room;
     for (let ty = r.y0; ty < r.y1; ty++) {
       for (let tx = r.x0; tx < r.x1; tx++) cut[ty * layout.W + tx] = 1;
@@ -276,6 +302,7 @@ export function stairBoxes(layout, plan) {
   // it goes up or down. The first tread is at the running end either way.
   const foot = plan.up > 0 ? a0 : a1;
   const y = levelY(plan);
+  const fy = footY(plan);
   const down = plan.dir < 0;
 
   const box = (part, x0, z0, x1, z1, base, y1) => ({
@@ -308,16 +335,19 @@ export function stairBoxes(layout, plan) {
   // the top tread already owns, so nav's ramp is unchanged.
   const far = plan.up > 0 ? a1 : a0;
   for (let i = 0; i < steps; i++) {
-    const top = down ? -(i + 1) * RISER : (i + 1) * RISER;
+    const top = fy + (down ? -(i + 1) * RISER : (i + 1) * RISER);
     const to = i === steps - 1 ? far : foot + plan.up * (i + 1) * GOING;
-    out.push(acrossBox('tread', foot + plan.up * i * GOING, to, down ? y : 0, top));
+    out.push(acrossBox('tread', foot + plan.up * i * GOING, to, down ? y : fy, top));
   }
 
   // The level: its floor over the room's whole footprint, a wall ring standing over
   // the walls of the room it belongs to, and a lid over that.
   const f = levelFloor(layout, plan);
   const well = { x0: sx0, z0: sz0, x1: sx1, z1: sz1 };
-  const wallTop = down ? 0 : UPPER_CEIL;
+  // A level's own headroom, whichever storey it is: CEIL_H over its floor, which is
+  // UPPER_CEIL for an attic and — on a stacked car park deck that has another deck
+  // over it (`covered`) — exactly the underside of that deck's plate.
+  const wallTop = down ? 0 : y + CEIL_H;
   // Which surface the stairwell is a hole in depends entirely on which way the stairs
   // go, and getting it the wrong way round is a hole you fall through. An attic's
   // floor is punched, because the flight comes UP through it. A basement's floor is
@@ -340,9 +370,11 @@ export function stairBoxes(layout, plan) {
     for (const r of punchRects([rectOf(f)], well)) {
       out.push(box('lid', r.x0, r.z0, r.x1, r.z1, -PLATE_T - ROOF_T, -PLATE_T));
     }
-  } else {
+  } else if (!plan.covered) {
+    // No roof on a deck with another deck over it: the next one up IS its lid, and
+    // a roof slab here would stand in the floor that deck is walked on.
     out.push(box('roof', f.minX - WALL_T, f.minZ - WALL_T, f.maxX + WALL_T, f.maxZ + WALL_T,
-      UPPER_CEIL, UPPER_CEIL + ROOF_T));
+      y + CEIL_H, y + CEIL_H + ROOF_T));
   }
 
   return out;
@@ -370,13 +402,17 @@ export function rampSpec(layout, plan) {
     foot: plan.up > 0 ? a0 : a1,
     up: plan.up,
     dir: plan.dir,
+    // Where the flight starts, and the nav layer it starts on — both zero for every
+    // attic and basement, and a deck up for a car park's upper ramp.
+    base: footY(plan),
+    lo: footLayer(plan),
   };
 }
 
 /** The height of a flight at a point, from its spec. Continuous, not per tile. */
 export function rampHeight(spec, x, z) {
   const along = ((spec.alongX ? x : z) - spec.foot) * spec.up;
-  return spec.dir * Math.max(0, Math.min(RAMP_RUN, along)) * RAMP_SLOPE;
+  return (spec.base ?? 0) + spec.dir * Math.max(0, Math.min(RAMP_RUN, along)) * RAMP_SLOPE;
 }
 
 /**
