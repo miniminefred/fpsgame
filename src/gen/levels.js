@@ -45,7 +45,10 @@ const UPPER_KINDS = [
 // the room's is.
 const UPPER_INSET = 0.15;
 
-const TREAD_SKIN = 0.03;      // the walking surface laid over the step's body
+const TREAD_SKIN = 0.03;
+
+// How far a car park deck's walking skin stands above the walls under it. See drawPart.
+const DECK_LIFT = 0.012;      // the walking surface laid over the step's body
 
 const NOSING = 0.07;          // yellow strip along the front edge of every tread
 
@@ -80,12 +83,9 @@ export function buildStairs(layout, batcher, materials, masks, rng) {
     }
     for (const b of stairBoxes(layout, plan)) {
       if (b.part === 'tread') {
-        if (layout.garage) {
-          batcher.add('concreteWall', materials.concreteWall, applyWorldUVs(
-            boxBetween(b.minX, b.base, b.minZ, b.maxX, b.y1 - RISER, b.maxZ)));
-        } else {
-          drawStep(batcher, materials, b, plan);
-        }
+        // A car park's ramp is one solid wedge (rampGeometry) and the treads are
+        // inside it: collision, not picture.
+        if (!layout.garage) drawStep(batcher, materials, b, plan);
       } else {
         drawPart(batcher, materials, b, layout);
       }
@@ -175,8 +175,12 @@ function drawPart(batcher, materials, b, layout = null) {
   // On a car park it is a parking deck, and poured like the one below it.
   if (b.part !== 'deck') return;
   const floor = layout?.garage ? 'concrete' : 'vinyl';
+  // On a car park the deck covers the whole floor, so every wall and column below
+  // tops out at exactly its height: drawn flush, their tops flicker through the
+  // deck. The skin stands DECK_LIFT proud of them, which no foot can see.
+  const lift = layout?.garage ? DECK_LIFT : 0;
   batcher.add(floor, materials[floor], applyWorldUVs(
-    boxBetween(b.minX, b.y1 - TREAD_SKIN, b.minZ, b.maxX, b.y1, b.maxZ)));
+    boxBetween(b.minX, b.y1 - TREAD_SKIN, b.minZ, b.maxX, b.y1 + lift, b.maxZ)));
   // ...and the lanes painted on in asphalt, exactly over the ground floor's own, so
   // every deck reads as the same floor as the one you arrived on.
   if (layout?.garage) {
@@ -185,7 +189,7 @@ function drawPart(batcher, materials, b, layout = null) {
       const z0 = Math.max(b.minZ, r.z0), z1 = Math.min(b.maxZ, r.z1);
       if (x1 - x0 < 1e-3 || z1 - z0 < 1e-3) continue;
       batcher.add('asphalt', materials.asphalt, applyWorldUVs(
-        boxBetween(x0, b.y1, z0, x1, b.y1 + 0.004, z1)), { castShadow: false });
+        boxBetween(x0, b.y1 + DECK_LIFT, z0, x1, b.y1 + DECK_LIFT + 0.004, z1)), { castShadow: false });
     }
   }
 }

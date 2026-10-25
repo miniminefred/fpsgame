@@ -108,6 +108,7 @@ export function buildShell(layout, batcher, materials, colliders, cuts) {
   if (office) {
     const officeWalls = tiles.map((t, i) => (t === SOLID && inOffice(i) ? SOLID : ROOM));
     drawWalls(layout, officeWalls, batcher, materials, colliders, WALL_H, false, 'wall');
+    officeLining(layout, batcher, materials, office);
   }
   // Which surface key a tile gets: the office corner's own, or the car park's.
   const keyAt = (key, officeTiles) => (officeTiles ? key : garageKey(layout, key));
@@ -209,16 +210,44 @@ function only(tiles, cut) {
 // included, which keep an office's finishes in a concrete building. Null anywhere
 // that is not a car park.
 function officeMask(layout) {
-  if (!layout.garage) return null;
-  const { W, H } = layout;
-  const mask = new Uint8Array(W * H);
-  for (const r of layout.rooms) {
-    if (r.role !== 'exit' && r.role !== 'security') continue;
-    for (let y = Math.max(0, r.y0 - 1); y <= Math.min(H - 1, r.y1); y++) {
-      for (let x = Math.max(0, r.x0 - 1); x <= Math.min(W - 1, r.x1); x++) mask[y * W + x] = 1;
+  if (!layout.garage || !layout.office) return null;
+  const { W } = layout;
+  const r = layout.office;
+  const mask = new Uint8Array(layout.W * layout.H);
+  // The block's INTERIOR only: its own partitions are painted, and its ring — the
+  // walls the car park sees — stays concrete, lined on the inside (`officeLining`).
+  for (let y = r.y0; y < r.y1; y++) for (let x = r.x0; x < r.x1; x++) mask[y * W + x] = 1;
+  return mask;
+}
+
+/**
+ * The plaster on the inside of the office block's outer walls. A wall tile is one
+ * box in one material, so a wall the car park sees in concrete cannot also be white
+ * on its other face — the face inside the block gets a lining a centimetre and a
+ * half thick instead, merged into runs like every other wall.
+ */
+function officeLining(layout, batcher, materials, office) {
+  const { W, H, tiles } = layout;
+  const open = (x, y) => x >= 0 && y >= 0 && x < W && y < H
+    && office[y * W + x] && tiles[y * W + x] !== SOLID;
+  const ringWall = (x, y) => tiles[y * W + x] === SOLID && !office[y * W + x];
+  const T = 0.015;
+  // One mask per face a lining can be on: the room is to the -x, +x, -z or +z side.
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+    const face = new Uint8Array(W * H).fill(ROOM);
+    for (let y = 1; y < H - 1; y++) {
+      for (let x = 1; x < W - 1; x++) if (ringWall(x, y) && open(x + dx, y + dy)) face[y * W + x] = SOLID;
+    }
+    for (const r of maskToRects(face, W, H, (t) => t === SOLID)) {
+      let x0 = worldX(layout, r.x0), x1 = worldX(layout, r.x1);
+      let z0 = worldZ(layout, r.y0), z1 = worldZ(layout, r.y1);
+      if (dx < 0) { x1 = x0; x0 -= T; }
+      if (dx > 0) { x0 = x1; x1 += T; }
+      if (dy < 0) { z1 = z0; z0 -= T; }
+      if (dy > 0) { z0 = z1; z1 += T; }
+      batcher.add('wall', materials.wall, applyWorldUVs(boxBetween(x0, 0, z0, x1, WALL_H, z1)));
     }
   }
-  return mask;
 }
 
 // Tiles with a stairwell's hole taken out of them, for the surface it passes

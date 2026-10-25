@@ -13,7 +13,8 @@
 // have to know which of five files a constant ended up in.
 
 import {
-  garageLocks, openGarage, parkingRoles, pickSecurity, planRamps, rollGarage, standPillars,
+  carveOffice, garageLocks, openBox, openGarage, parkingRoles, planRamps, rollGarage,
+  standPillars,
 } from './garage.js';
 import { makeRng } from './rng.js';
 import { clamp } from '../util.js';
@@ -300,7 +301,21 @@ export function generateLayout(seed, floorNumber) {
   // canteen, and because everything from the lobby on is planned differently.
   const garage = rollGarage(seed, floorNumber);
   const cafeteria = garage ? null : pickCafeteria(live, tiles, W, doors);
-  const spawnRoom = pickLobbyRoom(live, tiles, W, H, doors, cafeteria, garage);
+  // A car park carves its corner of offices before anything is decided about the
+  // lobby, because the lobby is one of its rooms (gen/garage.js `carveOffice`): the
+  // BSP rooms and doors it lands on go, and its own rooms take their place.
+  let office = null;
+  if (garage) {
+    office = carveOffice(tiles, W, H, openBox(tiles, W, H), seed);
+    const r = office.rect;
+    const hits = (a) => a.x0 < r.x1 + 1 && a.x1 > r.x0 - 1 && a.y0 < r.y1 + 1 && a.y1 > r.y0 - 1;
+    for (let i = live.length - 1; i >= 0; i--) if (hits(live[i])) live.splice(i, 1);
+    for (let i = doors.length - 1; i >= 0; i--) if (hits(doors[i])) doors.splice(i, 1);
+    live.push(...office.rooms);
+    doors.push(...office.doors);
+  }
+  const spawnRoom = garage ? office.lobby
+    : pickLobbyRoom(live, tiles, W, H, doors, cafeteria, garage);
   const exitRoom = spawnRoom;
   const dist = bfs(tiles, W, H, Math.round(spawnRoom.cx), Math.round(spawnRoom.cy));
 
@@ -327,7 +342,8 @@ export function generateLayout(seed, floorNumber) {
   // everything comes through it, so what it wants is a front door rather than
   // the three or four ordinary 1.5 m holes the carve gives every room. Both
   // halves of that are allowed to fail — see the note on it in gen/lifts.js.
-  const way = oneWayIn({ tiles, W, H, rooms: live }, doors, spawnRoom);
+  // A car park's lobby was carved with its one double door onto the hall already.
+  const way = garage ? null : oneWayIn({ tiles, W, H, rooms: live }, doors, spawnRoom);
   for (const d of doorsOnRoom(doors, spawnRoom)) {
     d.free = true;
     d.double = true;
@@ -338,8 +354,8 @@ export function generateLayout(seed, floorNumber) {
   // or the security office's comes down, with every door in it: one open deck in a
   // concrete box, with the two rooms that stay rooms in the corner by the lifts.
   // See gen/garage.js for the rest — the ramps, the columns and the locks.
-  const security = garage ? pickSecurity(live, tiles, W, H, doors, spawnRoom) : null;
-  const deck = garage ? openGarage(tiles, W, H, live, doors, [spawnRoom, security]) : null;
+  const security = garage ? office.security : null;
+  const deck = garage ? openGarage(tiles, W, H, live, doors, [office.rect]) : null;
 
   // The canteen only survives as one if the lobby did not take it. `pickLobbyRoom`
   // prefers to leave it alone but falls back rather than fail, and a canteen that
@@ -347,7 +363,10 @@ export function generateLayout(seed, floorNumber) {
   // eat in with the player standing in it.
   const cafeteriaRoom = (cafeteria && cafeteria !== spawnRoom) ? cafeteria : null;
 
-  if (garage) parkingRoles(live, spawnRoom, security);
+  if (garage) {
+    parkingRoles(live, spawnRoom, security);
+    for (const r of office.rooms) if (r.kind === 'office') r.role = 'office';
+  }
   else assignRoles(live, spawnRoom, exitRoom, cafeteriaRoom, doors, rng);
   // On its own stream, not the floor's. Everything downstream of here — the
   // furniture in every room on the floor — draws from `rng`, so spending a
@@ -365,12 +384,12 @@ export function generateLayout(seed, floorNumber) {
   // stream, a floor with a staircase would furnish every OTHER room differently
   // from the same floor without one.
   const stairs = garage
-    ? planRamps(tiles, W, H, deck, [spawnRoom, security])
+    ? planRamps(tiles, W, H, deck, [office.rect])
     : planStairs(tiles, W, H, live, spawnRoom, exitRoom, makeRng(seed ^ 0x7f4a7c15));
   // A car park's columns, last of all the tile passes: they keep off the doors,
   // the two rooms and the ramp pair, so all three have to be decided first.
   const pillars = garage
-    ? standPillars(tiles, W, H, deck, [spawnRoom, security], doors, stairs, live, seed)
+    ? standPillars(tiles, W, H, deck, [office.rect], doors, stairs, live, seed)
     : [];
 
   const layout = {
@@ -383,6 +402,9 @@ export function generateLayout(seed, floorNumber) {
     garage,
     deck,
     pillars,
+    // ...and its corner of offices: the block's interior rect, which gen/shell.js
+    // finishes as an office inside a concrete box.
+    office: office?.rect ?? null,
     ox: -W * TILE / 2, oz: -H * TILE / 2,
     tiles, rooms: live, doors,
     spawnRoom, exitRoom,

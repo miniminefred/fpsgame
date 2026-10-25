@@ -19,7 +19,8 @@ import * as THREE from 'three';
 import { makeRng } from './rng.js';
 import { tryPlace } from './props.js';
 import { FLIGHT_TILES, RAMP_RUN, RAMP_SLOPE, RISER, rampSpec } from './stairs.js';
-import { CORRIDOR, ROOM, SOLID, slidePocketSide } from './tiles.js';
+import { CORRIDOR, DOOR, ROOM, SOLID, slidePocketSide } from './tiles.js';
+import { DOOR_W } from './carve.js';
 import { doorsOnRoom } from './locks.js';
 
 // TEST: 1.0 while garage floors are being looked at. The design value is 0.1.
@@ -103,6 +104,144 @@ export function openGarage(tiles, W, H, rooms, doors, kept) {
     }
   }
   return { x0, y0, x1, y1 };
+}
+
+/** The rectangle the open floor covers, in tiles with an exclusive max: the deck. */
+export function openBox(tiles, W, H) {
+  let x0 = W, y0 = H, x1 = 0, y1 = 0;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (tiles[y * W + x] === SOLID) continue;
+      if (x < x0) x0 = x;
+      if (y < y0) y0 = y;
+      if (x + 1 > x1) x1 = x + 1;
+      if (y + 1 > y1) y1 = y + 1;
+    }
+  }
+  return { x0, y0, x1, y1 };
+}
+
+// --- the office block --------------------------------------------------------------
+
+// The block in the bottom-left corner of the deck: a hall running east to the one
+// door into the car park, a row of rooms either side of it. In tiles.
+const HALL_W = 4;        // the hall, 2 m
+const SOUTH_D = 12;      // the row against the building's outer wall: the lift lobby
+const NORTH_D = 10;      // ...and the row on the far side of the hall
+const LOBBY_W = 18;      // holds the lift bank (`fitsLifts`: 16 x 10 and more)
+const SECURITY_W = 10;
+const OFFICE_W = [8, 12];
+const LOBBY_DOOR = 6;    // a double door, as wide as the lobby's always is
+
+/**
+ * The corner of offices a car park keeps by its lifts: concrete outside, an office
+ * inside. A hall runs from the building's west wall to a door in the block's east
+ * wall, which is the one way in from the car park; the lift lobby is on the south
+ * side of it against the building's outer wall, the security office opposite, and
+ * one to five ordinary offices along both sides, three to seven rooms in all. Every
+ * room has a door onto the hall, and the offices next to one another sometimes have
+ * a door through between them.
+ *
+ * Carved over whatever the BSP put in that corner: the rect is filled solid first,
+ * so nothing of the office floor underneath survives into it, and the caller drops
+ * the BSP rooms it covered. Drawn on its own stream for the reason every other
+ * planning die is.
+ *
+ * Returns the block's interior rect (its ring is its own walls), its rooms, the
+ * lobby, the security office and the doors it cut.
+ */
+export function carveOffice(tiles, W, H, deck, seed) {
+  const rng = makeRng((seed ^ 0x0ff1ce5) >>> 0);
+  const roll = (lo, hi) => lo + Math.floor(rng() * (hi - lo + 1));
+
+  const total = roll(3, 7);
+  const southOffices = total >= 5 ? 1 : 0;
+  const northOffices = total - 2 - southOffices;
+  const south = [{ w: LOBBY_W, kind: 'exit' }];
+  for (let i = 0; i < southOffices; i++) south.push({ w: roll(...OFFICE_W), kind: 'office' });
+  const north = [{ w: SECURITY_W, kind: 'security' }];
+  for (let i = 0; i < northOffices; i++) north.push({ w: roll(...OFFICE_W), kind: 'office' });
+  // Both rows run the block's whole width, so the shorter one's last room takes up
+  // the slack.
+  const rowLen = (row) => row.reduce((a, r) => a + r.w, 0) + row.length - 1;
+  const BW = Math.max(rowLen(south), rowLen(north));
+  south[south.length - 1].w += BW - rowLen(south);
+  north[north.length - 1].w += BW - rowLen(north);
+
+  const X0 = deck.x0, X1 = deck.x0 + BW;          // interior, exclusive
+  const Y1 = deck.y1;
+  const yS0 = Y1 - SOUTH_D;                         // south rooms
+  const hy1 = yS0 - 1, hy0 = hy1 - HALL_W;          // the hall, between two wall rows
+  const yN1 = hy0 - 1, yN0 = yN1 - NORTH_D;         // north rooms
+  const at = (x, y) => y * W + x;
+
+  // The block solid, its own two walls included: the north row of wall and the
+  // east column. Its west and south sides are the building's outer wall already.
+  for (let y = yN0 - 1; y < Y1; y++) for (let x = X0; x <= X1; x++) tiles[at(x, y)] = SOLID;
+  for (let y = hy0; y < hy1; y++) for (let x = X0; x < X1; x++) tiles[at(x, y)] = CORRIDOR;
+
+  const rooms = [];
+  const doors = [];
+  const room = (x0, y0, x1, y1, kind) => {
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) tiles[at(x, y)] = ROOM;
+    const r = {
+      id: 10000 + rooms.length, x0, y0, x1, y1, doors: [], kind,
+      wTiles: x1 - x0, hTiles: y1 - y0, areaM2: (x1 - x0) * (y1 - y0) * 0.25,
+      cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, office: true,
+    };
+    rooms.push(r);
+    return r;
+  };
+  const door = (x0, y0, x1, y1, vertical, owner, extra = {}) => {
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) tiles[at(x, y)] = DOOR;
+    const d = { x0, y0, x1, y1, vertical, ...extra };
+    doors.push(d);
+    owner?.doors.push(d);
+    return d;
+  };
+
+  // The two rows, each room opening onto the hall through the wall between them.
+  const rows = [
+    { list: south, y0: yS0, y1: Y1, wall: hy1 },
+    { list: north, y0: yN0, y1: yN1, wall: yN1 },
+  ];
+  const byRow = [];
+  for (const row of rows) {
+    let x = X0;
+    const made = [];
+    for (const spec of row.list) {
+      const r = room(x, row.y0, x + spec.w, row.y1, spec.kind);
+      made.push(r);
+      const width = spec.kind === 'exit' ? LOBBY_DOOR : DOOR_W;
+      // Off the room's corners by a tile, and with at least a door's width of wall
+      // on one side of it for the panel to slide into.
+      const lo = r.x0 + 1, hi = r.x1 - 1 - width;
+      const dx = spec.kind === 'exit'
+        ? Math.round((r.x0 + r.x1 - width) / 2)
+        : lo + Math.floor(rng() * Math.max(1, hi - lo + 1));
+      door(dx, row.wall, dx + width, row.wall + 1, false, r,
+        spec.kind === 'exit' ? { free: true, double: true, wide: true } : {});
+      x += spec.w + 1;
+    }
+    byRow.push(made);
+  }
+  // ...and a door through between two offices standing side by side, now and then.
+  for (const made of byRow) {
+    for (let i = 0; i + 1 < made.length; i++) {
+      const a = made[i], b = made[i + 1];
+      if (a.kind !== 'office' || b.kind !== 'office' || rng() < 0.4) continue;
+      const lo = a.y0 + 1, hi = a.y1 - 1 - DOOR_W;
+      const dy = lo + Math.floor(rng() * Math.max(1, hi - lo + 1));
+      door(a.x1, dy, a.x1 + 1, dy + DOOR_W, true, a);
+    }
+  }
+  // The way in from the car park: a door in the block's east wall at the end of the
+  // hall. Wall either side of it for its panel, which is the rooms' end walls.
+  door(X1, hy0, X1 + 1, hy0 + DOOR_W, true, null, { free: true });
+
+  const lobby = rooms.find((r) => r.kind === 'exit');
+  const security = rooms.find((r) => r.kind === 'security');
+  return { rect: { x0: X0, y0: yN0, x1: X1, y1: Y1 }, rooms, lobby, security, doors };
 }
 
 /**
@@ -408,39 +547,83 @@ export function garageKey(layout, key) {
 
 // --- the ramp ----------------------------------------------------------------
 
-const RAMP_T = 0.28;      // the slab's own thickness
-
 /**
- * A flight as a concrete ramp: one sloped slab over the whole run, in place of
- * the treads and their nosing.
+ * A flight drawn as a concrete ramp: one solid wedge over the whole stairwell, in
+ * place of the treads and their nosing.
  *
  * Only the PICTURE changes. The treads are still the colliders (stairBoxes), and
- * that is deliberate: nav, the player's step test and both validators already
- * agree about them, and a sloped collider is a thing this engine has never had.
- * The slab is laid half a riser above the line through the tread nosings, so
- * wherever a foot is on a tread it is within a tenth of a metre of the concrete.
+ * that is deliberate: nav, the player's step test and both validators already agree
+ * about them, and a sloped collider is a thing this engine has never had.
+ *
+ * A WEDGE rather than a tilted slab, and that was the bug: a slab rotated about its
+ * middle ends short of the well with a lip at the top and pokes its lower corner
+ * down through whatever it stands on. The wedge sits flat on the floor its flight
+ * starts from, rises along the nosing line half a riser up (so a foot on any tread
+ * is within a tenth of a metre of the concrete), and meets the deck it arrives on
+ * exactly flush — then runs flat to the end of the well, where the last tread
+ * already does.
  */
 export function rampGeometry(layout, plan) {
   const spec = rampSpec(layout, plan);
   const alongX = spec.alongX;
   const c0 = alongX ? layout.oz + plan.y0 * 0.5 : layout.ox + plan.x0 * 0.5;
   const c1 = alongX ? layout.oz + plan.y1 * 0.5 : layout.ox + plan.x1 * 0.5;
-  const across = c1 - c0;
+  const a0 = alongX ? layout.ox + plan.x0 * 0.5 : layout.oz + plan.y0 * 0.5;
+  const a1 = alongX ? layout.ox + plan.x1 * 0.5 : layout.oz + plan.y1 * 0.5;
+  const foot = spec.foot, up = spec.up;
+  const far = up > 0 ? a1 : a0;
+  const base = spec.base;
+  const top = base + RAMP_RUN * RAMP_SLOPE * spec.dir;
+  // Where the sloped face reaches the deck: half a riser of lift means it gets there
+  // a little before the end of the run.
+  const knee = foot + up * Math.max(0, RAMP_RUN - RISER / 2 / RAMP_SLOPE);
 
-  const rise = RAMP_RUN * RAMP_SLOPE * spec.dir;
-  const len = Math.hypot(RAMP_RUN, rise);
-  const geo = new THREE.BoxGeometry(alongX ? len : across, RAMP_T, alongX ? across : len);
-
-  // Tilt it about the across axis so it climbs `up` along the run.
-  const angle = Math.atan2(rise, RAMP_RUN) * spec.up;
-  if (alongX) geo.rotateZ(angle);
-  else geo.rotateX(-angle);
-
-  const mid = spec.foot + spec.up * RAMP_RUN / 2;
-  // Half a riser toward the treads: they stand ABOVE the nosing line going up
-  // and hang BELOW it going down, so the offset follows the flight's direction.
-  const y = rise / 2 + spec.dir * RISER / 2 - RAMP_T / 2;
-  const cMid = (c0 + c1) / 2;
-  geo.translate(alongX ? mid : cMid, y, alongX ? cMid : mid);
+  // The profile along the run, as (along, height) — bottom front, top front, the
+  // knee, top far, bottom far — extruded across the stairwell.
+  const prof = [[foot, base], [foot, base + RISER / 2], [knee, top], [far, top], [far, base]];
+  const P = (a, h, c) => (alongX ? [a, h, c] : [c, h, a]);
+  const pos = [];
+  const tri = (p, q, r) => pos.push(...p, ...q, ...r);
+  const quad = (p, q, r, t) => { tri(p, q, r); tri(p, r, t); };
+  // The sloped and flat top faces, and the two ends and the floor.
+  for (let i = 1; i < prof.length - 1; i++) {
+    const [aA, hA] = prof[i], [aB, hB] = prof[i + 1];
+    quad(P(aA, hA, c0), P(aB, hB, c0), P(aB, hB, c1), P(aA, hA, c1));
+  }
+  quad(P(foot, base, c0), P(foot, base + RISER / 2, c0), P(foot, base + RISER / 2, c1), P(foot, base, c1));
+  quad(P(far, top, c0), P(far, base, c0), P(far, base, c1), P(far, top, c1));
+  // The two sides, as a fan over the profile.
+  for (const c of [c0, c1]) {
+    for (let i = 1; i < prof.length - 1; i++) {
+      tri(P(prof[0][0], prof[0][1], c), P(prof[i][0], prof[i][1], c), P(prof[i + 1][0], prof[i + 1][1], c));
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  // Faces wound either way above; double-sided normals off a non-indexed mesh are
+  // what applyWorldUVs and the lighting want, so make every face face outward by
+  // flipping any whose normal points into the wedge.
+  orientOutward(geo, alongX ? (foot + far) / 2 : (c0 + c1) / 2, (base + top) / 3,
+    alongX ? (c0 + c1) / 2 : (foot + far) / 2);
+  geo.computeVertexNormals();
+  // Filled in by applyWorldUVs, which writes into an attribute rather than adding one.
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array((pos.length / 3) * 2), 2));
   return geo;
+}
+
+// Flips any triangle whose normal points toward (cx, cy, cz) — the wedge's inside.
+function orientOutward(geo, cx, cy, cz) {
+  const a = geo.attributes.position.array;
+  for (let i = 0; i < a.length; i += 9) {
+    const ux = a[i + 3] - a[i], uy = a[i + 4] - a[i + 1], uz = a[i + 5] - a[i + 2];
+    const vx = a[i + 6] - a[i], vy = a[i + 7] - a[i + 1], vz = a[i + 8] - a[i + 2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const mx = (a[i] + a[i + 3] + a[i + 6]) / 3 - cx;
+    const my = (a[i + 1] + a[i + 4] + a[i + 7]) / 3 - cy;
+    const mz = (a[i + 2] + a[i + 5] + a[i + 8]) / 3 - cz;
+    if (nx * mx + ny * my + nz * mz >= 0) continue;
+    for (let k = 0; k < 3; k++) {
+      const t = a[i + 3 + k]; a[i + 3 + k] = a[i + 6 + k]; a[i + 6 + k] = t;
+    }
+  }
 }
