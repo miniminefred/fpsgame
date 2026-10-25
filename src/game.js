@@ -839,7 +839,10 @@ export class Game {
     this.minimap.update(
       dt,
       { x: this.player.object.position.x, z: this.player.object.position.z, yaw: this.player.yaw },
-      this.enemies.items
+      this.enemies.items,
+      // Which deck to draw on a car park — the layer enemies.js already worked out
+      // the player is standing on this frame.
+      this.enemies.playerLayer ?? 0,
     );
   }
 

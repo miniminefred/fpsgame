@@ -66,6 +66,11 @@ export class Level {
         tiles: layout.tiles, rooms: layout.rooms,
         exit: layout.exit,
         locks: layout.locks,
+        // A car park's decks, each drawn as a map of its own (gen/garage.js).
+        garage: layout.garage,
+        deck: layout.deck,
+        stairs: layout.stairs,
+        pillars: layout.pillars,
       },
     };
 

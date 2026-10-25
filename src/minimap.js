@@ -32,6 +32,8 @@ const COLORS = {
   seam:     'rgba(10, 13, 16, 0.7)',
   exitRoom: 'rgba(127, 216, 232, 0.16)',
   exit:     '#7fd8e8',
+  ramp:     '#8fa3b3',
+  pillar:   '#1b2026',
   enemy:    '#ff4d4d',
   // The staff who are not shooting at you and do not have to be cleared. Yellow
   // is the whole point of them being on the map at all: a red dot is somewhere
@@ -75,6 +77,10 @@ export class Minimap {
     // scrolled under a fixed viewport rather than squeezed into one.
     this.plan.width = Math.ceil(W * s);
     this.plan.height = Math.ceil(H * s);
+    // One raster per nav layer: the ground floor here, and on a car park one per
+    // stacked deck below. `update` draws whichever the player is standing on.
+    this.plans = [this.plan];
+    if (level.garage) this._deckPlans(level);
 
     const g = this.plan.getContext('2d');
     g.clearRect(0, 0, this.plan.width, this.plan.height);
@@ -107,8 +113,13 @@ export class Minimap {
     g.lineWidth = Math.max(1, s * 0.35);
     g.strokeStyle = COLORS.seam;
     for (const r of rooms || []) {
+      // A car park's parking areas are not rooms — the deck is one open floor and
+      // outlining the BSP's old leaves on it draws offices that are not there.
+      if (level.garage && r.role === 'parking') continue;
       g.strokeRect(px(r.x0), py(r.y0), (r.x1 - r.x0) * s, (r.y1 - r.y0) * s);
     }
+    // ...and the lower ramp, so the way up reads on the ground floor's map.
+    if (level.garage) this._ramps(g, level, 0);
 
     // Tint the exit room.
     const exitRoom = (rooms || []).find((r) => r.role === 'exit');
@@ -145,11 +156,45 @@ export class Minimap {
     }
   }
 
+  /**
+   * A car park's upper decks: the whole deck as open floor, its columns, and the
+   * ramps that arrive on it or leave from it. Nothing else — there are no rooms up
+   * there, which is exactly what the map should say.
+   */
+  _deckPlans(level) {
+    const s = this.scale;
+    const d = level.deck;
+    const layers = Math.max(0, ...(level.stairs ?? []).map((p) => p.level ?? 1));
+    for (let k = 1; k <= layers; k++) {
+      const c = document.createElement('canvas');
+      c.width = this.plan.width;
+      c.height = this.plan.height;
+      const g = c.getContext('2d');
+      g.fillStyle = COLORS.room;
+      g.fillRect(d.x0 * s, d.y0 * s, (d.x1 - d.x0) * s, (d.y1 - d.y0) * s);
+      g.fillStyle = COLORS.pillar;
+      for (const p of level.pillars ?? []) g.fillRect(p.x * s, p.y * s, (p.w ?? 1) * s, (p.h ?? 1) * s);
+      this._ramps(g, level, k);
+      this.plans.push(c);
+    }
+  }
+
+  // The ramps that touch nav layer `k`: the one arriving on it and the one leaving.
+  _ramps(g, level, k) {
+    const s = this.scale;
+    g.fillStyle = COLORS.ramp;
+    for (const p of level.stairs ?? []) {
+      const lo = (p.level ?? 1) - 1;
+      if (lo !== k && lo + 1 !== k) continue;
+      g.fillRect(p.x0 * s, p.y0 * s, (p.x1 - p.x0) * s, (p.y1 - p.y0) * s);
+    }
+  }
+
   // World position -> device pixels inside the rasterised plan.
   _mx(x) { return ((x - this.level.ox) / this.level.TILE) * this.scale; }
   _my(z) { return ((z - this.level.oz) / this.level.TILE) * this.scale; }
 
-  update(dt, player, enemies) {
+  update(dt, player, enemies, layer = 0) {
     const ctx = this.ctx;
     if (!ctx || !this.level) return;
 
@@ -166,13 +211,15 @@ export class Minimap {
     const centre = this.size / 2;
     const sx = player ? centre - this._mx(player.x) : 0;
     const sy = player ? centre - this._my(player.z) : 0;
-    ctx.drawImage(this.plan, sx, sy);
+    // The deck the player is on, on a car park; the one plan everywhere else.
+    const deck = this.level.garage ? Math.min(layer, this.plans.length - 1) : 0;
+    ctx.drawImage(this.plans?.[deck] ?? this.plan, sx, sy);
 
     const d = this.dpr;
 
     // Exit: a pulsing ring with a cross through it.
     const exit = this.level.exit;
-    if (exit) {
+    if (exit && deck === 0) {
       const ex = this._mx(exit.x) + sx, ey = this._my(exit.z) + sy;
       const pulse = 4.2 + Math.sin(this._t * 3) * 1.2;
       ctx.strokeStyle = COLORS.exit;
@@ -195,6 +242,9 @@ export class Minimap {
         // somebody in that room", and six yellow dots that turn out to be rats
         // make it answer wrong six times a floor.
         if (e.offMap) continue;
+        // ...and on a car park, only the people on this deck. Two other decks of
+        // staff drawn over this one read as a crowd standing in the parking bays.
+        if (this.level.garage && (e.layer ?? 0) !== deck) continue;
         ctx.fillStyle = e.neutral ? COLORS.neutral : COLORS.enemy;
         ctx.beginPath();
         ctx.arc(this._mx(e.x) + sx, this._my(e.z) + sy, r, 0, Math.PI * 2);
