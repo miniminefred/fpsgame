@@ -1,3360 +1,3360 @@
-plan s1000/f1 452cdec7
+plan s1000/f1 48599f6a
   W=180 H=133 area=0.8358
-  tiles=2d41532a
-  spawn=1.5,26 exit=4.5,26
+  tiles=3abf290e
+  spawn=-38.5,31.5 exit=-35.5,31.5
   prologue=23939
-  rooms=55 6c8c6c70
-  roles=exit,parking
-  doors=3 a3f9cd1f
-  locks=
-  stairs=3 0abab908
-  lift arrival side=2 91,117,95,120 block=90,117,96,121 at=1.5,26
-  lift departure side=2 97,117,101,120 block=96,117,102,121 at=4.5,26
-plan s1000/f2 da109aed
+  rooms=55 df955d34
+  roles=exit,office,parking,security
+  doors=7 236ad3de
+  locks=blue!
+  stairs=2 e151fc2b
+  lift arrival side=0 11,128,15,131 block=10,127,16,131 at=-38.5,31.5
+  lift departure side=0 17,128,21,131 block=16,127,22,131 at=-35.5,31.5
+plan s1000/f2 8ce7a8ad
   W=202 H=221 area=1.3888
-  tiles=238766d2
-  spawn=5,53 exit=8,53
+  tiles=f6cd457a
+  spawn=-44,53.5 exit=-41,53.5
   prologue=44641
-  rooms=103 9ea70c9f
-  roles=exit,parking
-  doors=3 62ee9e26
-  locks=
-  stairs=3 09cf8757
-  lift arrival side=0 109,215,113,218 block=108,214,114,218 at=5,53
-  lift departure side=0 115,215,119,218 block=114,214,120,218 at=8,53
-plan s1000/f3 8687f136
+  rooms=103 601cd45a
+  roles=exit,office,parking,security
+  doors=7 cd129772
+  locks=blue!
+  stairs=2 484b7798
+  lift arrival side=0 11,216,15,219 block=10,215,16,219 at=-44,53.5
+  lift departure side=0 17,216,21,219 block=16,215,22,219 at=-41,53.5
+plan s1000/f3 416d2c3b
   W=153 H=180 area=0.7683
-  tiles=9030ede3
-  spawn=0.25,42.75 exit=3.25,42.75
+  tiles=d7829702
+  spawn=-31.75,43.25 exit=-28.75,43.25
   prologue=27539
-  rooms=60 b6bca5e9
-  roles=exit,parking
-  doors=3 22a21cc9
-  locks=
-  stairs=3 2351b6f4
-  lift arrival side=0 75,174,79,177 block=74,173,80,177 at=0.25,42.75
-  lift departure side=0 81,174,85,177 block=80,173,86,177 at=3.25,42.75
-plan s1000/f5 f04e481c
+  rooms=60 b4517d21
+  roles=exit,office,parking,security
+  doors=7 d8fe898c
+  locks=blue!
+  stairs=2 b85b9b62
+  lift arrival side=0 11,175,15,178 block=10,174,16,178 at=-31.75,43.25
+  lift departure side=0 17,175,21,178 block=16,174,22,178 at=-28.75,43.25
+plan s1000/f5 5cbd3e44
   W=185 H=233 area=0.9831
-  tiles=37db87fb
-  spawn=2,37.75 exit=2,40.75
+  tiles=3eac5127
+  spawn=-39.75,56.5 exit=-36.75,56.5
   prologue=43104
-  rooms=116 9802958e
-  roles=exit,parking
-  doors=3 ba31a579
-  locks=
-  stairs=3 d7352a29
-  lift arrival side=3 95,190,98,194 block=94,189,98,195 at=2,37.75
-  lift departure side=3 95,196,98,200 block=94,195,98,201 at=2,40.75
-plan s1000/f8 e51c45f2
+  rooms=115 a26862a2
+  roles=exit,office,parking,security
+  doors=7 36ae54f6
+  locks=blue!
+  stairs=2 faaa1a81
+  lift arrival side=0 11,228,15,231 block=10,227,16,231 at=-39.75,56.5
+  lift departure side=0 17,228,21,231 block=16,227,22,231 at=-36.75,56.5
+plan s1000/f8 2a5356ca
   W=300 H=231 area=1.2085
-  tiles=f414b76c
-  spawn=-5,35.5 exit=-2,35.5
+  tiles=c7125fc2
+  spawn=-68.5,56 exit=-65.5,56
   prologue=69299
-  rooms=176 9cc25756
-  roles=exit,parking
-  doors=3 00596079
-  locks=
-  stairs=3 a27324ba
-  lift arrival side=0 138,185,142,188 block=137,184,143,188 at=-5,35.5
-  lift departure side=0 144,185,148,188 block=143,184,149,188 at=-2,35.5
-plan s1000/f12 1148b382
+  rooms=175 52f8217d
+  roles=exit,office,parking,security
+  doors=7 b9eff93e
+  locks=blue!
+  stairs=2 ea5ab36d
+  lift arrival side=0 11,226,15,229 block=10,225,16,229 at=-68.5,56
+  lift departure side=0 17,226,21,229 block=16,225,22,229 at=-65.5,56
+plan s1000/f12 b0fdc0e0
   W=300 H=227 area=0.913
-  tiles=fedf7363
-  spawn=15.75,48.25 exit=15.75,51.25
+  tiles=cd748a0c
+  spawn=-68.5,55 exit=-65.5,55
   prologue=68099
-  rooms=177 e06294ce
-  roles=exit,parking
-  doors=3 917e2242
-  locks=
-  stairs=3 e2947453
-  lift arrival side=1 180,208,183,212 block=180,207,184,213 at=15.75,48.25
-  lift departure side=1 180,214,183,218 block=180,213,184,219 at=15.75,51.25
-plan s1000/f15 f61d5b0a
+  rooms=177 ecb9b134
+  roles=exit,office,parking,security
+  doors=7 5b94918f
+  locks=blue!
+  stairs=2 f87ffce1
+  lift arrival side=0 11,222,15,225 block=10,221,16,225 at=-68.5,55
+  lift departure side=0 17,222,21,225 block=16,221,22,225 at=-65.5,55
+plan s1000/f15 dd434519
   W=274 H=274 area=0.9931
-  tiles=90bfafaf
-  spawn=4.25,36.5 exit=4.25,39.5
+  tiles=a94fb66e
+  spawn=-62,66.75 exit=-59,66.75
   prologue=75075
-  rooms=174 4cef980e
-  roles=exit,parking
-  doors=3 24bd97b2
-  locks=
-  stairs=3 f67466fe
-  lift arrival side=3 144,208,147,212 block=143,207,147,213 at=4.25,36.5
-  lift departure side=3 144,214,147,218 block=143,213,147,219 at=4.25,39.5
-plan s8919/f1 71e964cf
+  rooms=173 ed8d6768
+  roles=exit,office,parking,security
+  doors=7 87cfd407
+  locks=blue!
+  stairs=2 4c3c0eb5
+  lift arrival side=0 11,269,15,272 block=10,268,16,272 at=-62,66.75
+  lift departure side=0 17,269,21,272 block=16,268,22,272 at=-59,66.75
+plan s8919/f1 5318f54e
   W=186 H=120 area=0.7792
-  tiles=d28289ee
-  spawn=-0.5,27.75 exit=2.5,27.75
+  tiles=4b32b59e
+  spawn=-42.5,28.25 exit=-39.5,28.25
   prologue=22319
-  rooms=50 747c84e4
-  roles=exit,parking
-  doors=3 992b163e
-  locks=
-  stairs=3 66e38374
-  lift arrival side=0 90,114,94,117 block=89,113,95,117 at=-0.5,27.75
-  lift departure side=0 96,114,100,117 block=95,113,101,117 at=2.5,27.75
-plan s8919/f2 a20f1578
+  rooms=52 fa088827
+  roles=exit,office,parking,security
+  doors=10 e6d1941c
+  locks=blue!
+  stairs=2 1c172bdc
+  lift arrival side=0 6,115,10,118 block=5,114,11,118 at=-42.5,28.25
+  lift departure side=0 12,115,16,118 block=11,114,17,118 at=-39.5,28.25
+plan s8919/f2 4ba9a4e5
   W=187 H=149 area=0.8668
-  tiles=3a4dd2ee
-  spawn=-2,30.25 exit=-2,33.25
+  tiles=cb1eb4e3
+  spawn=-42.75,35.5 exit=-39.75,35.5
   prologue=27862
-  rooms=64 3dd30557
-  roles=exit,parking
-  doors=3 6bfb7e11
-  locks=
-  stairs=3 a9ed9dd7
-  lift arrival side=1 88,133,91,137 block=88,132,92,138 at=-2,30.25
-  lift departure side=1 88,139,91,143 block=88,138,92,144 at=-2,33.25
-plan s8919/f3 115ab80b
+  rooms=66 12a0627c
+  roles=exit,office,parking,security
+  doors=10 8b9c7f3e
+  locks=blue!
+  stairs=2 0229617f
+  lift arrival side=0 6,144,10,147 block=5,143,11,147 at=-42.75,35.5
+  lift departure side=0 12,144,16,147 block=11,143,17,147 at=-39.75,35.5
+plan s8919/f3 974f21d3
   W=186 H=150 area=0.7784
-  tiles=e394d77a
-  spawn=-2.25,25 exit=-2.25,28
+  tiles=83e39dec
+  spawn=-42.5,35.75 exit=-39.5,35.75
   prologue=27899
-  rooms=64 38d760a1
-  roles=exit,parking
-  doors=4 3daecc59
-  locks=
-  stairs=3 36e39242
-  lift arrival side=1 87,123,90,127 block=87,122,91,128 at=-2.25,25
-  lift departure side=1 87,129,90,133 block=87,128,91,134 at=-2.25,28
-plan s8919/f5 3e2fac0b
+  rooms=66 edc755b5
+  roles=exit,office,parking,security
+  doors=10 4881fbd6
+  locks=blue!
+  stairs=2 931f361f
+  lift arrival side=0 6,145,10,148 block=5,144,11,148 at=-42.5,35.75
+  lift departure side=0 12,145,16,148 block=11,144,17,148 at=-39.5,35.75
+plan s8919/f5 883841e3
   W=199 H=174 area=0.7898
-  tiles=a23d959d
-  spawn=-2.5,36.5 exit=-2.5,39.5
+  tiles=e9d2883a
+  spawn=-45.75,41.75 exit=-42.75,41.75
   prologue=34625
-  rooms=67 755fdc86
-  roles=exit,parking
-  doors=3 7defee47
-  locks=
-  stairs=3 8e83121d
-  lift arrival side=1 93,158,96,162 block=93,157,97,163 at=-2.5,36.5
-  lift departure side=1 93,164,96,168 block=93,163,97,169 at=-2.5,39.5
-plan s8919/f8 5c344678
+  rooms=69 ea8fa342
+  roles=exit,office,parking,security
+  doors=10 bcb56865
+  locks=blue!
+  stairs=2 a315076b
+  lift arrival side=0 6,169,10,172 block=5,168,11,172 at=-45.75,41.75
+  lift departure side=0 12,169,16,172 block=11,168,17,172 at=-42.75,41.75
+plan s8919/f8 fe7068c3
   W=244 H=219 area=0.9318
-  tiles=c2697e06
-  spawn=12.25,20.75 exit=12.25,23.75
+  tiles=7f9feec2
+  spawn=-57,53 exit=-54,53
   prologue=53435
-  rooms=123 6998b126
-  roles=exit,parking
-  doors=3 d0b837ed
-  locks=
-  stairs=3 3a044517
-  lift arrival side=1 145,149,148,153 block=145,148,149,154 at=12.25,20.75
-  lift departure side=1 145,155,148,159 block=145,154,149,160 at=12.25,23.75
-plan s8919/f12 6228c78f
+  rooms=122 5b9bf145
+  roles=exit,office,parking,security
+  doors=10 cad9f412
+  locks=blue!
+  stairs=2 0219aaa4
+  lift arrival side=0 6,214,10,217 block=5,213,11,217 at=-57,53
+  lift departure side=0 12,214,16,217 block=11,213,17,217 at=-54,53
+plan s8919/f12 1ce0883a
   W=300 H=249 area=1.0014
-  tiles=3de15095
-  spawn=-17.25,49.75 exit=-17.25,52.75
+  tiles=b750b7ac
+  spawn=-71,60.5 exit=-68,60.5
   prologue=74699
-  rooms=164 b8043f94
-  roles=exit,parking
-  doors=3 4a3a890d
-  locks=
-  stairs=3 bca7c349
-  lift arrival side=1 114,222,117,226 block=114,221,118,227 at=-17.25,49.75
-  lift departure side=1 114,228,117,232 block=114,227,118,233 at=-17.25,52.75
-plan s8919/f15 3bfea6de
+  rooms=165 10b63e9c
+  roles=exit,office,parking,security
+  doors=10 0e7a371c
+  locks=blue!
+  stairs=2 bfdbf629
+  lift arrival side=0 6,244,10,247 block=5,243,11,247 at=-71,60.5
+  lift departure side=0 12,244,16,247 block=11,243,17,247 at=-68,60.5
+plan s8919/f15 83702e0e
   W=258 H=191 area=0.6518
-  tiles=430f702f
-  spawn=-9.75,34.25 exit=-9.75,37.25
+  tiles=4e84ec82
+  spawn=-60.5,46 exit=-57.5,46
   prologue=49277
-  rooms=100 373e38a7
-  roles=exit,parking
-  doors=3 fe901ffd
-  locks=
-  stairs=3 d44ba36c
-  lift arrival side=3 108,162,111,166 block=107,161,111,167 at=-9.75,34.25
-  lift departure side=3 108,168,111,172 block=107,167,111,173 at=-9.75,37.25
-plan s16838/f1 902b124e
+  rooms=102 ee3c9712
+  roles=exit,office,parking,security
+  doors=10 298b9a1c
+  locks=blue!
+  stairs=2 00cd6de4
+  lift arrival side=0 6,186,10,189 block=5,185,11,189 at=-60.5,46
+  lift departure side=0 12,186,16,189 block=11,185,17,189 at=-57.5,46
+plan s16838/f1 07c2ab43
   W=208 H=177 area=1.2853
-  tiles=a6254fec
-  spawn=0.5,36.5 exit=3.5,36.5
+  tiles=faa9c5f8
+  spawn=-48,42.5 exit=-45,42.5
   prologue=36815
-  rooms=72 a082e7c6
-  roles=exit,parking
-  doors=3 e031a9a5
-  locks=
-  stairs=3 3a313966
-  lift arrival side=0 103,160,107,163 block=102,159,108,163 at=0.5,36.5
-  lift departure side=0 109,160,113,163 block=108,159,114,163 at=3.5,36.5
-plan s16838/f2 6ae2c4e7
+  rooms=74 2e18b78c
+  roles=exit,office,parking,security
+  doors=11 5acfc587
+  locks=blue!
+  stairs=2 aa011d44
+  lift arrival side=0 6,172,10,175 block=5,171,11,175 at=-48,42.5
+  lift departure side=0 12,172,16,175 block=11,171,17,175 at=-45,42.5
+plan s16838/f2 1b98a7f5
   W=246 H=161 area=1.2321
-  tiles=a90f0062
-  spawn=-7,21 exit=-4,21
+  tiles=38b36be9
+  spawn=-57.5,38.5 exit=-54.5,38.5
   prologue=39605
-  rooms=83 0ae35f92
-  roles=exit,parking
-  doors=3 128910c2
-  locks=
-  stairs=3 b58b1e8e
-  lift arrival side=0 107,121,111,124 block=106,120,112,124 at=-7,21
-  lift departure side=0 113,121,117,124 block=112,120,118,124 at=-4,21
-plan s16838/f3 edf91ad7
+  rooms=88 031f6da2
+  roles=exit,office,parking,security
+  doors=11 d56bb2f5
+  locks=blue!
+  stairs=2 67f94c4c
+  lift arrival side=0 6,156,10,159 block=5,155,11,159 at=-57.5,38.5
+  lift departure side=0 12,156,16,159 block=11,155,17,159 at=-54.5,38.5
+plan s16838/f3 fa7bb5e9
   W=208 H=125 area=0.7254
-  tiles=57f38115
-  spawn=12,29 exit=15,29
+  tiles=8458e234
+  spawn=-48,29.5 exit=-45,29.5
   prologue=25999
-  rooms=59 2496fd7e
-  roles=exit,parking
-  doors=3 8a236ab7
-  locks=
-  stairs=3 4367567e
-  lift arrival side=0 126,119,130,122 block=125,118,131,122 at=12,29
-  lift departure side=0 132,119,136,122 block=131,118,137,122 at=15,29
-plan s16838/f5 de784283
+  rooms=64 1a5a9f36
+  roles=exit,office,parking,security
+  doors=11 3bab11aa
+  locks=blue!
+  stairs=2 008b907f
+  lift arrival side=0 6,120,10,123 block=5,119,11,123 at=-48,29.5
+  lift departure side=0 12,120,16,123 block=11,119,17,123 at=-45,29.5
+plan s16838/f5 23345bfe
   W=184 H=169 area=0.7092
-  tiles=124b07e3
-  spawn=-16,31.5 exit=-13,31.5
+  tiles=349c3dd2
+  spawn=-42,40.5 exit=-39,40.5
   prologue=31095
-  rooms=78 d181b37d
-  roles=exit,parking
-  doors=3 fe5faf1f
-  locks=
-  stairs=3 8f202af5
-  lift arrival side=0 58,146,62,149 block=57,145,63,149 at=-16,31.5
-  lift departure side=0 64,146,68,149 block=63,145,69,149 at=-13,31.5
-plan s16838/f8 90bfc17f
+  rooms=77 1072bde8
+  roles=exit,office,parking,security
+  doors=11 08d97a0b
+  locks=blue!
+  stairs=2 34d3fcfb
+  lift arrival side=0 6,164,10,167 block=5,163,11,167 at=-42,40.5
+  lift departure side=0 12,164,16,167 block=11,163,17,167 at=-39,40.5
+plan s16838/f8 33a87545
   W=287 H=203 area=1.016
-  tiles=968739ff
-  spawn=-8.75,48.5 exit=-5.75,48.5
+  tiles=9718c0ae
+  spawn=-67.75,49 exit=-64.75,49
   prologue=58260
-  rooms=125 c2fa5d3a
-  roles=exit,parking
-  doors=3 1f1a096c
-  locks=
-  stairs=3 96c18c46
-  lift arrival side=0 124,197,128,200 block=123,196,129,200 at=-8.75,48.5
-  lift departure side=0 130,197,134,200 block=129,196,135,200 at=-5.75,48.5
-plan s16838/f12 8d32a219
+  rooms=127 8872f207
+  roles=exit,office,parking,security
+  doors=11 a382a6fd
+  locks=blue!
+  stairs=2 e5aa9cc2
+  lift arrival side=0 6,198,10,201 block=5,197,11,201 at=-67.75,49
+  lift departure side=0 12,198,16,201 block=11,197,17,201 at=-64.75,49
+plan s16838/f12 59c2531b
   W=300 H=183 area=0.736
-  tiles=153695e9
-  spawn=-9,22.5 exit=-6,22.5
+  tiles=b8020940
+  spawn=-71,44 exit=-68,44
   prologue=54899
-  rooms=124 c1929305
-  roles=exit,parking
-  doors=3 08612d25
-  locks=
-  stairs=3 2f327e84
-  lift arrival side=2 130,135,134,138 block=129,135,135,139 at=-9,22.5
-  lift departure side=2 136,135,140,138 block=135,135,141,139 at=-6,22.5
-plan s16838/f15 b51f54d4
+  rooms=122 52037707
+  roles=exit,office,parking,security
+  doors=11 6e6301dd
+  locks=blue!
+  stairs=2 f0304404
+  lift arrival side=0 6,178,10,181 block=5,177,11,181 at=-71,44
+  lift departure side=0 12,178,16,181 block=11,177,17,181 at=-68,44
+plan s16838/f15 041e624c
   W=294 H=241 area=0.9372
-  tiles=48c5d6f1
-  spawn=-9,58 exit=-6,58
+  tiles=6d2ccc31
+  spawn=-69.5,58.5 exit=-66.5,58.5
   prologue=70853
-  rooms=169 d6242d64
-  roles=exit,parking
-  doors=3 96978108
-  locks=
-  stairs=3 0ab64f03
-  lift arrival side=0 127,235,131,238 block=126,234,132,238 at=-9,58
-  lift departure side=0 133,235,137,238 block=132,234,138,238 at=-6,58
-plan s24757/f1 013679ec
+  rooms=170 c888817e
+  roles=exit,office,parking,security
+  doors=11 e810c17f
+  locks=blue!
+  stairs=2 2e713b3e
+  lift arrival side=0 6,236,10,239 block=5,235,11,239 at=-69.5,58.5
+  lift departure side=0 12,236,16,239 block=11,235,17,239 at=-66.5,58.5
+plan s24757/f1 f6ff9721
   W=135 H=160 area=0.7541
-  tiles=bc8d971a
-  spawn=0.75,32.25 exit=3.75,32.25
+  tiles=f8d0cc0b
+  spawn=-29.75,38.25 exit=-26.75,38.25
   prologue=21599
-  rooms=41 27e48fc2
-  roles=exit,parking
-  doors=3 41d3d61e
-  locks=
-  stairs=2 a04bf65d
-  lift arrival side=0 67,143,71,146 block=66,142,72,146 at=0.75,32.25
-  lift departure side=0 73,143,77,146 block=72,142,78,146 at=3.75,32.25
-plan s24757/f2 4dc4af22
+  rooms=45 0fd47259
+  roles=exit,office,parking,security
+  doors=8 54e14618
+  locks=blue!
+  stairs=2 d8ba4548
+  lift arrival side=0 6,155,10,158 block=5,154,11,158 at=-29.75,38.25
+  lift departure side=0 12,155,16,158 block=11,154,17,158 at=-26.75,38.25
+plan s24757/f2 b9bc5fff
   W=227 H=179 area=1.2641
-  tiles=d76f2106
-  spawn=-2.75,37.5 exit=0.25,37.5
+  tiles=1b31bd02
+  spawn=-52.75,43 exit=-49.75,43
   prologue=40632
-  rooms=89 a88ac900
-  roles=exit,parking
-  doors=3 6ace04a1
-  locks=
-  stairs=2 07ce2af7
-  lift arrival side=0 106,163,110,166 block=105,162,111,166 at=-2.75,37.5
-  lift departure side=0 112,163,116,166 block=111,162,117,166 at=0.25,37.5
-plan s24757/f3 8b08026c
+  rooms=92 145d4e02
+  roles=exit,office,parking,security
+  doors=8 8ff7336b
+  locks=blue!
+  stairs=2 7cbf0396
+  lift arrival side=0 6,174,10,177 block=5,173,11,177 at=-52.75,43
+  lift departure side=0 12,174,16,177 block=11,173,17,177 at=-49.75,43
+plan s24757/f3 1a07a1a3
   W=203 H=121 area=0.6853
-  tiles=623bb234
-  spawn=10.25,28 exit=13.25,28
+  tiles=93b5a2c2
+  spawn=-46.75,28.5 exit=-43.75,28.5
   prologue=24562
-  rooms=50 7dd2e826
-  roles=exit,parking
-  doors=4 ef0a55e5
-  locks=
-  stairs=2 2986b0a1
-  lift arrival side=0 120,115,124,118 block=119,114,125,118 at=10.25,28
-  lift departure side=0 126,115,130,118 block=125,114,131,118 at=13.25,28
-plan s24757/f5 56b581f0
+  rooms=50 f5ea76f3
+  roles=exit,office,parking,security
+  doors=8 0b2b30f0
+  locks=blue!
+  stairs=2 ff95c468
+  lift arrival side=0 6,116,10,119 block=5,115,11,119 at=-46.75,28.5
+  lift departure side=0 12,116,16,119 block=11,115,17,119 at=-43.75,28.5
+plan s24757/f5 6cedc67c
   W=237 H=226 area=1.2216
-  tiles=67f30dcc
-  spawn=-16,44.5 exit=-16,47.5
+  tiles=ee008fee
+  spawn=-55.25,54.75 exit=-52.25,54.75
   prologue=53561
-  rooms=119 28a08c86
-  roles=exit,parking
-  doors=3 efd6ec51
-  locks=
-  stairs=2 9c52f991
-  lift arrival side=1 85,200,88,204 block=85,199,89,205 at=-16,44.5
-  lift departure side=1 85,206,88,210 block=85,205,89,211 at=-16,47.5
-plan s24757/f8 3d927d82
+  rooms=120 423b0879
+  roles=exit,office,parking,security
+  doors=8 02813791
+  locks=blue!
+  stairs=2 051cc889
+  lift arrival side=0 6,221,10,224 block=5,220,11,224 at=-55.25,54.75
+  lift departure side=0 12,221,16,224 block=11,220,17,224 at=-52.25,54.75
+plan s24757/f8 8bd56159
   W=296 H=254 area=1.3111
-  tiles=170f255b
-  spawn=-0.25,55 exit=-0.25,58
+  tiles=b494ae95
+  spawn=-70,61.75 exit=-67,61.75
   prologue=75183
-  rooms=181 7808279b
-  roles=exit,parking
-  doors=3 84c7edd6
-  locks=
-  stairs=2 699599f7
-  lift arrival side=3 146,235,149,239 block=145,234,149,240 at=-0.25,55
-  lift departure side=3 146,241,149,245 block=145,240,149,246 at=-0.25,58
-plan s24757/f12 3dfbcb82
+  rooms=182 67ef69cd
+  roles=exit,office,parking,security
+  doors=8 c253fd60
+  locks=blue!
+  stairs=2 52f5d179
+  lift arrival side=0 6,249,10,252 block=5,248,11,252 at=-70,61.75
+  lift departure side=0 12,249,16,252 block=11,248,17,252 at=-67,61.75
+plan s24757/f12 89d7ab06
   W=300 H=237 area=0.9532
-  tiles=c1240702
-  spawn=-0.25,52.25 exit=-0.25,55.25
+  tiles=288281ad
+  spawn=-71,57.5 exit=-68,57.5
   prologue=71099
-  rooms=164 137f657b
-  roles=exit,parking
-  doors=3 fd91c36e
-  locks=
-  stairs=2 4886eacc
-  lift arrival side=3 148,221,151,225 block=147,220,151,226 at=-0.25,52.25
-  lift departure side=3 148,227,151,231 block=147,226,151,232 at=-0.25,55.25
-plan s24757/f15 62b4b1cb
+  rooms=164 09a95dbf
+  roles=exit,office,parking,security
+  doors=8 dab382a3
+  locks=blue!
+  stairs=2 eaa4a7d8
+  lift arrival side=0 6,232,10,235 block=5,231,11,235 at=-71,57.5
+  lift departure side=0 12,232,16,235 block=11,231,17,235 at=-68,57.5
+plan s24757/f15 75b6b889
   W=248 H=275 area=0.9021
-  tiles=69087c7b
-  spawn=-5.75,61.75 exit=-5.75,64.75
+  tiles=20bbd768
+  spawn=-58,67 exit=-55,67
   prologue=68199
-  rooms=161 b5780761
-  roles=exit,parking
-  doors=3 d7fd1562
-  locks=
-  stairs=2 b67275d9
-  lift arrival side=1 111,259,114,263 block=111,258,115,264 at=-5.75,61.75
-  lift departure side=1 111,265,114,269 block=111,264,115,270 at=-5.75,64.75
-plan s32676/f1 080144ff
+  rooms=162 959fe6a7
+  roles=exit,office,parking,security
+  doors=8 474446e0
+  locks=blue!
+  stairs=2 f5812c98
+  lift arrival side=0 6,270,10,273 block=5,269,11,273 at=-58,67
+  lift departure side=0 12,270,16,273 block=11,269,17,273 at=-55,67
+plan s32676/f1 058d90d3
   W=165 H=177 area=1.0196
-  tiles=4e4d6ec1
-  spawn=-0.5,14.25 exit=-0.5,17.25
+  tiles=cc386c8c
+  spawn=-37.25,42.5 exit=-34.25,42.5
   prologue=29204
-  rooms=52 16d39d7e
-  roles=exit,parking
-  doors=3 4c7ae7e1
-  locks=
-  stairs=3 e60dc8bc
-  lift arrival side=1 80,115,83,119 block=80,114,84,120 at=-0.5,14.25
-  lift departure side=1 80,121,83,125 block=80,120,84,126 at=-0.5,17.25
-plan s32676/f2 2a62d813
+  rooms=54 90de76da
+  roles=exit,office,parking,security
+  doors=9 5d13704d
+  locks=blue!
+  stairs=2 4e926c5a
+  lift arrival side=0 6,172,10,175 block=5,171,11,175 at=-37.25,42.5
+  lift departure side=0 12,172,16,175 block=11,171,17,175 at=-34.25,42.5
+plan s32676/f2 bce03b14
   W=172 H=152 area=0.8133
-  tiles=eec78c25
-  spawn=0.5,35.75 exit=3.5,35.75
+  tiles=1e40ed9f
+  spawn=-39,36.25 exit=-36,36.25
   prologue=26143
-  rooms=52 a7c775d3
-  roles=exit,parking
-  doors=3 f3c7b757
-  locks=
-  stairs=3 d3ba339c
-  lift arrival side=0 85,146,89,149 block=84,145,90,149 at=0.5,35.75
-  lift departure side=0 91,146,95,149 block=90,145,96,149 at=3.5,35.75
-plan s32676/f3 6e7009c0
+  rooms=54 6df97bb5
+  roles=exit,office,parking,security
+  doors=9 d53000a2
+  locks=blue!
+  stairs=2 918c7883
+  lift arrival side=0 6,147,10,150 block=5,146,11,150 at=-39,36.25
+  lift departure side=0 12,147,16,150 block=11,146,17,150 at=-36,36.25
+plan s32676/f3 81ef7643
   W=211 H=170 area=1.0007
-  tiles=bfd93346
-  spawn=-9,25.5 exit=-9,28.5
+  tiles=ef01ebde
+  spawn=-48.75,40.75 exit=-45.75,40.75
   prologue=35869
-  rooms=78 96c70502
-  roles=exit,parking
-  doors=3 ef39d58e
-  locks=
-  stairs=3 a55d5b82
-  lift arrival side=1 86,134,89,138 block=86,133,90,139 at=-9,25.5
-  lift departure side=1 86,140,89,144 block=86,139,90,145 at=-9,28.5
-plan s32676/f5 0368624f
+  rooms=81 7aaa0006
+  roles=exit,office,parking,security
+  doors=9 c9b5b92e
+  locks=blue!
+  stairs=2 d8b286d3
+  lift arrival side=0 6,165,10,168 block=5,164,11,168 at=-48.75,40.75
+  lift departure side=0 12,165,16,168 block=11,164,17,168 at=-45.75,40.75
+plan s32676/f5 9f3c69d3
   W=163 H=205 area=0.7621
-  tiles=908aa188
-  spawn=0,30.25 exit=0,33.25
+  tiles=2e49eeb4
+  spawn=-36.75,49.5 exit=-33.75,49.5
   prologue=33414
-  rooms=70 b12d20b4
-  roles=exit,parking
-  doors=3 3edd40e3
-  locks=
-  stairs=3 4a75c2ae
-  lift arrival side=1 80,161,83,165 block=80,160,84,166 at=0,30.25
-  lift departure side=1 80,167,83,171 block=80,166,84,172 at=0,33.25
-plan s32676/f8 e8178131
+  rooms=72 ca94056c
+  roles=exit,office,parking,security
+  doors=9 343057a0
+  locks=blue!
+  stairs=2 f3aec4de
+  lift arrival side=0 6,200,10,203 block=5,199,11,203 at=-36.75,49.5
+  lift departure side=0 12,200,16,203 block=11,199,17,203 at=-33.75,49.5
+plan s32676/f8 40a0e749
   W=179 H=198 area=0.6181
-  tiles=9d367d1b
-  spawn=0.5,42.5 exit=0.5,45.5
+  tiles=3cb191a1
+  spawn=-40.75,47.75 exit=-37.75,47.75
   prologue=35441
-  rooms=73 85549ca3
-  roles=exit,parking
-  doors=3 5ef90d8c
-  locks=
-  stairs=3 83c5eda7
-  lift arrival side=3 89,182,92,186 block=88,181,92,187 at=0.5,42.5
-  lift departure side=3 89,188,92,192 block=88,187,92,193 at=0.5,45.5
-plan s32676/f12 ac37c56a
+  rooms=75 0e525c71
+  roles=exit,office,parking,security
+  doors=9 0cc3796d
+  locks=blue!
+  stairs=2 66f4b88b
+  lift arrival side=0 6,193,10,196 block=5,192,11,196 at=-40.75,47.75
+  lift departure side=0 12,193,16,196 block=11,192,17,196 at=-37.75,47.75
+plan s32676/f12 9d824127
   W=243 H=202 area=0.6581
-  tiles=fb55e6f1
-  spawn=-21.25,48.25 exit=-18.25,48.25
+  tiles=47534853
+  spawn=-56.75,48.75 exit=-53.75,48.75
   prologue=49085
-  rooms=119 c5cfef9a
-  roles=exit,parking
-  doors=3 df8b525a
-  locks=
-  stairs=3 3cea615d
-  lift arrival side=0 77,196,81,199 block=76,195,82,199 at=-21.25,48.25
-  lift departure side=0 83,196,87,199 block=82,195,88,199 at=-18.25,48.25
-plan s32676/f15 41c2430a
+  rooms=123 0ca79337
+  roles=exit,office,parking,security
+  doors=9 ddcfae0c
+  locks=blue!
+  stairs=2 5c597475
+  lift arrival side=0 6,197,10,200 block=5,196,11,200 at=-56.75,48.75
+  lift departure side=0 12,197,16,200 block=11,196,17,200 at=-53.75,48.75
+plan s32676/f15 0b88b690
   W=290 H=203 area=0.7787
-  tiles=3339dcda
-  spawn=-4.25,41.75 exit=-4.25,44.75
+  tiles=bb309583
+  spawn=-68.5,49 exit=-65.5,49
   prologue=58869
-  rooms=152 3a3bb8f4
-  roles=exit,parking
-  doors=3 b68551e7
-  locks=
-  stairs=3 ad2cd444
-  lift arrival side=1 135,183,138,187 block=135,182,139,188 at=-4.25,41.75
-  lift departure side=1 135,189,138,193 block=135,188,139,194 at=-4.25,44.75
-plan s40595/f1 327825f3
+  rooms=157 a2546a7a
+  roles=exit,office,parking,security
+  doors=9 3e31f03c
+  locks=blue!
+  stairs=2 3d78c702
+  lift arrival side=0 6,198,10,201 block=5,197,11,201 at=-68.5,49
+  lift departure side=0 12,198,16,201 block=11,197,17,201 at=-65.5,49
+plan s40595/f1 b549e8a7
   W=145 H=161 area=0.815
-  tiles=06d1db50
-  spawn=0.75,38 exit=3.75,38
+  tiles=d9d913cb
+  spawn=-32.25,38.5 exit=-29.25,38.5
   prologue=23344
-  rooms=42 0665b24f
-  roles=exit,parking
-  doors=3 79c29d26
-  locks=
-  stairs=4 49e1585c
-  lift arrival side=0 72,155,76,158 block=71,154,77,158 at=0.75,38
-  lift departure side=0 78,155,82,158 block=77,154,83,158 at=3.75,38
-plan s40595/f2 858ad87c
+  rooms=44 38b56687
+  roles=exit,office,parking,security
+  doors=8 e5a9061c
+  locks=blue!
+  stairs=2 b78ce7a8
+  lift arrival side=0 6,156,10,159 block=5,155,11,159 at=-32.25,38.5
+  lift departure side=0 12,156,16,159 block=11,155,17,159 at=-29.25,38.5
+plan s40595/f2 a43f1792
   W=188 H=124 area=0.7252
-  tiles=e8aa4f9e
-  spawn=-32.5,21.25 exit=-29.5,21.25
+  tiles=cecbf63a
+  spawn=-43,29.25 exit=-40,29.25
   prologue=23311
-  rooms=41 b3166af1
-  roles=exit,parking
-  doors=3 01a48cef
-  locks=
-  stairs=4 3a6e16c7
-  lift arrival side=0 27,103,31,106 block=26,102,32,106 at=-32.5,21.25
-  lift departure side=0 33,103,37,106 block=32,102,38,106 at=-29.5,21.25
-plan s40595/f3 74701514
+  rooms=44 310ac3bd
+  roles=exit,office,parking,security
+  doors=8 f5eadc78
+  locks=blue!
+  stairs=2 835013f7
+  lift arrival side=0 6,119,10,122 block=5,118,11,122 at=-43,29.25
+  lift departure side=0 12,119,16,122 block=11,118,17,122 at=-40,29.25
+plan s40595/f3 5d122447
   W=152 H=149 area=0.6318
-  tiles=d95d53b8
-  spawn=6.75,21.75 exit=6.75,24.75
+  tiles=987a3f5e
+  spawn=-34,35.5 exit=-31,35.5
   prologue=22647
-  rooms=42 38cf4ea1
-  roles=exit,parking
-  doors=3 e12d9002
-  locks=
-  stairs=4 1b069bad
-  lift arrival side=3 88,116,91,120 block=87,115,91,121 at=6.75,21.75
-  lift departure side=3 88,122,91,126 block=87,121,91,127 at=6.75,24.75
-plan s40595/f5 5a9a0613
+  rooms=45 1855907c
+  roles=exit,office,parking,security
+  doors=8 f1c8ada5
+  locks=blue!
+  stairs=2 5c63fcbb
+  lift arrival side=0 6,144,10,147 block=5,143,11,147 at=-34,35.5
+  lift departure side=0 12,144,16,147 block=11,143,17,147 at=-31,35.5
+plan s40595/f5 cc37c518
   W=267 H=213 area=1.2971
-  tiles=f58d3f79
-  spawn=2.75,51 exit=5.75,51
+  tiles=1b0605dd
+  spawn=-62.75,51.5 exit=-59.75,51.5
   prologue=56870
-  rooms=146 4f07d3be
-  roles=exit,parking
-  doors=3 20295c4b
-  locks=
-  stairs=4 ce4e6e8a
-  lift arrival side=0 137,207,141,210 block=136,206,142,210 at=2.75,51
-  lift departure side=0 143,207,147,210 block=142,206,148,210 at=5.75,51
-plan s40595/f8 4b993fca
+  rooms=147 b3040351
+  roles=exit,office,parking,security
+  doors=8 3f6cfe5a
+  locks=blue!
+  stairs=2 6e4bf40e
+  lift arrival side=0 6,208,10,211 block=5,207,11,211 at=-62.75,51.5
+  lift departure side=0 12,208,16,211 block=11,207,17,211 at=-59.75,51.5
+plan s40595/f8 6e5cdba6
   W=248 H=282 area=1.2196
-  tiles=cc352c27
-  spawn=-11.75,63.5 exit=-11.75,66.5
+  tiles=6af47c30
+  spawn=-58,68.75 exit=-55,68.75
   prologue=69935
-  rooms=173 31c9945e
-  roles=exit,parking
-  doors=3 8b5d8ecc
-  locks=
-  stairs=4 559f34dc
-  lift arrival side=1 99,266,102,270 block=99,265,103,271 at=-11.75,63.5
-  lift departure side=1 99,272,102,276 block=99,271,103,277 at=-11.75,66.5
-plan s40595/f12 c9852225
+  rooms=174 c43a4dab
+  roles=exit,office,parking,security
+  doors=8 3adb89c4
+  locks=blue!
+  stairs=2 323c56fe
+  lift arrival side=0 6,277,10,280 block=5,276,11,280 at=-58,68.75
+  lift departure side=0 12,277,16,280 block=11,276,17,280 at=-55,68.75
+plan s40595/f12 a41e45ec
   W=275 H=214 area=0.789
-  tiles=43d4dae8
-  spawn=-9.25,51.25 exit=-6.25,51.25
+  tiles=3b074d88
+  spawn=-64.75,51.75 exit=-61.75,51.75
   prologue=58849
-  rooms=148 ff840852
-  roles=exit,parking
-  doors=3 dffdb78e
-  locks=
-  stairs=4 b462676f
-  lift arrival side=0 117,208,121,211 block=116,207,122,211 at=-9.25,51.25
-  lift departure side=0 123,208,127,211 block=122,207,128,211 at=-6.25,51.25
-plan s40595/f15 d9664445
+  rooms=149 d2387bdb
+  roles=exit,office,parking,security
+  doors=8 56571b1a
+  locks=blue!
+  stairs=2 6a50d7b6
+  lift arrival side=0 6,209,10,212 block=5,208,11,212 at=-64.75,51.75
+  lift departure side=0 12,209,16,212 block=11,208,17,212 at=-61.75,51.75
+plan s40595/f15 f21b0262
   W=255 H=218 area=0.7353
-  tiles=d2da6025
-  spawn=-4.5,48.5 exit=-4.5,51.5
+  tiles=e0b74bf4
+  spawn=-59.75,52.75 exit=-56.75,52.75
   prologue=55589
-  rooms=122 ea1fff26
-  roles=exit,parking
-  doors=3 b1358d70
-  locks=
-  stairs=4 979f55f0
-  lift arrival side=3 117,204,120,208 block=116,203,120,209 at=-4.5,48.5
-  lift departure side=3 117,210,120,214 block=116,209,120,215 at=-4.5,51.5
-plan s48514/f1 67bf8743
+  rooms=124 c0cdd5bb
+  roles=exit,office,parking,security
+  doors=8 a4559e62
+  locks=blue!
+  stairs=2 32a09a02
+  lift arrival side=0 6,213,10,216 block=5,212,11,216 at=-59.75,52.75
+  lift departure side=0 12,213,16,216 block=11,212,17,216 at=-56.75,52.75
+plan s48514/f1 499b1219
   W=162 H=193 area=1.0915
-  tiles=e7f06952
-  spawn=5.75,40.75 exit=5.75,43.75
+  tiles=ba9213e8
+  spawn=-35.5,46.5 exit=-32.5,46.5
   prologue=31265
-  rooms=65 6ffb4787
-  roles=exit,parking
-  doors=3 c774fb57
-  locks=
-  stairs=3 3639a47b
-  lift arrival side=3 91,176,94,180 block=90,175,94,181 at=5.75,40.75
-  lift departure side=3 91,182,94,186 block=90,181,94,187 at=5.75,43.75
-plan s48514/f2 66f48406
+  rooms=63 11d509d3
+  roles=exit,office,parking,security
+  doors=6 d2238732
+  locks=blue!
+  stairs=2 7006cf06
+  lift arrival side=0 8,188,12,191 block=7,187,13,191 at=-35.5,46.5
+  lift departure side=0 14,188,18,191 block=13,187,19,191 at=-32.5,46.5
+plan s48514/f2 6f3bc091
   W=155 H=144 area=0.6944
-  tiles=e5348132
-  spawn=-2.5,29 exit=-2.5,32
+  tiles=34bceaae
+  spawn=-33.75,34.25 exit=-30.75,34.25
   prologue=22319
-  rooms=46 91a93d0c
-  roles=exit,parking
-  doors=3 f0407754
-  locks=
-  stairs=3 f6f24b5d
-  lift arrival side=1 71,128,74,132 block=71,127,75,133 at=-2.5,29
-  lift departure side=1 71,134,74,138 block=71,133,75,139 at=-2.5,32
-plan s48514/f3 86b322b3
+  rooms=45 6fe4e2fa
+  roles=exit,office,parking,security
+  doors=6 d88dbd4b
+  locks=blue!
+  stairs=2 9d27f58f
+  lift arrival side=0 8,139,12,142 block=7,138,13,142 at=-33.75,34.25
+  lift departure side=0 14,139,18,142 block=13,138,19,142 at=-30.75,34.25
+plan s48514/f3 f7087d67
   W=168 H=137 area=0.6421
-  tiles=71d64d30
-  spawn=5.75,15.75 exit=5.75,18.75
+  tiles=3772558c
+  spawn=-37,32.5 exit=-34,32.5
   prologue=23015
-  rooms=61 5263e26c
-  roles=exit,parking
-  doors=3 bd0cb553
-  locks=
-  stairs=3 59a4f23d
-  lift arrival side=3 94,98,97,102 block=93,97,97,103 at=5.75,15.75
-  lift departure side=3 94,104,97,108 block=93,103,97,109 at=5.75,18.75
-plan s48514/f5 5312cfa2
+  rooms=60 e927c233
+  roles=exit,office,parking,security
+  doors=6 7a7266df
+  locks=blue!
+  stairs=2 e23494fa
+  lift arrival side=0 8,132,12,135 block=7,131,13,135 at=-37,32.5
+  lift departure side=0 14,132,18,135 block=13,131,19,135 at=-34,32.5
+plan s48514/f5 97ad95d6
   W=246 H=176 area=0.9875
-  tiles=97f63523
-  spawn=0.5,41.75 exit=3.5,41.75
+  tiles=d96aa4dd
+  spawn=-56.5,42.25 exit=-53.5,42.25
   prologue=43295
-  rooms=88 a5af360c
-  roles=exit,parking
-  doors=3 f1b9c7ef
-  locks=
-  stairs=3 7fd403c9
-  lift arrival side=0 122,170,126,173 block=121,169,127,173 at=0.5,41.75
-  lift departure side=0 128,170,132,173 block=127,169,133,173 at=3.5,41.75
-plan s48514/f8 95cf89eb
+  rooms=89 0d5dbfeb
+  roles=exit,office,parking,security
+  doors=6 7782d673
+  locks=blue!
+  stairs=2 21fdcb86
+  lift arrival side=0 8,171,12,174 block=7,170,13,174 at=-56.5,42.25
+  lift departure side=0 14,171,18,174 block=13,170,19,174 at=-53.5,42.25
+plan s48514/f8 c546ea5c
   W=186 H=215 area=0.6974
-  tiles=7599e633
-  spawn=-3.75,45.75 exit=-3.75,48.75
+  tiles=fac41d66
+  spawn=-41.5,52 exit=-38.5,52
   prologue=39989
-  rooms=106 a86f43ee
-  roles=exit,parking
-  doors=3 8a6fbd3b
-  locks=
-  stairs=3 26b83f82
-  lift arrival side=1 84,197,87,201 block=84,196,88,202 at=-3.75,45.75
-  lift departure side=1 84,203,87,207 block=84,202,88,208 at=-3.75,48.75
-plan s48514/f12 16500583
+  rooms=108 1ef2064f
+  roles=exit,office,parking,security
+  doors=6 2b4e95b6
+  locks=blue!
+  stairs=2 26d7ed62
+  lift arrival side=0 8,210,12,213 block=7,209,13,213 at=-41.5,52
+  lift departure side=0 14,210,18,213 block=13,209,19,213 at=-38.5,52
+plan s48514/f12 2bc5f6c5
   W=257 H=293 area=1.0095
-  tiles=68316431
-  spawn=-23,63.75 exit=-23,66.75
+  tiles=7cbc813d
+  spawn=-59.25,71.5 exit=-56.25,71.5
   prologue=75300
-  rooms=172 c81c30be
-  roles=exit,parking
-  doors=3 82f41e29
-  locks=
-  stairs=3 38cf1b1d
-  lift arrival side=1 81,272,84,276 block=81,271,85,277 at=-23,63.75
-  lift departure side=1 81,278,84,282 block=81,277,85,283 at=-23,66.75
-plan s48514/f15 71b21f0c
+  rooms=173 632aafdf
+  roles=exit,office,parking,security
+  doors=6 002c9f8e
+  locks=blue!
+  stairs=2 eaaae93d
+  lift arrival side=0 8,288,12,291 block=7,287,13,291 at=-59.25,71.5
+  lift departure side=0 14,288,18,291 block=13,287,19,291 at=-56.25,71.5
+plan s48514/f15 07a02878
   W=254 H=204 area=0.6854
-  tiles=f0a33e64
-  spawn=2,25.25 exit=5,25.25
+  tiles=81d3dce1
+  spawn=-58.5,49.25 exit=-55.5,49.25
   prologue=51815
-  rooms=118 0f53df7b
-  roles=exit,parking
-  doors=3 5ca2485e
-  locks=
-  stairs=3 dec6d167
-  lift arrival side=2 129,151,133,154 block=128,151,134,155 at=2,25.25
-  lift departure side=2 135,151,139,154 block=134,151,140,155 at=5,25.25
-plan s56433/f1 68312d21
+  rooms=118 7c74ae62
+  roles=exit,office,parking,security
+  doors=6 7209f2cb
+  locks=blue!
+  stairs=2 e48d3d52
+  lift arrival side=0 8,199,12,202 block=7,198,13,202 at=-58.5,49.25
+  lift departure side=0 14,199,18,202 block=13,198,19,202 at=-55.5,49.25
+plan s56433/f1 e0ea1d48
   W=181 H=120 area=0.7583
-  tiles=e55a3396
-  spawn=-1.5,21 exit=-1.5,27
+  tiles=b357e927
+  spawn=-41.25,28.25 exit=-38.25,28.25
   prologue=21719
-  rooms=48 229d77c5
-  roles=exit,parking
-  doors=4 e0426db2
-  locks=
-  stairs=3 ff76c408
-  lift arrival side=1 86,100,89,104 block=86,99,90,105 at=-1.5,21
-  lift departure side=1 86,112,89,116 block=86,111,90,117 at=-1.5,27
-plan s56433/f2 eb1307d5
+  rooms=49 d71cf5ae
+  roles=exit,office,parking,security
+  doors=8 a1b7bf35
+  locks=blue!
+  stairs=2 6132397c
+  lift arrival side=0 6,115,10,118 block=5,114,11,118 at=-41.25,28.25
+  lift departure side=0 12,115,16,118 block=11,114,17,118 at=-38.25,28.25
+plan s56433/f2 41616ee2
   W=186 H=215 area=1.2441
-  tiles=a45dbc7e
-  spawn=2.75,43.25 exit=2.75,46.25
+  tiles=d353c2d7
+  spawn=-42.5,52 exit=-39.5,52
   prologue=39989
-  rooms=88 76e463ea
-  roles=exit,parking
-  doors=3 4648e7fb
-  locks=
-  stairs=3 d20bf247
-  lift arrival side=3 97,192,100,196 block=96,191,100,197 at=2.75,43.25
-  lift departure side=3 97,198,100,202 block=96,197,100,203 at=2.75,46.25
-plan s56433/f3 a1bf0633
+  rooms=88 c4e59840
+  roles=exit,office,parking,security
+  doors=8 0fbdc69b
+  locks=blue!
+  stairs=2 26d7ed62
+  lift arrival side=0 6,210,10,213 block=5,209,11,213 at=-42.5,52
+  lift departure side=0 12,210,16,213 block=11,209,17,213 at=-39.5,52
+plan s56433/f3 207e7db0
   W=161 H=137 area=0.6154
-  tiles=8ca0e70c
-  spawn=-3.75,32 exit=-0.75,32
+  tiles=92d35f2b
+  spawn=-36.25,32.5 exit=-33.25,32.5
   prologue=22056
-  rooms=43 3a02cc0a
-  roles=exit,parking
-  doors=3 0f9eae00
-  locks=
-  stairs=3 87cc2b1a
-  lift arrival side=0 71,131,75,134 block=70,130,76,134 at=-3.75,32
-  lift departure side=0 77,131,81,134 block=76,130,82,134 at=-0.75,32
-plan s56433/f5 6da5875c
+  rooms=45 e9daa615
+  roles=exit,office,parking,security
+  doors=8 31654d2a
+  locks=blue!
+  stairs=2 57a36c4a
+  lift arrival side=0 6,132,10,135 block=5,131,11,135 at=-36.25,32.5
+  lift departure side=0 12,132,16,135 block=11,131,17,135 at=-33.25,32.5
+plan s56433/f5 daa37320
   W=214 H=266 area=1.2983
-  tiles=2151620b
-  spawn=17.25,40.5 exit=17.25,43.5
+  tiles=e505b9c4
+  spawn=-49.5,64.75 exit=-46.5,64.75
   prologue=56923
-  rooms=117 b45533a5
-  roles=exit,parking
-  doors=3 3b541a90
-  locks=
-  stairs=3 398bd056
-  lift arrival side=3 140,212,143,216 block=139,211,143,217 at=17.25,40.5
-  lift departure side=3 140,218,143,222 block=139,217,143,223 at=17.25,43.5
-plan s56433/f8 993f124d
+  rooms=118 95da6ca9
+  roles=exit,office,parking,security
+  doors=8 96dc5788
+  locks=blue!
+  stairs=2 d4905dbd
+  lift arrival side=0 6,261,10,264 block=5,260,11,264 at=-49.5,64.75
+  lift departure side=0 12,261,16,264 block=11,260,17,264 at=-46.5,64.75
+plan s56433/f8 efb093a2
   W=230 H=194 area=0.7781
-  tiles=00889c88
-  spawn=-0.5,40.75 exit=2.5,40.75
+  tiles=b8bc6495
+  spawn=-53.5,46.75 exit=-50.5,46.75
   prologue=44619
-  rooms=102 9062a453
-  roles=exit,parking
-  doors=3 53cfc5fe
-  locks=
-  stairs=3 e6a75182
-  lift arrival side=0 112,177,116,180 block=111,176,117,180 at=-0.5,40.75
-  lift departure side=0 118,177,122,180 block=117,176,123,180 at=2.5,40.75
-plan s56433/f12 d2623662
+  rooms=104 1b60054c
+  roles=exit,office,parking,security
+  doors=8 cb22259d
+  locks=blue!
+  stairs=2 1e633066
+  lift arrival side=0 6,189,10,192 block=5,188,11,192 at=-53.5,46.75
+  lift departure side=0 12,189,16,192 block=11,188,17,192 at=-50.5,46.75
+plan s56433/f12 5bdb3418
   W=274 H=275 area=1.0102
-  tiles=28cb1949
-  spawn=-13.5,54.5 exit=-10.5,54.5
+  tiles=d5dc3565
+  spawn=-64.5,67 exit=-61.5,67
   prologue=75349
-  rooms=192 0c1e03f7
-  roles=exit,parking
-  doors=3 a85a99cc
-  locks=
-  stairs=3 ede398b4
-  lift arrival side=0 108,245,112,248 block=107,244,113,248 at=-13.5,54.5
-  lift departure side=0 114,245,118,248 block=113,244,119,248 at=-10.5,54.5
-plan s56433/f15 a3a906e0
+  rooms=195 16a7e76f
+  roles=exit,office,parking,security
+  doors=8 7da92cb1
+  locks=blue!
+  stairs=2 fd08e1a0
+  lift arrival side=0 6,270,10,273 block=5,269,11,273 at=-64.5,67
+  lift departure side=0 12,270,16,273 block=11,269,17,273 at=-61.5,67
+plan s56433/f15 e4f19b4d
   W=263 H=286 area=0.9949
-  tiles=261641fd
-  spawn=11,54 exit=11,57
+  tiles=588d6c0b
+  spawn=-61.75,69.75 exit=-58.75,69.75
   prologue=75217
-  rooms=185 37eea13b
-  roles=exit,parking
-  doors=4 6666e0f5
-  locks=
-  stairs=3 2d223094
-  lift arrival side=1 152,249,155,253 block=152,248,156,254 at=11,54
-  lift departure side=1 152,255,155,259 block=152,254,156,260 at=11,57
-plan s64352/f1 0ccce091
+  rooms=188 d02ea5fa
+  roles=exit,office,parking,security
+  doors=8 a729156c
+  locks=blue!
+  stairs=2 c44988a9
+  lift arrival side=0 6,281,10,284 block=5,280,11,284 at=-61.75,69.75
+  lift departure side=0 12,281,16,284 block=11,280,17,284 at=-58.75,69.75
+plan s64352/f1 1e928d0c
   W=177 H=188 area=1.1617
-  tiles=947779dd
-  spawn=-2,37 exit=-2,40
+  tiles=705db02e
+  spawn=-36.75,45.25 exit=-33.75,45.25
   prologue=33275
-  rooms=67 b786164c
-  roles=exit,parking
-  doors=3 cf498779
-  locks=
-  stairs=2 1ae1bb52
-  lift arrival side=1 83,166,86,170 block=83,165,87,171 at=-2,37
-  lift departure side=1 83,172,86,176 block=83,171,87,177 at=-2,40
-plan s64352/f2 d847dda9
+  rooms=67 d9c99ab2
+  roles=exit,office,parking,security
+  doors=7 8221f8bf
+  locks=blue!
+  stairs=2 88152e40
+  lift arrival side=0 13,183,17,186 block=12,182,18,186 at=-36.75,45.25
+  lift departure side=0 19,183,23,186 block=18,182,24,186 at=-33.75,45.25
+plan s64352/f2 4a47ea27
   W=195 H=135 area=0.819
-  tiles=28d36f35
-  spawn=4.75,10.5 exit=7.75,10.5
+  tiles=aa76c367
+  spawn=-41.25,32 exit=-38.25,32
   prologue=26324
-  rooms=60 006f73bf
-  roles=exit,parking
-  doors=3 dfe7b67a
-  locks=
-  stairs=2 5e202e83
-  lift arrival side=2 105,87,109,90 block=104,87,110,91 at=4.75,10.5
-  lift departure side=2 111,87,115,90 block=110,87,116,91 at=7.75,10.5
-plan s64352/f3 aaf37d5c
+  rooms=60 afe41049
+  roles=exit,office,parking,security
+  doors=7 35f0f706
+  locks=blue!
+  stairs=2 f517d984
+  lift arrival side=0 13,130,17,133 block=12,129,18,133 at=-41.25,32
+  lift departure side=0 19,130,23,133 block=18,129,24,133 at=-38.25,32
+plan s64352/f3 37decc8a
   W=183 H=222 area=1.1334
-  tiles=4b4a19e7
-  spawn=-2,23.5 exit=-2,26.5
+  tiles=a9f17300
+  spawn=-38.25,53.75 exit=-35.25,53.75
   prologue=40625
-  rooms=98 048f4c82
-  roles=exit,parking
-  doors=3 913e7157
-  locks=
-  stairs=2 45a49d74
-  lift arrival side=1 86,156,89,160 block=86,155,90,161 at=-2,23.5
-  lift departure side=1 86,162,89,166 block=86,161,90,167 at=-2,26.5
-plan s64352/f5 e3ab2028
+  rooms=98 d9e6caf6
+  roles=exit,office,parking,security
+  doors=7 2172bfa2
+  locks=blue!
+  stairs=2 bdd2a628
+  lift arrival side=0 13,217,17,220 block=12,216,18,220 at=-38.25,53.75
+  lift departure side=0 19,217,23,220 block=18,216,24,220 at=-35.25,53.75
+plan s64352/f5 f5e38815
   W=220 H=211 area=1.0588
-  tiles=932477a2
-  spawn=-3.25,21.25 exit=-3.25,24.25
+  tiles=8cbb9ef6
+  spawn=-47.5,51 exit=-44.5,51
   prologue=46419
-  rooms=105 7e02d1a2
-  roles=exit,parking
-  doors=3 6dd84a52
-  locks=
-  stairs=2 6ee76da3
-  lift arrival side=1 102,146,105,150 block=102,145,106,151 at=-3.25,21.25
-  lift departure side=1 102,152,105,156 block=102,151,106,157 at=-3.25,24.25
-plan s64352/f8 0408b60e
+  rooms=103 9c96e488
+  roles=exit,office,parking,security
+  doors=7 380656bc
+  locks=blue!
+  stairs=2 9b7e345e
+  lift arrival side=0 13,206,17,209 block=12,205,18,209 at=-47.5,51
+  lift departure side=0 19,206,23,209 block=18,205,24,209 at=-44.5,51
+plan s64352/f8 ef7d856f
   W=209 H=238 area=0.8674
-  tiles=ef270bbc
-  spawn=2,43 exit=2,46
+  tiles=6c8601b8
+  spawn=-44.75,57.75 exit=-41.75,57.75
   prologue=49741
-  rooms=112 b5585a0e
-  roles=exit,parking
-  doors=3 f72fb12d
-  locks=
-  stairs=2 b399ad19
-  lift arrival side=3 107,203,110,207 block=106,202,110,208 at=2,43
-  lift departure side=3 107,209,110,213 block=106,208,110,214 at=2,46
-plan s64352/f12 96b0a4e1
+  rooms=110 214e7f97
+  roles=exit,office,parking,security
+  doors=7 5b5cbd71
+  locks=blue!
+  stairs=2 2942b59c
+  lift arrival side=0 13,233,17,236 block=12,232,18,236 at=-44.75,57.75
+  lift departure side=0 19,233,23,236 block=18,232,24,236 at=-41.75,57.75
+plan s64352/f12 fb2d4619
   W=300 H=196 area=0.7883
-  tiles=db0c3709
-  spawn=-20.75,41.5 exit=-20.75,44.5
+  tiles=c7fcd8e1
+  spawn=-67.5,47.25 exit=-64.5,47.25
   prologue=58799
-  rooms=139 bbbe12cf
-  roles=exit,parking
-  doors=3 37147eaf
-  locks=
-  stairs=2 db063945
-  lift arrival side=1 107,179,110,183 block=107,178,111,184 at=-20.75,41.5
-  lift departure side=1 107,185,110,189 block=107,184,111,190 at=-20.75,44.5
-plan s64352/f15 7ae20dc4
+  rooms=140 4e2cecaa
+  roles=exit,office,parking,security
+  doors=7 a6c6d715
+  locks=blue!
+  stairs=2 fca8f0bd
+  lift arrival side=0 13,191,17,194 block=12,190,18,194 at=-67.5,47.25
+  lift departure side=0 19,191,23,194 block=18,190,24,194 at=-64.5,47.25
+plan s64352/f15 c163f0a7
   W=212 H=249 area=0.6983
-  tiles=9dcda369
-  spawn=-0.5,60 exit=2.5,60
+  tiles=9d4a83a8
+  spawn=-45.5,60.5 exit=-42.5,60.5
   prologue=52787
-  rooms=114 b0252972
-  roles=exit,parking
-  doors=3 4d94bfa2
-  locks=
-  stairs=2 6eb77e67
-  lift arrival side=0 103,243,107,246 block=102,242,108,246 at=-0.5,60
-  lift departure side=0 109,243,113,246 block=108,242,114,246 at=2.5,60
-plan s72271/f1 24926727
+  rooms=113 73635aca
+  roles=exit,office,parking,security
+  doors=7 b7fecde1
+  locks=blue!
+  stairs=2 bfa18f11
+  lift arrival side=0 13,244,17,247 block=12,243,18,247 at=-45.5,60.5
+  lift departure side=0 19,244,23,247 block=18,243,24,247 at=-42.5,60.5
+plan s72271/f1 a1faaab7
   W=246 H=145 area=1.2453
-  tiles=005283fc
-  spawn=-1.25,15.25 exit=-1.25,18.25
+  tiles=5d5dc14b
+  spawn=-57.5,34.5 exit=-54.5,34.5
   prologue=35669
-  rooms=65 7b656d62
-  roles=exit,parking
-  doors=3 d9072064
-  locks=
-  stairs=4 94171f78
-  lift arrival side=3 119,101,122,105 block=118,100,122,106 at=-1.25,15.25
-  lift departure side=3 119,107,122,111 block=118,106,122,112 at=-1.25,18.25
-plan s72271/f2 d9e359d5
+  rooms=69 7ab3bce6
+  roles=exit,office,parking,security
+  doors=10 e8aa7684
+  locks=blue!
+  stairs=2 03d5d40f
+  lift arrival side=0 6,140,10,143 block=5,139,11,143 at=-57.5,34.5
+  lift departure side=0 12,140,16,143 block=11,139,17,143 at=-54.5,34.5
+plan s72271/f2 a4053301
   W=240 H=157 area=1.1722
-  tiles=f4d29b0f
-  spawn=-13.25,30.25 exit=-13.25,33.25
+  tiles=a22ac85d
+  spawn=-56,37.5 exit=-53,37.5
   prologue=37679
-  rooms=68 193a0c84
-  roles=exit,parking
-  doors=4 9b010fd7
-  locks=
-  stairs=4 e1de2628
-  lift arrival side=1 92,137,95,141 block=92,136,96,142 at=-13.25,30.25
-  lift departure side=1 92,143,95,147 block=92,142,96,148 at=-13.25,33.25
-plan s72271/f3 d8cab825
+  rooms=71 7b8584f5
+  roles=exit,office,parking,security
+  doors=10 f9090858
+  locks=blue!
+  stairs=2 199a0aa8
+  lift arrival side=0 6,152,10,155 block=5,151,11,155 at=-56,37.5
+  lift departure side=0 12,152,16,155 block=11,151,17,155 at=-53,37.5
+plan s72271/f3 f842ea13
   W=212 H=160 area=0.9463
-  tiles=4d50b68a
-  spawn=-8.75,32.5 exit=-8.75,35.5
+  tiles=77899d09
+  spawn=-49,38.25 exit=-46,38.25
   prologue=33919
-  rooms=73 cd2b91ed
-  roles=exit,parking
-  doors=3 ba29d7ae
-  locks=
-  stairs=4 a742f8e4
-  lift arrival side=3 87,143,90,147 block=86,142,90,148 at=-8.75,32.5
-  lift departure side=3 87,149,90,153 block=86,148,90,154 at=-8.75,35.5
-plan s72271/f5 cdc1faeb
+  rooms=74 23772cf8
+  roles=exit,office,parking,security
+  doors=10 06fd711d
+  locks=blue!
+  stairs=2 2b82f138
+  lift arrival side=0 6,155,10,158 block=5,154,11,158 at=-49,38.25
+  lift departure side=0 12,155,16,158 block=11,154,17,158 at=-46,38.25
+plan s72271/f5 1cdc68b7
   W=253 H=170 area=0.981
-  tiles=d7cb68c4
-  spawn=9.75,33.75 exit=12.75,33.75
+  tiles=fe351631
+  spawn=-59.25,40.75 exit=-56.25,40.75
   prologue=43009
-  rooms=73 b59ce348
-  roles=exit,parking
-  doors=3 aa266700
-  locks=
-  stairs=4 51f737f6
-  lift arrival side=0 144,151,148,154 block=143,150,149,154 at=9.75,33.75
-  lift departure side=0 150,151,154,154 block=149,150,155,154 at=12.75,33.75
-plan s72271/f8 9c32e0e3
+  rooms=76 22cf49e1
+  roles=exit,office,parking,security
+  doors=10 431ed3b1
+  locks=blue!
+  stairs=2 5d86bfab
+  lift arrival side=0 6,165,10,168 block=5,164,11,168 at=-59.25,40.75
+  lift departure side=0 12,165,16,168 block=11,164,17,168 at=-56.25,40.75
+plan s72271/f8 a2ff5673
   W=300 H=208 area=1.0882
-  tiles=894b3129
-  spawn=1,29.25 exit=4,29.25
+  tiles=ce8a159c
+  spawn=-71,50.25 exit=-68,50.25
   prologue=62399
-  rooms=137 6d8f609b
-  roles=exit,parking
-  doors=4 ef58ca4e
-  locks=
-  stairs=4 4380a0e4
-  lift arrival side=2 150,161,154,164 block=149,161,155,165 at=1,29.25
-  lift departure side=2 156,161,160,164 block=155,161,161,165 at=4,29.25
-plan s72271/f12 d8259175
+  rooms=139 e1bb1c19
+  roles=exit,office,parking,security
+  doors=10 9912b13c
+  locks=blue!
+  stairs=2 0720e582
+  lift arrival side=0 6,203,10,206 block=5,202,11,206 at=-71,50.25
+  lift departure side=0 12,203,16,206 block=11,202,17,206 at=-68,50.25
+plan s72271/f12 e95bbf8f
   W=285 H=188 area=0.7183
-  tiles=441efabf
-  spawn=-3.75,44.75 exit=-0.75,44.75
+  tiles=e6e3a480
+  spawn=-67.25,45.25 exit=-64.25,45.25
   prologue=53579
-  rooms=100 b1e153db
-  roles=exit,parking
-  doors=3 b8a83441
-  locks=
-  stairs=4 025e5446
-  lift arrival side=0 133,182,137,185 block=132,181,138,185 at=-3.75,44.75
-  lift departure side=0 139,182,143,185 block=138,181,144,185 at=-0.75,44.75
-plan s72271/f15 d4bd5038
+  rooms=102 9ab74134
+  roles=exit,office,parking,security
+  doors=10 e0a00036
+  locks=blue!
+  stairs=2 660cd518
+  lift arrival side=0 6,183,10,186 block=5,182,11,186 at=-67.25,45.25
+  lift departure side=0 12,183,16,186 block=11,182,17,186 at=-64.25,45.25
+plan s72271/f15 2c34a90b
   W=294 H=256 area=0.9956
-  tiles=be74382f
-  spawn=12,61.75 exit=15,61.75
+  tiles=2c0c1483
+  spawn=-69.5,62.25 exit=-66.5,62.25
   prologue=75263
-  rooms=176 be91c6a9
-  roles=exit,parking
-  doors=3 a3997652
-  locks=
-  stairs=4 43487a9f
-  lift arrival side=0 169,250,173,253 block=168,249,174,253 at=12,61.75
-  lift departure side=0 175,250,179,253 block=174,249,180,253 at=15,61.75
-plan s80190/f1 6d0eddc4
+  rooms=178 adc41d1a
+  roles=exit,office,parking,security
+  doors=10 00076b38
+  locks=blue!
+  stairs=2 cce7e2ce
+  lift arrival side=0 6,251,10,254 block=5,250,11,254 at=-69.5,62.25
+  lift departure side=0 12,251,16,254 block=11,250,17,254 at=-66.5,62.25
+plan s80190/f1 cde1176d
   W=234 H=138 area=1.1274
-  tiles=0a6f61df
-  spawn=-1.25,25.5 exit=-1.25,28.5
+  tiles=387f2898
+  spawn=-54.5,32.75 exit=-51.5,32.75
   prologue=32291
-  rooms=69 dcd594db
-  roles=exit,parking
-  doors=3 5a21cc14
-  locks=
-  stairs=2 1342dc97
-  lift arrival side=1 113,118,116,122 block=113,117,117,123 at=-1.25,25.5
-  lift departure side=1 113,124,116,128 block=113,123,117,129 at=-1.25,28.5
-plan s80190/f2 e90260d6
+  rooms=70 1fa8442d
+  roles=exit,office,parking,security
+  doors=8 8ecdd844
+  locks=blue!
+  stairs=2 a85b1302
+  lift arrival side=0 6,133,10,136 block=5,132,11,136 at=-54.5,32.75
+  lift departure side=0 12,133,16,136 block=11,132,17,136 at=-51.5,32.75
+plan s80190/f2 23a3df41
   W=199 H=120 area=0.7429
-  tiles=3b821c87
-  spawn=-2,12 exit=-2,15
+  tiles=34c371d0
+  spawn=-45.75,28.25 exit=-42.75,28.25
   prologue=23879
-  rooms=59 3bfac2b9
-  roles=exit,parking
-  doors=3 0be2109e
-  locks=
-  stairs=2 2fe39ed1
-  lift arrival side=1 94,82,97,86 block=94,81,98,87 at=-2,12
-  lift departure side=1 94,88,97,92 block=94,87,98,93 at=-2,15
-plan s80190/f3 4987d838
+  rooms=60 c65e6934
+  roles=exit,office,parking,security
+  doors=8 7537cce5
+  locks=blue!
+  stairs=2 0fcae890
+  lift arrival side=0 6,115,10,118 block=5,114,11,118 at=-45.75,28.25
+  lift departure side=0 12,115,16,118 block=11,114,17,118 at=-42.75,28.25
+plan s80190/f3 6dbbc7dd
   W=188 H=120 area=0.6294
-  tiles=3101d38c
-  spawn=-2.5,27.75 exit=0.5,27.75
+  tiles=eda55c8b
+  spawn=-43,28.25 exit=-40,28.25
   prologue=22559
-  rooms=53 0691436d
-  roles=exit,parking
-  doors=3 8f83fb3d
-  locks=
-  stairs=2 8c8e66df
-  lift arrival side=0 87,114,91,117 block=86,113,92,117 at=-2.5,27.75
-  lift departure side=0 93,114,97,117 block=92,113,98,117 at=0.5,27.75
-plan s80190/f5 5f3c7957
+  rooms=54 94add5a3
+  roles=exit,office,parking,security
+  doors=8 7537cce5
+  locks=blue!
+  stairs=2 3a21c2ec
+  lift arrival side=0 6,115,10,118 block=5,114,11,118 at=-43,28.25
+  lift departure side=0 12,115,16,118 block=11,114,17,118 at=-40,28.25
+plan s80190/f5 4cad7b1c
   W=216 H=154 area=0.7587
-  tiles=9f2623b2
-  spawn=-2.25,20 exit=-2.25,23
+  tiles=b8775bc9
+  spawn=-50,36.75 exit=-47,36.75
   prologue=33263
-  rooms=72 2bb70518
-  roles=exit,parking
-  doors=3 85ffd3a2
-  locks=
-  stairs=2 70caf902
-  lift arrival side=3 102,115,105,119 block=101,114,105,120 at=-2.25,20
-  lift departure side=3 102,121,105,125 block=101,120,105,126 at=-2.25,23
-plan s80190/f8 2d683bc6
+  rooms=73 382f959a
+  roles=exit,office,parking,security
+  doors=8 be34284b
+  locks=blue!
+  stairs=2 c3449ab7
+  lift arrival side=0 6,149,10,152 block=5,148,11,152 at=-50,36.75
+  lift departure side=0 12,149,16,152 block=11,148,17,152 at=-47,36.75
+plan s80190/f8 883a733a
   W=300 H=203 area=1.062
-  tiles=e8009d57
-  spawn=5.75,44.75 exit=5.75,47.75
+  tiles=fc04f782
+  spawn=-71,49 exit=-68,49
   prologue=60899
-  rooms=135 f564c88a
-  roles=exit,parking
-  doors=3 50d6c933
-  locks=
-  stairs=2 102871ef
-  lift arrival side=3 160,189,163,193 block=159,188,163,194 at=5.75,44.75
-  lift departure side=3 160,195,163,199 block=159,194,163,200 at=5.75,47.75
-plan s80190/f12 863d0a17
+  rooms=137 5bcc844b
+  roles=exit,office,parking,security
+  doors=8 cb17cb73
+  locks=blue!
+  stairs=2 3f2953c6
+  lift arrival side=0 6,198,10,201 block=5,197,11,201 at=-71,49
+  lift departure side=0 12,198,16,201 block=11,197,17,201 at=-68,49
+plan s80190/f12 fbd389a2
   W=290 H=260 area=1.0108
-  tiles=50ae5f33
-  spawn=1,62.75 exit=4,62.75
+  tiles=e56fcdb3
+  spawn=-68.5,63.25 exit=-65.5,63.25
   prologue=75399
-  rooms=183 21b8c19a
-  roles=exit,parking
-  doors=3 bf071e2e
-  locks=
-  stairs=2 5903f3ed
-  lift arrival side=0 145,254,149,257 block=144,253,150,257 at=1,62.75
-  lift departure side=0 151,254,155,257 block=150,253,156,257 at=4,62.75
-plan s80190/f15 54d42534
+  rooms=186 43bdd6b5
+  roles=exit,office,parking,security
+  doors=8 8d7eb967
+  locks=blue!
+  stairs=2 af949ae8
+  lift arrival side=0 6,255,10,258 block=5,254,11,258 at=-68.5,63.25
+  lift departure side=0 12,255,16,258 block=11,254,17,258 at=-65.5,63.25
+plan s80190/f15 8b738e15
   W=207 H=229 area=0.627
-  tiles=7bc16c0f
-  spawn=-1.75,26.5 exit=1.25,26.5
+  tiles=0dcfdc8e
+  spawn=-47.75,55.5 exit=-44.75,55.5
   prologue=47402
-  rooms=102 148504ec
-  roles=exit,parking
-  doors=3 bef5abfd
-  locks=
-  stairs=2 058597b2
-  lift arrival side=2 98,166,102,169 block=97,166,103,170 at=-1.75,26.5
-  lift departure side=2 104,166,108,169 block=103,166,109,170 at=1.25,26.5
-plan s88109/f1 b4a66d02
+  rooms=103 005b3a03
+  roles=exit,office,parking,security
+  doors=8 6bb9af40
+  locks=blue!
+  stairs=2 774ab1c9
+  lift arrival side=0 6,224,10,227 block=5,223,11,227 at=-47.75,55.5
+  lift departure side=0 12,224,16,227 block=11,223,17,227 at=-44.75,55.5
+plan s88109/f1 2fda81b6
   W=156 H=171 area=0.9313
-  tiles=c0ab8674
-  spawn=0.5,40.5 exit=3.5,40.5
+  tiles=c7969a7d
+  spawn=-34.5,41 exit=-31.5,41
   prologue=26675
-  rooms=53 877afdc8
-  roles=exit,parking
-  doors=3 a8753f76
-  locks=
-  stairs=3 a9beec58
-  lift arrival side=0 77,165,81,168 block=76,164,82,168 at=0.5,40.5
-  lift departure side=0 83,165,87,168 block=82,164,88,168 at=3.5,40.5
-plan s88109/f2 501a5a0e
+  rooms=52 97b2cd94
+  roles=exit,office,parking,security
+  doors=6 8e12748d
+  locks=blue!
+  stairs=2 9e69fc9f
+  lift arrival side=0 7,166,11,169 block=6,165,12,169 at=-34.5,41
+  lift departure side=0 13,166,17,169 block=12,165,18,169 at=-31.5,41
+plan s88109/f2 b66a3341
   W=173 H=215 area=1.1571
-  tiles=8e81bc67
-  spawn=-2.5,46.25 exit=-2.5,49.25
+  tiles=a09337e6
+  spawn=-38.75,52 exit=-35.75,52
   prologue=37194
-  rooms=79 df735e36
-  roles=exit,parking
-  doors=3 792e9f28
-  locks=
-  stairs=3 4eab6d55
-  lift arrival side=1 80,198,83,202 block=80,197,84,203 at=-2.5,46.25
-  lift departure side=1 80,204,83,208 block=80,203,84,209 at=-2.5,49.25
-plan s88109/f3 85877453
+  rooms=78 ea5b25ef
+  roles=exit,office,parking,security
+  doors=6 31b26b7d
+  locks=blue!
+  stairs=2 92599fd2
+  lift arrival side=0 7,210,11,213 block=6,209,12,213 at=-38.75,52
+  lift departure side=0 13,210,17,213 block=12,209,18,213 at=-35.75,52
+plan s88109/f3 6b0a680f
   W=191 H=120 area=0.6394
-  tiles=2d1ba3a6
-  spawn=2.25,27.75 exit=5.25,27.75
+  tiles=fe34ead3
+  spawn=-43.25,28.25 exit=-40.25,28.25
   prologue=22919
-  rooms=43 7ba6e69d
-  roles=exit,parking
-  doors=3 cb16882e
-  locks=
-  stairs=3 3b6c72ec
-  lift arrival side=0 98,114,102,117 block=97,113,103,117 at=2.25,27.75
-  lift departure side=0 104,114,108,117 block=103,113,109,117 at=5.25,27.75
-plan s88109/f5 b4ca0145
+  rooms=44 d8d58b66
+  roles=exit,office,parking,security
+  doors=6 8bb40b59
+  locks=blue!
+  stairs=2 1503fc68
+  lift arrival side=0 7,115,11,118 block=6,114,12,118 at=-43.25,28.25
+  lift departure side=0 13,115,17,118 block=12,114,18,118 at=-40.25,28.25
+plan s88109/f5 0d02107e
   W=300 H=193 area=1.3206
-  tiles=b8963cb3
-  spawn=16.25,39.75 exit=16.25,42.75
+  tiles=bfaf744b
+  spawn=-70.5,46.5 exit=-67.5,46.5
   prologue=57899
-  rooms=130 8af6d4cf
-  roles=exit,parking
-  doors=3 67ecb89f
-  locks=
-  stairs=3 acde0d68
-  lift arrival side=3 181,174,184,178 block=180,173,184,179 at=16.25,39.75
-  lift departure side=3 181,180,184,184 block=180,179,184,185 at=16.25,42.75
-plan s88109/f8 685a01a0
+  rooms=132 2ff70395
+  roles=exit,office,parking,security
+  doors=6 d683a8c1
+  locks=blue!
+  stairs=2 c6fe4e0a
+  lift arrival side=0 7,188,11,191 block=6,187,12,191 at=-70.5,46.5
+  lift departure side=0 13,188,17,191 block=12,187,18,191 at=-67.5,46.5
+plan s88109/f8 160aaa91
   W=279 H=269 area=1.3088
-  tiles=14989308
-  spawn=15,60.25 exit=15,63.25
+  tiles=b8502f74
+  spawn=-65.25,65.5 exit=-62.25,65.5
   prologue=75050
-  rooms=184 f6ca0245
-  roles=exit,parking
-  doors=3 1e7c7dee
-  locks=
-  stairs=3 a6f53421
-  lift arrival side=3 168,253,171,257 block=167,252,171,258 at=15,60.25
-  lift departure side=3 168,259,171,263 block=167,258,171,264 at=15,63.25
-plan s88109/f12 c849bed2
+  rooms=185 ed4017bd
+  roles=exit,office,parking,security
+  doors=6 79d9dccb
+  locks=blue!
+  stairs=2 b96408c5
+  lift arrival side=0 7,264,11,267 block=6,263,12,267 at=-65.25,65.5
+  lift departure side=0 13,264,17,267 block=12,263,18,267 at=-62.25,65.5
+plan s88109/f12 a9c145cd
   W=257 H=199 area=0.6856
-  tiles=91d27d88
-  spawn=-0.25,19.5 exit=2.75,19.5
+  tiles=bd66b437
+  spawn=-59.75,48 exit=-56.75,48
   prologue=51142
-  rooms=105 2f70fd3e
-  roles=exit,parking
-  doors=3 aebd8ff7
-  locks=
-  stairs=3 3e9927d4
-  lift arrival side=2 126,137,130,140 block=125,137,131,141 at=-0.25,19.5
-  lift departure side=2 132,137,136,140 block=131,137,137,141 at=2.75,19.5
-plan s88109/f15 66802b46
+  rooms=105 2032b098
+  roles=exit,office,parking,security
+  doors=6 e66f15f7
+  locks=blue!
+  stairs=2 01d91c35
+  lift arrival side=0 7,194,11,197 block=6,193,12,197 at=-59.75,48
+  lift departure side=0 13,194,17,197 block=12,193,18,197 at=-56.75,48
+plan s88109/f15 0483f34a
   W=238 H=197 area=0.6202
-  tiles=3cc88e2a
-  spawn=17.25,34.75 exit=17.25,37.75
+  tiles=5fb5c8a8
+  spawn=-55,47.5 exit=-52,47.5
   prologue=46885
-  rooms=103 f8d94b3c
-  roles=exit,parking
-  doors=4 54cbd60b
-  locks=
-  stairs=3 8b352b0c
-  lift arrival side=1 152,166,155,170 block=152,165,156,171 at=17.25,34.75
-  lift departure side=1 152,172,155,176 block=152,171,156,177 at=17.25,37.75
-plan s96028/f1 d574b06d
+  rooms=103 ae79e6dc
+  roles=exit,office,parking,security
+  doors=6 3424f39c
+  locks=blue!
+  stairs=2 3094c127
+  lift arrival side=0 7,192,11,195 block=6,191,12,195 at=-55,47.5
+  lift departure side=0 13,192,17,195 block=12,191,18,195 at=-52,47.5
+plan s96028/f1 28b02ec8
   W=179 H=204 area=1.2748
-  tiles=32ffec9c
-  spawn=-16.5,31 exit=-16.5,34
+  tiles=d8a91224
+  spawn=-40.75,49.25 exit=-37.75,49.25
   prologue=36515
-  rooms=67 1d94e7a3
-  roles=exit,parking
-  doors=3 d89e9cb1
-  locks=
-  stairs=3 df0e42c4
-  lift arrival side=1 55,162,58,166 block=55,161,59,167 at=-16.5,31
-  lift departure side=1 55,168,58,172 block=55,167,59,173 at=-16.5,34
-plan s96028/f2 f4d6199d
+  rooms=70 f6737cbe
+  roles=exit,office,parking,security
+  doors=9 c761aeef
+  locks=blue!
+  stairs=2 f57a689e
+  lift arrival side=0 6,199,10,202 block=5,198,11,202 at=-40.75,49.25
+  lift departure side=0 12,199,16,202 block=11,198,17,202 at=-37.75,49.25
+plan s96028/f2 9ca6c755
   W=152 H=138 area=0.6526
-  tiles=43f745ee
-  spawn=1,20.25 exit=4,20.25
+  tiles=b6c41412
+  spawn=-34,32.75 exit=-31,32.75
   prologue=20975
-  rooms=39 09feab76
-  roles=exit,parking
-  doors=3 d17f9be9
-  locks=
-  stairs=3 4027974e
-  lift arrival side=2 76,108,80,111 block=75,108,81,112 at=1,20.25
-  lift departure side=2 82,108,86,111 block=81,108,87,112 at=4,20.25
-plan s96028/f3 e21e83eb
+  rooms=41 ba7d7fc1
+  roles=exit,office,parking,security
+  doors=9 fd4d43b2
+  locks=blue!
+  stairs=2 5e5f1f1a
+  lift arrival side=0 6,133,10,136 block=5,132,11,136 at=-34,32.75
+  lift departure side=0 12,133,16,136 block=11,132,17,136 at=-31,32.75
+plan s96028/f3 368b1768
   W=207 H=188 area=1.0857
-  tiles=5187ad5a
-  spawn=-16.75,44.75 exit=-13.75,44.75
+  tiles=ecaa834e
+  spawn=-47.75,45.25 exit=-44.75,45.25
   prologue=38915
-  rooms=90 5da0878f
-  roles=exit,parking
-  doors=3 a906c67a
-  locks=
-  stairs=3 3632cdbc
-  lift arrival side=0 68,182,72,185 block=67,181,73,185 at=-16.75,44.75
-  lift departure side=0 74,182,78,185 block=73,181,79,185 at=-13.75,44.75
-plan s96028/f5 8c1cac67
+  rooms=91 ce6e831a
+  roles=exit,office,parking,security
+  doors=9 b9d64862
+  locks=blue!
+  stairs=2 3850b128
+  lift arrival side=0 6,183,10,186 block=5,182,11,186 at=-47.75,45.25
+  lift departure side=0 12,183,16,186 block=11,182,17,186 at=-44.75,45.25
+plan s96028/f5 6c69f51c
   W=190 H=148 area=0.6414
-  tiles=03d61069
-  spawn=1,27.25 exit=4,27.25
+  tiles=a6f03e32
+  spawn=-43.5,35.25 exit=-40.5,35.25
   prologue=28119
-  rooms=51 d580bdca
-  roles=exit,parking
-  doors=3 e89fe15f
-  locks=
-  stairs=3 9f61ad63
-  lift arrival side=0 95,127,99,130 block=94,126,100,130 at=1,27.25
-  lift departure side=0 101,127,105,130 block=100,126,106,130 at=4,27.25
-plan s96028/f8 ef6a1e96
+  rooms=53 2969134a
+  roles=exit,office,parking,security
+  doors=9 a0037bf2
+  locks=blue!
+  stairs=2 e6fd4f1b
+  lift arrival side=0 6,143,10,146 block=5,142,11,146 at=-43.5,35.25
+  lift departure side=0 12,143,16,146 block=11,142,17,146 at=-40.5,35.25
+plan s96028/f8 f98d1354
   W=217 H=246 area=0.9309
-  tiles=6a669a19
-  spawn=0,46 exit=0,49
+  tiles=fd9cba22
+  spawn=-50.25,59.75 exit=-47.25,59.75
   prologue=53381
-  rooms=120 88fdbf13
-  roles=exit,parking
-  doors=3 5fd68f53
-  locks=
-  stairs=3 fea29fa1
-  lift arrival side=3 107,213,110,217 block=106,212,110,218 at=0,46
-  lift departure side=3 107,219,110,223 block=106,218,110,224 at=0,49
-plan s96028/f12 2c9e68db
+  rooms=123 6f4b1502
+  roles=exit,office,parking,security
+  doors=9 46425080
+  locks=blue!
+  stairs=2 fb86e8f5
+  lift arrival side=0 6,241,10,244 block=5,240,11,244 at=-50.25,59.75
+  lift departure side=0 12,241,16,244 block=11,240,17,244 at=-47.25,59.75
+plan s96028/f12 ad30fab8
   W=251 H=300 area=1.0095
-  tiles=4f22006b
-  spawn=-7,68 exit=-7,71
+  tiles=f2636cde
+  spawn=-58.75,73.25 exit=-55.75,73.25
   prologue=75299
-  rooms=163 8b93ed82
-  roles=exit,parking
-  doors=3 c2b5c85e
-  locks=
-  stairs=3 24e71c21
-  lift arrival side=1 110,284,113,288 block=110,283,114,289 at=-7,68
-  lift departure side=1 110,290,113,294 block=110,289,114,295 at=-7,71
-plan s96028/f15 1210e715
+  rooms=165 5e49102e
+  roles=exit,office,parking,security
+  doors=9 fa808cd3
+  locks=blue!
+  stairs=2 8ab3f6f8
+  lift arrival side=0 6,295,10,298 block=5,294,11,298 at=-58.75,73.25
+  lift departure side=0 12,295,16,298 block=11,294,17,298 at=-55.75,73.25
+plan s96028/f15 7606f1d2
   W=285 H=264 area=0.9952
-  tiles=342093a5
-  spawn=1,26 exit=1,29
+  tiles=95833e74
+  spawn=-67.25,64.25 exit=-64.25,64.25
   prologue=75239
-  rooms=184 0c525381
-  roles=exit,parking
-  doors=3 d22c511b
-  locks=
-  stairs=3 ca4738ed
-  lift arrival side=3 143,182,146,186 block=142,181,146,187 at=1,26
-  lift departure side=3 143,188,146,192 block=142,187,146,193 at=1,29
-plan s103947/f1 250e6348
+  rooms=186 53f0c18d
+  roles=exit,office,parking,security
+  doors=9 5f7dc0fd
+  locks=blue!
+  stairs=2 36763231
+  lift arrival side=0 6,259,10,262 block=5,258,11,262 at=-67.25,64.25
+  lift departure side=0 12,259,16,262 block=11,258,17,262 at=-64.25,64.25
+plan s103947/f1 cc430537
   W=191 H=132 area=0.8802
-  tiles=9102a812
-  spawn=5.5,16 exit=5.5,19
+  tiles=a8263bd8
+  spawn=-43.75,31.25 exit=-40.75,31.25
   prologue=25211
-  rooms=57 98f1eb88
-  roles=exit,parking
-  doors=3 7d4d4f93
-  locks=
-  stairs=2 55e125b5
-  lift arrival side=3 105,96,108,100 block=104,95,108,101 at=5.5,16
-  lift departure side=3 105,102,108,106 block=104,101,108,107 at=5.5,19
-plan s103947/f2 588a302f
+  rooms=58 f49a68f9
+  roles=exit,office,parking,security
+  doors=9 158424e5
+  locks=blue!
+  stairs=2 71a55d7b
+  lift arrival side=0 6,127,10,130 block=5,126,11,130 at=-43.75,31.25
+  lift departure side=0 12,127,16,130 block=11,126,17,130 at=-40.75,31.25
+plan s103947/f2 2a04f9cc
   W=151 H=147 area=0.6905
-  tiles=1b1acc04
-  spawn=-5.75,10.5 exit=-2.75,10.5
+  tiles=b147ec72
+  spawn=-33.75,35 exit=-30.75,35
   prologue=22196
-  rooms=40 4b99114e
-  roles=exit,parking
-  doors=3 e8dbcdd9
-  locks=
-  stairs=2 35234df8
-  lift arrival side=2 62,93,66,96 block=61,93,67,97 at=-5.75,10.5
-  lift departure side=2 68,93,72,96 block=67,93,73,97 at=-2.75,10.5
-plan s103947/f3 7e17553f
+  rooms=42 4ffeab91
+  roles=exit,office,parking,security
+  doors=9 5473738b
+  locks=blue!
+  stairs=2 a11c6e3b
+  lift arrival side=0 6,142,10,145 block=5,141,11,145 at=-33.75,35
+  lift departure side=0 12,142,16,145 block=11,141,17,145 at=-30.75,35
+plan s103947/f3 827456c6
   W=188 H=236 area=1.2378
-  tiles=e97a0996
-  spawn=-16.75,46 exit=-16.75,49
+  tiles=2166e979
+  spawn=-43,57.25 exit=-40,57.25
   prologue=44367
-  rooms=103 18cc22e0
-  roles=exit,parking
-  doors=3 ad95b4d1
-  locks=
-  stairs=2 5f420519
-  lift arrival side=1 59,208,62,212 block=59,207,63,213 at=-16.75,46
-  lift departure side=1 59,214,62,218 block=59,213,63,219 at=-16.75,49
-plan s103947/f5 ac2c5b3b
+  rooms=104 fe9c9513
+  roles=exit,office,parking,security
+  doors=9 2e5fef0f
+  locks=blue!
+  stairs=2 d5888c7c
+  lift arrival side=0 6,231,10,234 block=5,230,11,234 at=-43,57.25
+  lift departure side=0 12,231,16,234 block=11,230,17,234 at=-40,57.25
+plan s103947/f5 d02e4bce
   W=213 H=272 area=1.3214
-  tiles=7a1609b3
-  spawn=12,62 exit=12,65
+  tiles=8b9949f5
+  spawn=-49.25,66.25 exit=-46.25,66.25
   prologue=57935
-  rooms=137 8c351cc8
-  roles=exit,parking
-  doors=3 c6f8c9c2
-  locks=
-  stairs=2 668308e4
-  lift arrival side=1 129,258,132,262 block=129,257,133,263 at=12,62
-  lift departure side=1 129,264,132,268 block=129,263,133,269 at=12,65
-plan s103947/f8 0ed8b37e
+  rooms=138 84748b58
+  roles=exit,office,parking,security
+  doors=9 c06bd023
+  locks=blue!
+  stairs=2 5eab3701
+  lift arrival side=0 6,267,10,270 block=5,266,11,270 at=-49.25,66.25
+  lift departure side=0 12,267,16,270 block=11,266,17,270 at=-46.25,66.25
+plan s103947/f8 d6d60165
   W=225 H=252 area=0.9888
-  tiles=28866672
-  spawn=-21.5,55.5 exit=-21.5,58.5
+  tiles=c68f917b
+  spawn=-52.25,61.25 exit=-49.25,61.25
   prologue=56699
-  rooms=134 c7dd7639
-  roles=exit,parking
-  doors=3 a418c4fb
-  locks=
-  stairs=2 ec91b642
-  lift arrival side=1 68,235,71,239 block=68,234,72,240 at=-21.5,55.5
-  lift departure side=1 68,241,71,245 block=68,240,72,246 at=-21.5,58.5
-plan s103947/f12 2ef14e46
+  rooms=134 00e9ebd0
+  roles=exit,office,parking,security
+  doors=9 b29bf243
+  locks=blue!
+  stairs=2 66eab975
+  lift arrival side=0 6,247,10,250 block=5,246,11,250 at=-52.25,61.25
+  lift departure side=0 12,247,16,250 block=11,246,17,250 at=-49.25,61.25
+plan s103947/f12 08bb297b
   W=300 H=250 area=1.0055
-  tiles=cbffe584
-  spawn=5.75,47.5 exit=5.75,50.5
+  tiles=ada655de
+  spawn=-71,60.75 exit=-68,60.75
   prologue=74999
-  rooms=174 cd87a0c1
-  roles=exit,parking
-  doors=3 53cf7a93
-  locks=
-  stairs=2 af0adade
-  lift arrival side=1 160,218,163,222 block=160,217,164,223 at=5.75,47.5
-  lift departure side=1 160,224,163,228 block=160,223,164,229 at=5.75,50.5
-plan s103947/f15 2a8800ae
+  rooms=174 a21a3dd3
+  roles=exit,office,parking,security
+  doors=9 e3e3b8bb
+  locks=blue!
+  stairs=2 bfdbf629
+  lift arrival side=0 6,245,10,248 block=5,244,11,248 at=-71,60.75
+  lift departure side=0 12,245,16,248 block=11,244,17,248 at=-68,60.75
+plan s103947/f15 8a7ce638
   W=235 H=280 area=0.8704
-  tiles=ffdc747f
-  spawn=-3.5,63 exit=-3.5,66
+  tiles=5abad0c5
+  spawn=-54.75,68.25 exit=-51.75,68.25
   prologue=65799
-  rooms=145 b5aab27e
-  roles=exit,parking
-  doors=3 019a60d8
-  locks=
-  stairs=2 d578f913
-  lift arrival side=3 109,264,112,268 block=108,263,112,269 at=-3.5,63
-  lift departure side=3 109,270,112,274 block=108,269,112,275 at=-3.5,66
-plan s111866/f1 7a0571d1
+  rooms=146 13ae3312
+  roles=exit,office,parking,security
+  doors=9 bce6c611
+  locks=blue!
+  stairs=2 de1333ba
+  lift arrival side=0 6,275,10,278 block=5,274,11,278 at=-54.75,68.25
+  lift departure side=0 12,275,16,278 block=11,274,17,278 at=-51.75,68.25
+plan s111866/f1 12fa8f72
   W=141 H=149 area=0.7335
-  tiles=8dd76116
-  spawn=-13,13.75 exit=-13,16.75
+  tiles=9768ea72
+  spawn=-31.25,35.5 exit=-28.25,35.5
   prologue=21008
-  rooms=39 327398fd
-  roles=exit,parking
-  doors=3 a8d37f0f
-  locks=
-  stairs=3 25ad85dd
-  lift arrival side=1 43,100,46,104 block=43,99,47,105 at=-13,13.75
-  lift departure side=1 43,106,46,110 block=43,105,47,111 at=-13,16.75
-plan s111866/f2 423c302e
+  rooms=38 92325890
+  roles=exit,office,parking,security
+  doors=8 e3f3255c
+  locks=blue!
+  stairs=2 617dcd0f
+  lift arrival side=0 6,144,10,147 block=5,143,11,147 at=-31.25,35.5
+  lift departure side=0 12,144,16,147 block=11,143,17,147 at=-28.25,35.5
+plan s111866/f2 15c0cccf
   W=189 H=149 area=0.8761
-  tiles=222d53ab
-  spawn=-5.75,7.5 exit=-2.75,7.5
+  tiles=616e809a
+  spawn=-43.25,35.5 exit=-40.25,35.5
   prologue=28160
-  rooms=68 ff70fa21
-  roles=exit,parking
-  doors=3 54098c76
-  locks=
-  stairs=3 48ccafaf
-  lift arrival side=2 81,88,85,91 block=80,88,86,92 at=-5.75,7.5
-  lift departure side=2 87,88,91,91 block=86,88,92,92 at=-2.75,7.5
-plan s111866/f3 00fa71c2
+  rooms=69 354e1933
+  roles=exit,office,parking,security
+  doors=8 e3f3255c
+  locks=blue!
+  stairs=2 7f206e13
+  lift arrival side=0 6,144,10,147 block=5,143,11,147 at=-43.25,35.5
+  lift departure side=0 12,144,16,147 block=11,143,17,147 at=-40.25,35.5
+plan s111866/f3 46d5d38a
   W=138 H=159 area=0.6122
-  tiles=f9e7eff9
-  spawn=6.5,19.5 exit=9.5,19.5
+  tiles=d56ea749
+  spawn=-30.5,38 exit=-27.5,38
   prologue=21941
-  rooms=47 3f6d77b7
-  roles=exit,parking
-  doors=3 d1cc56fa
-  locks=
-  stairs=3 d15fde65
-  lift arrival side=2 80,117,84,120 block=79,117,85,121 at=6.5,19.5
-  lift departure side=2 86,117,90,120 block=85,117,91,121 at=9.5,19.5
-plan s111866/f5 7e52e2e6
+  rooms=48 483a600a
+  roles=exit,office,parking,security
+  doors=8 271675c6
+  locks=blue!
+  stairs=2 01f30e58
+  lift arrival side=0 6,154,10,157 block=5,153,11,157 at=-30.5,38
+  lift departure side=0 12,154,16,157 block=11,153,17,157 at=-27.5,38
+plan s111866/f5 d9533ac9
   W=158 H=197 area=0.7099
-  tiles=4622346d
-  spawn=10.25,37.25 exit=10.25,40.25
+  tiles=8ac93da4
+  spawn=-35.5,47.5 exit=-32.5,47.5
   prologue=31125
-  rooms=68 349cd016
-  roles=exit,parking
-  doors=3 a7830be9
-  locks=
-  stairs=3 d3e733ff
-  lift arrival side=1 98,171,101,175 block=98,170,102,176 at=10.25,37.25
-  lift departure side=1 98,177,101,181 block=98,176,102,182 at=10.25,40.25
-plan s111866/f8 187b81b6
+  rooms=69 67830b73
+  roles=exit,office,parking,security
+  doors=8 b5b31a0a
+  locks=blue!
+  stairs=2 466f50f7
+  lift arrival side=0 6,192,10,195 block=5,191,11,195 at=-35.5,47.5
+  lift departure side=0 12,192,16,195 block=11,191,17,195 at=-32.5,47.5
+plan s111866/f8 7802868b
   W=254 H=206 area=0.9125
-  tiles=f4eba1cd
-  spawn=25.25,18 exit=25.25,21
+  tiles=63bb5b53
+  spawn=-59.5,49.75 exit=-56.5,49.75
   prologue=52323
-  rooms=111 dc40df3c
-  roles=exit,parking
-  doors=3 0c52a73e
-  locks=
-  stairs=3 4849dcf0
-  lift arrival side=3 176,137,179,141 block=175,136,179,142 at=25.25,18
-  lift departure side=3 176,143,179,147 block=175,142,179,148 at=25.25,21
-plan s111866/f12 b18ed101
+  rooms=112 00b94fb5
+  roles=exit,office,parking,security
+  doors=8 2ef2561e
+  locks=blue!
+  stairs=2 99a6b44a
+  lift arrival side=0 6,201,10,204 block=5,200,11,204 at=-59.5,49.75
+  lift departure side=0 12,201,16,204 block=11,200,17,204 at=-56.5,49.75
+plan s111866/f12 4589580a
   W=285 H=230 area=0.8788
-  tiles=13d47da2
-  spawn=15.25,31.25 exit=18.25,31.25
+  tiles=d1eec607
+  spawn=-67.25,55.75 exit=-64.25,55.75
   prologue=65549
-  rooms=139 63fb2a87
-  roles=exit,parking
-  doors=3 32af4934
-  locks=
-  stairs=3 2289986f
-  lift arrival side=2 171,176,175,179 block=170,176,176,180 at=15.25,31.25
-  lift departure side=2 177,176,181,179 block=176,176,182,180 at=18.25,31.25
-plan s111866/f15 1f4a0ab8
+  rooms=140 74618537
+  roles=exit,office,parking,security
+  doors=8 a534ce0d
+  locks=blue!
+  stairs=2 9d192281
+  lift arrival side=0 6,225,10,228 block=5,224,11,228 at=-67.25,55.75
+  lift departure side=0 12,225,16,228 block=11,224,17,228 at=-64.25,55.75
+plan s111866/f15 00381002
   W=298 H=252 area=0.9933
-  tiles=d2205b2a
-  spawn=-2.5,35.75 exit=0.5,35.75
+  tiles=22183769
+  spawn=-70.5,61.25 exit=-67.5,61.25
   prologue=75095
-  rooms=189 55dc6ab0
-  roles=exit,parking
-  doors=3 4b01a4d4
-  locks=
-  stairs=3 3a908dca
-  lift arrival side=2 142,196,146,199 block=141,196,147,200 at=-2.5,35.75
-  lift departure side=2 148,196,152,199 block=147,196,153,200 at=0.5,35.75
-plan s119785/f1 21c8953e
+  rooms=188 d826265d
+  roles=exit,office,parking,security
+  doors=8 e57154a5
+  locks=blue!
+  stairs=2 9a2f32c5
+  lift arrival side=0 6,247,10,250 block=5,246,11,250 at=-70.5,61.25
+  lift departure side=0 12,247,16,250 block=11,246,17,250 at=-67.5,61.25
+plan s119785/f1 c98bf324
   W=176 H=174 area=1.0691
-  tiles=62b02ae0
-  spawn=-27.75,37.5 exit=-27.75,40.5
+  tiles=6eeeccdc
+  spawn=-40,41.75 exit=-37,41.75
   prologue=30623
-  rooms=62 54a6fd91
-  roles=exit,parking
-  doors=3 30270a1b
-  locks=
-  stairs=2 286d6611
-  lift arrival side=3 31,160,34,164 block=30,159,34,165 at=-27.75,37.5
-  lift departure side=3 31,166,34,170 block=30,165,34,171 at=-27.75,40.5
-plan s119785/f2 615f118a
+  rooms=65 0c39aacb
+  roles=exit,office,parking,security
+  doors=9 8a07d574
+  locks=blue!
+  stairs=2 6e7d35ef
+  lift arrival side=0 6,169,10,172 block=5,168,11,172 at=-40,41.75
+  lift departure side=0 12,169,16,172 block=11,168,17,172 at=-37,41.75
+plan s119785/f2 55fc4c46
   W=225 H=183 area=1.281
-  tiles=df8839e8
-  spawn=6.5,24.25 exit=6.5,27.25
+  tiles=91dcba9c
+  spawn=-52.25,44 exit=-49.25,44
   prologue=41174
-  rooms=92 1f6d3fe9
-  roles=exit,parking
-  doors=3 280b166f
-  locks=
-  stairs=2 7848216c
-  lift arrival side=1 124,138,127,142 block=124,137,128,143 at=6.5,24.25
-  lift departure side=1 124,144,127,148 block=124,143,128,149 at=6.5,27.25
-plan s119785/f3 98f27ae1
+  rooms=94 74022b42
+  roles=exit,office,parking,security
+  doors=9 64f5a52e
+  locks=blue!
+  stairs=2 4218ed70
+  lift arrival side=0 6,178,10,181 block=5,177,11,181 at=-52.25,44
+  lift departure side=0 12,178,16,181 block=11,177,17,181 at=-49.25,44
+plan s119785/f3 8a74e8cd
   W=163 H=135 area=0.6139
-  tiles=f9c37918
-  spawn=-19.25,21.5 exit=-16.25,21.5
+  tiles=d8cdae3a
+  spawn=-36.75,32 exit=-33.75,32
   prologue=22004
-  rooms=44 d0350943
-  roles=exit,parking
-  doors=3 758cdea7
-  locks=
-  stairs=2 d8f9ab65
-  lift arrival side=0 41,109,45,112 block=40,108,46,112 at=-19.25,21.5
-  lift departure side=0 47,109,51,112 block=46,108,52,112 at=-16.25,21.5
-plan s119785/f5 7404c7c0
+  rooms=45 7812a7f4
+  roles=exit,office,parking,security
+  doors=9 4eb49b48
+  locks=blue!
+  stairs=2 477a9f66
+  lift arrival side=0 6,130,10,133 block=5,129,11,133 at=-36.75,32
+  lift departure side=0 12,130,16,133 block=11,129,17,133 at=-33.75,32
+plan s119785/f5 4ab6b3d1
   W=284 H=207 area=1.3408
-  tiles=4f58eae0
-  spawn=-6.75,46.25 exit=-10.75,45.25
+  tiles=03d8fa42
+  spawn=-67,50 exit=-64,50
   prologue=58787
-  rooms=124 fcc88067
-  roles=exit,parking
-  doors=4 b1f28510
-  locks=
-  stairs=2 09fc6c0a
-  lift arrival side=3 127,194,130,198 block=126,193,130,199 at=-6.75,46.25
-  lift departure side=1 119,192,122,196 block=119,191,123,197 at=-10.75,45.25
-plan s119785/f8 c6c48df8
+  rooms=126 94e791af
+  roles=exit,office,parking,security
+  doors=9 7aaf1459
+  locks=blue!
+  stairs=2 8a60b0f6
+  lift arrival side=0 6,202,10,205 block=5,201,11,205 at=-67,50
+  lift departure side=0 12,202,16,205 block=11,201,17,205 at=-64,50
+plan s119785/f8 ab4ccc8a
   W=223 H=206 area=0.8011
-  tiles=ff0174bb
-  spawn=-4,43.5 exit=-4.75,49.25
+  tiles=52f5dc01
+  spawn=-51.75,49.75 exit=-48.75,49.75
   prologue=45937
-  rooms=92 be37e700
-  roles=exit,parking
-  doors=4 899e84a9
-  locks=
-  stairs=2 1bbe4cfe
-  lift arrival side=3 102,188,105,192 block=101,187,105,193 at=-4,43.5
-  lift departure side=0 100,200,104,203 block=99,199,105,203 at=-4.75,49.25
-plan s119785/f12 d8b5628f
+  rooms=94 16caa5f8
+  roles=exit,office,parking,security
+  doors=9 c3606e01
+  locks=blue!
+  stairs=2 88095bee
+  lift arrival side=0 6,201,10,204 block=5,200,11,204 at=-51.75,49.75
+  lift departure side=0 12,201,16,204 block=11,200,17,204 at=-48.75,49.75
+plan s119785/f12 8c70e1c5
   W=236 H=283 area=0.8954
-  tiles=9bb8ff78
-  spawn=1.25,62.75 exit=1.25,65.75
+  tiles=a9d40dd3
+  spawn=-55,69 exit=-52,69
   prologue=66787
-  rooms=150 d830a1e4
-  roles=exit,parking
-  doors=3 a01fab82
-  locks=
-  stairs=2 843e9259
-  lift arrival side=3 119,265,122,269 block=118,264,122,270 at=1.25,62.75
-  lift departure side=3 119,271,122,275 block=118,270,122,276 at=1.25,65.75
-plan s119785/f15 33f51eea
+  rooms=153 f06213dd
+  roles=exit,office,parking,security
+  doors=9 e79c5b68
+  locks=blue!
+  stairs=2 d885a931
+  lift arrival side=0 6,278,10,281 block=5,277,11,281 at=-55,69
+  lift departure side=0 12,278,16,281 block=11,277,17,281 at=-52,69
+plan s119785/f15 58eac303
   W=240 H=222 area=0.7048
-  tiles=fcb9b218
-  spawn=-8,53.25 exit=-5,53.25
+  tiles=7b815a49
+  spawn=-56,53.75 exit=-53,53.75
   prologue=53279
-  rooms=106 71f76b5c
-  roles=exit,parking
-  doors=4 e3e0bba1
-  locks=
-  stairs=2 1a47efe7
-  lift arrival side=0 102,216,106,219 block=101,215,107,219 at=-8,53.25
-  lift departure side=0 108,216,112,219 block=107,215,113,219 at=-5,53.25
-plan s127704/f1 a1d46f43
+  rooms=107 a1cbe32a
+  roles=exit,office,parking,security
+  doors=9 85a4f204
+  locks=blue!
+  stairs=2 dbe187c8
+  lift arrival side=0 6,217,10,220 block=5,216,11,220 at=-56,53.75
+  lift departure side=0 12,217,16,220 block=11,216,17,220 at=-53,53.75
+plan s127704/f1 8b0f66bb
   W=134 H=143 area=0.669
-  tiles=4dfd1a7b
-  spawn=9.25,23.75 exit=9.25,26.75
+  tiles=a58d8aa0
+  spawn=-29,34 exit=-26,34
   prologue=19161
-  rooms=46 654ad8b9
-  roles=exit,parking
-  doors=3 7acfdaa6
-  locks=
-  stairs=4 c1e56df7
-  lift arrival side=1 84,117,87,121 block=84,116,88,122 at=9.25,23.75
-  lift departure side=1 84,123,87,127 block=84,122,88,128 at=9.25,26.75
-plan s127704/f2 207de6d2
+  rooms=47 4b75caa8
+  roles=exit,office,parking,security
+  doors=6 c673c29d
+  locks=blue!
+  stairs=2 a136e3fb
+  lift arrival side=0 7,138,11,141 block=6,137,12,141 at=-29,34
+  lift departure side=0 13,138,17,141 block=12,137,18,141 at=-26,34
+plan s127704/f2 82ed2620
   W=243 H=159 area=1.202
-  tiles=4787c514
-  spawn=-5.5,21.75 exit=-5.5,24.75
+  tiles=95a9d637
+  spawn=-56.25,38 exit=-53.25,38
   prologue=38636
-  rooms=81 2fc72cb8
-  roles=exit,parking
-  doors=3 95fed532
-  locks=
-  stairs=4 55330ca7
-  lift arrival side=1 109,121,112,125 block=109,120,113,126 at=-5.5,21.75
-  lift departure side=1 109,127,112,131 block=109,126,113,132 at=-5.5,24.75
-plan s127704/f3 926bf110
+  rooms=80 5f1a00ed
+  roles=exit,office,parking,security
+  doors=6 69122c77
+  locks=blue!
+  stairs=2 b5a3d3f4
+  lift arrival side=0 7,154,11,157 block=6,153,12,157 at=-56.25,38
+  lift departure side=0 13,154,17,157 block=12,153,18,157 at=-53.25,38
+plan s127704/f3 dc27bca2
   W=272 H=163 area=1.2369
-  tiles=2fd78e81
-  spawn=12.5,38.5 exit=15.5,38.5
+  tiles=32cc6b88
+  spawn=-63.5,39 exit=-60.5,39
   prologue=44335
-  rooms=93 1b1cb932
-  roles=exit,parking
-  doors=4 aeed2762
-  locks=
-  stairs=4 3eca3eba
-  lift arrival side=0 159,157,163,160 block=158,156,164,160 at=12.5,38.5
-  lift departure side=0 165,157,169,160 block=164,156,170,160 at=15.5,38.5
-plan s127704/f5 5866150b
+  rooms=92 3e5cefbb
+  roles=exit,office,parking,security
+  doors=6 02d85a31
+  locks=blue!
+  stairs=2 37e7ed07
+  lift arrival side=0 7,158,11,161 block=6,157,12,161 at=-63.5,39
+  lift departure side=0 13,158,17,161 block=12,157,18,161 at=-60.5,39
+plan s127704/f5 1094e1b4
   W=172 H=159 area=0.6238
-  tiles=77e864af
-  spawn=2.25,26.75 exit=2.25,29.75
+  tiles=7c2c3d10
+  spawn=-38.5,38 exit=-35.5,38
   prologue=27347
-  rooms=58 93d094ea
-  roles=exit,parking
-  doors=3 c2f97000
-  locks=
-  stairs=4 e97fce64
-  lift arrival side=1 89,131,92,135 block=89,130,93,136 at=2.25,26.75
-  lift departure side=1 89,137,92,141 block=89,136,93,142 at=2.25,29.75
-plan s127704/f8 efd54b4d
+  rooms=58 46d21a04
+  roles=exit,office,parking,security
+  doors=6 69122c77
+  locks=blue!
+  stairs=2 9a1ff010
+  lift arrival side=0 7,154,11,157 block=6,153,12,157 at=-38.5,38
+  lift departure side=0 13,154,17,157 block=12,153,18,157 at=-35.5,38
+plan s127704/f8 33a2e013
   W=269 H=273 area=1.2806
-  tiles=b49a61f6
-  spawn=-0.25,34 exit=2.75,34
+  tiles=9f229de5
+  spawn=-62.75,66.5 exit=-59.75,66.5
   prologue=73436
-  rooms=169 95c61e06
-  roles=exit,parking
-  doors=4 4fa94af2
-  locks=
-  stairs=4 eebad003
-  lift arrival side=2 132,203,136,206 block=131,203,137,207 at=-0.25,34
-  lift departure side=2 138,203,142,206 block=137,203,143,207 at=2.75,34
-plan s127704/f12 049671f2
+  rooms=171 d8b1fe31
+  roles=exit,office,parking,security
+  doors=6 62c429c5
+  locks=blue!
+  stairs=2 252588d9
+  lift arrival side=0 7,268,11,271 block=6,267,12,271 at=-62.75,66.5
+  lift departure side=0 13,268,17,271 block=12,267,18,271 at=-59.75,66.5
+plan s127704/f12 bb35e20d
   W=300 H=235 area=0.9451
-  tiles=a29f305e
-  spawn=-19.25,51.75 exit=-19.25,54.75
+  tiles=23a71c90
+  spawn=-70.5,57 exit=-67.5,57
   prologue=70499
-  rooms=164 668bb555
-  roles=exit,parking
-  doors=3 48b2e186
-  locks=
-  stairs=4 0c3a2ff2
-  lift arrival side=1 110,219,113,223 block=110,218,114,224 at=-19.25,51.75
-  lift departure side=1 110,225,113,229 block=110,224,114,230 at=-19.25,54.75
-plan s127704/f15 8cd34041
+  rooms=166 f41c49be
+  roles=exit,office,parking,security
+  doors=6 9ec22bf3
+  locks=blue!
+  stairs=2 584d2c4c
+  lift arrival side=0 7,230,11,233 block=6,229,12,233 at=-70.5,57
+  lift departure side=0 13,230,17,233 block=12,229,18,233 at=-67.5,57
+plan s127704/f15 b0ba5325
   W=233 H=260 area=0.8013
-  tiles=597ad5d8
-  spawn=0,40 exit=0,43
+  tiles=7f48b608
+  spawn=-53.75,63.25 exit=-50.75,63.25
   prologue=60579
-  rooms=138 63e9111c
-  roles=exit,parking
-  doors=4 03d5ebb1
-  locks=
-  stairs=4 b40ad9c0
-  lift arrival side=1 115,208,118,212 block=115,207,119,213 at=0,40
-  lift departure side=1 115,214,118,218 block=115,213,119,219 at=0,43
-plan s135623/f1 9540f16e
+  rooms=139 7d894d5e
+  roles=exit,office,parking,security
+  doors=6 14dcecad
+  locks=blue!
+  stairs=2 904ab55c
+  lift arrival side=0 7,255,11,258 block=6,254,12,258 at=-53.75,63.25
+  lift departure side=0 13,255,17,258 block=12,254,18,258 at=-50.75,63.25
+plan s135623/f1 763c49a6
   W=194 H=142 area=0.9617
-  tiles=d3b56dd4
-  spawn=-2.75,19.5 exit=-2.75,22.5
+  tiles=6aaebb15
+  spawn=-44.5,33.75 exit=-41.5,33.75
   prologue=27547
-  rooms=59 afefcfad
-  roles=exit,parking
-  doors=3 e10dfdfe
-  locks=
-  stairs=4 3cdf9449
-  lift arrival side=3 90,108,93,112 block=89,107,93,113 at=-2.75,19.5
-  lift departure side=3 90,114,93,118 block=89,113,93,119 at=-2.75,22.5
-plan s135623/f2 b2475a3c
+  rooms=59 c340145b
+  roles=exit,office,parking,security
+  doors=11 21ae7d77
+  locks=blue!
+  stairs=2 f8189daa
+  lift arrival side=0 6,137,10,140 block=5,136,11,140 at=-44.5,33.75
+  lift departure side=0 12,137,16,140 block=11,136,17,140 at=-41.5,33.75
+plan s135623/f2 58354b08
   W=228 H=181 area=1.2838
-  tiles=49afb2a2
-  spawn=-8,27.5 exit=-5,27.5
+  tiles=90d520a2
+  spawn=-53,43.5 exit=-50,43.5
   prologue=41267
-  rooms=69 1777303c
-  roles=exit,parking
-  doors=3 3d187080
-  locks=
-  stairs=4 d31d7ebb
-  lift arrival side=2 96,144,100,147 block=95,144,101,148 at=-8,27.5
-  lift departure side=2 102,144,106,147 block=101,144,107,148 at=-5,27.5
-plan s135623/f3 03086a8c
+  rooms=73 04a05a66
+  roles=exit,office,parking,security
+  doors=11 ce813d47
+  locks=blue!
+  stairs=2 4a19dd86
+  lift arrival side=0 6,176,10,179 block=5,175,11,179 at=-53,43.5
+  lift departure side=0 12,176,16,179 block=11,175,17,179 at=-50,43.5
+plan s135623/f3 1678e2ea
   W=191 H=120 area=0.6394
-  tiles=42c6d4fc
-  spawn=-2.5,12.5 exit=-2.5,15.5
+  tiles=b5fee10d
+  spawn=-43.75,28.25 exit=-40.75,28.25
   prologue=22919
-  rooms=38 e6c710fb
-  roles=exit,parking
-  doors=3 fb61e545
-  locks=
-  stairs=4 41590bda
-  lift arrival side=3 89,83,92,87 block=88,82,92,88 at=-2.5,12.5
-  lift departure side=3 89,89,92,93 block=88,88,92,94 at=-2.5,15.5
-plan s135623/f5 10920dab
+  rooms=40 b96270b3
+  roles=exit,office,parking,security
+  doors=11 fa5c6d09
+  locks=blue!
+  stairs=2 1503fc68
+  lift arrival side=0 6,115,10,118 block=5,114,11,118 at=-43.75,28.25
+  lift departure side=0 12,115,16,118 block=11,114,17,118 at=-40.75,28.25
+plan s135623/f5 944f91a4
   W=260 H=158 area=0.937
-  tiles=8349c18e
-  spawn=7.75,33.5 exit=7.75,36.5
+  tiles=a9aba658
+  spawn=-61,37.75 exit=-58,37.75
   prologue=41079
-  rooms=93 7664900e
-  roles=exit,parking
-  doors=3 2cc32b49
-  locks=
-  stairs=4 4afd3a9f
-  lift arrival side=1 144,144,147,148 block=144,143,148,149 at=7.75,33.5
-  lift departure side=1 144,150,147,154 block=144,149,148,155 at=7.75,36.5
-plan s135623/f8 440df939
+  rooms=98 4311f02f
+  roles=exit,office,parking,security
+  doors=11 18f67838
+  locks=blue!
+  stairs=2 47d2bf2c
+  lift arrival side=0 6,153,10,156 block=5,152,11,156 at=-61,37.75
+  lift departure side=0 12,153,16,156 block=11,152,17,156 at=-58,37.75
+plan s135623/f8 d18cfd94
   W=282 H=262 area=1.2884
-  tiles=ea34f1f6
-  spawn=9.25,32 exit=9.25,35
+  tiles=d5f847b8
+  spawn=-66.5,63.75 exit=-63.5,63.75
   prologue=73883
-  rooms=176 d7bdd606
-  roles=exit,parking
-  doors=3 7ba9f9f1
-  locks=
-  stairs=4 0680e12c
-  lift arrival side=3 158,193,161,197 block=157,192,161,198 at=9.25,32
-  lift departure side=3 158,199,161,203 block=157,198,161,204 at=9.25,35
-plan s135623/f12 f07b8981
+  rooms=180 b6974f54
+  roles=exit,office,parking,security
+  doors=11 a8192c25
+  locks=blue!
+  stairs=2 09f41698
+  lift arrival side=0 6,257,10,260 block=5,256,11,260 at=-66.5,63.75
+  lift departure side=0 12,257,16,260 block=11,256,17,260 at=-63.5,63.75
+plan s135623/f12 cb7084f9
   W=237 H=234 area=0.7435
-  tiles=692a98c9
-  spawn=-8.25,48.25 exit=-5.25,48.25
+  tiles=09d1029e
+  spawn=-55.25,56.75 exit=-52.25,56.75
   prologue=55457
-  rooms=120 c2b18f46
-  roles=exit,parking
-  doors=3 7f203efc
-  locks=
-  stairs=4 82cef629
-  lift arrival side=0 100,212,104,215 block=99,211,105,215 at=-8.25,48.25
-  lift departure side=0 106,212,110,215 block=105,211,111,215 at=-5.25,48.25
-plan s135623/f15 6ef0be94
+  rooms=125 088c38e6
+  roles=exit,office,parking,security
+  doors=11 c32cfcbf
+  locks=blue!
+  stairs=2 da9f0639
+  lift arrival side=0 6,229,10,232 block=5,228,11,232 at=-55.25,56.75
+  lift departure side=0 12,229,16,232 block=11,228,17,232 at=-52.25,56.75
+plan s135623/f15 2e033db3
   W=218 H=267 area=0.7699
-  tiles=29d6bad3
-  spawn=5,51.5 exit=8,51.5
+  tiles=c3a44045
+  spawn=-50.5,65 exit=-47.5,65
   prologue=58205
-  rooms=125 12beeb1d
-  roles=exit,parking
-  doors=3 a8ffded4
-  locks=
-  stairs=4 352cf3f8
-  lift arrival side=2 117,235,121,238 block=116,235,122,239 at=5,51.5
-  lift departure side=2 123,235,127,238 block=122,235,128,239 at=8,51.5
-plan s143542/f1 4e55ec2b
+  rooms=130 97d4fa3f
+  roles=exit,office,parking,security
+  doors=11 c4f816d5
+  locks=blue!
+  stairs=2 01d483b1
+  lift arrival side=0 6,262,10,265 block=5,261,11,265 at=-50.5,65
+  lift departure side=0 12,262,16,265 block=11,261,17,265 at=-47.5,65
+plan s143542/f1 67cc954f
   W=169 H=123 area=0.7257
-  tiles=1d4f93fe
-  spawn=-13.25,28.5 exit=-10.25,28.5
+  tiles=74faf21d
+  spawn=-37.75,29 exit=-34.75,29
   prologue=20786
-  rooms=36 d037e6a6
-  roles=exit,parking
-  doors=3 7da91b0b
-  locks=
-  stairs=2 21ee0395
-  lift arrival side=0 56,117,60,120 block=55,116,61,120 at=-13.25,28.5
-  lift departure side=0 62,117,66,120 block=61,116,67,120 at=-10.25,28.5
-plan s143542/f2 ec61b09a
+  rooms=37 830e7c3e
+  roles=exit,office,parking,security
+  doors=6 e4a36671
+  locks=blue!
+  stairs=2 196bad77
+  lift arrival side=0 7,118,11,121 block=6,117,12,121 at=-37.75,29
+  lift departure side=0 13,118,17,121 block=12,117,18,121 at=-34.75,29
+plan s143542/f2 809d51be
   W=230 H=146 area=1.0447
-  tiles=f877ae8d
-  spawn=17,25.75 exit=20,25.75
+  tiles=1a83fa1f
+  spawn=-53,34.75 exit=-50,34.75
   prologue=33579
-  rooms=62 5db16251
-  roles=exit,parking
-  doors=3 5f2c4012
-  locks=
-  stairs=2 d07e659d
-  lift arrival side=0 147,123,151,126 block=146,122,152,126 at=17,25.75
-  lift departure side=0 153,123,157,126 block=152,122,158,126 at=20,25.75
-plan s143542/f3 fce076d0
+  rooms=63 c656c69c
+  roles=exit,office,parking,security
+  doors=6 16f7d59c
+  locks=blue!
+  stairs=2 4fafc69f
+  lift arrival side=0 7,141,11,144 block=6,140,12,144 at=-53,34.75
+  lift departure side=0 13,141,17,144 block=12,140,18,144 at=-50,34.75
+plan s143542/f3 7a17c69c
   W=142 H=177 area=0.7012
-  tiles=a89e9709
-  spawn=-11,42 exit=-8,42
+  tiles=6203e163
+  spawn=-31,42.5 exit=-28,42.5
   prologue=25133
-  rooms=52 c5036fd2
-  roles=exit,parking
-  doors=3 5424f58a
-  locks=
-  stairs=2 f4ad7d25
-  lift arrival side=0 47,171,51,174 block=46,170,52,174 at=-11,42
-  lift departure side=0 53,171,57,174 block=52,170,58,174 at=-8,42
-plan s143542/f5 d42750f3
+  rooms=53 e7baaf45
+  roles=exit,office,parking,security
+  doors=6 f01ea63e
+  locks=blue!
+  stairs=2 127296fe
+  lift arrival side=0 7,172,11,175 block=6,171,12,175 at=-31,42.5
+  lift departure side=0 13,172,17,175 block=12,171,18,175 at=-28,42.5
+plan s143542/f5 f15e6bcb
   W=217 H=157 area=0.7771
-  tiles=4bcd9182
-  spawn=-25.5,27.25 exit=-25.5,30.25
+  tiles=4be1c3fd
+  spawn=-49.75,37.5 exit=-46.75,37.5
   prologue=34068
-  rooms=68 9b905188
-  roles=exit,parking
-  doors=3 718cddff
-  locks=
-  stairs=2 df37c43c
-  lift arrival side=1 56,131,59,135 block=56,130,60,136 at=-25.5,27.25
-  lift departure side=1 56,137,59,141 block=56,136,60,142 at=-25.5,30.25
-plan s143542/f8 22dce358
+  rooms=68 20a6a87b
+  roles=exit,office,parking,security
+  doors=6 14cf8a0e
+  locks=blue!
+  stairs=2 27f1d138
+  lift arrival side=0 7,152,11,155 block=6,151,12,155 at=-49.75,37.5
+  lift departure side=0 13,152,17,155 block=12,151,18,155 at=-46.75,37.5
+plan s143542/f8 69a193bb
   W=202 H=226 area=0.7961
-  tiles=ad35fe0f
-  spawn=-16,30.75 exit=-13,30.75
+  tiles=09a49433
+  spawn=-46,54.75 exit=-43,54.75
   prologue=45651
-  rooms=105 f680d192
-  roles=exit,parking
-  doors=3 023c8a52
-  locks=
-  stairs=2 cc73563b
-  lift arrival side=2 67,173,71,176 block=66,173,72,177 at=-16,30.75
-  lift departure side=2 73,173,77,176 block=72,173,78,177 at=-13,30.75
-plan s143542/f12 17dccefc
+  rooms=106 eaf562a5
+  roles=exit,office,parking,security
+  doors=6 8fab3ba6
+  locks=blue!
+  stairs=2 c7f8e0a5
+  lift arrival side=0 7,221,11,224 block=6,220,12,224 at=-46,54.75
+  lift departure side=0 13,221,17,224 block=12,220,18,224 at=-43,54.75
+plan s143542/f12 a7eba55b
   W=300 H=241 area=0.9693
-  tiles=8dbf35d7
-  spawn=-17.25,40.25 exit=-17.25,43.25
+  tiles=36372528
+  spawn=-70.5,58.5 exit=-67.5,58.5
   prologue=72299
-  rooms=173 07b350c6
-  roles=exit,parking
-  doors=4 4e4bb6c6
-  locks=
-  stairs=2 3211cda7
-  lift arrival side=1 114,199,117,203 block=114,198,118,204 at=-17.25,40.25
-  lift departure side=1 114,205,117,209 block=114,204,118,210 at=-17.25,43.25
-plan s143542/f15 ccb68a48
+  rooms=172 3b56ce9e
+  roles=exit,office,parking,security
+  doors=6 4f09dc8f
+  locks=blue!
+  stairs=2 c74d7a4a
+  lift arrival side=0 7,236,11,239 block=6,235,12,239 at=-70.5,58.5
+  lift departure side=0 13,236,17,239 block=12,235,18,239 at=-67.5,58.5
+plan s143542/f15 e59a7fe7
   W=234 H=234 area=0.7243
-  tiles=3fa8f4cc
-  spawn=17,52.25 exit=20,52.25
+  tiles=a96d1961
+  spawn=-54,56.75 exit=-51,56.75
   prologue=54755
-  rooms=116 ffb6543a
-  roles=exit,parking
-  doors=3 d60998e9
-  locks=
-  stairs=2 b60941ce
-  lift arrival side=2 149,220,153,223 block=148,220,154,224 at=17,52.25
-  lift departure side=2 155,220,159,223 block=154,220,160,224 at=20,52.25
-plan s151461/f1 84d06c0d
+  rooms=117 c38d10b1
+  roles=exit,office,parking,security
+  doors=6 df5cdeb6
+  locks=blue!
+  stairs=2 57706645
+  lift arrival side=0 7,229,11,232 block=6,228,12,232 at=-54,56.75
+  lift departure side=0 13,229,17,232 block=12,228,18,232 at=-51,56.75
+plan s151461/f1 ed2e6a74
   W=202 H=126 area=0.8886
-  tiles=5aebdf06
-  spawn=2.75,24.5 exit=2.75,27.5
+  tiles=2d41db2b
+  spawn=-46.5,29.75 exit=-43.5,29.75
   prologue=25451
-  rooms=56 53d7990d
-  roles=exit,parking
-  doors=3 66b4155d
-  locks=
-  stairs=4 9c80a88c
-  lift arrival side=3 105,110,108,114 block=104,109,108,115 at=2.75,24.5
-  lift departure side=3 105,116,108,120 block=104,115,108,121 at=2.75,27.5
-plan s151461/f2 b33d9681
+  rooms=59 63691baa
+  roles=exit,office,parking,security
+  doors=10 428c59c1
+  locks=blue!
+  stairs=2 072c1a0f
+  lift arrival side=0 6,121,10,124 block=5,120,11,124 at=-46.5,29.75
+  lift departure side=0 12,121,16,124 block=11,120,17,124 at=-43.5,29.75
+plan s151461/f2 c14008de
   W=147 H=135 area=0.6174
-  tiles=ea2d550f
-  spawn=-1.5,25.75 exit=-1.5,28.75
+  tiles=84902fb8
+  spawn=-32.75,32 exit=-29.75,32
   prologue=19844
-  rooms=46 4fdbf7ba
-  roles=exit,parking
-  doors=3 617db8d0
-  locks=
-  stairs=4 00fba467
-  lift arrival side=1 69,117,72,121 block=69,116,73,122 at=-1.5,25.75
-  lift departure side=1 69,123,72,127 block=69,122,73,128 at=-1.5,28.75
-plan s151461/f3 d24f9c85
+  rooms=46 cd0a5445
+  roles=exit,office,parking,security
+  doors=10 9c5f6858
+  locks=blue!
+  stairs=2 0e8ffe4a
+  lift arrival side=0 6,130,10,133 block=5,129,11,133 at=-32.75,32
+  lift departure side=0 12,130,16,133 block=11,129,17,133 at=-29.75,32
+plan s151461/f3 22395849
   W=205 H=146 area=0.835
-  tiles=8525ac22
-  spawn=8,28.5 exit=8,31.5
+  tiles=cd46476a
+  spawn=-47.25,34.75 exit=-44.25,34.75
   prologue=29929
-  rooms=66 504f0e30
-  roles=exit,parking
-  doors=3 875dfe4b
-  locks=
-  stairs=4 41ba52de
-  lift arrival side=1 117,128,120,132 block=117,127,121,133 at=8,28.5
-  lift departure side=1 117,134,120,138 block=117,133,121,139 at=8,31.5
-plan s151461/f5 93e8c9ae
+  rooms=69 4b5218be
+  roles=exit,office,parking,security
+  doors=10 bf41cfa4
+  locks=blue!
+  stairs=2 69405977
+  lift arrival side=0 6,141,10,144 block=5,140,11,144 at=-47.25,34.75
+  lift departure side=0 12,141,16,144 block=11,140,17,144 at=-44.25,34.75
+plan s151461/f5 d66212f5
   W=238 H=234 area=1.2702
-  tiles=dc0c7c62
-  spawn=-16.75,52.5 exit=-16.75,55.5
+  tiles=4508e139
+  spawn=-55.5,56.75 exit=-52.5,56.75
   prologue=55691
-  rooms=125 09f2d82d
-  roles=exit,parking
-  doors=3 2bd788b2
-  locks=
-  stairs=4 83e8108b
-  lift arrival side=1 84,220,87,224 block=84,219,88,225 at=-16.75,52.5
-  lift departure side=1 84,226,87,230 block=84,225,88,231 at=-16.75,55.5
-plan s151461/f8 56dd6d92
+  rooms=126 554dad96
+  roles=exit,office,parking,security
+  doors=10 8ca5a248
+  locks=blue!
+  stairs=2 da9f0639
+  lift arrival side=0 6,229,10,232 block=5,228,11,232 at=-55.5,56.75
+  lift departure side=0 12,229,16,232 block=11,228,17,232 at=-52.5,56.75
+plan s151461/f8 95fce6aa
   W=199 H=235 area=0.8155
-  tiles=9a6c2aca
-  spawn=-3.5,51.75 exit=-3.5,54.75
+  tiles=ba87d37a
+  spawn=-45.75,57 exit=-42.75,57
   prologue=46764
-  rooms=106 f53a66f6
-  roles=exit,parking
-  doors=3 c3bbef6a
-  locks=
-  stairs=4 d407a9c0
-  lift arrival side=1 91,219,94,223 block=91,218,95,224 at=-3.5,51.75
-  lift departure side=1 91,225,94,229 block=91,224,95,230 at=-3.5,54.75
-plan s151461/f12 8a826283
+  rooms=105 7ab58019
+  roles=exit,office,parking,security
+  doors=10 213bb718
+  locks=blue!
+  stairs=2 1a0ae21e
+  lift arrival side=0 6,230,10,233 block=5,229,11,233 at=-45.75,57
+  lift departure side=0 12,230,16,233 block=11,229,17,233 at=-42.75,57
+plan s151461/f12 a4c0ef64
   W=270 H=279 area=1.0099
-  tiles=f5d29f9a
-  spawn=-19.75,61.75 exit=-19.75,64.75
+  tiles=071747db
+  spawn=-63.5,68 exit=-60.5,68
   prologue=75329
-  rooms=181 404e6be7
-  roles=exit,parking
-  doors=3 5777c8a7
-  locks=
-  stairs=4 5754a53a
-  lift arrival side=1 94,261,97,265 block=94,260,98,266 at=-19.75,61.75
-  lift departure side=1 94,267,97,271 block=94,266,98,272 at=-19.75,64.75
-plan s151461/f15 e9a721d1
+  rooms=180 a8a11a40
+  roles=exit,office,parking,security
+  doors=10 3759aaf8
+  locks=blue!
+  stairs=2 b7236d8e
+  lift arrival side=0 6,274,10,277 block=5,273,11,277 at=-63.5,68
+  lift departure side=0 12,274,16,277 block=11,273,17,277 at=-60.5,68
+plan s151461/f15 bf0c211f
   W=237 H=230 area=0.721
-  tiles=280825ff
-  spawn=-16.5,51.5 exit=-16.5,54.5
+  tiles=d1d30be5
+  spawn=-55.25,55.75 exit=-52.25,55.75
   prologue=54509
-  rooms=123 94ba1d4d
-  roles=exit,parking
-  doors=3 145efa3e
-  locks=
-  stairs=4 5e42d6a6
-  lift arrival side=1 84,216,87,220 block=84,215,88,221 at=-16.5,51.5
-  lift departure side=1 84,222,87,226 block=84,221,88,227 at=-16.5,54.5
-plan s159380/f1 67a5d3bc
+  rooms=124 8d755404
+  roles=exit,office,parking,security
+  doors=10 2861f090
+  locks=blue!
+  stairs=2 a1013b6d
+  lift arrival side=0 6,225,10,228 block=5,224,11,228 at=-55.25,55.75
+  lift departure side=0 12,225,16,228 block=11,224,17,228 at=-52.25,55.75
+plan s159380/f1 4a7adad2
   W=198 H=199 area=1.3756
-  tiles=4e495936
-  spawn=-5.5,47.5 exit=-2.5,47.5
+  tiles=e4e91294
+  spawn=-42,48 exit=-39,48
   prologue=39401
-  rooms=77 43a1b622
-  roles=exit,parking
-  doors=3 f231eef9
-  locks=
-  stairs=4 13a2b707
-  lift arrival side=0 86,193,90,196 block=85,192,91,196 at=-5.5,47.5
-  lift departure side=0 92,193,96,196 block=91,192,97,196 at=-2.5,47.5
-plan s159380/f2 baf66ffc
+  rooms=77 ef341d2d
+  roles=exit,office,parking,security
+  doors=7 beb69377
+  locks=blue!
+  stairs=2 d5a55705
+  lift arrival side=0 13,194,17,197 block=12,193,18,197 at=-42,48
+  lift departure side=0 19,194,23,197 block=18,193,24,197 at=-39,48
+plan s159380/f2 568810ae
   W=215 H=159 area=1.0635
-  tiles=06175dd1
-  spawn=11,19.75 exit=11,22.75
+  tiles=e77623a3
+  spawn=-46.25,38 exit=-43.25,38
   prologue=34184
-  rooms=68 ae2af8fc
-  roles=exit,parking
-  doors=3 1c84fe15
-  locks=
-  stairs=4 021aebec
-  lift arrival side=1 128,117,131,121 block=128,116,132,122 at=11,19.75
-  lift departure side=1 128,123,131,127 block=128,122,132,128 at=11,22.75
-plan s159380/f3 0a7a12e6
+  rooms=68 e718c91a
+  roles=exit,office,parking,security
+  doors=7 b7ac964f
+  locks=blue!
+  stairs=2 4feea254
+  lift arrival side=0 13,154,17,157 block=12,153,18,157 at=-46.25,38
+  lift departure side=0 19,154,23,157 block=18,153,24,157 at=-43.25,38
+plan s159380/f3 26bfc67c
   W=196 H=142 area=0.7765
-  tiles=3993e8e1
-  spawn=-5.5,33.25 exit=-2.5,33.25
+  tiles=4dd67922
+  spawn=-41.5,33.75 exit=-38.5,33.75
   prologue=27831
-  rooms=54 5670ee6b
-  roles=exit,parking
-  doors=3 b293a9ce
-  locks=
-  stairs=4 6b8e33c4
-  lift arrival side=0 85,136,89,139 block=84,135,90,139 at=-5.5,33.25
-  lift departure side=0 91,136,95,139 block=90,135,96,139 at=-2.5,33.25
-plan s159380/f5 bc9f9ca3
+  rooms=55 921ee0c3
+  roles=exit,office,parking,security
+  doors=7 7a29dfa6
+  locks=blue!
+  stairs=2 30b4b77e
+  lift arrival side=0 13,137,17,140 block=12,136,18,140 at=-41.5,33.75
+  lift departure side=0 19,137,23,140 block=18,136,24,140 at=-38.5,33.75
+plan s159380/f5 64d14734
   W=283 H=183 area=1.1812
-  tiles=18fb41bf
-  spawn=-2.75,43.5 exit=0.25,43.5
+  tiles=387640f9
+  spawn=-63.25,44 exit=-60.25,44
   prologue=51788
-  rooms=108 039da0ce
-  roles=exit,parking
-  doors=3 a100efdf
-  locks=
-  stairs=4 7dfe4b1e
-  lift arrival side=0 134,177,138,180 block=133,176,139,180 at=-2.75,43.5
-  lift departure side=0 140,177,144,180 block=139,176,145,180 at=0.25,43.5
-plan s159380/f8 cbd4ddcf
+  rooms=108 5089cda0
+  roles=exit,office,parking,security
+  doors=7 2399c98c
+  locks=blue!
+  stairs=2 6c38ea28
+  lift arrival side=0 13,178,17,181 block=12,177,18,181 at=-63.25,44
+  lift departure side=0 19,178,23,181 block=18,177,24,181 at=-60.25,44
+plan s159380/f8 cec36f6e
   W=263 H=216 area=0.9907
-  tiles=762a0d29
-  spawn=9.25,51.75 exit=12.25,51.75
+  tiles=e9ed148e
+  spawn=-58.25,52.25 exit=-55.25,52.25
   prologue=56807
-  rooms=130 74eab7de
-  roles=exit,parking
-  doors=3 efc817c0
-  locks=
-  stairs=4 d1bc2a9e
-  lift arrival side=0 148,210,152,213 block=147,209,153,213 at=9.25,51.75
-  lift departure side=0 154,210,158,213 block=153,209,159,213 at=12.25,51.75
-plan s159380/f12 ec797ba8
+  rooms=131 62cc59ff
+  roles=exit,office,parking,security
+  doors=7 004f063c
+  locks=blue!
+  stairs=2 b1213cd2
+  lift arrival side=0 13,211,17,214 block=12,210,18,214 at=-58.25,52.25
+  lift departure side=0 19,211,23,214 block=18,210,24,214 at=-55.25,52.25
+plan s159380/f12 2bbeecfe
   W=232 H=273 area=0.8491
-  tiles=ec4a01e2
-  spawn=8,66 exit=11,66
+  tiles=a95e50f0
+  spawn=-50.5,66.5 exit=-47.5,66.5
   prologue=63335
-  rooms=137 f7082dc7
-  roles=exit,parking
-  doors=3 31b4a99f
-  locks=
-  stairs=4 68a614ee
-  lift arrival side=0 130,267,134,270 block=129,266,135,270 at=8,66
-  lift departure side=0 136,267,140,270 block=135,266,141,270 at=11,66
-plan s159380/f15 f7fb5d5a
+  rooms=140 195b2196
+  roles=exit,office,parking,security
+  doors=7 c6597760
+  locks=blue!
+  stairs=2 258a5c35
+  lift arrival side=0 13,268,17,271 block=12,267,18,271 at=-50.5,66.5
+  lift departure side=0 19,268,23,271 block=18,267,24,271 at=-47.5,66.5
+plan s159380/f15 3ffe1bf8
   W=300 H=221 area=0.877
-  tiles=40e0b011
-  spawn=1.25,34.25 exit=1.25,37.25
+  tiles=dcaeca5e
+  spawn=-67.5,53.5 exit=-64.5,53.5
   prologue=66299
-  rooms=157 71376f9b
-  roles=exit,parking
-  doors=3 f875eab8
-  locks=
-  stairs=4 a79b485a
-  lift arrival side=3 151,177,154,181 block=150,176,154,182 at=1.25,34.25
-  lift departure side=3 151,183,154,187 block=150,182,154,188 at=1.25,37.25
-plan s167299/f1 3eaeb1aa
+  rooms=160 8896418f
+  roles=exit,office,parking,security
+  doors=7 bdb81bdc
+  locks=blue!
+  stairs=2 29175da8
+  lift arrival side=0 13,216,17,219 block=12,215,18,219 at=-67.5,53.5
+  lift departure side=0 19,216,23,219 block=18,215,24,219 at=-64.5,53.5
+plan s167299/f1 ebb8dbff
   W=157 H=191 area=1.0469
-  tiles=ab71c1e4
-  spawn=-8,36.75 exit=-8,39.75
+  tiles=bafc7d96
+  spawn=-31.25,46 exit=-28.25,46
   prologue=29986
-  rooms=63 4c758d20
-  roles=exit,parking
-  doors=3 d8a8af16
-  locks=
-  stairs=2 a0374c5f
-  lift arrival side=3 61,167,64,171 block=60,166,64,172 at=-8,36.75
-  lift departure side=3 61,173,64,177 block=60,172,64,178 at=-8,39.75
-plan s167299/f2 2e4e6d69
+  rooms=64 829e6948
+  roles=exit,office,parking,security
+  doors=8 c6983085
+  locks=blue!
+  stairs=2 73d07db8
+  lift arrival side=0 14,186,18,189 block=13,185,19,189 at=-31.25,46
+  lift departure side=0 20,186,24,189 block=19,185,25,189 at=-28.25,46
+plan s167299/f2 ea82d848
   W=154 H=137 area=0.6564
-  tiles=57c4c90b
-  spawn=-2.25,27.25 exit=-2.25,30.25
+  tiles=487e022d
+  spawn=-30.5,32.5 exit=-27.5,32.5
   prologue=21097
-  rooms=52 e937f10b
-  roles=exit,parking
-  doors=3 2a42f2d0
-  locks=
-  stairs=2 f8d2e050
-  lift arrival side=1 71,121,74,125 block=71,120,75,126 at=-2.25,27.25
-  lift departure side=1 71,127,74,131 block=71,126,75,132 at=-2.25,30.25
-plan s167299/f3 89927ade
+  rooms=52 236760da
+  roles=exit,office,parking,security
+  doors=8 713c93a5
+  locks=blue!
+  stairs=2 d677b58a
+  lift arrival side=0 14,132,18,135 block=13,131,19,135 at=-30.5,32.5
+  lift departure side=0 20,132,24,135 block=19,131,25,135 at=-27.5,32.5
+plan s167299/f3 cdb16922
   W=186 H=217 area=1.126
-  tiles=28567481
-  spawn=4.75,47.25 exit=4.75,50.25
+  tiles=15bfe5e9
+  spawn=-38.5,52.5 exit=-35.5,52.5
   prologue=40361
-  rooms=99 7830153e
-  roles=exit,parking
-  doors=3 16b1df4a
-  locks=
-  stairs=2 36e19395
-  lift arrival side=1 101,201,104,205 block=101,200,105,206 at=4.75,47.25
-  lift departure side=1 101,207,104,211 block=101,206,105,212 at=4.75,50.25
-plan s167299/f5 b6c9d6f4
+  rooms=99 b1f2b827
+  roles=exit,office,parking,security
+  doors=8 a3d293b4
+  locks=blue!
+  stairs=2 d2c7cb8a
+  lift arrival side=0 14,212,18,215 block=13,211,19,215 at=-38.5,52.5
+  lift departure side=0 20,212,24,215 block=19,211,25,215 at=-35.5,52.5
+plan s167299/f5 ca8323a9
   W=219 H=190 area=0.949
-  tiles=8c870769
-  spawn=13,41.5 exit=13,44.5
+  tiles=af8e271d
+  spawn=-46.75,45.75 exit=-43.75,45.75
   prologue=41609
-  rooms=84 27c3ecc1
-  roles=exit,parking
-  doors=3 944d1d35
-  locks=
-  stairs=2 c89cf7e4
-  lift arrival side=3 134,176,137,180 block=133,175,137,181 at=13,41.5
-  lift departure side=3 134,182,137,186 block=133,181,137,187 at=13,44.5
-plan s167299/f8 8230d81f
+  rooms=84 fce8b7d8
+  roles=exit,office,parking,security
+  doors=8 6cc04e1f
+  locks=blue!
+  stairs=2 896dc722
+  lift arrival side=0 14,185,18,188 block=13,184,19,188 at=-46.75,45.75
+  lift departure side=0 20,185,24,188 block=19,184,25,188 at=-43.75,45.75
+plan s167299/f8 02c3bc37
   W=233 H=275 area=1.1174
-  tiles=72b69a84
-  spawn=14,61.25 exit=14,64.25
+  tiles=63d17134
+  spawn=-50.25,67 exit=-47.25,67
   prologue=64074
-  rooms=152 151044fb
-  roles=exit,parking
-  doors=3 5d0b1ba2
-  locks=
-  stairs=2 e6409360
-  lift arrival side=3 143,258,146,262 block=142,257,146,263 at=14,61.25
-  lift departure side=3 143,264,146,268 block=142,263,146,269 at=14,64.25
-plan s167299/f12 c83cf848
+  rooms=151 77eb64da
+  roles=exit,office,parking,security
+  doors=8 4ade63f1
+  locks=blue!
+  stairs=2 27b51460
+  lift arrival side=0 14,270,18,273 block=13,269,19,273 at=-50.25,67
+  lift departure side=0 20,270,24,273 block=19,269,25,273 at=-47.25,67
+plan s167299/f12 07a474ec
   W=274 H=274 area=1.0065
-  tiles=9a36a8e5
-  spawn=-7.25,55 exit=-7.25,58
+  tiles=fda2ed96
+  spawn=-60.5,66.75 exit=-57.5,66.75
   prologue=75075
-  rooms=152 07dc3142
-  roles=exit,parking
-  doors=4 08e24682
-  locks=
-  stairs=2 ba3eb8c9
-  lift arrival side=1 121,245,124,249 block=121,244,125,250 at=-7.25,55
-  lift departure side=1 121,251,124,255 block=121,250,125,256 at=-7.25,58
-plan s167299/f15 65807d2c
+  rooms=152 c307444b
+  roles=exit,office,parking,security
+  doors=8 a2795c8a
+  locks=blue!
+  stairs=2 4c3c0eb5
+  lift arrival side=0 14,269,18,272 block=13,268,19,272 at=-60.5,66.75
+  lift departure side=0 20,269,24,272 block=19,268,25,272 at=-57.5,66.75
+plan s167299/f15 9b9d5ae8
   W=255 H=295 area=0.995
-  tiles=2b761b91
-  spawn=-6.5,58.75 exit=-6.5,61.75
+  tiles=3974a051
+  spawn=-55.75,72 exit=-52.75,72
   prologue=75224
-  rooms=181 f18a81b8
-  roles=exit,parking
-  doors=4 65ede8bf
-  locks=
-  stairs=2 105c208a
-  lift arrival side=1 113,263,116,267 block=113,262,117,268 at=-6.5,58.75
-  lift departure side=1 113,269,116,273 block=113,268,117,274 at=-6.5,61.75
-plan s175218/f1 b78d1fab
+  rooms=181 e6d79281
+  roles=exit,office,parking,security
+  doors=8 afc9f0ed
+  locks=blue!
+  stairs=2 f647b922
+  lift arrival side=0 14,290,18,293 block=13,289,19,293 at=-55.75,72
+  lift departure side=0 20,290,24,293 block=19,289,25,293 at=-52.75,72
+plan s175218/f1 c90d6c2f
   W=182 H=136 area=0.8641
-  tiles=4a6239c3
-  spawn=-6.25,27 exit=-6.25,30
+  tiles=4ea24bec
+  spawn=-40.5,32.25 exit=-37.5,32.25
   prologue=24751
-  rooms=50 c8d489f5
-  roles=exit,parking
-  doors=3 e909f669
-  locks=
-  stairs=4 46e3fd2d
-  lift arrival side=3 77,120,80,124 block=76,119,80,125 at=-6.25,27
-  lift departure side=3 77,126,80,130 block=76,125,80,131 at=-6.25,30
-plan s175218/f2 92415cff
+  rooms=49 8ec9cdc4
+  roles=exit,office,parking,security
+  doors=6 b29c0f00
+  locks=blue!
+  stairs=2 e621478a
+  lift arrival side=0 8,131,12,134 block=7,130,13,134 at=-40.5,32.25
+  lift departure side=0 14,131,18,134 block=13,130,19,134 at=-37.5,32.25
+plan s175218/f2 4f557859
   W=190 H=135 area=0.798
-  tiles=826e6a65
-  spawn=1.25,26.75 exit=1.25,29.75
+  tiles=909937b4
+  spawn=-42.5,32 exit=-39.5,32
   prologue=25649
-  rooms=55 d2a31c38
-  roles=exit,parking
-  doors=3 db44f006
-  locks=
-  stairs=4 a872126b
-  lift arrival side=1 96,119,99,123 block=96,118,100,124 at=1.25,26.75
-  lift departure side=1 96,125,99,129 block=96,124,100,130 at=1.25,29.75
-plan s175218/f3 5cd1fef2
+  rooms=54 7fa22aa2
+  roles=exit,office,parking,security
+  doors=6 a1606faf
+  locks=blue!
+  stairs=2 694fe19c
+  lift arrival side=0 8,130,12,133 block=7,129,13,133 at=-42.5,32
+  lift departure side=0 14,130,18,133 block=13,129,19,133 at=-39.5,32
+plan s175218/f3 9c86813d
   W=199 H=192 area=1.066
-  tiles=4fee17ff
-  spawn=14.75,45.75 exit=17.75,45.75
+  tiles=24e381c7
+  spawn=-44.75,46.25 exit=-41.75,46.25
   prologue=38207
-  rooms=81 6144703c
-  roles=exit,parking
-  doors=3 8efed46c
-  locks=
-  stairs=4 89f97eea
-  lift arrival side=0 127,186,131,189 block=126,185,132,189 at=14.75,45.75
-  lift departure side=0 133,186,137,189 block=132,185,138,189 at=17.75,45.75
-plan s175218/f5 162cdb77
+  rooms=80 714ed35e
+  roles=exit,office,parking,security
+  doors=6 685ab265
+  locks=blue!
+  stairs=2 5d042334
+  lift arrival side=0 8,187,12,190 block=7,186,13,190 at=-44.75,46.25
+  lift departure side=0 14,187,18,190 block=13,186,19,190 at=-41.75,46.25
+plan s175218/f5 14399325
   W=218 H=172 area=0.8552
-  tiles=dc13d219
-  spawn=-10,24.25 exit=-7,24.25
+  tiles=508cd7a3
+  spawn=-49.5,41.25 exit=-46.5,41.25
   prologue=37495
-  rooms=96 92f125e5
-  roles=exit,parking
-  doors=3 c09037b6
-  locks=
-  stairs=4 1f9fe707
-  lift arrival side=0 87,133,91,136 block=86,132,92,136 at=-10,24.25
-  lift departure side=0 93,133,97,136 block=92,132,98,136 at=-7,24.25
-plan s175218/f8 913e5e09
+  rooms=95 e2d0f681
+  roles=exit,office,parking,security
+  doors=6 2289b335
+  locks=blue!
+  stairs=2 4691d9e3
+  lift arrival side=0 8,167,12,170 block=7,166,13,170 at=-49.5,41.25
+  lift departure side=0 14,167,18,170 block=13,166,19,170 at=-46.5,41.25
+plan s175218/f8 3f3d8acb
   W=278 H=234 area=1.1344
-  tiles=1b8648be
-  spawn=25.75,51.5 exit=25.75,54.5
+  tiles=d22c7a97
+  spawn=-64.5,56.75 exit=-61.5,56.75
   prologue=65051
-  rooms=149 de92aca4
-  roles=exit,parking
-  doors=3 d6439c8b
-  locks=
-  stairs=4 b779a7f2
-  lift arrival side=3 189,218,192,222 block=188,217,192,223 at=25.75,51.5
-  lift departure side=3 189,224,192,228 block=188,223,192,229 at=25.75,54.5
-plan s175218/f12 b40bc65f
+  rooms=148 b262b226
+  roles=exit,office,parking,security
+  doors=6 3036b356
+  locks=blue!
+  stairs=2 b5162375
+  lift arrival side=0 8,229,12,232 block=7,228,13,232 at=-64.5,56.75
+  lift departure side=0 14,229,18,232 block=13,228,19,232 at=-61.5,56.75
+plan s175218/f12 b963d533
   W=300 H=222 area=0.8929
-  tiles=f18358d0
-  spawn=0.75,48.5 exit=0.75,51.5
+  tiles=e86e4b06
+  spawn=-70,53.75 exit=-67,53.75
   prologue=66599
-  rooms=160 69af2644
-  roles=exit,parking
-  doors=3 31c58b64
-  locks=
-  stairs=4 3b0dbef1
-  lift arrival side=1 150,206,153,210 block=150,205,154,211 at=0.75,48.5
-  lift departure side=1 150,212,153,216 block=150,211,154,217 at=0.75,51.5
-plan s175218/f15 7f2374d0
+  rooms=160 79f046d8
+  roles=exit,office,parking,security
+  doors=6 c5019b09
+  locks=blue!
+  stairs=2 29175da8
+  lift arrival side=0 8,217,12,220 block=7,216,13,220 at=-70,53.75
+  lift departure side=0 14,217,18,220 block=13,216,19,220 at=-67,53.75
+plan s175218/f15 845b3a34
   W=274 H=274 area=0.9931
-  tiles=466de448
-  spawn=-2.5,66.25 exit=0.5,66.25
+  tiles=994eb792
+  spawn=-63.5,66.75 exit=-60.5,66.75
   prologue=75075
-  rooms=186 563e6be2
-  roles=exit,parking
-  doors=3 fa9b7d99
-  locks=
-  stairs=4 70cf1e6d
-  lift arrival side=0 130,268,134,271 block=129,267,135,271 at=-2.5,66.25
-  lift departure side=0 136,268,140,271 block=135,267,141,271 at=0.5,66.25
-plan s183137/f1 a0438e89
+  rooms=185 987af0a6
+  roles=exit,office,parking,security
+  doors=6 9c28e88e
+  locks=blue!
+  stairs=2 4c3c0eb5
+  lift arrival side=0 8,269,12,272 block=7,268,13,272 at=-63.5,66.75
+  lift departure side=0 14,269,18,272 block=13,268,19,272 at=-60.5,66.75
+plan s183137/f1 b8058531
   W=191 H=176 area=1.1736
-  tiles=302a1929
-  spawn=5.5,36.5 exit=5.5,39.5
+  tiles=b86d2343
+  spawn=-40.25,42.25 exit=-37.25,42.25
   prologue=33615
-  rooms=64 fad1a55c
-  roles=exit,parking
-  doors=3 48e0c994
-  locks=
-  stairs=4 2be4fd56
-  lift arrival side=1 105,159,108,163 block=105,158,109,164 at=5.5,36.5
-  lift departure side=1 105,165,108,169 block=105,164,109,170 at=5.5,39.5
-plan s183137/f2 64251a05
+  rooms=66 19e1717b
+  roles=exit,office,parking,security
+  doors=7 db7198a4
+  locks=blue!
+  stairs=2 ac732958
+  lift arrival side=0 13,171,17,174 block=12,170,18,174 at=-40.25,42.25
+  lift departure side=0 19,171,23,174 block=18,170,24,174 at=-37.25,42.25
+plan s183137/f2 f12c0404
   W=219 H=159 area=1.0833
-  tiles=2f60b6fa
-  spawn=0,14.75 exit=0,17.75
+  tiles=c4aee854
+  spawn=-47.25,38 exit=-44.25,38
   prologue=34820
-  rooms=60 cf3d8bfd
-  roles=exit,parking
-  doors=3 375eb359
-  locks=
-  stairs=4 a28918d9
-  lift arrival side=3 108,107,111,111 block=107,106,111,112 at=0,14.75
-  lift departure side=3 108,113,111,117 block=107,112,111,118 at=0,17.75
-plan s183137/f3 9dda589e
+  rooms=63 aefd8047
+  roles=exit,office,parking,security
+  doors=7 4965799e
+  locks=blue!
+  stairs=2 353d2d00
+  lift arrival side=0 13,154,17,157 block=12,153,18,157 at=-47.25,38
+  lift departure side=0 19,154,23,157 block=18,153,24,157 at=-44.25,38
+plan s183137/f3 92d787a1
   W=261 H=191 area=1.3908
-  tiles=ee153945
-  spawn=17,37.25 exit=17,40.25
+  tiles=71336350
+  spawn=-57.75,46 exit=-54.75,46
   prologue=49850
-  rooms=90 d9382f90
-  roles=exit,parking
-  doors=4 47b65155
-  locks=
-  stairs=4 9d9e3792
-  lift arrival side=1 163,168,166,172 block=163,167,167,173 at=17,37.25
-  lift departure side=1 163,174,166,178 block=163,173,167,179 at=17,40.25
-plan s183137/f5 f885877a
+  rooms=90 bc4e5db8
+  roles=exit,office,parking,security
+  doors=7 cac1eb81
+  locks=blue!
+  stairs=2 c3e193e0
+  lift arrival side=0 13,186,17,189 block=12,185,18,189 at=-57.75,46
+  lift departure side=0 19,186,23,189 block=18,185,24,189 at=-54.75,46
+plan s183137/f5 d8c22d4a
   W=190 H=149 area=0.6457
-  tiles=507e4d11
-  spawn=-6.25,30.25 exit=-6.25,33.25
+  tiles=6dfb8645
+  spawn=-40,35.5 exit=-37,35.5
   prologue=28309
-  rooms=48 7d6afcdf
-  roles=exit,parking
-  doors=3 8b8012f2
-  locks=
-  stairs=4 42ac55b3
-  lift arrival side=1 81,133,84,137 block=81,132,85,138 at=-6.25,30.25
-  lift departure side=1 81,139,84,143 block=81,138,85,144 at=-6.25,33.25
-plan s183137/f8 9956f568
+  rooms=48 8499c993
+  roles=exit,office,parking,security
+  doors=7 0c69dfb8
+  locks=blue!
+  stairs=2 7f206e13
+  lift arrival side=0 13,144,17,147 block=12,143,18,147 at=-40,35.5
+  lift departure side=0 19,144,23,147 block=18,143,24,147 at=-37,35.5
+plan s183137/f8 979074b5
   W=189 H=201 area=0.6625
-  tiles=46fcf271
-  spawn=0,22.75 exit=0,25.75
+  tiles=a40001e6
+  spawn=-39.75,48.5 exit=-36.75,48.5
   prologue=37988
-  rooms=82 2d5d4695
-  roles=exit,parking
-  doors=3 67c7a3c2
-  locks=
-  stairs=4 523fe906
-  lift arrival side=3 93,144,96,148 block=92,143,96,149 at=0,22.75
-  lift departure side=3 93,150,96,154 block=92,149,96,155 at=0,25.75
-plan s183137/f12 f7c03add
+  rooms=82 04fbcde7
+  roles=exit,office,parking,security
+  doors=7 f2f9ccb9
+  locks=blue!
+  stairs=2 46085ba1
+  lift arrival side=0 13,196,17,199 block=12,195,18,199 at=-39.75,48.5
+  lift departure side=0 19,196,23,199 block=18,195,24,199 at=-36.75,48.5
+plan s183137/f12 f7abbc1c
   W=300 H=232 area=0.9331
-  tiles=846f9536
-  spawn=22.5,51.25 exit=25.5,51.25
+  tiles=7ebe0e29
+  spawn=-67.5,56.25 exit=-64.5,56.25
   prologue=69599
-  rooms=151 f297a9ec
-  roles=exit,parking
-  doors=5 7c2fa25d
-  locks=
-  stairs=4 81ad929e
-  lift arrival side=2 193,217,197,220 block=192,217,198,221 at=22.5,51.25
-  lift departure side=2 199,217,203,220 block=198,217,204,221 at=25.5,51.25
-plan s183137/f15 f5ec41f6
+  rooms=154 64bd339d
+  roles=exit,office,parking,security
+  doors=7 dadde95b
+  locks=blue!
+  stairs=2 ea5ab36d
+  lift arrival side=0 13,227,17,230 block=12,226,18,230 at=-67.5,56.25
+  lift departure side=0 19,227,23,230 block=18,226,24,230 at=-64.5,56.25
+plan s183137/f15 e3eb18d6
   W=300 H=223 area=0.8849
-  tiles=bb54519a
-  spawn=22.5,50 exit=25.5,50
+  tiles=f094cde9
+  spawn=-67.5,54 exit=-64.5,54
   prologue=66899
-  rooms=148 c70cafa7
-  roles=exit,parking
-  doors=4 30bd75e3
-  locks=
-  stairs=4 eb0b1188
-  lift arrival side=2 193,210,197,213 block=192,210,198,214 at=22.5,50
-  lift departure side=2 199,210,203,213 block=198,210,204,214 at=25.5,50
-plan s191056/f1 8690af1f
+  rooms=151 fa7ce1d6
+  roles=exit,office,parking,security
+  doors=7 b5384b11
+  locks=blue!
+  stairs=2 8890906d
+  lift arrival side=0 13,218,17,221 block=12,217,18,221 at=-67.5,54
+  lift departure side=0 19,218,23,221 block=18,217,24,221 at=-64.5,54
+plan s191056/f1 93b14e12
   W=161 H=124 area=0.697
-  tiles=e2c4178d
-  spawn=-2.25,28.75 exit=0.75,28.75
+  tiles=447e4fa2
+  spawn=-35.75,29.25 exit=-32.75,29.25
   prologue=19963
-  rooms=47 05580e02
-  roles=exit,parking
-  doors=3 528387d8
-  locks=
-  stairs=3 03ba4625
-  lift arrival side=0 74,118,78,121 block=73,117,79,121 at=-2.25,28.75
-  lift departure side=0 80,118,84,121 block=79,117,85,121 at=0.75,28.75
-plan s191056/f2 b330b5cb
+  rooms=47 f8ac8773
+  roles=exit,office,parking,security
+  doors=6 b026dcfc
+  locks=blue!
+  stairs=2 05365843
+  lift arrival side=0 7,119,11,122 block=6,118,12,122 at=-35.75,29.25
+  lift departure side=0 13,119,17,122 block=12,118,18,122 at=-32.75,29.25
+plan s191056/f2 16c6cac3
   W=174 H=132 area=0.7145
-  tiles=b9da7cea
-  spawn=1.25,16 exit=1.25,19
+  tiles=8a64ebac
+  spawn=-39,31.25 exit=-36,31.25
   prologue=22967
-  rooms=42 ffd83853
-  roles=exit,parking
-  doors=3 2068b529
-  locks=
-  stairs=3 1ff4428e
-  lift arrival side=3 88,96,91,100 block=87,95,91,101 at=1.25,16
-  lift departure side=3 88,102,91,106 block=87,101,91,107 at=1.25,19
-plan s191056/f3 196f5b32
+  rooms=44 814d701d
+  roles=exit,office,parking,security
+  doors=6 f6185849
+  locks=blue!
+  stairs=2 d788c3cf
+  lift arrival side=0 7,127,11,130 block=6,126,12,130 at=-39,31.25
+  lift departure side=0 13,127,17,130 block=12,126,18,130 at=-36,31.25
+plan s191056/f3 53f581c1
   W=227 H=183 area=1.1589
-  tiles=c914df67
-  spawn=-14.5,17.25 exit=-14.5,20.25
+  tiles=71cc83cc
+  spawn=-52.25,44 exit=-49.25,44
   prologue=41540
-  rooms=102 5bfea27b
-  roles=exit,parking
-  doors=3 aff46309
-  locks=
-  stairs=3 7eaa00de
-  lift arrival side=1 83,124,86,128 block=83,123,87,129 at=-14.5,17.25
-  lift departure side=1 83,130,86,134 block=83,129,87,135 at=-14.5,20.25
-plan s191056/f5 a503d14c
+  rooms=102 de83caf8
+  roles=exit,office,parking,security
+  doors=6 bbdeea7d
+  locks=blue!
+  stairs=2 b4d11114
+  lift arrival side=0 7,178,11,181 block=6,177,12,181 at=-52.25,44
+  lift departure side=0 13,178,17,181 block=12,177,18,181 at=-49.25,44
+plan s191056/f5 e7a8bf8c
   W=237 H=144 area=0.7784
-  tiles=402de05f
-  spawn=-7.75,11.25 exit=-4.75,11.25
+  tiles=bfa96dd5
+  spawn=-54.75,34.25 exit=-51.75,34.25
   prologue=34127
-  rooms=83 3c7a5c4e
-  roles=exit,parking
-  doors=3 af38dc9a
-  locks=
-  stairs=3 8d93871f
-  lift arrival side=2 101,93,105,96 block=100,93,106,97 at=-7.75,11.25
-  lift departure side=2 107,93,111,96 block=106,93,112,97 at=-4.75,11.25
-plan s191056/f8 e77772d7
+  rooms=84 def5e13a
+  roles=exit,office,parking,security
+  doors=6 31301c34
+  locks=blue!
+  stairs=2 298e31b7
+  lift arrival side=0 7,139,11,142 block=6,138,12,142 at=-54.75,34.25
+  lift departure side=0 13,139,17,142 block=12,138,18,142 at=-51.75,34.25
+plan s191056/f8 5c54f157
   W=183 H=239 area=0.7627
-  tiles=b7fa5dd8
-  spawn=4.75,57.5 exit=7.75,57.5
+  tiles=2f11e1e1
+  spawn=-41.25,58 exit=-38.25,58
   prologue=43736
-  rooms=107 ccc40081
-  roles=exit,parking
-  doors=3 58d2fc2c
-  locks=
-  stairs=3 081d4e6b
-  lift arrival side=0 99,233,103,236 block=98,232,104,236 at=4.75,57.5
-  lift departure side=0 105,233,109,236 block=104,232,110,236 at=7.75,57.5
-plan s191056/f12 d1b76540
+  rooms=108 2f1d61c4
+  roles=exit,office,parking,security
+  doors=6 63685fb7
+  locks=blue!
+  stairs=2 3b5a72c6
+  lift arrival side=0 7,234,11,237 block=6,233,12,237 at=-41.25,58
+  lift departure side=0 13,234,17,237 block=12,233,18,237 at=-38.25,58
+plan s191056/f12 e2e25d55
   W=267 H=184 area=0.6586
-  tiles=c5500632
-  spawn=3.75,23.75 exit=6.75,23.75
+  tiles=cfc47ade
+  spawn=-62.25,44.25 exit=-59.25,44.25
   prologue=49127
-  rooms=109 961aaa1d
-  roles=exit,parking
-  doors=3 51b9ab47
-  locks=
-  stairs=3 058a7de1
-  lift arrival side=0 139,138,143,141 block=138,137,144,141 at=3.75,23.75
-  lift departure side=0 145,138,149,141 block=144,137,150,141 at=6.75,23.75
-plan s191056/f15 6ce550e4
+  rooms=109 9b2f8d25
+  roles=exit,office,parking,security
+  doors=6 6a6e78e4
+  locks=blue!
+  stairs=2 28d0d358
+  lift arrival side=0 7,179,11,182 block=6,178,12,182 at=-62.25,44.25
+  lift departure side=0 13,179,17,182 block=12,178,18,182 at=-59.25,44.25
+plan s191056/f15 4da62e07
   W=269 H=280 area=0.9963
-  tiles=1391241c
-  spawn=-15.25,40.25 exit=-12.25,40.25
+  tiles=dc379d10
+  spawn=-62.75,68.25 exit=-59.75,68.25
   prologue=75319
-  rooms=189 1ea6d250
-  roles=exit,parking
-  doors=3 63cd7bdb
-  locks=
-  stairs=3 87fef667
-  lift arrival side=0 102,219,106,222 block=101,218,107,222 at=-15.25,40.25
-  lift departure side=0 108,219,112,222 block=107,218,113,222 at=-12.25,40.25
-plan s198975/f1 cb845374
+  rooms=190 05f36544
+  roles=exit,office,parking,security
+  doors=6 87a5ec6d
+  locks=blue!
+  stairs=2 b7236d8e
+  lift arrival side=0 7,275,11,278 block=6,274,12,278 at=-62.75,68.25
+  lift departure side=0 13,275,17,278 block=12,274,18,278 at=-59.75,68.25
+plan s198975/f1 6a9453c6
   W=161 H=169 area=0.9499
-  tiles=2a8ea560
-  spawn=-12.75,40 exit=-9.75,40
+  tiles=7a802586
+  spawn=-31.75,40.5 exit=-28.75,40.5
   prologue=27208
-  rooms=57 d0e47958
-  roles=exit,parking
-  doors=3 7692dfa0
-  locks=
-  stairs=2 32f9e567
-  lift arrival side=0 53,163,57,166 block=52,162,58,166 at=-12.75,40
-  lift departure side=0 59,163,63,166 block=58,162,64,166 at=-9.75,40
-plan s198975/f2 12189453
+  rooms=57 31ec414b
+  roles=exit,office,parking,security
+  doors=7 c1f567a9
+  locks=blue!
+  stairs=2 9c8ec59f
+  lift arrival side=0 15,164,19,167 block=14,163,20,167 at=-31.75,40.5
+  lift departure side=0 21,164,25,167 block=20,163,26,167 at=-28.75,40.5
+plan s198975/f2 d07093fe
   W=198 H=147 area=0.9055
-  tiles=2cc4c25a
-  spawn=-4.25,30.75 exit=-4.25,33.75
+  tiles=a76b8157
+  spawn=-41,35 exit=-38,35
   prologue=29105
-  rooms=49 c8d76121
-  roles=exit,parking
-  doors=3 4d86ac22
-  locks=
-  stairs=2 89535014
-  lift arrival side=1 89,133,92,137 block=89,132,93,138 at=-4.25,30.75
-  lift departure side=1 89,139,92,143 block=89,138,93,144 at=-4.25,33.75
-plan s198975/f3 5281be34
+  rooms=49 d827dbc8
+  roles=exit,office,parking,security
+  doors=7 f5cd2fb5
+  locks=blue!
+  stairs=2 0f6ed73b
+  lift arrival side=0 15,142,19,145 block=14,141,20,145 at=-41,35
+  lift departure side=0 21,142,25,145 block=20,141,26,145 at=-38,35
+plan s198975/f3 249adf24
   W=204 H=126 area=0.7171
-  tiles=86789f2f
-  spawn=-2,25.25 exit=1,25.25
+  tiles=758b18a7
+  spawn=-42.5,29.75 exit=-39.5,29.75
   prologue=25703
-  rooms=48 ffdfcb1f
-  roles=exit,parking
-  doors=3 b0b56c47
-  locks=
-  stairs=2 425b5dfc
-  lift arrival side=2 96,112,100,115 block=95,112,101,116 at=-2,25.25
-  lift departure side=2 102,112,106,115 block=101,112,107,116 at=1,25.25
-plan s198975/f5 7cbbfc8a
+  rooms=48 eb028ea2
+  roles=exit,office,parking,security
+  doors=7 23705e43
+  locks=blue!
+  stairs=2 c86d11a7
+  lift arrival side=0 15,121,19,124 block=14,120,20,124 at=-42.5,29.75
+  lift departure side=0 21,121,25,124 block=20,120,26,124 at=-39.5,29.75
+plan s198975/f5 1adee022
   W=254 H=165 area=0.9559
-  tiles=950dd151
-  spawn=-2.5,22 exit=0.5,22
+  tiles=73dd9e41
+  spawn=-55,39.5 exit=-52,39.5
   prologue=41909
-  rooms=84 7a97ca51
-  roles=exit,parking
-  doors=3 7a4f405c
-  locks=
-  stairs=2 071b6dea
-  lift arrival side=2 120,125,124,128 block=119,125,125,129 at=-2.5,22
-  lift departure side=2 126,125,130,128 block=125,125,131,129 at=0.5,22
-plan s198975/f8 a43d8664
+  rooms=83 35a17297
+  roles=exit,office,parking,security
+  doors=7 20d9450a
+  locks=blue!
+  stairs=2 6269f9a7
+  lift arrival side=0 15,160,19,163 block=14,159,20,163 at=-55,39.5
+  lift departure side=0 21,160,25,163 block=20,159,26,163 at=-52,39.5
+plan s198975/f8 b93f7ca8
   W=238 H=214 area=0.8882
-  tiles=db44f0d5
-  spawn=11.5,40.25 exit=14.5,40.25
+  tiles=06358b55
+  spawn=-51,51.75 exit=-48,51.75
   prologue=50931
-  rooms=105 f0cdc558
-  roles=exit,parking
-  doors=3 07b7058e
-  locks=
-  stairs=2 ae82e7b8
-  lift arrival side=0 140,186,144,189 block=139,185,145,189 at=11.5,40.25
-  lift departure side=0 146,186,150,189 block=145,185,151,189 at=14.5,40.25
-plan s198975/f12 1d865b7e
+  rooms=104 8989a42d
+  roles=exit,office,parking,security
+  doors=7 43d951f4
+  locks=blue!
+  stairs=2 7960c59e
+  lift arrival side=0 15,209,19,212 block=14,208,20,212 at=-51,51.75
+  lift departure side=0 21,209,25,212 block=20,208,26,212 at=-48,51.75
+plan s198975/f12 407295af
   W=300 H=248 area=0.9974
-  tiles=ade4c709
-  spawn=13.5,54.25 exit=16.5,54.25
+  tiles=2e8d8887
+  spawn=-66.5,60.25 exit=-63.5,60.25
   prologue=74399
-  rooms=203 dd7ffe63
-  roles=exit,parking
-  doors=3 2d8b959a
-  locks=
-  stairs=2 0686889e
-  lift arrival side=0 175,231,179,234 block=174,230,180,234 at=13.5,54.25
-  lift departure side=0 181,231,185,234 block=180,230,186,234 at=16.5,54.25
-plan s198975/f15 be2594d4
+  rooms=205 96c515ae
+  roles=exit,office,parking,security
+  doors=7 ade29a3b
+  locks=blue!
+  stairs=2 7b5f70f1
+  lift arrival side=0 15,243,19,246 block=14,242,20,246 at=-66.5,60.25
+  lift departure side=0 21,243,25,246 block=20,242,26,246 at=-63.5,60.25
+plan s198975/f15 d32d7608
   W=268 H=254 area=0.9004
-  tiles=38cda2ea
-  spawn=-5,55.75 exit=-2,55.75
+  tiles=99e2a4a3
+  spawn=-58.5,61.75 exit=-55.5,61.75
   prologue=68071
-  rooms=163 dee6dd3b
-  roles=exit,parking
-  doors=3 16d4f22a
-  locks=
-  stairs=2 6f6ce831
-  lift arrival side=0 122,237,126,240 block=121,236,127,240 at=-5,55.75
-  lift departure side=0 128,237,132,240 block=127,236,133,240 at=-2,55.75
-plan s206894/f1 db8decc8
+  rooms=165 cf6b8970
+  roles=exit,office,parking,security
+  doors=7 02e1f781
+  locks=blue!
+  stairs=2 7bf84bc9
+  lift arrival side=0 15,249,19,252 block=14,248,20,252 at=-58.5,61.75
+  lift departure side=0 21,249,25,252 block=20,248,26,252 at=-55.5,61.75
+plan s206894/f1 316b9e63
   W=192 H=120 area=0.8044
-  tiles=2e1d31bc
-  spawn=2.5,27.75 exit=5.5,27.75
+  tiles=1f9e2226
+  spawn=-44,28.25 exit=-41,28.25
   prologue=23039
-  rooms=51 37e661f8
-  roles=exit,parking
-  doors=3 1352f4d0
-  locks=
-  stairs=2 e6be6b38
-  lift arrival side=0 99,114,103,117 block=98,113,104,117 at=2.5,27.75
-  lift departure side=0 105,114,109,117 block=104,113,110,117 at=5.5,27.75
-plan s206894/f2 322556ac
+  rooms=53 d0e7c91b
+  roles=exit,office,parking,security
+  doors=9 96fb27b4
+  locks=blue!
+  stairs=2 1503fc68
+  lift arrival side=0 6,115,10,118 block=5,114,11,118 at=-44,28.25
+  lift departure side=0 12,115,16,118 block=11,114,17,118 at=-41,28.25
+plan s206894/f2 152195b0
   W=244 H=163 area=1.2373
-  tiles=d02a8ea6
-  spawn=-12.25,18.25 exit=-12.25,21.25
+  tiles=e18ac7ea
+  spawn=-57,39 exit=-54,39
   prologue=39771
-  rooms=76 55060c1f
-  roles=exit,parking
-  doors=3 82735f22
-  locks=
-  stairs=2 b8e39d89
-  lift arrival side=3 96,116,99,120 block=95,115,99,121 at=-12.25,18.25
-  lift departure side=3 96,122,99,126 block=95,121,99,127 at=-12.25,21.25
-plan s206894/f3 0db2cdc9
+  rooms=80 6fcbe302
+  roles=exit,office,parking,security
+  doors=9 264919f5
+  locks=blue!
+  stairs=2 d4a26c77
+  lift arrival side=0 6,158,10,161 block=5,157,11,161 at=-57,39
+  lift departure side=0 12,158,16,161 block=11,157,17,161 at=-54,39
+plan s206894/f3 cdd3b555
   W=166 H=184 area=0.8521
-  tiles=d1e9b05b
-  spawn=7.25,37 exit=7.25,40
+  tiles=a1410aba
+  spawn=-37.5,44.25 exit=-34.5,44.25
   prologue=30543
-  rooms=56 6d3401f9
-  roles=exit,parking
-  doors=3 ad672b17
-  locks=
-  stairs=2 5ca9970e
-  lift arrival side=3 96,164,99,168 block=95,163,99,169 at=7.25,37
-  lift departure side=3 96,170,99,174 block=95,169,99,175 at=7.25,40
-plan s206894/f5 6b73e3ce
+  rooms=59 b8ca1eb4
+  roles=exit,office,parking,security
+  doors=9 2de6776a
+  locks=blue!
+  stairs=2 a17dfe00
+  lift arrival side=0 6,179,10,182 block=5,178,11,182 at=-37.5,44.25
+  lift departure side=0 12,179,16,182 block=11,178,17,182 at=-34.5,44.25
+plan s206894/f5 9d690581
   W=251 H=155 area=0.8874
-  tiles=a01e2e57
-  spawn=7.75,16.5 exit=10.75,16.5
+  tiles=914fe029
+  spawn=-58.75,37 exit=-55.75,37
   prologue=38904
-  rooms=83 6065643f
-  roles=exit,parking
-  doors=3 3e66f6f7
-  locks=
-  stairs=2 c2190aed
-  lift arrival side=2 139,109,143,112 block=138,109,144,113 at=7.75,16.5
-  lift departure side=2 145,109,149,112 block=144,109,150,113 at=10.75,16.5
-plan s206894/f8 42e2db68
+  rooms=87 f8a09596
+  roles=exit,office,parking,security
+  doors=9 efb8bd04
+  locks=blue!
+  stairs=2 1d7450a4
+  lift arrival side=0 6,150,10,153 block=5,149,11,153 at=-58.75,37
+  lift departure side=0 12,150,16,153 block=11,149,17,153 at=-55.75,37
+plan s206894/f8 9ffad972
   W=231 H=169 area=0.6808
-  tiles=07502bc2
-  spawn=7.5,19.75 exit=7.5,22.75
+  tiles=e5b912d5
+  spawn=-53.75,40.5 exit=-50.75,40.5
   prologue=39038
-  rooms=75 77c0148d
-  roles=exit,parking
-  doors=3 83b64522
-  locks=
-  stairs=2 79995be6
-  lift arrival side=3 129,122,132,126 block=128,121,132,127 at=7.5,19.75
-  lift departure side=3 129,128,132,132 block=128,127,132,133 at=7.5,22.75
-plan s206894/f12 b0d9a438
+  rooms=79 87b35eb5
+  roles=exit,office,parking,security
+  doors=9 ab445d43
+  locks=blue!
+  stairs=2 a14b9453
+  lift arrival side=0 6,164,10,167 block=5,163,11,167 at=-53.75,40.5
+  lift departure side=0 12,164,16,167 block=11,163,17,167 at=-50.75,40.5
+plan s206894/f12 0e7502ce
   W=297 H=254 area=1.0113
-  tiles=7f5614df
-  spawn=6.75,50.75 exit=9.75,50.75
+  tiles=fbc9ddf0
+  spawn=-70.25,61.75 exit=-67.25,61.75
   prologue=75437
-  rooms=183 8374094d
-  roles=exit,parking
-  doors=3 86bc10a5
-  locks=
-  stairs=2 545810b3
-  lift arrival side=0 160,227,164,230 block=159,226,165,230 at=6.75,50.75
-  lift departure side=0 166,227,170,230 block=165,226,171,230 at=9.75,50.75
-plan s206894/f15 7ab5c06d
+  rooms=184 82f1a16a
+  roles=exit,office,parking,security
+  doors=9 a80892b6
+  locks=blue!
+  stairs=2 b29d81b5
+  lift arrival side=0 6,249,10,252 block=5,248,11,252 at=-70.25,61.75
+  lift departure side=0 12,249,16,252 block=11,248,17,252 at=-67.25,61.75
+plan s206894/f15 6a7f5d87
   W=253 H=214 area=0.7162
-  tiles=2cf902e5
-  spawn=9.25,43.75 exit=12.25,43.75
+  tiles=8f2dce0e
+  spawn=-59.25,51.75 exit=-56.25,51.75
   prologue=54141
-  rooms=115 ec31a662
-  roles=exit,parking
-  doors=3 6eb13615
-  locks=
-  stairs=2 14e8ea99
-  lift arrival side=0 143,193,147,196 block=142,192,148,196 at=9.25,43.75
-  lift departure side=0 149,193,153,196 block=148,192,154,196 at=12.25,43.75
-plan s214813/f1 855e20ad
+  rooms=119 38c1a0ea
+  roles=exit,office,parking,security
+  doors=9 256a2256
+  locks=blue!
+  stairs=2 2f60ab1a
+  lift arrival side=0 6,209,10,212 block=5,208,11,212 at=-59.25,51.75
+  lift departure side=0 12,209,16,212 block=11,208,17,212 at=-56.25,51.75
+plan s214813/f1 649ac4b9
   W=162 H=123 area=0.6956
-  tiles=1e8d7427
-  spawn=-12,28.5 exit=-9,28.5
+  tiles=68213b59
+  spawn=-36.5,29 exit=-33.5,29
   prologue=19925
-  rooms=43 3de679b8
-  roles=exit,parking
-  doors=3 0cd5dc6a
-  locks=
-  stairs=4 4f6a0cf6
-  lift arrival side=0 55,117,59,120 block=54,116,60,120 at=-12,28.5
-  lift departure side=0 61,117,65,120 block=60,116,66,120 at=-9,28.5
-plan s214813/f2 ecea467b
+  rooms=44 15494e3c
+  roles=exit,office,parking,security
+  doors=8 c40d7473
+  locks=blue!
+  stairs=2 05365843
+  lift arrival side=0 6,118,10,121 block=5,117,11,121 at=-36.5,29
+  lift departure side=0 12,118,16,121 block=11,117,17,121 at=-33.5,29
+plan s214813/f2 eb84ce57
   W=246 H=173 area=1.324
-  tiles=707e40c7
-  spawn=-0.5,29.5 exit=2.5,29.5
+  tiles=f9859e8c
+  spawn=-57.5,41.5 exit=-54.5,41.5
   prologue=42557
-  rooms=103 c78f28f6
-  roles=exit,parking
-  doors=3 3e73d32e
-  locks=
-  stairs=4 290930a3
-  lift arrival side=2 120,144,124,147 block=119,144,125,148 at=-0.5,29.5
-  lift departure side=2 126,144,130,147 block=125,144,131,148 at=2.5,29.5
-plan s214813/f3 fcd6c583
+  rooms=106 6533b379
+  roles=exit,office,parking,security
+  doors=8 62d6236f
+  locks=blue!
+  stairs=2 fc86038b
+  lift arrival side=0 6,168,10,171 block=5,167,11,171 at=-57.5,41.5
+  lift departure side=0 12,168,16,171 block=11,167,17,171 at=-54.5,41.5
+plan s214813/f3 6063bb5e
   W=223 H=136 area=0.8461
-  tiles=af245099
-  spawn=-13,19 exit=-13,22
+  tiles=7e41d1e8
+  spawn=-51.75,32.25 exit=-48.75,32.25
   prologue=30327
-  rooms=53 bea5f336
-  roles=exit,parking
-  doors=3 bd9a515f
-  locks=
-  stairs=4 3c28d5ee
-  lift arrival side=3 84,104,87,108 block=83,103,87,109 at=-13,19
-  lift departure side=3 84,110,87,114 block=83,109,87,115 at=-13,22
-plan s214813/f5 77b8c3e1
+  rooms=56 42c2f6f1
+  roles=exit,office,parking,security
+  doors=8 78dd94d4
+  locks=blue!
+  stairs=2 2199af6a
+  lift arrival side=0 6,131,10,134 block=5,130,11,134 at=-51.75,32.25
+  lift departure side=0 12,131,16,134 block=11,130,17,134 at=-48.75,32.25
+plan s214813/f5 9ba32b9a
   W=183 H=153 area=0.6386
-  tiles=3ee93e6c
-  spawn=-2.75,36 exit=0.25,36
+  tiles=d3b3ec67
+  spawn=-41.75,36.5 exit=-38.75,36.5
   prologue=27998
-  rooms=67 38db8bca
-  roles=exit,parking
-  doors=3 63973d1f
-  locks=
-  stairs=4 eea3b2b7
-  lift arrival side=0 84,147,88,150 block=83,146,89,150 at=-2.75,36
-  lift departure side=0 90,147,94,150 block=89,146,95,150 at=0.25,36
-plan s214813/f8 0974ec41
+  rooms=66 6d7a930b
+  roles=exit,office,parking,security
+  doors=8 faa189fb
+  locks=blue!
+  stairs=2 b0f0b6db
+  lift arrival side=0 6,148,10,151 block=5,147,11,151 at=-41.75,36.5
+  lift departure side=0 12,148,16,151 block=11,147,17,151 at=-38.75,36.5
+plan s214813/f8 2e29958b
   W=280 H=199 area=0.9717
-  tiles=a68c5acd
-  spawn=0.5,26 exit=3.5,26
+  tiles=8f6548be
+  spawn=-66,48 exit=-63,48
   prologue=55719
-  rooms=125 eba3f531
-  roles=exit,parking
-  doors=3 441551b8
-  locks=
-  stairs=4 0dbbe2b6
-  lift arrival side=2 139,150,143,153 block=138,150,144,154 at=0.5,26
-  lift departure side=2 145,150,149,153 block=144,150,150,154 at=3.5,26
-plan s214813/f12 b802fc2b
+  rooms=129 4de5b968
+  roles=exit,office,parking,security
+  doors=8 72496228
+  locks=blue!
+  stairs=2 5e66305d
+  lift arrival side=0 6,194,10,197 block=5,193,11,197 at=-66,48
+  lift departure side=0 12,194,16,197 block=11,193,17,197 at=-63,48
+plan s214813/f12 cbf065ac
   W=270 H=205 area=0.742
-  tiles=8c009d3b
-  spawn=0.5,27 exit=3.5,27
+  tiles=b2ac549b
+  spawn=-63.5,49.5 exit=-60.5,49.5
   prologue=55349
-  rooms=124 68aa5f2c
-  roles=exit,parking
-  doors=3 eceb33cc
-  locks=
-  stairs=4 26e3cd25
-  lift arrival side=2 134,155,138,158 block=133,155,139,159 at=0.5,27
-  lift departure side=2 140,155,144,158 block=139,155,145,159 at=3.5,27
-plan s214813/f15 1bcadff0
+  rooms=128 7560428b
+  roles=exit,office,parking,security
+  doors=8 1f5b489f
+  locks=blue!
+  stairs=2 d698052e
+  lift arrival side=0 6,200,10,203 block=5,199,11,203 at=-63.5,49.5
+  lift departure side=0 12,200,16,203 block=11,199,17,203 at=-60.5,49.5
+plan s214813/f15 d5c392e2
   W=274 H=274 area=0.9931
-  tiles=8b46e403
-  spawn=-1.25,37 exit=-1.25,40
+  tiles=a5652dd4
+  spawn=-64.5,66.75 exit=-61.5,66.75
   prologue=75075
-  rooms=184 cbab6b24
-  roles=exit,parking
-  doors=3 a79b17e0
-  locks=
-  stairs=4 2ec75b22
-  lift arrival side=3 133,209,136,213 block=132,208,136,214 at=-1.25,37
-  lift departure side=3 133,215,136,219 block=132,214,136,220 at=-1.25,40
-plan s222732/f1 558c49ea
+  rooms=186 e0e0bd5e
+  roles=exit,office,parking,security
+  doors=8 4a17943b
+  locks=blue!
+  stairs=2 4c3c0eb5
+  lift arrival side=0 6,269,10,272 block=5,268,11,272 at=-64.5,66.75
+  lift departure side=0 12,269,16,272 block=11,268,17,272 at=-61.5,66.75
+plan s222732/f1 ae0d008c
   W=244 H=146 area=1.2437
-  tiles=c9162f39
-  spawn=1,34.25 exit=4,34.25
+  tiles=53ae74b3
+  spawn=-56.5,34.75 exit=-53.5,34.75
   prologue=35623
-  rooms=85 96fe02af
-  roles=exit,parking
-  doors=3 db17d956
-  locks=
-  stairs=2 10ee31a4
-  lift arrival side=0 122,140,126,143 block=121,139,127,143 at=1,34.25
-  lift departure side=0 128,140,132,143 block=127,139,133,143 at=4,34.25
-plan s222732/f2 ebe4d756
+  rooms=86 facc7c86
+  roles=exit,office,parking,security
+  doors=6 ee4c407a
+  locks=blue!
+  stairs=2 0c194a23
+  lift arrival side=0 7,141,11,144 block=6,140,12,144 at=-56.5,34.75
+  lift departure side=0 13,141,17,144 block=12,140,18,144 at=-53.5,34.75
+plan s222732/f2 5724075c
   W=192 H=130 area=0.7765
-  tiles=807b107a
-  spawn=-6.5,30.25 exit=-3.5,30.25
+  tiles=45ed9397
+  spawn=-43.5,30.75 exit=-40.5,30.75
   prologue=24959
-  rooms=47 f7095727
-  roles=exit,parking
-  doors=3 83296937
-  locks=
-  stairs=2 780ea2ee
-  lift arrival side=0 81,124,85,127 block=80,123,86,127 at=-6.5,30.25
-  lift departure side=0 87,124,91,127 block=86,123,92,127 at=-3.5,30.25
-plan s222732/f3 8f9697ce
+  rooms=48 831bd2af
+  roles=exit,office,parking,security
+  doors=6 09302785
+  locks=blue!
+  stairs=2 8e6beb23
+  lift arrival side=0 7,125,11,128 block=6,124,12,128 at=-43.5,30.75
+  lift departure side=0 13,125,17,128 block=12,124,18,128 at=-40.5,30.75
+plan s222732/f3 782dc799
   W=225 H=148 area=0.929
-  tiles=4c72dc9c
-  spawn=0.75,34.75 exit=3.75,34.75
+  tiles=105cd399
+  spawn=-51.75,35.25 exit=-48.75,35.25
   prologue=33299
-  rooms=73 ef205442
-  roles=exit,parking
-  doors=3 2551ef98
-  locks=
-  stairs=2 f9edd6a3
-  lift arrival side=0 112,142,116,145 block=111,141,117,145 at=0.75,34.75
-  lift departure side=0 118,142,122,145 block=117,141,123,145 at=3.75,34.75
-plan s222732/f5 3908670f
+  rooms=74 b284476c
+  roles=exit,office,parking,security
+  doors=6 34708a92
+  locks=blue!
+  stairs=2 e5ab887b
+  lift arrival side=0 7,143,11,146 block=6,142,12,146 at=-51.75,35.25
+  lift departure side=0 13,143,17,146 block=12,142,18,146 at=-48.75,35.25
+plan s222732/f5 780d97a0
   W=169 H=209 area=0.8056
-  tiles=d839baae
-  spawn=8.5,42.75 exit=8.5,45.75
+  tiles=cb4d12e4
+  spawn=-37.75,50.5 exit=-34.75,50.5
   prologue=35320
-  rooms=71 41e30edf
-  roles=exit,parking
-  doors=3 a1015f58
-  locks=
-  stairs=2 ade090f5
-  lift arrival side=1 100,188,103,192 block=100,187,104,193 at=8.5,42.75
-  lift departure side=1 100,194,103,198 block=100,193,104,199 at=8.5,45.75
-plan s222732/f8 9595d803
+  rooms=72 5bab9234
+  roles=exit,office,parking,security
+  doors=6 bfadb033
+  locks=blue!
+  stairs=2 2b2e268a
+  lift arrival side=0 7,204,11,207 block=6,203,12,207 at=-37.75,50.5
+  lift departure side=0 13,204,17,207 block=12,203,18,207 at=-34.75,50.5
+plan s222732/f8 61786f61
   W=280 H=270 area=1.3184
-  tiles=8432db6f
-  spawn=16,37.25 exit=19,37.25
+  tiles=cdeabdbd
+  spawn=-65.5,65.75 exit=-62.5,65.75
   prologue=75599
-  rooms=184 c851a25c
-  roles=exit,parking
-  doors=3 06e84edd
-  locks=
-  stairs=2 eccbed4a
-  lift arrival side=0 170,208,174,211 block=169,207,175,211 at=16,37.25
-  lift departure side=0 176,208,180,211 block=175,207,181,211 at=19,37.25
-plan s222732/f12 6e2f2b61
+  rooms=186 e298654d
+  roles=exit,office,parking,security
+  doors=6 42696801
+  locks=blue!
+  stairs=2 b96408c5
+  lift arrival side=0 7,265,11,268 block=6,264,12,268 at=-65.5,65.75
+  lift departure side=0 13,265,17,268 block=12,264,18,268 at=-62.5,65.75
+plan s222732/f12 b366cfe2
   W=278 H=184 area=0.6858
-  tiles=d1cd8c38
-  spawn=1.5,34.25 exit=4.5,34.25
+  tiles=03d4c997
+  spawn=-65,44.25 exit=-62,44.25
   prologue=51151
-  rooms=124 434f69bf
-  roles=exit,parking
-  doors=3 0d9a02bd
-  locks=
-  stairs=2 5f5e0055
-  lift arrival side=0 140,159,144,162 block=139,158,145,162 at=1.5,34.25
-  lift departure side=0 146,159,150,162 block=145,158,151,162 at=4.5,34.25
-plan s222732/f15 aa2b23cb
+  rooms=124 0f98cb66
+  roles=exit,office,parking,security
+  doors=6 9ced725c
+  locks=blue!
+  stairs=2 83f699fc
+  lift arrival side=0 7,179,11,182 block=6,178,12,182 at=-65,44.25
+  lift departure side=0 13,179,17,182 block=12,178,18,182 at=-62,44.25
+plan s222732/f15 9513f5f2
   W=300 H=244 area=0.9683
-  tiles=daebadf5
-  spawn=-18.5,41.25 exit=-15.5,41.25
+  tiles=7681f9ed
+  spawn=-70.5,59.25 exit=-67.5,59.25
   prologue=73199
-  rooms=176 341981c4
-  roles=exit,parking
-  doors=3 bc470458
-  locks=
-  stairs=2 d648a2aa
-  lift arrival side=0 111,203,115,206 block=110,202,116,206 at=-18.5,41.25
-  lift departure side=0 117,203,121,206 block=116,202,122,206 at=-15.5,41.25
-plan s230651/f1 7f24b1e3
+  rooms=178 2e124e1e
+  roles=exit,office,parking,security
+  doors=6 9e89e7c4
+  locks=blue!
+  stairs=2 0acff74d
+  lift arrival side=0 7,239,11,242 block=6,238,12,242 at=-70.5,59.25
+  lift departure side=0 13,239,17,242 block=12,238,18,242 at=-67.5,59.25
+plan s230651/f1 710e67bc
   W=229 H=136 area=1.0873
-  tiles=9fbee38e
-  spawn=0.5,18 exit=0.5,21
+  tiles=f790b2c9
+  spawn=-53.25,32.25 exit=-50.25,32.25
   prologue=31143
-  rooms=60 91bba200
-  roles=exit,parking
-  doors=3 9e0e48e0
-  locks=
-  stairs=3 6e2247f6
-  lift arrival side=1 114,102,117,106 block=114,101,118,107 at=0.5,18
-  lift departure side=1 114,108,117,112 block=114,107,118,113 at=0.5,21
-plan s230651/f2 b4a19df0
+  rooms=61 6ba5da4f
+  roles=exit,office,parking,security
+  doors=8 b81e5c4d
+  locks=blue!
+  stairs=2 9ca7dff6
+  lift arrival side=0 6,131,10,134 block=5,130,11,134 at=-53.25,32.25
+  lift departure side=0 12,131,16,134 block=11,130,17,134 at=-50.25,32.25
+plan s230651/f2 d2aaed43
   W=165 H=186 area=0.9548
-  tiles=8fe2acc5
-  spawn=7,39.5 exit=7,42.5
+  tiles=d6009449
+  spawn=-37.25,44.75 exit=-34.25,44.75
   prologue=30689
-  rooms=51 91b3c907
-  roles=exit,parking
-  doors=3 eef14f21
-  locks=
-  stairs=3 ade3d8b1
-  lift arrival side=3 95,170,98,174 block=94,169,98,175 at=7,39.5
-  lift departure side=3 95,176,98,180 block=94,175,98,181 at=7,42.5
-plan s230651/f3 00bacc8f
+  rooms=53 9acb5f26
+  roles=exit,office,parking,security
+  doors=8 d5f77663
+  locks=blue!
+  stairs=2 bd1fc776
+  lift arrival side=0 6,181,10,184 block=5,180,11,184 at=-37.25,44.75
+  lift departure side=0 12,181,16,184 block=11,180,17,184 at=-34.25,44.75
+plan s230651/f3 76b9f41f
   W=199 H=137 area=0.7606
-  tiles=3a6a0feb
-  spawn=3.25,32 exit=6.25,32
+  tiles=afe8d898
+  spawn=-45.75,32.5 exit=-42.75,32.5
   prologue=27262
-  rooms=56 23db7219
-  roles=exit,parking
-  doors=3 4ef09b90
-  locks=
-  stairs=3 a9cf7261
-  lift arrival side=0 104,131,108,134 block=103,130,109,134 at=3.25,32
-  lift departure side=0 110,131,114,134 block=109,130,115,134 at=6.25,32
-plan s230651/f5 9a725ff2
+  rooms=57 ed9249d8
+  roles=exit,office,parking,security
+  doors=8 4d0350bd
+  locks=blue!
+  stairs=2 ed84e764
+  lift arrival side=0 6,132,10,135 block=5,131,11,135 at=-45.75,32.5
+  lift departure side=0 12,132,16,135 block=11,131,17,135 at=-42.75,32.5
+plan s230651/f5 a6c46c0c
   W=162 H=206 area=0.7612
-  tiles=5f49ab31
-  spawn=-13.5,28.25 exit=-10.5,28.25
+  tiles=aa3e5741
+  spawn=-36.5,49.75 exit=-33.5,49.75
   prologue=33371
-  rooms=67 4eb51562
-  roles=exit,parking
-  doors=3 12bd740b
-  locks=
-  stairs=3 d6be9be6
-  lift arrival side=0 52,158,56,161 block=51,157,57,161 at=-13.5,28.25
-  lift departure side=0 58,158,62,161 block=57,157,63,161 at=-10.5,28.25
-plan s230651/f8 adfca9cc
+  rooms=70 9720f141
+  roles=exit,office,parking,security
+  doors=8 4855be09
+  locks=blue!
+  stairs=2 370b45be
+  lift arrival side=0 6,201,10,204 block=5,200,11,204 at=-36.5,49.75
+  lift departure side=0 12,201,16,204 block=11,200,17,204 at=-33.5,49.75
+plan s230651/f8 a45e2575
   W=209 H=226 area=0.8237
-  tiles=04d4e905
-  spawn=1,39.5 exit=1,42.5
+  tiles=1329591d
+  spawn=-48.25,54.75 exit=-45.25,54.75
   prologue=47233
-  rooms=107 e055c7a8
-  roles=exit,parking
-  doors=3 393ed700
-  locks=
-  stairs=3 ce76f12f
-  lift arrival side=1 105,190,108,194 block=105,189,109,195 at=1,39.5
-  lift departure side=1 105,196,108,200 block=105,195,109,201 at=1,42.5
-plan s230651/f12 814c47d2
+  rooms=108 028b4f7f
+  roles=exit,office,parking,security
+  doors=8 17b810d3
+  locks=blue!
+  stairs=2 872e8485
+  lift arrival side=0 6,221,10,224 block=5,220,11,224 at=-48.25,54.75
+  lift departure side=0 12,221,16,224 block=11,220,17,224 at=-45.25,54.75
+plan s230651/f12 018d2fc1
   W=283 H=266 area=1.0092
-  tiles=ff0ee508
-  spawn=3.75,58.25 exit=6.75,58.25
+  tiles=f48d27cc
+  spawn=-66.75,64.75 exit=-63.75,64.75
   prologue=75277
-  rooms=194 5eb83c2b
-  roles=exit,parking
-  doors=3 185154b9
-  locks=
-  stairs=3 21b050c7
-  lift arrival side=0 147,248,151,251 block=146,247,152,251 at=3.75,58.25
-  lift departure side=0 153,248,157,251 block=152,247,158,251 at=6.75,58.25
-plan s230651/f15 01b8eba1
+  rooms=196 32be474a
+  roles=exit,office,parking,security
+  doors=8 087c7293
+  locks=blue!
+  stairs=2 c32928ed
+  lift arrival side=0 6,261,10,264 block=5,260,11,264 at=-66.75,64.75
+  lift departure side=0 12,261,16,264 block=11,260,17,264 at=-63.75,64.75
+plan s230651/f15 aa6473e3
   W=274 H=274 area=0.9931
-  tiles=02bc159a
-  spawn=20,61.25 exit=23,61.25
+  tiles=43568e39
+  spawn=-64.5,66.75 exit=-61.5,66.75
   prologue=75075
-  rooms=176 0a40cff4
-  roles=exit,parking
-  doors=3 d66e4466
-  locks=
-  stairs=3 1a89a8d9
-  lift arrival side=0 175,258,179,261 block=174,257,180,261 at=20,61.25
-  lift departure side=0 181,258,185,261 block=180,257,186,261 at=23,61.25
-plan s238570/f1 ffef8c08
+  rooms=179 00da660b
+  roles=exit,office,parking,security
+  doors=8 88f16d1a
+  locks=blue!
+  stairs=2 4c3c0eb5
+  lift arrival side=0 6,269,10,272 block=5,268,11,272 at=-64.5,66.75
+  lift departure side=0 12,269,16,272 block=11,268,17,272 at=-61.5,66.75
+plan s238570/f1 5cc390bf
   W=181 H=193 area=1.2196
-  tiles=1b55003d
-  spawn=-12.25,14.5 exit=-9.25,14.5
+  tiles=1e19a48f
+  spawn=-39.75,46.5 exit=-36.75,46.5
   prologue=34932
-  rooms=75 cb1566b0
-  roles=exit,parking
-  doors=3 8b33d824
-  locks=
-  stairs=3 54b4afac
-  lift arrival side=2 64,124,68,127 block=63,124,69,128 at=-12.25,14.5
-  lift departure side=2 70,124,74,127 block=69,124,75,128 at=-9.25,14.5
-plan s238570/f2 8241bd4a
+  rooms=74 986f0036
+  roles=exit,office,parking,security
+  doors=6 f835fb90
+  locks=blue!
+  stairs=2 d570f70a
+  lift arrival side=0 9,188,13,191 block=8,187,14,191 at=-39.75,46.5
+  lift departure side=0 15,188,19,191 block=14,187,20,191 at=-36.75,46.5
+plan s238570/f2 33faf5d2
   W=188 H=206 area=1.2048
-  tiles=ba3fd05d
-  spawn=0,35.25 exit=3,35.25
+  tiles=3ea9c872
+  spawn=-41.5,49.75 exit=-38.5,49.75
   prologue=38727
-  rooms=74 cb4c3986
-  roles=exit,parking
-  doors=3 e2dac25a
-  locks=
-  stairs=3 a5d2a1fa
-  lift arrival side=2 92,172,96,175 block=91,172,97,176 at=0,35.25
-  lift departure side=2 98,172,102,175 block=97,172,103,176 at=3,35.25
-plan s238570/f3 cce7c510
+  rooms=75 491f4813
+  roles=exit,office,parking,security
+  doors=6 d403a785
+  locks=blue!
+  stairs=2 ea42096e
+  lift arrival side=0 9,201,13,204 block=8,200,14,204 at=-41.5,49.75
+  lift departure side=0 15,201,19,204 block=14,200,20,204 at=-38.5,49.75
+plan s238570/f3 53289cad
   W=268 H=172 area=1.286
-  tiles=70a39b9f
-  spawn=21,40.75 exit=24,40.75
+  tiles=ed0262e3
+  spawn=-61.5,41.25 exit=-58.5,41.25
   prologue=46095
-  rooms=98 e48b2d62
-  roles=exit,parking
-  doors=3 dce09602
-  locks=
-  stairs=3 68a9bb54
-  lift arrival side=0 174,166,178,169 block=173,165,179,169 at=21,40.75
-  lift departure side=0 180,166,184,169 block=179,165,185,169 at=24,40.75
-plan s238570/f5 b979b3d2
+  rooms=100 ef3e023e
+  roles=exit,office,parking,security
+  doors=6 f16cd4de
+  locks=blue!
+  stairs=2 5cf2db47
+  lift arrival side=0 9,167,13,170 block=8,166,14,170 at=-61.5,41.25
+  lift departure side=0 15,167,19,170 block=14,166,20,170 at=-58.5,41.25
+plan s238570/f5 2e26b5c8
   W=224 H=163 area=0.8328
-  tiles=ad64970f
-  spawn=-8.75,25.75 exit=-8.75,28.75
+  tiles=29cfe230
+  spawn=-50.5,39 exit=-47.5,39
   prologue=36511
-  rooms=69 06c471ec
-  roles=exit,parking
-  doors=3 b59d5e7d
-  locks=
-  stairs=3 99fa7567
-  lift arrival side=3 93,131,96,135 block=92,130,96,136 at=-8.75,25.75
-  lift departure side=3 93,137,96,141 block=92,136,96,142 at=-8.75,28.75
-plan s238570/f8 888a84f2
+  rooms=71 a083228a
+  roles=exit,office,parking,security
+  doors=6 a5b79262
+  locks=blue!
+  stairs=2 28797677
+  lift arrival side=0 9,158,13,161 block=8,157,14,161 at=-50.5,39
+  lift departure side=0 15,158,19,161 block=14,157,20,161 at=-47.5,39
+plan s238570/f8 b7f48d60
   W=300 H=193 area=1.0097
-  tiles=34ca1e0a
-  spawn=-1.75,36.75 exit=-1.75,39.75
+  tiles=ba38ba28
+  spawn=-69.5,46.5 exit=-66.5,46.5
   prologue=57899
-  rooms=126 fa7fe98d
-  roles=exit,parking
-  doors=4 f51785c1
-  locks=
-  stairs=3 30501670
-  lift arrival side=3 145,168,148,172 block=144,167,148,173 at=-1.75,36.75
-  lift departure side=3 145,174,148,178 block=144,173,148,179 at=-1.75,39.75
-plan s238570/f12 97f2baf6
+  rooms=128 b20d0700
+  roles=exit,office,parking,security
+  doors=6 f835fb90
+  locks=blue!
+  stairs=2 c6fe4e0a
+  lift arrival side=0 9,188,13,191 block=8,187,14,191 at=-69.5,46.5
+  lift departure side=0 15,188,19,191 block=14,187,20,191 at=-66.5,46.5
+plan s238570/f12 f303f325
   W=277 H=272 area=1.0101
-  tiles=fcc1b140
-  spawn=-1,41.5 exit=-2.75,46.25
+  tiles=31db2781
+  spawn=-63.75,66.25 exit=-60.75,66.25
   prologue=75343
-  rooms=177 c0f239fa
-  roles=exit,parking
-  doors=4 1598949a
-  locks=
-  stairs=3 bfbe9bc1
-  lift arrival side=3 135,217,138,221 block=134,216,138,222 at=-1,41.5
-  lift departure side=0 131,227,135,230 block=130,226,136,230 at=-2.75,46.25
-plan s238570/f15 c6619758
+  rooms=176 a91817a1
+  roles=exit,office,parking,security
+  doors=6 bb3c7810
+  locks=blue!
+  stairs=2 207240e9
+  lift arrival side=0 9,267,13,270 block=8,266,14,270 at=-63.75,66.25
+  lift departure side=0 15,267,19,270 block=14,266,20,270 at=-60.75,66.25
+plan s238570/f15 74b3da81
   W=300 H=230 area=0.9127
-  tiles=839996de
-  spawn=-20.75,37 exit=-20.75,40
+  tiles=edc1ea02
+  spawn=-69.5,55.75 exit=-66.5,55.75
   prologue=68999
-  rooms=174 82faea91
-  roles=exit,parking
-  doors=3 7b65d45f
-  locks=
-  stairs=3 d706a8f2
-  lift arrival side=3 107,187,110,191 block=106,186,110,192 at=-20.75,37
-  lift departure side=3 107,193,110,197 block=106,192,110,198 at=-20.75,40
-plan s246489/f1 0ee14adc
+  rooms=174 01c08ac7
+  roles=exit,office,parking,security
+  doors=6 63a778ac
+  locks=blue!
+  stairs=2 e0e80aad
+  lift arrival side=0 9,225,13,228 block=8,224,14,228 at=-69.5,55.75
+  lift departure side=0 15,225,19,228 block=14,224,20,228 at=-66.5,55.75
+plan s246489/f1 6be99552
   W=176 H=186 area=1.1429
-  tiles=8ecfdaae
-  spawn=6.25,39.5 exit=6.25,42.5
+  tiles=54b20472
+  spawn=-38.5,44.75 exit=-35.5,44.75
   prologue=32735
-  rooms=60 19dca599
-  roles=exit,parking
-  doors=3 88d2e44b
-  locks=
-  stairs=2 90e44251
-  lift arrival side=3 99,170,102,174 block=98,169,102,175 at=6.25,39.5
-  lift departure side=3 99,176,102,180 block=98,175,102,181 at=6.25,42.5
-plan s246489/f2 a4670bda
+  rooms=62 36b5f564
+  roles=exit,office,parking,security
+  doors=6 0ab3900a
+  locks=blue!
+  stairs=2 0ec3266a
+  lift arrival side=0 9,181,13,184 block=8,180,14,184 at=-38.5,44.75
+  lift departure side=0 15,181,19,184 block=14,180,20,184 at=-35.5,44.75
+plan s246489/f2 6f3e1aae
   W=171 H=157 area=0.8352
-  tiles=fb273a89
-  spawn=-2,23.75 exit=-2,26.75
+  tiles=4ba0302b
+  spawn=-37.25,37.5 exit=-34.25,37.5
   prologue=26846
-  rooms=60 7128e758
-  roles=exit,parking
-  doors=3 e9c7d7ef
-  locks=
-  stairs=2 3ab5b032
-  lift arrival side=1 80,124,83,128 block=80,123,84,129 at=-2,23.75
-  lift departure side=1 80,130,83,134 block=80,129,84,135 at=-2,26.75
-plan s246489/f3 f9f22d08
+  rooms=61 8d2f9240
+  roles=exit,office,parking,security
+  doors=6 107a3724
+  locks=blue!
+  stairs=2 ad6998dc
+  lift arrival side=0 9,152,13,155 block=8,151,14,155 at=-37.25,37.5
+  lift departure side=0 15,152,19,155 block=14,151,20,155 at=-34.25,37.5
+plan s246489/f3 656eb8e8
   W=199 H=126 area=0.6995
-  tiles=e4516697
-  spawn=-13.75,29.25 exit=-10.75,29.25
+  tiles=05f6ae12
+  spawn=-44.25,29.75 exit=-41.25,29.75
   prologue=25073
-  rooms=38 dbdbe444
-  roles=exit,parking
-  doors=3 c6753a9b
-  locks=
-  stairs=2 d0c631b9
-  lift arrival side=0 70,120,74,123 block=69,119,75,123 at=-13.75,29.25
-  lift departure side=0 76,120,80,123 block=75,119,81,123 at=-10.75,29.25
-plan s246489/f5 b2f7f929
+  rooms=40 02e72911
+  roles=exit,office,parking,security
+  doors=6 e822fede
+  locks=blue!
+  stairs=2 da22eaa7
+  lift arrival side=0 9,121,13,124 block=8,120,14,124 at=-44.25,29.75
+  lift departure side=0 15,121,19,124 block=14,120,20,124 at=-41.25,29.75
+plan s246489/f5 5e0c2e30
   W=254 H=168 area=0.9733
-  tiles=40224820
-  spawn=-10,35.75 exit=-7,35.75
+  tiles=20ddfdd8
+  spawn=-58,40.25 exit=-55,40.25
   prologue=42671
-  rooms=90 57c98d84
-  roles=exit,parking
-  doors=4 3644f6f5
-  locks=
-  stairs=2 7b943168
-  lift arrival side=2 105,154,109,157 block=104,154,110,158 at=-10,35.75
-  lift departure side=2 111,154,115,157 block=110,154,116,158 at=-7,35.75
-plan s246489/f8 180d02a3
+  rooms=92 eec69bd8
+  roles=exit,office,parking,security
+  doors=6 29ad8282
+  locks=blue!
+  stairs=2 f5fb54df
+  lift arrival side=0 9,163,13,166 block=8,162,14,166 at=-58,40.25
+  lift departure side=0 15,163,19,166 block=14,162,20,166 at=-55,40.25
+plan s246489/f8 ede6864e
   W=191 H=195 area=0.6495
-  tiles=bd66d551
-  spawn=2.25,15.5 exit=5.25,15.5
+  tiles=1821790f
+  spawn=-42.25,47 exit=-39.25,47
   prologue=37244
-  rooms=62 352e1405
-  roles=exit,parking
-  doors=3 a72b4d6b
-  locks=
-  stairs=2 54a90837
-  lift arrival side=2 98,127,102,130 block=97,127,103,131 at=2.25,15.5
-  lift departure side=2 104,127,108,130 block=103,127,109,131 at=5.25,15.5
-plan s246489/f12 52cd3684
+  rooms=64 f1423320
+  roles=exit,office,parking,security
+  doors=6 ec41f00d
+  locks=blue!
+  stairs=2 8a72f737
+  lift arrival side=0 9,190,13,193 block=8,189,14,193 at=-42.25,47
+  lift departure side=0 15,190,19,193 block=14,189,20,193 at=-39.25,47
+plan s246489/f12 9c1541a6
   W=265 H=232 area=0.8242
-  tiles=085a10af
-  spawn=4.75,36.75 exit=7.75,36.75
+  tiles=420c523e
+  spawn=-60.75,56.25 exit=-57.75,56.25
   prologue=61479
-  rooms=145 1d1ee8f5
-  roles=exit,parking
-  doors=3 afb7b772
-  locks=
-  stairs=2 33614516
-  lift arrival side=0 140,188,144,191 block=139,187,145,191 at=4.75,36.75
-  lift departure side=0 146,188,150,191 block=145,187,151,191 at=7.75,36.75
-plan s246489/f15 7babb5f4
+  rooms=145 0a527eba
+  roles=exit,office,parking,security
+  doors=6 bfcc32f7
+  locks=blue!
+  stairs=2 4de531d5
+  lift arrival side=0 9,227,13,230 block=8,226,14,230 at=-60.75,56.25
+  lift departure side=0 15,227,19,230 block=14,226,20,230 at=-57.75,56.25
+plan s246489/f15 bc7cf25d
   W=300 H=252 area=1
-  tiles=5df60777
-  spawn=-10.25,43 exit=-10.25,46
+  tiles=0fea0068
+  spawn=-69.5,61.25 exit=-66.5,61.25
   prologue=75599
-  rooms=186 cc31d026
-  roles=exit,parking
-  doors=3 e2d2a6a6
-  locks=
-  stairs=2 62cd22e5
-  lift arrival side=1 128,210,131,214 block=128,209,132,215 at=-10.25,43
-  lift departure side=1 128,216,131,220 block=128,215,132,221 at=-10.25,46
-plan s254408/f1 a0f77b69
+  rooms=184 a7b27803
+  roles=exit,office,parking,security
+  doors=6 341c52f7
+  locks=blue!
+  stairs=2 ba71a5ad
+  lift arrival side=0 9,247,13,250 block=8,246,14,250 at=-69.5,61.25
+  lift departure side=0 15,247,19,250 block=14,246,20,250 at=-66.5,61.25
+plan s254408/f1 1f6e442c
   W=249 H=147 area=1.2779
-  tiles=33338eb8
-  spawn=-12.75,17 exit=-9.75,17
+  tiles=9391d84f
+  spawn=-58.25,35 exit=-55.25,35
   prologue=36602
-  rooms=77 d7724af6
-  roles=exit,parking
-  doors=3 8df6c04b
-  locks=
-  stairs=3 745361f7
-  lift arrival side=2 97,106,101,109 block=96,106,102,110 at=-12.75,17
-  lift departure side=2 103,106,107,109 block=102,106,108,110 at=-9.75,17
-plan s254408/f2 c6ff5936
+  rooms=81 9eab9a66
+  roles=exit,office,parking,security
+  doors=8 bf9b475a
+  locks=blue!
+  stairs=2 53dd473f
+  lift arrival side=0 6,142,10,145 block=5,141,11,145 at=-58.25,35
+  lift departure side=0 12,142,16,145 block=11,141,17,145 at=-55.25,35
+plan s254408/f2 25cb4121
   W=240 H=179 area=1.3365
-  tiles=7b4eb4f6
-  spawn=0,35 exit=3,35
+  tiles=8add4aa2
+  spawn=-56,43 exit=-53,43
   prologue=42959
-  rooms=83 b52a50ca
-  roles=exit,parking
-  doors=3 237f226f
-  locks=
-  stairs=3 f65e3d93
-  lift arrival side=0 118,158,122,161 block=117,157,123,161 at=0,35
-  lift departure side=0 124,158,128,161 block=123,157,129,161 at=3,35
-plan s254408/f3 bc36980d
+  rooms=85 ff84889c
+  roles=exit,office,parking,security
+  doors=8 89af6fc6
+  locks=blue!
+  stairs=2 f34ed7fa
+  lift arrival side=0 6,174,10,177 block=5,173,11,177 at=-56,43
+  lift departure side=0 12,174,16,177 block=11,173,17,177 at=-53,43
+plan s254408/f3 c536a861
   W=233 H=199 area=1.2936
-  tiles=ccf495d0
-  spawn=-7.5,34.75 exit=-7.5,37.75
+  tiles=beee1f0e
+  spawn=-54.25,48 exit=-51.25,48
   prologue=46366
-  rooms=86 63efb579
-  roles=exit,parking
-  doors=3 bcc074c7
-  locks=
-  stairs=3 c759de5e
-  lift arrival side=3 100,167,103,171 block=99,166,103,172 at=-7.5,34.75
-  lift departure side=3 100,173,103,177 block=99,172,103,178 at=-7.5,37.75
-plan s254408/f5 8ecde780
+  rooms=90 792504e0
+  roles=exit,office,parking,security
+  doors=8 9b0b37c6
+  locks=blue!
+  stairs=2 0f6354a5
+  lift arrival side=0 6,194,10,197 block=5,193,11,197 at=-54.25,48
+  lift departure side=0 12,194,16,197 block=11,193,17,197 at=-51.25,48
+plan s254408/f5 4755bb8f
   W=230 H=240 area=1.259
-  tiles=8ccbaa9f
-  spawn=-1.75,31 exit=-1.75,34
+  tiles=ea6f9985
+  spawn=-53.5,58.25 exit=-50.5,58.25
   prologue=55199
-  rooms=120 778142a0
-  roles=exit,parking
-  doors=3 a6794f4f
-  locks=
-  stairs=3 d93549ac
-  lift arrival side=1 110,180,113,184 block=110,179,114,185 at=-1.75,31
-  lift departure side=1 110,186,113,190 block=110,185,114,191 at=-1.75,34
-plan s254408/f8 a6bf12a7
+  rooms=119 edfbe234
+  roles=exit,office,parking,security
+  doors=8 cb723a6f
+  locks=blue!
+  stairs=2 3c5dad6e
+  lift arrival side=0 6,235,10,238 block=5,234,11,238 at=-53.5,58.25
+  lift departure side=0 12,235,16,238 block=11,234,17,238 at=-50.5,58.25
+plan s254408/f8 686ab599
   W=240 H=273 area=1.1426
-  tiles=9acf1b8c
-  spawn=4.25,62.25 exit=4.25,65.25
+  tiles=8f900abe
+  spawn=-56,66.5 exit=-53,66.5
   prologue=65519
-  rooms=146 45293672
-  roles=exit,parking
-  doors=3 0807c60e
-  locks=
-  stairs=3 00797409
-  lift arrival side=3 127,259,130,263 block=126,258,130,264 at=4.25,62.25
-  lift departure side=3 127,265,130,269 block=126,264,130,270 at=4.25,65.25
-plan s254408/f12 984a1fc6
+  rooms=148 d98944a6
+  roles=exit,office,parking,security
+  doors=8 fe23c0c7
+  locks=blue!
+  stairs=2 a9dfc8dd
+  lift arrival side=0 6,268,10,271 block=5,267,11,271 at=-56,66.5
+  lift departure side=0 12,268,16,271 block=11,267,17,271 at=-53,66.5
+plan s254408/f12 81537b43
   W=225 H=244 area=0.736
-  tiles=5fd16411
-  spawn=-13.5,43.5 exit=-13.5,46.5
+  tiles=b7294306
+  spawn=-52.25,59.25 exit=-49.25,59.25
   prologue=54899
-  rooms=118 8b4c4fbb
-  roles=exit,parking
-  doors=4 406b523b
-  locks=
-  stairs=3 fae9df33
-  lift arrival side=1 84,207,87,211 block=84,206,88,212 at=-13.5,43.5
-  lift departure side=1 84,213,87,217 block=84,212,88,218 at=-13.5,46.5
-plan s254408/f15 bd4771d7
+  rooms=118 f0aa6dce
+  roles=exit,office,parking,security
+  doors=8 eda83a13
+  locks=blue!
+  stairs=2 357c2d8d
+  lift arrival side=0 6,239,10,242 block=5,238,11,242 at=-52.25,59.25
+  lift departure side=0 12,239,16,242 block=11,238,17,242 at=-49.25,59.25
+plan s254408/f15 5e09a2b8
   W=252 H=299 area=0.9967
-  tiles=fa05cfdd
-  spawn=14,41.5 exit=17,41.5
+  tiles=12d97cf4
+  spawn=-59,73 exit=-56,73
   prologue=75347
-  rooms=183 ec93b38d
-  roles=exit,parking
-  doors=3 bd3cb886
-  locks=
-  stairs=3 f0b7b38d
-  lift arrival side=0 152,231,156,234 block=151,230,157,234 at=14,41.5
-  lift departure side=0 158,231,162,234 block=157,230,163,234 at=17,41.5
-plan s262327/f1 cd4ab821
+  rooms=184 038b3a9d
+  roles=exit,office,parking,security
+  doors=8 a8edb8e0
+  locks=blue!
+  stairs=2 8ab3f6f8
+  lift arrival side=0 6,294,10,297 block=5,293,11,297 at=-59,73
+  lift departure side=0 12,294,16,297 block=11,293,17,297 at=-56,73
+plan s262327/f1 99f4e6a8
   W=196 H=191 area=1.3069
-  tiles=8a58384b
-  spawn=3,31 exit=6,31
+  tiles=ed23ce21
+  spawn=-45,46 exit=-42,46
   prologue=37435
-  rooms=84 fb731b32
-  roles=exit,parking
-  doors=3 cbeebd41
-  locks=
-  stairs=4 064196c7
-  lift arrival side=0 102,156,106,159 block=101,155,107,159 at=3,31
-  lift departure side=0 108,156,112,159 block=107,155,113,159 at=6,31
-plan s262327/f2 22c8662c
+  rooms=88 3ac39e65
+  roles=exit,office,parking,security
+  doors=11 5818feaf
+  locks=blue!
+  stairs=2 a7e6554c
+  lift arrival side=0 6,186,10,189 block=5,185,11,189 at=-45,46
+  lift departure side=0 12,186,16,189 block=11,185,17,189 at=-42,46
+plan s262327/f2 c6467c6b
   W=163 H=158 area=0.8012
-  tiles=c16a2012
-  spawn=-0.25,37.25 exit=2.75,37.25
+  tiles=630ac988
+  spawn=-36.75,37.75 exit=-33.75,37.75
   prologue=25753
-  rooms=55 53fd8835
-  roles=exit,parking
-  doors=3 86b3d931
-  locks=
-  stairs=4 b9745557
-  lift arrival side=0 79,152,83,155 block=78,151,84,155 at=-0.25,37.25
-  lift departure side=0 85,152,89,155 block=84,151,90,155 at=2.75,37.25
-plan s262327/f3 fa70a5e5
+  rooms=57 458e683c
+  roles=exit,office,parking,security
+  doors=11 5adc8652
+  locks=blue!
+  stairs=2 b9cba7b0
+  lift arrival side=0 6,153,10,156 block=5,152,11,156 at=-36.75,37.75
+  lift departure side=0 12,153,16,156 block=11,152,17,156 at=-33.75,37.75
+plan s262327/f3 821dd270
   W=187 H=131 area=0.6834
-  tiles=75594812
-  spawn=1,15.75 exit=1,21.75
+  tiles=272f1315
+  spawn=-42.75,31 exit=-39.75,31
   prologue=24496
-  rooms=44 8fb26e1a
-  roles=exit,parking
-  doors=4 767ab5e4
-  locks=
-  stairs=4 381ea8a3
-  lift arrival side=3 94,95,97,99 block=93,94,97,100 at=1,15.75
-  lift departure side=3 94,107,97,111 block=93,106,97,112 at=1,21.75
-plan s262327/f5 bcd83c5a
+  rooms=48 15c9f627
+  roles=exit,office,parking,security
+  doors=11 be83a46f
+  locks=blue!
+  stairs=2 961fbfbf
+  lift arrival side=0 6,126,10,129 block=5,125,11,129 at=-42.75,31
+  lift departure side=0 12,126,16,129 block=11,125,17,129 at=-39.75,31
+plan s262327/f5 945afda7
   W=199 H=170 area=0.7716
-  tiles=dde7329e
-  spawn=0.25,19.75 exit=3.25,19.75
+  tiles=e7b93888
+  spawn=-45.75,40.75 exit=-42.75,40.75
   prologue=33829
-  rooms=76 22b76e61
-  roles=exit,parking
-  doors=3 bc17585d
-  locks=
-  stairs=4 80079a17
-  lift arrival side=2 98,123,102,126 block=97,123,103,127 at=0.25,19.75
-  lift departure side=2 104,123,108,126 block=103,123,109,127 at=3.25,19.75
-plan s262327/f8 9f215ecb
+  rooms=77 3340b14f
+  roles=exit,office,parking,security
+  doors=11 51a604f1
+  locks=blue!
+  stairs=2 5eec939f
+  lift arrival side=0 6,165,10,168 block=5,164,11,168 at=-45.75,40.75
+  lift departure side=0 12,165,16,168 block=11,164,17,168 at=-42.75,40.75
+plan s262327/f8 aec82973
   W=264 H=196 area=0.9023
-  tiles=2b40f083
-  spawn=-6.25,42 exit=-6.25,45
+  tiles=00eb523c
+  spawn=-62,47.25 exit=-59,47.25
   prologue=51743
-  rooms=113 81af7b31
-  roles=exit,parking
-  doors=3 2be0cd90
-  locks=
-  stairs=4 4edbd717
-  lift arrival side=1 118,180,121,184 block=118,179,122,185 at=-6.25,42
-  lift departure side=1 118,186,121,190 block=118,185,122,191 at=-6.25,45
-plan s262327/f12 3cfd5ea4
+  rooms=114 2c58e23d
+  roles=exit,office,parking,security
+  doors=11 69fb559f
+  locks=blue!
+  stairs=2 98d65465
+  lift arrival side=0 6,191,10,194 block=5,190,11,194 at=-62,47.25
+  lift departure side=0 12,191,16,194 block=11,190,17,194 at=-59,47.25
+plan s262327/f12 52bfd354
   W=284 H=266 area=1.0128
-  tiles=a5627157
-  spawn=-18.5,64.25 exit=-15.5,64.25
+  tiles=3b12684a
+  spawn=-67,64.75 exit=-64,64.75
   prologue=75543
-  rooms=184 7642838e
-  roles=exit,parking
-  doors=3 0c607a94
-  locks=
-  stairs=4 e271f948
-  lift arrival side=0 103,260,107,263 block=102,259,108,263 at=-18.5,64.25
-  lift departure side=0 109,260,113,263 block=108,259,114,263 at=-15.5,64.25
-plan s262327/f15 5f1bed7e
+  rooms=187 361339bb
+  roles=exit,office,parking,security
+  doors=11 18788ba7
+  locks=blue!
+  stairs=2 c32928ed
+  lift arrival side=0 6,261,10,264 block=5,260,11,264 at=-67,64.75
+  lift departure side=0 12,261,16,264 block=11,260,17,264 at=-64,64.75
+plan s262327/f15 41372ae0
   W=291 H=256 area=0.9854
-  tiles=14159a7d
-  spawn=-0.25,61.75 exit=2.75,61.75
+  tiles=a80c1434
+  spawn=-68.75,62.25 exit=-65.75,62.25
   prologue=74495
-  rooms=189 e8aa94a2
-  roles=exit,parking
-  doors=3 e977c149
-  locks=
-  stairs=4 b018f5bd
-  lift arrival side=0 143,250,147,253 block=142,249,148,253 at=-0.25,61.75
-  lift departure side=0 149,250,153,253 block=148,249,154,253 at=2.75,61.75
-plan s270246/f1 677643fb
+  rooms=191 9ba8578c
+  roles=exit,office,parking,security
+  doors=11 9a29547b
+  locks=blue!
+  stairs=2 6d19431a
+  lift arrival side=0 6,251,10,254 block=5,250,11,254 at=-68.75,62.25
+  lift departure side=0 12,251,16,254 block=11,250,17,254 at=-65.75,62.25
+plan s270246/f1 e0eca1a6
   W=205 H=140 area=1.002
-  tiles=4ace0537
-  spawn=-4.25,25.25 exit=-1.25,25.25
+  tiles=22c30936
+  spawn=-47.25,33.25 exit=-44.25,33.25
   prologue=28699
-  rooms=53 4d1c42f7
-  roles=exit,parking
-  doors=3 355de9b6
-  locks=
-  stairs=2 2a293791
-  lift arrival side=0 92,119,96,122 block=91,118,97,122 at=-4.25,25.25
-  lift departure side=0 98,119,102,122 block=97,118,103,122 at=-1.25,25.25
-plan s270246/f2 081ab47f
+  rooms=52 8582f316
+  roles=exit,office,parking,security
+  doors=9 d304d502
+  locks=blue!
+  stairs=2 44591b32
+  lift arrival side=0 6,135,10,138 block=5,134,11,138 at=-47.25,33.25
+  lift departure side=0 12,135,16,138 block=11,134,17,138 at=-44.25,33.25
+plan s270246/f2 a5bd9e73
   W=186 H=170 area=0.9837
-  tiles=b8cd0ec2
-  spawn=11,40.25 exit=14,40.25
+  tiles=a30ee65e
+  spawn=-42.5,40.75 exit=-39.5,40.75
   prologue=31619
-  rooms=64 0c9fa299
-  roles=exit,parking
-  doors=3 a5202768
-  locks=
-  stairs=2 05ba3942
-  lift arrival side=0 113,164,117,167 block=112,163,118,167 at=11,40.25
-  lift departure side=0 119,164,123,167 block=118,163,124,167 at=14,40.25
-plan s270246/f3 fc1aa2f4
+  rooms=64 ead2f14c
+  roles=exit,office,parking,security
+  doors=9 5435c0b4
+  locks=blue!
+  stairs=2 0577e0fb
+  lift arrival side=0 6,165,10,168 block=5,164,11,168 at=-42.5,40.75
+  lift departure side=0 12,165,16,168 block=11,164,17,168 at=-39.5,40.75
+plan s270246/f3 f65653f5
   W=175 H=208 area=1.0155
-  tiles=243596c2
-  spawn=-3,46 exit=-3,49
+  tiles=ffbae62a
+  spawn=-39.75,50.25 exit=-36.75,50.25
   prologue=36399
-  rooms=75 7141ef55
-  roles=exit,parking
-  doors=3 ce85b5b3
-  locks=
-  stairs=2 9393224f
-  lift arrival side=1 80,194,83,198 block=80,193,84,199 at=-3,46
-  lift departure side=1 80,200,83,204 block=80,199,84,205 at=-3,49
-plan s270246/f5 4ab6a120
+  rooms=76 b4814596
+  roles=exit,office,parking,security
+  doors=9 a0d4280f
+  locks=blue!
+  stairs=2 de2f331a
+  lift arrival side=0 6,203,10,206 block=5,202,11,206 at=-39.75,50.25
+  lift departure side=0 12,203,16,206 block=11,202,17,206 at=-36.75,50.25
+plan s270246/f5 f06ef333
   W=174 H=200 area=0.7937
-  tiles=3e30d51a
-  spawn=-3.5,47.75 exit=-0.5,47.75
+  tiles=685b3090
+  spawn=-39.5,48.25 exit=-36.5,48.25
   prologue=34799
-  rooms=77 78e7c381
-  roles=exit,parking
-  doors=3 0cac6cb0
-  locks=
-  stairs=2 ff692d01
-  lift arrival side=0 78,194,82,197 block=77,193,83,197 at=-3.5,47.75
-  lift departure side=0 84,194,88,197 block=83,193,89,197 at=-0.5,47.75
-plan s270246/f8 6f694923
+  rooms=78 1efd145c
+  roles=exit,office,parking,security
+  doors=9 3c025ee6
+  locks=blue!
+  stairs=2 9860cad9
+  lift arrival side=0 6,195,10,198 block=5,194,11,198 at=-39.5,48.25
+  lift departure side=0 12,195,16,198 block=11,194,17,198 at=-36.5,48.25
+plan s270246/f8 ae74af43
   W=264 H=169 area=0.778
-  tiles=5c95ef5b
-  spawn=-0.25,27.75 exit=-0.25,30.75
+  tiles=2bfe7281
+  spawn=-62,40.5 exit=-59,40.5
   prologue=44615
-  rooms=76 5db914ad
-  roles=exit,parking
-  doors=3 6d2f054d
-  locks=
-  stairs=2 306f6080
-  lift arrival side=3 130,138,133,142 block=129,137,133,143 at=-0.25,27.75
-  lift departure side=3 130,144,133,148 block=129,143,133,149 at=-0.25,30.75
-plan s270246/f12 5d745b9a
+  rooms=79 d12d90b7
+  roles=exit,office,parking,security
+  doors=9 eb7eae05
+  locks=blue!
+  stairs=2 76b183eb
+  lift arrival side=0 6,164,10,167 block=5,163,11,167 at=-62,40.5
+  lift departure side=0 12,164,16,167 block=11,163,17,167 at=-59,40.5
+plan s270246/f12 b46c1ca8
   W=197 H=232 area=0.6127
-  tiles=56913aa6
-  spawn=9.5,51 exit=9.5,54
+  tiles=bd13fed8
+  spawn=-45.25,56.25 exit=-42.25,56.25
   prologue=45703
-  rooms=82 bbb3ed2f
-  roles=exit,parking
-  doors=3 eba39da5
-  locks=
-  stairs=2 48930c2b
-  lift arrival side=1 116,216,119,220 block=116,215,120,221 at=9.5,51
-  lift departure side=1 116,222,119,226 block=116,221,120,227 at=9.5,54
-plan s270246/f15 52588c7e
+  rooms=81 b5bc338a
+  roles=exit,office,parking,security
+  doors=9 e6f0ae76
+  locks=blue!
+  stairs=2 cb7922a1
+  lift arrival side=0 6,227,10,230 block=5,226,11,230 at=-45.25,56.25
+  lift departure side=0 12,227,16,230 block=11,226,17,230 at=-42.25,56.25
+plan s270246/f15 4d5cf092
   W=294 H=212 area=0.8244
-  tiles=ccd2cb84
-  spawn=3,23.75 exit=6,23.75
+  tiles=eb248944
+  spawn=-69.5,51.25 exit=-66.5,51.25
   prologue=62327
-  rooms=127 9cdb6620
-  roles=exit,parking
-  doors=3 94f9bb26
-  locks=
-  stairs=2 c80167c7
-  lift arrival side=2 151,152,155,155 block=150,152,156,156 at=3,23.75
-  lift departure side=2 157,152,161,155 block=156,152,162,156 at=6,23.75
-plan s278165/f1 1ee0aff6
+  rooms=130 51bf62ea
+  roles=exit,office,parking,security
+  doors=9 bc3bbb0e
+  locks=blue!
+  stairs=2 8be646da
+  lift arrival side=0 6,207,10,210 block=5,206,11,210 at=-69.5,51.25
+  lift departure side=0 12,207,16,210 block=11,206,17,210 at=-66.5,51.25
+plan s278165/f1 5690a495
   W=131 H=161 area=0.7363
-  tiles=99529936
-  spawn=-8.75,20 exit=-5.75,20
+  tiles=9cee5adb
+  spawn=-28.25,38.5 exit=-25.25,38.5
   prologue=21090
-  rooms=50 0e80c8eb
-  roles=exit,parking
-  doors=3 493d342c
-  locks=
-  stairs=4 004fa94d
-  lift arrival side=2 46,119,50,122 block=45,119,51,123 at=-8.75,20
-  lift departure side=2 52,119,56,122 block=51,119,57,123 at=-5.75,20
-plan s278165/f2 adbbb09f
+  rooms=49 5b841b78
+  roles=exit,office,parking,security
+  doors=6 2c6c15c3
+  locks=blue!
+  stairs=2 a7ea1f20
+  lift arrival side=0 7,156,11,159 block=6,155,12,159 at=-28.25,38.5
+  lift departure side=0 13,156,17,159 block=12,155,18,159 at=-25.25,38.5
+plan s278165/f2 98085d54
   W=193 H=122 area=0.7325
-  tiles=7aca8d6f
-  spawn=-4.5,22 exit=-4.5,25
+  tiles=3c261726
+  spawn=-43.75,28.75 exit=-40.75,28.75
   prologue=23545
-  rooms=47 36497128
-  roles=exit,parking
-  doors=3 3ce05380
-  locks=
-  stairs=4 7e6b8f12
-  lift arrival side=3 86,103,89,107 block=85,102,89,108 at=-4.5,22
-  lift departure side=3 86,109,89,113 block=85,108,89,114 at=-4.5,25
-plan s278165/f3 118fef3d
+  rooms=48 f8101a59
+  roles=exit,office,parking,security
+  doors=6 f6422385
+  locks=blue!
+  stairs=2 59e0d358
+  lift arrival side=0 7,117,11,120 block=6,116,12,120 at=-43.75,28.75
+  lift departure side=0 13,117,17,120 block=12,116,18,120 at=-40.75,28.75
+plan s278165/f3 f76c051c
   W=161 H=188 area=0.8444
-  tiles=f4d40cbb
-  spawn=1.75,44.75 exit=4.75,44.75
+  tiles=86c2aa86
+  spawn=-35.75,45.25 exit=-32.75,45.25
   prologue=30267
-  rooms=61 1435320f
-  roles=exit,parking
-  doors=3 da1ec88e
-  locks=
-  stairs=4 e35d3270
-  lift arrival side=0 82,182,86,185 block=81,181,87,185 at=1.75,44.75
-  lift departure side=0 88,182,92,185 block=87,181,93,185 at=4.75,44.75
-plan s278165/f5 1a089705
+  rooms=60 924fa6f7
+  roles=exit,office,parking,security
+  doors=6 920072ae
+  locks=blue!
+  stairs=2 8ae59234
+  lift arrival side=0 7,183,11,186 block=6,182,12,186 at=-35.75,45.25
+  lift departure side=0 13,183,17,186 block=12,182,18,186 at=-32.75,45.25
+plan s278165/f5 490ae072
   W=273 H=183 area=1.1395
-  tiles=29fa2b56
-  spawn=1.75,43.5 exit=4.75,43.5
+  tiles=7c027cfb
+  spawn=-63.75,44 exit=-60.75,44
   prologue=49958
-  rooms=118 b69402a5
-  roles=exit,parking
-  doors=3 c539c317
-  locks=
-  stairs=4 a88ac08f
-  lift arrival side=0 138,177,142,180 block=137,176,143,180 at=1.75,43.5
-  lift departure side=0 144,177,148,180 block=143,176,149,180 at=4.75,43.5
-plan s278165/f8 3484a02f
+  rooms=119 4319fb62
+  roles=exit,office,parking,security
+  doors=6 8706484f
+  locks=blue!
+  stairs=2 8aa14448
+  lift arrival side=0 7,178,11,181 block=6,177,12,181 at=-63.75,44
+  lift departure side=0 13,178,17,181 block=12,177,18,181 at=-60.75,44
+plan s278165/f8 6d7df956
   W=282 H=202 area=0.9934
-  tiles=e20b92f9
-  spawn=-11.25,43 exit=-11.25,46
+  tiles=db903bd4
+  spawn=-66,48.75 exit=-63,48.75
   prologue=56963
-  rooms=126 3d9861c4
-  roles=exit,parking
-  doors=3 fd6c99cc
-  locks=
-  stairs=4 2a273286
-  lift arrival side=1 117,185,120,189 block=117,184,121,190 at=-11.25,43
-  lift departure side=1 117,191,120,195 block=117,190,121,196 at=-11.25,46
-plan s278165/f12 bc991a8c
+  rooms=127 122a2c5d
+  roles=exit,office,parking,security
+  doors=6 d7d444c5
+  locks=blue!
+  stairs=2 8f15d735
+  lift arrival side=0 7,197,11,200 block=6,196,12,200 at=-66,48.75
+  lift departure side=0 13,197,17,200 block=12,196,18,200 at=-63,48.75
+plan s278165/f12 d9339e52
   W=285 H=222 area=0.8482
-  tiles=d4d893cf
-  spawn=-11.25,34.75 exit=-8.25,34.75
+  tiles=beed6af4
+  spawn=-66.75,53.75 exit=-63.75,53.75
   prologue=63269
-  rooms=148 91e0aced
-  roles=exit,parking
-  doors=3 f6b93242
-  locks=
-  stairs=4 e38b44b5
-  lift arrival side=2 118,179,122,182 block=117,179,123,183 at=-11.25,34.75
-  lift departure side=2 124,179,128,182 block=123,179,129,183 at=-8.25,34.75
-plan s278165/f15 5a74bc7f
+  rooms=148 442f1e29
+  roles=exit,office,parking,security
+  doors=6 e5ceadb3
+  locks=blue!
+  stairs=2 b8e70e54
+  lift arrival side=0 7,217,11,220 block=6,216,12,220 at=-66.75,53.75
+  lift departure side=0 13,217,17,220 block=12,216,18,220 at=-63.75,53.75
+plan s278165/f15 1c273211
   W=247 H=296 area=0.9671
-  tiles=667e8bc8
-  spawn=-9.25,57.25 exit=-6.25,57.25
+  tiles=49a84711
+  spawn=-57.25,72.25 exit=-54.25,72.25
   prologue=73111
-  rooms=158 8fcacce1
-  roles=exit,parking
-  doors=3 5e43b547
-  locks=
-  stairs=4 182c6937
-  lift arrival side=2 103,261,107,264 block=102,261,108,265 at=-9.25,57.25
-  lift departure side=2 109,261,113,264 block=108,261,114,265 at=-6.25,57.25
-plan s286084/f1 81175458
+  rooms=160 662b6608
+  roles=exit,office,parking,security
+  doors=6 f5301e64
+  locks=blue!
+  stairs=2 adaf5686
+  lift arrival side=0 7,291,11,294 block=6,290,12,294 at=-57.25,72.25
+  lift departure side=0 13,291,17,294 block=12,290,18,294 at=-54.25,72.25
+plan s286084/f1 244d39fb
   W=176 H=156 area=0.9585
-  tiles=65d986ba
-  spawn=-5.5,36.75 exit=-2.5,36.75
+  tiles=18301696
+  spawn=-40,37.25 exit=-37,37.25
   prologue=27455
-  rooms=65 f8da710f
-  roles=exit,parking
-  doors=3 325a0c13
-  locks=
-  stairs=2 13a928f4
-  lift arrival side=0 75,150,79,153 block=74,149,80,153 at=-5.5,36.75
-  lift departure side=0 81,150,85,153 block=80,149,86,153 at=-2.5,36.75
-plan s286084/f2 f9b5bec1
+  rooms=69 6d3a8838
+  roles=exit,office,parking,security
+  doors=9 7f4259c6
+  locks=blue!
+  stairs=2 05427db4
+  lift arrival side=0 6,151,10,154 block=5,150,11,154 at=-40,37.25
+  lift departure side=0 12,151,16,154 block=11,150,17,154 at=-37,37.25
+plan s286084/f2 a5d64cb3
   W=197 H=136 area=0.8335
-  tiles=530cd085
-  spawn=6,21 exit=6,24
+  tiles=ccc6a14e
+  spawn=-45.25,32.25 exit=-42.25,32.25
   prologue=26791
-  rooms=63 c8b42c98
-  roles=exit,parking
-  doors=3 af16645a
-  locks=
-  stairs=2 25efec02
-  lift arrival side=1 109,108,112,112 block=109,107,113,113 at=6,21
-  lift departure side=1 109,114,112,118 block=109,113,113,119 at=6,24
-plan s286084/f3 6a8bea57
+  rooms=67 6576d0b5
+  roles=exit,office,parking,security
+  doors=9 ae684306
+  locks=blue!
+  stairs=2 9e73e704
+  lift arrival side=0 6,131,10,134 block=5,130,11,134 at=-45.25,32.25
+  lift departure side=0 12,131,16,134 block=11,130,17,134 at=-42.25,32.25
+plan s286084/f3 47b9b1b5
   W=261 H=175 area=1.2743
-  tiles=a61d2c10
-  spawn=13.25,36.5 exit=16.25,36.5
+  tiles=4fe1dc5d
+  spawn=-61.25,42 exit=-58.25,42
   prologue=45674
-  rooms=96 80cde144
-  roles=exit,parking
-  doors=3 87d4f600
-  locks=
-  stairs=2 324398e6
-  lift arrival side=0 155,159,159,162 block=154,158,160,162 at=13.25,36.5
-  lift departure side=0 161,159,165,162 block=160,158,166,162 at=16.25,36.5
-plan s286084/f5 815e32a0
+  rooms=100 82cb5478
+  roles=exit,office,parking,security
+  doors=9 10412e6d
+  locks=blue!
+  stairs=2 fe13e286
+  lift arrival side=0 6,170,10,173 block=5,169,11,173 at=-61.25,42
+  lift departure side=0 12,170,16,173 block=11,169,17,173 at=-58.25,42
+plan s286084/f5 599f5f8d
   W=280 H=190 area=1.2134
-  tiles=292e15bd
-  spawn=10,19.25 exit=13,19.25
+  tiles=bc57d1f6
+  spawn=-66,45.75 exit=-63,45.75
   prologue=53199
-  rooms=115 0d56e7ba
-  roles=exit,parking
-  doors=3 3ad3e400
-  locks=
-  stairs=2 faf1f57a
-  lift arrival side=0 158,132,162,135 block=157,131,163,135 at=10,19.25
-  lift departure side=0 164,132,168,135 block=163,131,169,135 at=13,19.25
-plan s286084/f8 e420d842
+  rooms=119 dfa46d11
+  roles=exit,office,parking,security
+  doors=9 95884c81
+  locks=blue!
+  stairs=2 8cb72bd2
+  lift arrival side=0 6,185,10,188 block=5,184,11,188 at=-66,45.75
+  lift departure side=0 12,185,16,188 block=11,184,17,188 at=-63,45.75
+plan s286084/f8 8924d40b
   W=256 H=185 area=0.8259
-  tiles=808cf60b
-  spawn=7.25,33.25 exit=7.25,36.25
+  tiles=253a2992
+  spawn=-60,44.5 exit=-57,44.5
   prologue=47359
-  rooms=99 bdfb2b66
-  roles=exit,parking
-  doors=3 54d33342
-  locks=
-  stairs=2 f2fbfb82
-  lift arrival side=1 141,157,144,161 block=141,156,145,162 at=7.25,33.25
-  lift departure side=1 141,163,144,167 block=141,162,145,168 at=7.25,36.25
-plan s286084/f12 3e275408
+  rooms=103 23556de1
+  roles=exit,office,parking,security
+  doors=9 21f72c57
+  locks=blue!
+  stairs=2 c4107a3a
+  lift arrival side=0 6,180,10,183 block=5,179,11,183 at=-60,44.5
+  lift departure side=0 12,180,16,183 block=11,179,17,183 at=-57,44.5
+plan s286084/f12 acae4349
   W=217 H=264 area=0.768
-  tiles=b522c361
-  spawn=11,58.5 exit=11,61.5
+  tiles=c351783e
+  spawn=-50.25,64.25 exit=-47.25,64.25
   prologue=57287
-  rooms=136 0349de8e
-  roles=exit,parking
-  doors=3 acdcbb46
-  locks=
-  stairs=2 e61350cb
-  lift arrival side=3 129,247,132,251 block=128,246,132,252 at=11,58.5
-  lift departure side=3 129,253,132,257 block=128,252,132,258 at=11,61.5
-plan s286084/f15 47ec26d2
+  rooms=137 dacc9153
+  roles=exit,office,parking,security
+  doors=9 67d54369
+  locks=blue!
+  stairs=2 c43a2835
+  lift arrival side=0 6,259,10,262 block=5,258,11,262 at=-50.25,64.25
+  lift departure side=0 12,259,16,262 block=11,258,17,262 at=-47.25,64.25
+plan s286084/f15 e3e8ae10
   W=224 H=213 area=0.6311
-  tiles=8f9b6c73
-  spawn=12.5,35.5 exit=15.5,35.5
+  tiles=b1862cf4
+  spawn=-52,51.5 exit=-49,51.5
   prologue=47711
-  rooms=98 6f0f6d34
-  roles=exit,parking
-  doors=3 9b4bb565
-  locks=
-  stairs=2 c530f07e
-  lift arrival side=0 135,176,139,179 block=134,175,140,179 at=12.5,35.5
-  lift departure side=0 141,176,145,179 block=140,175,146,179 at=15.5,35.5
-plan s294003/f1 074f6843
+  rooms=95 ec28d98d
+  roles=exit,office,parking,security
+  doors=9 af80ea3b
+  locks=blue!
+  stairs=2 f466aac6
+  lift arrival side=0 6,208,10,211 block=5,207,11,211 at=-52,51.5
+  lift departure side=0 12,208,16,211 block=11,207,17,211 at=-49,51.5
+plan s294003/f1 8a6e7e46
   W=230 H=137 area=1.1001
-  tiles=810d2295
-  spawn=1,23.5 exit=4,23.5
+  tiles=5c3f7893
+  spawn=-53.5,32.5 exit=-50.5,32.5
   prologue=31509
-  rooms=60 59917681
-  roles=exit,parking
-  doors=3 36e3928e
-  locks=
-  stairs=3 80ee6abc
-  lift arrival side=0 115,114,119,117 block=114,113,120,117 at=1,23.5
-  lift departure side=0 121,114,125,117 block=120,113,126,117 at=4,23.5
-plan s294003/f2 02a053dd
+  rooms=62 990ca39a
+  roles=exit,office,parking,security
+  doors=11 1fdb0062
+  locks=blue!
+  stairs=2 66f0039a
+  lift arrival side=0 6,132,10,135 block=5,131,11,135 at=-53.5,32.5
+  lift departure side=0 12,132,16,135 block=11,131,17,135 at=-50.5,32.5
+plan s294003/f2 9320099f
   W=212 H=132 area=0.8706
-  tiles=7e9b4188
-  spawn=5.25,18.5 exit=5.25,21.5
+  tiles=ccb6f853
+  spawn=-49,31.25 exit=-46,31.25
   prologue=27983
-  rooms=55 58c71d7f
-  roles=exit,parking
-  doors=3 19f6cf50
-  locks=
-  stairs=3 4b6c13fe
-  lift arrival side=3 115,101,118,105 block=114,100,118,106 at=5.25,18.5
-  lift departure side=3 115,107,118,111 block=114,106,118,112 at=5.25,21.5
-plan s294003/f3 a6ba4495
+  rooms=57 9a0012a9
+  roles=exit,office,parking,security
+  doors=11 b6f2daeb
+  locks=blue!
+  stairs=2 cc680c37
+  lift arrival side=0 6,127,10,130 block=5,126,11,130 at=-49,31.25
+  lift departure side=0 12,127,16,130 block=11,126,17,130 at=-46,31.25
+plan s294003/f3 37122fb9
   W=194 H=200 area=1.0825
-  tiles=0d870d49
-  spawn=-6.25,39 exit=-6.25,42
+  tiles=d0a05547
+  spawn=-44.5,48.25 exit=-41.5,48.25
   prologue=38799
-  rooms=79 940c888d
-  roles=exit,parking
-  doors=3 7c3282f5
-  locks=
-  stairs=3 e170c932
-  lift arrival side=3 83,176,86,180 block=82,175,86,181 at=-6.25,39
-  lift departure side=3 83,182,86,186 block=82,181,86,187 at=-6.25,42
-plan s294003/f5 a379e9f4
+  rooms=84 b803c1ca
+  roles=exit,office,parking,security
+  doors=11 034a247e
+  locks=blue!
+  stairs=2 c3109ba9
+  lift arrival side=0 6,195,10,198 block=5,194,11,198 at=-44.5,48.25
+  lift departure side=0 12,195,16,198 block=11,194,17,198 at=-41.5,48.25
+plan s294003/f5 8f2b2131
   W=203 H=191 area=0.8843
-  tiles=239d3140
-  spawn=-1,33.75 exit=-1,36.75
+  tiles=f4fe0336
+  spawn=-46.75,46 exit=-43.75,46
   prologue=38772
-  rooms=72 8cb2fda0
-  roles=exit,parking
-  doors=4 31a9d15d
-  locks=
-  stairs=3 bc6cacf3
-  lift arrival side=1 98,161,101,165 block=98,160,102,166 at=-1,33.75
-  lift departure side=1 98,167,101,171 block=98,166,102,172 at=-1,36.75
-plan s294003/f8 509937b4
+  rooms=77 6566a02c
+  roles=exit,office,parking,security
+  doors=11 4ff9b7f0
+  locks=blue!
+  stairs=2 48a2049c
+  lift arrival side=0 6,186,10,189 block=5,185,11,189 at=-46.75,46
+  lift departure side=0 12,186,16,189 block=11,185,17,189 at=-43.75,46
+plan s294003/f8 3e7f0d51
   W=200 H=181 area=0.6313
-  tiles=77c7fcd7
-  spawn=-0.75,31.75 exit=-0.75,34.75
+  tiles=a2b8d47d
+  spawn=-46,43.5 exit=-43,43.5
   prologue=36199
-  rooms=68 562a3469
-  roles=exit,parking
-  doors=4 ddfc9aa2
-  locks=
-  stairs=3 c6ddbb42
-  lift arrival side=1 97,152,100,156 block=97,151,101,157 at=-0.75,31.75
-  lift departure side=1 97,158,100,162 block=97,157,101,163 at=-0.75,34.75
-plan s294003/f12 16ecdcd1
+  rooms=73 b69d46e2
+  roles=exit,office,parking,security
+  doors=11 b2a6b9ee
+  locks=blue!
+  stairs=2 7bf4f22e
+  lift arrival side=0 6,176,10,179 block=5,175,11,179 at=-46,43.5
+  lift departure side=0 12,176,16,179 block=11,175,17,179 at=-43,43.5
+plan s294003/f12 a69f0aee
   W=292 H=258 area=1.01
-  tiles=cccdb1a2
-  spawn=4.75,57 exit=4.75,60
+  tiles=7e7c1da5
+  spawn=-69,62.75 exit=-66,62.75
   prologue=75335
-  rooms=170 fda9ff6c
-  roles=exit,parking
-  doors=3 049f2761
-  locks=
-  stairs=3 65796fdc
-  lift arrival side=1 154,241,157,245 block=154,240,158,246 at=4.75,57
-  lift departure side=1 154,247,157,251 block=154,246,158,252 at=4.75,60
-plan s294003/f15 fddd5800
+  rooms=173 b1399649
+  roles=exit,office,parking,security
+  doors=11 56b644ad
+  locks=blue!
+  stairs=2 4dbfa66a
+  lift arrival side=0 6,253,10,256 block=5,252,11,256 at=-69,62.75
+  lift departure side=0 12,253,16,256 block=11,252,17,256 at=-66,62.75
+plan s294003/f15 0bfdc29c
   W=275 H=197 area=0.7166
-  tiles=205f77d1
-  spawn=1.25,37 exit=4.25,37
+  tiles=5c056e4e
+  spawn=-64.75,47.5 exit=-61.75,47.5
   prologue=54174
-  rooms=117 0310025b
-  roles=exit,parking
-  doors=4 5611aeb4
-  locks=
-  stairs=3 a64d3c8f
-  lift arrival side=0 138,171,142,174 block=137,170,143,174 at=1.25,37
-  lift departure side=0 144,171,148,174 block=143,170,149,174 at=4.25,37
-plan s301922/f1 67dfa0ae
+  rooms=121 3937306b
+  roles=exit,office,parking,security
+  doors=11 8e4749a6
+  locks=blue!
+  stairs=2 bf4731f7
+  lift arrival side=0 6,192,10,195 block=5,191,11,195 at=-64.75,47.5
+  lift departure side=0 12,192,16,195 block=11,191,17,195 at=-61.75,47.5
+plan s301922/f1 a8d37f48
   W=204 H=130 area=0.9258
-  tiles=25f51b83
-  spawn=0,16.75 exit=3,16.75
+  tiles=7aacc97d
+  spawn=-47,30.75 exit=-44,30.75
   prologue=26519
-  rooms=52 a6f6134f
-  roles=exit,parking
-  doors=3 3c3ef4da
-  locks=
-  stairs=2 42b01d1d
-  lift arrival side=0 100,97,104,100 block=99,96,105,100 at=0,16.75
-  lift departure side=0 106,97,110,100 block=105,96,111,100 at=3,16.75
-plan s301922/f2 1e760915
+  rooms=54 bdeb322f
+  roles=exit,office,parking,security
+  doors=10 e65011fb
+  locks=blue!
+  stairs=2 c2fe88a3
+  lift arrival side=0 6,125,10,128 block=5,124,11,128 at=-47,30.75
+  lift departure side=0 12,125,16,128 block=11,124,17,128 at=-44,30.75
+plan s301922/f2 e5256760
   W=178 H=202 area=1.1186
-  tiles=cd38be2a
-  spawn=3.75,14 exit=3.75,17
+  tiles=9deb6826
+  spawn=-40.5,48.75 exit=-37.5,48.75
   prologue=35955
-  rooms=85 374a0052
-  roles=exit,parking
-  doors=3 5a9dd8eb
-  locks=
-  stairs=2 ddf3208a
-  lift arrival side=3 95,127,98,131 block=94,126,98,132 at=3.75,14
-  lift departure side=3 95,133,98,137 block=94,132,98,138 at=3.75,17
-plan s301922/f3 58d5a809
+  rooms=88 ecf45490
+  roles=exit,office,parking,security
+  doors=10 8dfb84c3
+  locks=blue!
+  stairs=2 b39624d5
+  lift arrival side=0 6,197,10,200 block=5,196,11,200 at=-40.5,48.75
+  lift departure side=0 12,197,16,200 block=11,196,17,200 at=-37.5,48.75
+plan s301922/f3 3cab5c44
   W=218 H=152 area=0.9245
-  tiles=c103ee2d
-  spawn=-2.75,31 exit=-2.75,34
+  tiles=66a42ba0
+  spawn=-50.5,36.25 exit=-47.5,36.25
   prologue=33135
-  rooms=69 0b5cc94c
-  roles=exit,parking
-  doors=3 85ac0c37
-  locks=
-  stairs=2 db126db1
-  lift arrival side=1 102,136,105,140 block=102,135,106,141 at=-2.75,31
-  lift departure side=1 102,142,105,146 block=102,141,106,147 at=-2.75,34
-plan s301922/f5 04cc6e3b
+  rooms=71 038f0797
+  roles=exit,office,parking,security
+  doors=10 e743beb7
+  locks=blue!
+  stairs=2 8005fa4f
+  lift arrival side=0 6,147,10,150 block=5,146,11,150 at=-50.5,36.25
+  lift departure side=0 12,147,16,150 block=11,146,17,150 at=-47.5,36.25
+plan s301922/f5 e2e851c1
   W=208 H=133 area=0.631
-  tiles=2629ffdd
-  spawn=0,31 exit=3,31
+  tiles=89ac080b
+  spawn=-48,31.5 exit=-45,31.5
   prologue=27663
-  rooms=60 76226485
-  roles=exit,parking
-  doors=3 60c261be
-  locks=
-  stairs=2 75746397
-  lift arrival side=0 102,127,106,130 block=101,126,107,130 at=0,31
-  lift departure side=0 108,127,112,130 block=107,126,113,130 at=3,31
-plan s301922/f8 7b4c2f6c
+  rooms=63 4f1abc72
+  roles=exit,office,parking,security
+  doors=10 4b7bdd5c
+  locks=blue!
+  stairs=2 62472c37
+  lift arrival side=0 6,128,10,131 block=5,127,11,131 at=-48,31.5
+  lift departure side=0 12,128,16,131 block=11,127,17,131 at=-45,31.5
+plan s301922/f8 43b72e32
   W=249 H=280 area=1.2158
-  tiles=1f82f404
-  spawn=3.5,55.5 exit=6.25,60.25
+  tiles=ac28d727
+  spawn=-58.25,68.25 exit=-55.25,68.25
   prologue=69719
-  rooms=156 ae77d6f1
-  roles=exit,parking
-  doors=4 670a92e6
-  locks=
-  stairs=2 7391b0e0
-  lift arrival side=1 130,249,133,253 block=130,248,134,254 at=3.5,55.5
-  lift departure side=0 135,259,139,262 block=134,258,140,262 at=6.25,60.25
-plan s301922/f12 c721fb96
+  rooms=159 e2bac458
+  roles=exit,office,parking,security
+  doors=10 5523846f
+  locks=blue!
+  stairs=2 66961b0e
+  lift arrival side=0 6,275,10,278 block=5,274,11,278 at=-58.25,68.25
+  lift departure side=0 12,275,16,278 block=11,274,17,278 at=-55.25,68.25
+plan s301922/f12 1281c621
   W=197 H=243 area=0.6418
-  tiles=71947d35
-  spawn=4.5,54.75 exit=4.5,57.75
+  tiles=4abcba5f
+  spawn=-45.25,59 exit=-42.25,59
   prologue=47870
-  rooms=101 a2073ac1
-  roles=exit,parking
-  doors=3 8b31130c
-  locks=
-  stairs=2 af0a91b1
-  lift arrival side=3 106,229,109,233 block=105,228,109,234 at=4.5,54.75
-  lift departure side=3 106,235,109,239 block=105,234,109,240 at=4.5,57.75
-plan s301922/f15 c7e83360
+  rooms=101 a59a6c63
+  roles=exit,office,parking,security
+  doors=10 cef6c34e
+  locks=blue!
+  stairs=2 f98ae809
+  lift arrival side=0 6,238,10,241 block=5,237,11,241 at=-45.25,59
+  lift departure side=0 12,238,16,241 block=11,237,17,241 at=-42.25,59
+plan s301922/f15 36243635
   W=274 H=274 area=0.9931
-  tiles=df9e11e3
-  spawn=17,58.75 exit=20,58.75
+  tiles=41918ca6
+  spawn=-64.5,66.75 exit=-61.5,66.75
   prologue=75075
-  rooms=165 4b4654a2
-  roles=exit,parking
-  doors=3 b81fd42f
-  locks=
-  stairs=2 4864b969
-  lift arrival side=0 169,253,173,256 block=168,252,174,256 at=17,58.75
-  lift departure side=0 175,253,179,256 block=174,252,180,256 at=20,58.75
-plan s309841/f1 9e6dfe5e
+  rooms=165 a0548a8d
+  roles=exit,office,parking,security
+  doors=10 ce2a11cc
+  locks=blue!
+  stairs=2 4c3c0eb5
+  lift arrival side=0 6,269,10,272 block=5,268,11,272 at=-64.5,66.75
+  lift departure side=0 12,269,16,272 block=11,268,17,272 at=-61.5,66.75
+plan s309841/f1 acfcdb35
   W=156 H=175 area=0.9531
-  tiles=6756a498
-  spawn=-9.25,15.25 exit=-9.25,18.25
+  tiles=45fa3811
+  spawn=-35,42 exit=-32,42
   prologue=27299
-  rooms=50 d3ba102c
-  roles=exit,parking
-  doors=3 3d306856
-  locks=
-  stairs=2 847bb5ac
-  lift arrival side=1 58,116,61,120 block=58,115,62,121 at=-9.25,15.25
-  lift departure side=1 58,122,61,126 block=58,121,62,127 at=-9.25,18.25
-plan s309841/f2 2a723cec
+  rooms=54 771763cf
+  roles=exit,office,parking,security
+  doors=11 4371202a
+  locks=blue!
+  stairs=2 6372a806
+  lift arrival side=0 6,170,10,173 block=5,169,11,173 at=-35,42
+  lift departure side=0 12,170,16,173 block=11,169,17,173 at=-32,42
+plan s309841/f2 7879a755
   W=163 H=175 area=0.8874
-  tiles=23f4c570
-  spawn=-10,15.25 exit=-10,18.25
+  tiles=da894389
+  spawn=-36.75,42 exit=-33.75,42
   prologue=28524
-  rooms=55 241430a6
-  roles=exit,parking
-  doors=3 c7574e02
-  locks=
-  stairs=2 5f5c031b
-  lift arrival side=1 60,116,63,120 block=60,115,64,121 at=-10,15.25
-  lift departure side=1 60,122,63,126 block=60,121,64,127 at=-10,18.25
-plan s309841/f3 732df18f
+  rooms=59 cae61da1
+  roles=exit,office,parking,security
+  doors=11 4371202a
+  locks=blue!
+  stairs=2 0a886926
+  lift arrival side=0 6,170,10,173 block=5,169,11,173 at=-36.75,42
+  lift departure side=0 12,170,16,173 block=11,169,17,173 at=-33.75,42
+plan s309841/f3 1470c371
   W=185 H=150 area=0.7742
-  tiles=57d573bb
-  spawn=-9.75,17.75 exit=-6.75,17.75
+  tiles=ed9b95ab
+  spawn=-42.25,35.75 exit=-39.25,35.75
   prologue=27749
-  rooms=50 69c4aa40
-  roles=exit,parking
-  doors=3 e16c812b
-  locks=
-  stairs=2 ef489dfb
-  lift arrival side=2 71,109,75,112 block=70,109,76,113 at=-9.75,17.75
-  lift departure side=2 77,109,81,112 block=76,109,82,113 at=-6.75,17.75
-plan s309841/f5 65ec8f99
+  rooms=52 048ab482
+  roles=exit,office,parking,security
+  doors=11 5562a2b9
+  locks=blue!
+  stairs=2 931f361f
+  lift arrival side=0 6,145,10,148 block=5,144,11,148 at=-42.25,35.75
+  lift departure side=0 12,145,16,148 block=11,144,17,148 at=-39.25,35.75
+plan s309841/f5 5b0987d9
   W=228 H=159 area=0.8268
-  tiles=1faf7e4a
-  spawn=5.75,32.75 exit=5.75,35.75
+  tiles=d182df07
+  spawn=-53,38 exit=-50,38
   prologue=36251
-  rooms=67 7969c5cf
-  roles=exit,parking
-  doors=3 cf16cdd5
-  locks=
-  stairs=2 01468b77
-  lift arrival side=3 124,143,127,147 block=123,142,127,148 at=5.75,32.75
-  lift departure side=3 124,149,127,153 block=123,148,127,154 at=5.75,35.75
-plan s309841/f8 9d9ef531
+  rooms=72 165b74fb
+  roles=exit,office,parking,security
+  doors=11 60ea0584
+  locks=blue!
+  stairs=2 6f4701f8
+  lift arrival side=0 6,154,10,157 block=5,153,11,157 at=-53,38
+  lift departure side=0 12,154,16,157 block=11,153,17,157 at=-50,38
+plan s309841/f8 4882cdd3
   W=268 H=177 area=0.8272
-  tiles=a314af8a
-  spawn=14.75,20.25 exit=14.75,23.25
+  tiles=6678a983
+  spawn=-63,42.5 exit=-60,42.5
   prologue=47435
-  rooms=93 8be6087e
-  roles=exit,parking
-  doors=3 7b15a44c
-  locks=
-  stairs=2 36261f10
-  lift arrival side=3 162,127,165,131 block=161,126,165,132 at=14.75,20.25
-  lift departure side=3 162,133,165,137 block=161,132,165,138 at=14.75,23.25
-plan s309841/f12 7171b876
+  rooms=98 6f70ec94
+  roles=exit,office,parking,security
+  doors=11 670b79c4
+  locks=blue!
+  stairs=2 d7e85066
+  lift arrival side=0 6,172,10,175 block=5,171,11,175 at=-63,42.5
+  lift departure side=0 12,172,16,175 block=11,171,17,175 at=-60,42.5
+plan s309841/f12 c4f454b9
   W=300 H=235 area=0.9451
-  tiles=71ad9b3c
-  spawn=8.75,45.25 exit=8.75,48.25
+  tiles=9be1403f
+  spawn=-71,57 exit=-68,57
   prologue=70499
-  rooms=160 b7e0b12a
-  roles=exit,parking
-  doors=4 c9bfb528
-  locks=
-  stairs=2 fa338368
-  lift arrival side=3 166,206,169,210 block=165,205,169,211 at=8.75,45.25
-  lift departure side=3 166,212,169,216 block=165,211,169,217 at=8.75,48.25
-plan s309841/f15 cbf765c2
+  rooms=165 325fe5a5
+  roles=exit,office,parking,security
+  doors=11 54b37e2c
+  locks=blue!
+  stairs=2 584d2c4c
+  lift arrival side=0 6,230,10,233 block=5,229,11,233 at=-71,57
+  lift departure side=0 12,230,16,233 block=11,229,17,233 at=-68,57
+plan s309841/f15 0d38095c
   W=300 H=248 area=0.9841
-  tiles=8ae616df
-  spawn=3,54.75 exit=6,54.75
+  tiles=f0d1c241
+  spawn=-71,60.25 exit=-68,60.25
   prologue=74399
-  rooms=165 1515b778
-  roles=exit,parking
-  doors=3 10208d97
-  locks=
-  stairs=2 e0a09d96
-  lift arrival side=0 154,232,158,235 block=153,231,159,235 at=3,54.75
-  lift departure side=0 160,232,164,235 block=159,231,165,235 at=6,54.75
+  rooms=170 bdf6fb1e
+  roles=exit,office,parking,security
+  doors=11 15b78d76
+  locks=blue!
+  stairs=2 7b5f70f1
+  lift arrival side=0 6,243,10,246 block=5,242,11,246 at=-71,60.25
+  lift departure side=0 12,243,16,246 block=11,242,17,246 at=-68,60.25
