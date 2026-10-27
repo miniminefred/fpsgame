@@ -159,7 +159,9 @@ export class Cameras {
     // How many of them are tripwires, decided up front and then shuffled in
     // among the rest, so a floor always gets some of each rather than however
     // the coin happened to land ten times running.
-    const lasers = clamp(Math.round(want * LASER_SHARE), 1, want - 1);
+    // None on a car park: a tripwire is a corridor's hazard, and the open deck
+    // has no corridor for one to cross — it is watched by lenses alone.
+    const lasers = layout.garage ? 0 : clamp(Math.round(want * LASER_SHARE), 1, want - 1);
     const kinds = rng.shuffle([
       ...new Array(lasers).fill(true),
       ...new Array(want - lasers).fill(false),

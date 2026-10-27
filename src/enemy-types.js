@@ -58,20 +58,20 @@ export const GUARD = {
 export const TYPES = {
   intern: {
     // Cheap, quick, and always in a group. Dies to a look but closes fast.
-    name: 'Intern', hp: 0.4, speed: 1.55, damage: 0.5, rate: 0.55, spread: 1,
+    name: 'Intern', hp: 0.5, speed: 1.55, damage: 0.5, rate: 0.55, spread: 1,
     range: 1.9, melee: true, scale: 0.9, blunt: ['keyboard', 'stapler', 'mug'],
     suit: 0x5d6675, shirt: 0xeceee9, visor: 0xc8ced4, unlockFloor: 1, weight: 3,
   },
   facilities: {
     // Swings a fire extinguisher. Slower than an intern, hits far harder.
-    name: 'Facilities', hp: 1.5, speed: 1.15, damage: 1.6, rate: 1.2, spread: 1,
+    name: 'Facilities', hp: 1.8, speed: 1.15, damage: 1.6, rate: 1.2, spread: 1,
     range: 2.2, melee: true, scale: 1.05, blunt: ['extinguisher', 'chairLeg'],
     suit: 0x2d3a2e, shirt: 0xf0a63c, visor: 0x63686e, unlockFloor: 2, weight: 2,
   },
   analyst: {
     // The baseline in every column, this one included: `aimMul` is 1 by default,
     // and an analyst is what the floor's aim curve was written against.
-    name: 'Analyst', hp: 1, speed: 1, damage: 1, rate: 1, spread: 1,
+    name: 'Office Worker', hp: 1, speed: 1, damage: 1, rate: 1, spread: 1,
     range: 15, melee: false, scale: 1,
     suit: 0x41464e, shirt: 0xd9dde1, visor: 0x8b9198, unlockFloor: 1, weight: 4,
   },
@@ -94,7 +94,7 @@ export const TYPES = {
     // blue in the middle distance, the word once he is close enough for it to
     // be too late. Nothing else on the floor is dressed in blue.
     ...GUARD,
-    name: 'Security', hp: 1.7, speed: 0.98, damage: 1.5, rate: 1.15, spread: 2.1,
+    name: 'Security', hp: 2.0, speed: 0.98, damage: 1.5, rate: 1.15, spread: 2.1,
     range: 9, melee: false, scale: 1.07, unlockFloor: 4, weight: 3,
     // Paid to be looking. Not the fastest on target — that is the machine — but
     // quicker than anybody who had to put a spreadsheet down first.
@@ -109,13 +109,13 @@ export const TYPES = {
     // security office, where _security puts it, and a room rolled full of
     // Security is a room of people who were at their desks with a gun on.
     ...GUARD,
-    name: 'Security', hp: 1.7, speed: 1.12, damage: 1.55, rate: 1.1, spread: 1,
+    name: 'Security', hp: 2.0, speed: 1.12, damage: 1.55, rate: 1.1, spread: 1,
     range: 2.3, melee: true, blunt: ['baton'], scale: 1.07,
     unlockFloor: 1, weight: 0,
   },
   manager: {
     // Slow, tanky, accurate at range. Deal with it or leave the floor.
-    name: 'Manager', hp: 2.7, speed: 0.82, damage: 1.9, rate: 1.6, spread: 0.55,
+    name: 'Manager', hp: 5.0, speed: 0.82, damage: 1.9, rate: 1.6, spread: 0.55,
     range: 21, melee: false, scale: 1.14,
     // The tightest cone on the floor gets the second-quickest draw to go with it:
     // being unhurried is what he is, and it is not the same as being slow.
@@ -126,7 +126,7 @@ export const TYPES = {
     // Green, and no longer on the payroll. Slow and soaks damage, but it only
     // wants to be close to you, and it does not stop coming. The one type that
     // punishes backing into a corner rather than standing in the open.
-    name: 'Reanimated', hp: 2.4, speed: 0.86, damage: 1.3, rate: 1.35, spread: 1,
+    name: 'Reanimated', hp: 3.0, speed: 0.86, damage: 1.3, rate: 1.35, spread: 1,
     range: 2.1, melee: true, scale: 1.03, blunt: ['chairLeg', 'extinguisher'],
     // Which is also the whole of why it does not stop for lunch (see _lunchOk in
     // enemies.js). A machine has nowhere to put it; this one has no interest in
@@ -163,14 +163,14 @@ export const TYPES = {
     // like every other room-specific hostile — the mix of these against the
     // room's docile `worker`s is the whole point of the room, not something a
     // weighted roll should ever produce elsewhere.
-    name: 'Technician', hp: 1.4, speed: 1.05, damage: 1.5, rate: 1.2, spread: 1,
+    name: 'Technician', hp: 1.5, speed: 1.05, damage: 1.5, rate: 1.2, spread: 1,
     range: 2.3, melee: true, scale: 1.02, blunt: ['chairLeg', 'extinguisher'],
     suit: 0x494338, shirt: 0xd97a2e, visor: 0x8f959b, unlockFloor: 1, weight: 0,
   },
 
   clerk: {
     // Whatever used to sit at the desk. The baseline machine and the one there
-    // are a hundred of, so its numbers are deliberately near an Analyst's: a
+    // are a hundred of, so its numbers are deliberately near an Office Worker's: a
     // floor of these has to feel like an office being worked, and the ones with
     // forks and torches read as exceptions to it.
     name: 'Clerk Unit', hp: 1.15, speed: 1.02, damage: 0.95, rate: 1, spread: 1.15,
@@ -228,7 +228,7 @@ export const TYPES = {
     // Sysadmin, and the same job: it punishes standing still and dies to a
     // look. The only thing in the building that is not on the floor, which is
     // what makes it worth having on a roster of things that are.
-    name: 'Survey Drone', hp: 0.35, speed: 1.6, damage: 0.4, rate: 0.5, spread: 1.9,
+    name: 'Survey Drone', hp: 1.0, speed: 1.6, damage: 0.4, rate: 0.5, spread: 1.9,
     range: 12, melee: false, scale: 0.95, chassis: 'drone', voice: 'robot',
     aimMul: 1.1,
     suit: 0x4d5a66, shirt: 0xc0c7cd, visor: 0xdde2e6, unlockFloor: 1, weight: 0,
