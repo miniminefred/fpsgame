@@ -497,6 +497,13 @@ function drive(e, dt, moving, swing) {
       // flying is one sine on top of that and the rotors doing the arguing.
       e.group.position.y = e.y + Math.sin(e.walkPhase * 0.55) * 0.05;
       if (e.rotors) for (const r of e.rotors) r.rotation.y += dt * (moving ? 46 : 30);
+      // On one rotor: sagging toward the missing side and lurching, not hovering.
+      if (e.rotorsLost === 1) {
+        const side = e.rotorParts[0].lost ? 1 : -1;
+        e.group.position.y += -0.18 + Math.sin(e.walkPhase * 2.1) * 0.08;
+        e.group.rotation.z = side * (0.32 + Math.sin(e.walkPhase * 3.3) * 0.12);
+        e.group.rotation.x = Math.sin(e.walkPhase * 2.7) * 0.15;
+      }
       break;
 
     default:

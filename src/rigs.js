@@ -973,6 +973,7 @@ function buildRobot(type, rng) {
   const ownGeo = [];
   const mesh = part(group);
   const rotors = [];
+  const rotorParts = [];     // per side: what comes off when that rotor is shot
   let beacon = null;
   // Filled in by the tray block below if this chassis has a deck. Declared out
   // here because `boxAt` at the bottom has to know whether it was.
@@ -1034,12 +1035,13 @@ function buildRobot(type, rng) {
   if (geo.duct) {
     for (const side of [-1, 1]) {
       const x = side * (s.torso.size[0] / 2 + 0.17);
-      extra.push(mesh(geo.boom, mats.skin,
-        side * (s.torso.size[0] / 2 + 0.05), s.torso.y + 0.09, 0));
-      extra.push(mesh(geo.duct, mats.suit, x, s.torso.y + 0.10, 0));
+      const boom = mesh(geo.boom, mats.skin,
+        side * (s.torso.size[0] / 2 + 0.05), s.torso.y + 0.09, 0);
+      const duct = mesh(geo.duct, mats.suit, x, s.torso.y + 0.10, 0);
       const blade = mesh(geo.blade, mats.shirt, x, s.torso.y + 0.10, 0);
-      extra.push(blade);
+      extra.push(boom, duct, blade);
       rotors.push(blade);
+      rotorParts.push({ hit: [duct, blade], gone: [boom, duct, blade] });
     }
   }
   if (geo.tray) {
@@ -1123,6 +1125,7 @@ function buildRobot(type, rng) {
     },
     boxAt, boxArms: deckY === null,
     rotors: rotors.length ? rotors : null,
+    rotorParts: rotorParts.length ? rotorParts : null,
     beaconMat: beacon ? mats.beacon : null,
     flash: flashSet(mats),
     bones: s.whole

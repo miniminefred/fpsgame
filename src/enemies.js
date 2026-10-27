@@ -132,6 +132,13 @@ const HIT_ZONES = { head: 1.12, torso: 1, limb: 0.92 };
 // this share of what he started with instead, which is a heavy hit.
 const MANAGER_HEADSHOT = 0.6;
 
+// A Survey Drone's rotors are its weak point. A round in one does this much more
+// than one in the body, and knocks the rotor off: with one gone it limps along at
+// DRONE_LIMP of its speed, lurching about, and with both gone it falls out of the
+// air. The body is metal and takes an ordinary round.
+const ROTOR_HIT = 2;
+const DRONE_LIMP = 0.55;
+
 // The response was sent, and it has no desk to go back to. GIVE_UP is a clerk
 // who heard a bang two rooms away and is entitled to decide he imagined it;
 // these men were told over the radio, and a response that turns round after
@@ -291,6 +298,9 @@ export class Enemies {
       // sees it, which is exactly what happened the first time this was added.
       joints: rig.joints ?? null,
       rotors: rig.rotors ?? null, beaconMat: rig.beaconMat ?? null,
+      // A drone's two rotors, which can be shot off (see _loseRotor), and how
+      // many have been.
+      rotorParts: rig.rotorParts ?? null, rotorsLost: 0, speedMul: 1,
       // Where this body carries a box and whether its arms come up to hold it.
       // Same argument as the two above: a porter carries one on a deck.
       boxAt: rig.boxAt ?? null, boxArms: rig.boxArms !== false,
@@ -430,6 +440,16 @@ export class Enemies {
       enemy.hitboxes.push(mesh);
       this.meshes.push(mesh);
     }
+    for (const [i, rotor] of (enemy.rotorParts ?? []).entries()) {
+      for (const mesh of rotor.hit) {
+        mesh.userData.enemy = enemy;
+        mesh.userData.hitScale = ROTOR_HIT;
+        mesh.userData.rotor = i;
+        mesh.userData.isEnemyPart = true;
+        enemy.hitboxes.push(mesh);
+        this.meshes.push(mesh);
+      }
+    }
 
     this.scene.add(group);
     this.items.push(enemy);
@@ -449,6 +469,11 @@ export class Enemies {
     const e = mesh.userData?.enemy;
     if (!e || !e.alive) return null;
     let dealt = damage * (mesh.userData.hitScale ?? 1);
+    if (mesh.userData.rotor != null) {
+      this._loseRotor(e, mesh.userData.rotor);
+      // Both gone is a drone with nothing holding it up.
+      if (e.rotorsLost >= 2) dealt = Math.max(dealt, e.maxHealth * 2);
+    }
     if (headshotKills && mesh.userData.head) {
       // Enough to finish anybody outright, worked out against what they STARTED
       // with rather than what is left: a joiner's copy of their health is the
@@ -471,6 +496,23 @@ export class Enemies {
     }
 
     return this._damage(e, dealt, shot);
+  }
+
+  /**
+   * A drone's rotor shot off. It is gone from the model and from the hit boxes —
+   * a round through the hole where it was hits nothing — and the drone is left
+   * limping on the other one. Done on whichever end took the shot, because what
+   * it looks like is that end's business; the host decides whether it died.
+   */
+  _loseRotor(e, i) {
+    const rotor = e.rotorParts?.[i];
+    if (!rotor || rotor.lost) return;
+    rotor.lost = true;
+    for (const m of rotor.gone) m.visible = false;
+    for (const m of rotor.hit) m.userData.enemy = null;
+    if (e.rotors) e.rotors = e.rotors.filter((b) => !rotor.gone.includes(b));
+    e.rotorsLost++;
+    e.speedMul = DRONE_LIMP;
   }
 
   // Damage from any source, once it is known who took it and how much.
@@ -985,7 +1027,7 @@ export class Enemies {
       }
     }
 
-    const speed = this.tuning.speed * e.type.speed * (e.flee > 0 ? FLEE_SPEED : 1);
+    const speed = this.tuning.speed * e.type.speed * e.speedMul * (e.flee > 0 ? FLEE_SPEED : 1);
     if (this._stroll(e, dt, speed) !== 'moved') this._repick(e);
   }
 
@@ -1286,7 +1328,7 @@ export class Enemies {
    * along the wall instead of standing there pushing into it.
    */
   _move(e, dt, dx, dz, dist, sees) {
-    const speed = this.tuning.speed * e.type.speed;
+    const speed = this.tuning.speed * e.type.speed * e.speedMul;
     // "Tight" is anywhere a body and a half does not fit: a doorway, the gap
     // between two desks, the corner of a stairwell.
     const tight = !this.nav.clear(e.x, e.z, RADIUS * 1.7, e.layer);
@@ -1319,6 +1361,14 @@ export class Enemies {
       const circle = tight ? 0 : (e.type.melee ? 0.15 : 0.45);
       vx += -nz * e.strafe * speed * circle;
       vz += nx * e.strafe * speed * circle;
+    }
+
+    // A drone on one rotor cannot hold a line: it is shoved about across the way
+    // it is going, which is half of what makes it read as hurt.
+    if (e.rotorsLost === 1) {
+      const t = e.walkPhase * 0.9;
+      vx += Math.sin(t * 1.7) * speed * 0.6;
+      vz += Math.cos(t * 1.3) * speed * 0.6;
     }
 
     if (vx || vz) {

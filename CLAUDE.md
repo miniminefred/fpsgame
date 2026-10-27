@@ -4143,6 +4143,14 @@ is inside the housing.
 building has to know it before the floor's colliders go to the solver. It is still the first
 draw off the floor's rng, exactly where it was, so nothing after it moved.
 
+### A drone's rotors (`_loseRotor` in enemies.js)
+The Survey Drone's two ducted rotors are hit zones of their own (`ROTOR_HIT`, 2x).
+A round in one knocks it off — gone from the model and from the hit boxes, so the
+next round through the hole hits nothing — and leaves the drone on one rotor:
+`DRONE_LIMP` of its speed, shoved about across its line, sagging toward the missing
+side. The second rotor brings it down whatever its health. The rotor comes off on
+whichever end of a co-op session took the shot; the host still decides the kill.
+
 ### Five reloads, a bolt and a scope (`reloads.js`, `scope.js`)
 Every gun has its own reload, and you can hear which: the pistol drops its magazine
 and racks the slide, the SMG and rifle tip over for a magazine and yank the charging

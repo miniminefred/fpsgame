@@ -224,9 +224,10 @@ export const TYPES = {
     suit: 0x2f6f5e, shirt: 0x9aa0a6, visor: 0x35d6a8, unlockFloor: 1, weight: 0,
   },
   drone: {
-    // Survey. Fast, fragile and inaccurate — the machine floor's answer to the
-    // Sysadmin, and the same job: it punishes standing still and dies to a
-    // look. The only thing in the building that is not on the floor, which is
+    // Survey. Fast and inaccurate — the machine floor's answer to the Sysadmin,
+    // and the same job: it punishes standing still. Its body is metal (a full
+    // hundred), and its weak point is the two rotors: shoot one off and it limps
+    // and lurches, shoot both and it falls (`_loseRotor` in enemies.js). The only thing in the building that is not on the floor, which is
     // what makes it worth having on a roster of things that are.
     name: 'Survey Drone', hp: 1.0, speed: 1.6, damage: 0.4, rate: 0.5, spread: 1.9,
     range: 12, melee: false, scale: 0.95, chassis: 'drone', voice: 'robot',
