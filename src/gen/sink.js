@@ -364,12 +364,16 @@ export function makeSink(layout, batcher, materials, masks) {
 
     // --- static props ------------------------------------------------------
 
-    beginStatic(hp, substance, volatile = false, powerCore = false, spills = null) {
+    // `prop` is which catalogue entry built it. Nothing about destruction reads
+    // it; it is there for the few things that have to find one particular prop
+    // after the floor is built — the camera desk, whose loss takes cameras with it
+    // (cameras.js).
+    beginStatic(hp, substance, volatile = false, powerCore = false, spills = null, prop = null) {
       hulkOn = false;
       stockOn = null;
       record = hp > 0
         ? {
-          hp, substance, volatile, powerCore, spills,
+          hp, substance, volatile, powerCore, spills, prop,
           boxes: [], colliders: [], navTiles: [], spans: batcher.beginSpans(),
         }
         : null;

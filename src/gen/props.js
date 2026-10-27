@@ -1739,7 +1739,7 @@ export function tryPlace(sink, kind, cx, cz, rot, rng, span = 0) {
     // colours rather than the palette the fallback boxes were authored in.
     const stamps = [{ key: spec.model, x: cx, y: 0, z: cz, yaw }];
 
-    sink.beginStatic(spec.hp, spec.substance, spec.volatile, spec.powerCore, spec.spills);
+    sink.beginStatic(spec.hp, spec.substance, spec.volatile, spec.powerCore, spec.spills, kind);
     // `model()` says whether anything was actually stamped. It wasn't if the
     // GLB failed to fetch, or if there is no loader at all — which is every run
     // of the headless validators in tools/. Only the PICTURE falls back in that
@@ -1797,7 +1797,7 @@ export function tryPlace(sink, kind, cx, cz, rot, rng, span = 0) {
   } else {
     // Static boxes: the geometry it is drawn with is already the geometry it
     // falls apart into, so there is nothing to capture separately.
-    sink.beginStatic(spec.hp, spec.substance, spec.volatile, spec.powerCore, spec.spills);
+    sink.beginStatic(spec.hp, spec.substance, spec.volatile, spec.powerCore, spec.spills, kind);
     spec.build(placer(sink, cx, cz, rot), rng, drawW);
     sink.endStatic();
   }
