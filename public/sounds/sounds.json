@@ -14,6 +14,20 @@
       "loop": true
     },
     {
+      "name": "bolt-close",
+      "text": "bolt action rifle bolt pushed forward and locked down, solid metallic clack, close mic, dry, no reverb, no music",
+      "duration": 0.6,
+      "influence": 0.7,
+      "variants": 3
+    },
+    {
+      "name": "bolt-open",
+      "text": "bolt action rifle bolt lifted and pulled back, metallic slide, close mic, dry, no reverb, no music",
+      "duration": 0.6,
+      "influence": 0.7,
+      "variants": 3
+    },
+    {
       "name": "break-cardboard",
       "text": "stack of cardboard boxes bursting and collapsing, papery crush, close mic, dry, no music",
       "duration": 1.8,
@@ -97,6 +111,13 @@
       "text": "laboured winded breath of an exhausted man running, close mic, dry, no words, no music",
       "duration": 1.1,
       "influence": 0.6
+    },
+    {
+      "name": "charging-handle",
+      "text": "assault rifle charging handle pulled back and released, sharp metallic clack, close mic, dry, no reverb, no music",
+      "duration": 0.7,
+      "influence": 0.7,
+      "variants": 3
     },
     {
       "name": "conveyor",
@@ -976,6 +997,13 @@
       "variants": 3
     },
     {
+      "name": "pistol-slide",
+      "text": "pistol slide racked back and released forward, single metallic slide action, close mic, dry, no reverb, no music",
+      "duration": 0.7,
+      "influence": 0.7,
+      "variants": 3
+    },
+    {
       "name": "player-death",
       "text": "human male final gasp and body dropping to a hard floor, close mic, no words, no music",
       "duration": 2,
@@ -1114,11 +1142,25 @@
       "variants": 3
     },
     {
+      "name": "shell-insert",
+      "text": "single shotgun shell pushed into the loading port of a pump shotgun, short click, close mic, dry, no reverb",
+      "duration": 0.5,
+      "influence": 0.7,
+      "variants": 4
+    },
+    {
       "name": "shotgun-fire",
       "text": "enormous 12 gauge shotgun blast at close range, huge deep booming low end and a hard percussive slam, thick body, long decaying tail, close mic, dry, no music, no voices",
       "duration": 2,
       "influence": 0.8,
       "variants": 5
+    },
+    {
+      "name": "shotgun-pump",
+      "text": "pump action shotgun racked once, slide back and forward, heavy metallic chk-chk, close mic, dry, no reverb, no music",
+      "duration": 0.8,
+      "influence": 0.7,
+      "variants": 3
     },
     {
       "name": "smg-fire",
