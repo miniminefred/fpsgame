@@ -42,6 +42,9 @@ const LOS_STEP = 0.25;         // metres between line-of-sight samples
 // Anything further away than this has been attenuated to nothing anyway, and the
 // walk runs per placed sound, so it is not allowed to be unbounded.
 const MAX_SOUND_STEPS = 64;
+// ...and between storeys, where the way round is down a whole ramp. Only paid for
+// by the few sounds that are on another deck and close enough to be asked about.
+const MAX_SOUND_STEPS_STOREY = 180;
 
 // Enemy body radius. Re-exported here because the nav grid has to be eroded by
 // it (see `fits` below) and enemies.js has always taken it from this module;
@@ -625,22 +628,28 @@ export class NavGrid {
    * out of. `detour` is how far it travelled to get there, which is what makes a
    * voice two rooms away quieter than one behind the same wall.
    *
-   * Returns null if the source is off the field, in which case the caller should
-   * fall back to the true position.
+   * The walk crosses storeys where the flood did — at a ramp or a stairwell —
+   * so a shot on the deck above comes down the ramp to you. `layer` on the answer
+   * is the storey the sound comes out on.
+   *
+   * Returns null if the source is off the field, or no route reaches somewhere the
+   * ear can see within the walk's budget.
    */
   soundPath(sx, sz, lx, lz, sLayer = 0, lLayer = 0) {
     if (this.losClear(sx, sz, lx, lz, sLayer, lLayer)) {
-      return { x: sx, z: sz, detour: 0, occluded: false };
+      return { x: sx, z: sz, detour: 0, occluded: false, layer: sLayer };
     }
 
     let tx = this.tx(sx), ty = this.ty(sz);
     if (!this.inBounds(tx, ty)) return null;
-    const base = sLayer * this.WH;
+    let layer = sLayer;
+    let base = layer * this.WH;
     let here = this.field[base + ty * this.W + tx];
     if (here < 0) return null;
 
     const { W, field } = this;
-    for (let step = 1; step <= MAX_SOUND_STEPS; step++) {
+    const steps = sLayer === lLayer ? MAX_SOUND_STEPS : MAX_SOUND_STEPS_STOREY;
+    for (let step = 1; step <= steps; step++) {
       // Steepest descent, four-connected to match the flood.
       let bx = 0, by = 0, best = here;
       if (tx > 0 && field[base + ty * W + tx - 1] >= 0 && field[base + ty * W + tx - 1] < best) {
@@ -655,12 +664,28 @@ export class NavGrid {
       if (ty < this.H - 1 && field[base + (ty + 1) * W + tx] >= 0 && field[base + (ty + 1) * W + tx] < best) {
         best = field[base + (ty + 1) * W + tx]; bx = 0; by = 1;
       }
+      // Up or down the stairwell, if this tile joins two storeys and the other
+      // one is nearer the ear — the same step the flood took (see _flood).
+      const tile = ty * W + tx;
+      const lo = this.cross[tile];
+      if (lo >= 0 && (layer === lo || layer === lo + 1)) {
+        const other = layer === lo ? lo + 1 : lo;
+        const d = field[other * this.WH + tile];
+        if (d >= 0 && d < best) {
+          layer = other; base = layer * this.WH; here = d;
+          const wx = this.wx(tx), wz = this.wz(ty);
+          if (this.losClear(wx, wz, lx, lz, layer, lLayer)) {
+            return { x: wx, z: wz, detour: step * this.TILE, occluded: true, layer };
+          }
+          continue;
+        }
+      }
       if (!bx && !by) break;   // a local minimum that still cannot see the ear
 
       tx += bx; ty += by; here = best;
       const wx = this.wx(tx), wz = this.wz(ty);
-      if (this.losClear(wx, wz, lx, lz, sLayer, lLayer)) {
-        return { x: wx, z: wz, detour: step * this.TILE, occluded: true };
+      if (this.losClear(wx, wz, lx, lz, layer, lLayer)) {
+        return { x: wx, z: wz, detour: step * this.TILE, occluded: true, layer };
       }
     }
 

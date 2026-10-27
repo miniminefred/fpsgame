@@ -881,8 +881,15 @@ export class GameAudio {
     const dz = enemy.z - this._pos.z;
     if (dx * dx + dz * dz > range * range) return null;
     this._source.x = enemy.x;
-    this._source.y = MOUTH_HEIGHT;
+    // Over the floor the body is standing on. It was MOUTH_HEIGHT over the ground
+    // whatever deck they were on, so everybody upstairs in a car park was heard as
+    // if they were downstairs, and the routing between storeys below never ran.
+    this._source.y = (enemy.y ?? 0) + MOUTH_HEIGHT;
     this._source.z = enemy.z;
+    // ...and the body's own layer, which is a fact rather than something to read
+    // back off a height: a basement's floor is as far below the ground as an
+    // attic's is above it, and a mouth 1.5 m over it is not on the ground floor.
+    this._source.layer = enemy.layer ?? 0;
     return this._source;
   }
 
@@ -903,12 +910,17 @@ export class GameAudio {
     // the same problem once). On different layers `losClear` is false unless both
     // ends are in one stairwell, so soundPath walks the route round instead and the
     // shot comes out of the ramp it would really travel down.
-    const sLayer = this._layerAt(point.x, point.z, (point.y ?? 0) - SOURCE_DROP);
+    const sLayer = point.layer ?? this._layerAt(point.x, point.z, (point.y ?? 0) - SOURCE_DROP);
     const lLayer = this._layerAt(this._pos.x, this._pos.z, this._pos.y - EAR_DROP);
     const path = this.nav?.soundPath(point.x, point.z, this._pos.x, this._pos.z, sLayer, lLayer);
+    // Another storey with no way round to it: a floor slab is in the way, and
+    // nothing comes through one. You hear another deck by the ramp or not at all.
+    if (!path && this.nav && sLayer !== lLayer) return null;
 
     this._at.x = path ? path.x : point.x;
-    this._at.y = point.y;
+    // A sound that came down the ramp comes out at the ear's own storey, not
+    // hanging in the air at the height of the deck it was made on.
+    this._at.y = path && path.layer !== sLayer ? this._pos.y : point.y;
     this._at.z = path ? path.z : point.z;
 
     const opts = this._opts;
@@ -916,10 +928,7 @@ export class GameAudio {
     // No path at all means the source is off the nav field — off the floor, or
     // inside something. Treat it as muffled rather than pretending it is clear.
     opts.muffled = path ? path.occluded : true;
-    opts.gain = (extra?.gain ?? 1) * detourGain(path ? path.detour : 0)
-      // ...and with no route at all between two storeys, a floor slab is most of
-      // a sound's level, not a lowpass on it.
-      * (!path && sLayer !== lLayer ? THROUGH_SLAB : 1);
+    opts.gain = (extra?.gain ?? 1) * detourGain(path ? path.detour : 0);
     opts.rate = extra?.rate ?? 1;
     opts.delay = extra?.delay ?? 0;
     return this.sfx.play(name, opts);
@@ -945,8 +954,6 @@ export class GameAudio {
 const SOURCE_DROP = 0;
 const EAR_DROP = 1.7;
 const STOREY = STOREY_GAP;
-// What is left of a sound with a floor slab and no way round between it and you.
-const THROUGH_SLAB = 0.25;
 
 function detourGain(detour) {
   return detour > 0 ? DETOUR_REFERENCE / (DETOUR_REFERENCE + detour) : 1;
