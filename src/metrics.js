@@ -41,3 +41,11 @@ export const JUMP_SPEED = 8.4;
  * jump moves the thing that depends on it instead of quietly invalidating it.
  */
 export const JUMP_APEX = (JUMP_SPEED * JUMP_SPEED) / (2 * GRAVITY);
+
+// How far off the ground floor a body's feet have to be to be on another storey
+// rather than standing on a desk. A level's floor is LEVEL_Y up or down (see
+// gen/stairs.js) and the tallest thing anybody can climb onto is a 2.1 m locker,
+// so past this you are upstairs and nothing else puts you there. Three things ask
+// it — who can see you (enemies.js), what can hear you (audio.js) and what the
+// cameras can see (cameras.js) — and they must all draw the line in one place.
+export const STOREY_GAP = 2.4;

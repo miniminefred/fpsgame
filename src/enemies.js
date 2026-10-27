@@ -4,7 +4,7 @@ import { buildRig } from './rigs.js';
 import { give, take } from './held.js';
 import { DEATH_TIME, HIT_FLASH, SWING_TIME, animate, die } from './enemy-anim.js';
 import { angleDelta, angleLerp, smoothTo } from './util.js';
-import { EYE } from './metrics.js';
+import { EYE, STOREY_GAP } from './metrics.js';
 // The rest of this class, in the four files it is split across. See the note
 // beside `Object.defineProperties` at the bottom of this file.
 import { rosterMethods } from './roster.js';
@@ -12,12 +12,6 @@ import { netMethods } from './enemy-net.js';
 import { breakMethods } from './breaks.js';
 import { stationMethods } from './stations.js';
 import { LUNCH_GAP } from './enemy-tuning.js';
-
-// How far off the ground the player's feet have to be to be on another level of the
-// building rather than standing on a desk. A level's floor is LEVEL_Y up or down (see
-// gen/stairs.js) and the tallest thing anybody can climb onto down here is a 2.1 m
-// locker, so past this you are on another level and nothing else puts you there.
-const STOREY_GAP = 2.4;
 
 const SIGHT = 22;          // metres they can notice you at, with line of sight
 

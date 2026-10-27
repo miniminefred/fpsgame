@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Sfx } from './sfx.js';
+import { STOREY_GAP } from './metrics.js';
 
 // The game's voice: every sound the office makes, named by what happened rather
 // than by what it sounds like.
@@ -930,10 +931,10 @@ export class GameAudio {
 // How far the ear is above the feet, so the listener can be put on the right
 // storey; a sound's point is taken as it is — often a body's feet, which is exactly
 // its storey, and never more than a couple of metres over one. And how far off the
-// floor counts as another storey, which is enemies.js's STOREY_GAP.
+// floor counts as another storey, which is STOREY_GAP in metrics.js.
 const SOURCE_DROP = 0;
 const EAR_DROP = 1.7;
-const STOREY = 2.4;
+const STOREY = STOREY_GAP;
 // What is left of a sound with a floor slab and no way round between it and you.
 const THROUGH_SLAB = 0.25;
 
