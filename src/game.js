@@ -558,7 +558,7 @@ export class Game {
     // watching them — nothing about where one goes depends on who is standing
     // where, and taking the roster's dice first keeps enemy placement reading
     // off the same stream it always did.
-    this.cameras.spawn(level.layout, level.nav, rng);
+    this.cameras.spawn(level.layout, level.nav, rng, level.colliders);
 
     // The parcel runs, and they go LAST of the three because they are the only
     // thing on the floor that needs two of the others to have finished: the

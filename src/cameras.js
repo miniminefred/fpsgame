@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { CEIL_H, centreX, centreZ, CORRIDOR, NEIGHBOURS, ROOM, siteWalk, SOLID, worldX, worldZ } from './gen/layout.js';
 import { angleLerp, clamp, clamp01, smoothTo } from './util.js';
-import { EYE, JUMP_APEX } from './metrics.js';
+import { EYE, JUMP_APEX, STOREY_GAP } from './metrics.js';
 
 // Building security: the things on the walls that are watching the floor.
 //
@@ -142,10 +142,16 @@ export class Cameras {
    * next. Walking the list means a floor comes up short only if it genuinely
    * has nowhere left to put one.
    */
-  spawn(layout, nav, rng) {
+  spawn(layout, nav, rng, colliders = []) {
     this.clear();
     this.layout = layout;
     this.nav = nav;
+    // What stands in a beam's way at hip height. The run is measured against the
+    // shell (see _run), and on an office floor that was enough; a car park's deck
+    // is one open field with rows of cars and the ramp's wedge standing in it, and
+    // a laser drawn straight through a parked car is the first thing anybody sees.
+    this.blockers = colliders.filter((c) => !c.door && !c.barrier
+      && (c.base ?? 0) < BEAM_Y && c.top > BEAM_Y);
     this.cooldown = 0;
 
     const want = Math.max(MIN_FITTED,
@@ -218,6 +224,7 @@ export class Cameras {
       const run = this._run(layout, from.x, from.z, dx, dy, laser ? BEAM_MAX : WATCH_RANGE);
       if (!best || run > best.run) best = { dx, dy, run, from };
     }
+    if (best && laser) best.run = this._beamRun(best.from.x, best.from.z, best.dx, best.dy, best.run);
     if (!best || best.run < (laser ? BEAM_MIN : MIN_VIEW)) return null;
     // Not buried behind a filing cabinet. Only the first stride is tested: the
     // run itself is measured against the shell, because a beam at hip height
@@ -250,6 +257,28 @@ export class Cameras {
       if (t !== CORRIDOR && t !== ROOM) return d - step;
     }
     return max;
+  }
+
+  // How far a beam at hip height gets before something standing in it ends it —
+  // a car, a cabinet, a tread of the ramp. Furniture lower than the beam (a desk)
+  // it passes over, as it always did. A beam ENDS on what it hits rather than the
+  // unit being refused, so a tripwire across a car park lane still lands between
+  // two parked cars.
+  _beamRun(x, z, dx, dz, run) {
+    const r = 0.06;
+    for (const c of this.blockers) {
+      if (c.top < 0) continue;
+      // Slab test of the ray against the box, grown by the beam's own radius.
+      let t0 = 0, t1 = run;
+      for (const [o, d, lo, hi] of [[x, dx, c.minX - r, c.maxX + r], [z, dz, c.minZ - r, c.maxZ + r]]) {
+        if (Math.abs(d) < 1e-9) { if (o < lo || o > hi) { t0 = Infinity; break; } continue; }
+        let a = (lo - o) / d, b = (hi - o) / d;
+        if (a > b) [a, b] = [b, a];
+        t0 = Math.max(t0, a); t1 = Math.min(t1, b);
+      }
+      if (t0 <= t1 && t0 < run) run = Math.max(0, t0);
+    }
+    return run;
   }
 
   _build(spot, laser, rng) {
@@ -408,7 +437,7 @@ export class Cameras {
         continue;
       }
 
-      this._look(cam, dt, px, pz, unseen);
+      this._look(cam, dt, px, pz, feet, unseen);
       if (cam.seen && !was) this.onSpotted?.(cam);
 
       if (cam.seen && this.cooldown <= 0) cam.count = Math.min(ALARM_TIME, cam.count + dt);
@@ -433,14 +462,19 @@ export class Cameras {
   // against where the camera is ACTUALLY looking rather than where it would like
   // to be, which is what gives you the moment between walking into a corridor
   // and the thing swinging onto you.
-  _look(cam, dt, px, pz, unseen = false) {
+  _look(cam, dt, px, pz, feet, unseen = false) {
     const dx = px - cam.x;
     const dz = pz - cam.z;
     const dist = Math.hypot(dx, dz) || 0.001;
 
     const fx = -Math.sin(cam.aim);
     const fz = -Math.cos(cam.aim);
+    // A camera watches its own storey. Sight is a 2D grid (nav.losClear), so
+    // without this a lens on the ground floor of a car park saw straight up
+    // through the deck slab to whoever was walking on it — and in any office, up
+    // into an attic or down into a basement.
     cam.seen = !unseen
+      && Math.abs(feet) < STOREY_GAP
       && dist < WATCH_RANGE
       && (dx * fx + dz * fz) / dist > Math.cos(WATCH_CONE)
       && this.nav.losClear(cam.x, cam.z, px, pz);
