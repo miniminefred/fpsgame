@@ -4179,7 +4179,8 @@ the look speed (scaled by that same ratio, on both PointerLockControls'
 `pointerSpeed` and `applyLook`'s `lookScale`, or the scope is too twitchy to hold on
 a head), and the black lens with the gun hidden — SNAPPED on most of the way in
 rather than faded, because half a gun through half a mask is the picture nobody
-wants. A reload drops you out of it; the bolt between shots does not.
+wants. Every shot drops you out of it while the bolt is worked, and so does a
+reload; still holding the button when the hands are done brings it back.
 
 ### Hit direction (`hud.js` + `#hitdirs`)
 Taking damage puts a red chevron on a ring around the crosshair pointing at whoever landed

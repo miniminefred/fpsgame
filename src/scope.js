@@ -18,9 +18,9 @@
 //                                  half a gun drawn through half a black mask is
 //                                  the one picture of this nobody wants to see
 //
-// A reload drops you out of it — the gun is down by your hip and the bolt is
-// open — and the bolt worked between shots does not, because that is the shot
-// you are lining up the next one from.
+// Every shot drops you out of it: the bolt is worked with the rifle off your eye,
+// and so is a reload. Still holding the button when the hands are done brings the
+// scope straight back up, so a second shot costs the bolt and nothing more.
 
 import { setLookScale } from './input.js';
 
@@ -44,7 +44,7 @@ export class Scope {
   update(dt, active) {
     const stats = this.weapons.stats;
     const want = active && !!stats.scope && (this.keys.aim || this.keys.aimLatched)
-      && !this.shooting.reloading;
+      && !this.shooting.reloading && !this.weapons.anim;
     const k = Math.max(0, Math.min(1, this.k + (want ? dt : -dt) / IN_TIME));
     if (k === this.k && k === 0) return;
     this.k = k;
