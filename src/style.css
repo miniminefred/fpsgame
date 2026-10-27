@@ -144,6 +144,33 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
 /* Being watched. Under the crosshair rather than out at the edge of the HUD:
    it is the one readout you have to act on inside six seconds, and looking away
    from the middle of the screen to find it is the reaction it would cost. */
+/* The boss bar. Top centre and wide, because it is the one number on screen that
+   tells you how long this fight is going to be; low enough to stay clear of the
+   co-op chip and the phone's fullscreen button, which share the top edge. */
+#boss {
+  position: absolute; left: 50%; top: 16vh;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  opacity: 0; transition: opacity 0.25s ease;
+}
+#boss.show { opacity: 1; }
+#boss-name {
+  font-size: 13px; font-weight: 800; letter-spacing: 6px;
+  text-transform: uppercase; color: var(--danger);
+  text-shadow: 0 1px 3px #000, 0 0 10px rgba(0, 0, 0, 0.95);
+}
+#boss-bar {
+  width: min(420px, 60vw); height: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 77, 77, 0.45);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
+}
+#boss-fill {
+  height: 100%; width: 100%;
+  background: var(--danger);
+  transition: width 0.15s linear;
+}
+
 #watch {
   position: absolute; left: 50%; top: calc(50% + 54px);
   transform: translateX(-50%);

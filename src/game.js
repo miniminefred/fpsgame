@@ -16,6 +16,8 @@ import { DRINK_BOOST, DRINK_HEAL } from './coins.js';
 
 const EXIT_RADIUS = 1.6;       // how close you must get to the pad to descend
 const HEAL_ON_DESCEND = 25;
+// How close the Manager has to be, once he is after you, for his bar to show.
+const BOSS_BAR_RANGE = 30;
 const PUSH_IMPULSE = 110;      // N·s per second of contact, walking into props
 
 // Vitals audio: the two sounds that report on the player rather than the world.
@@ -190,6 +192,7 @@ export class Game {
       this.destruction.damageSurface(hit, dir, damage);
 
     this.enemies.onDeath = (e) => this._onEnemyDeath(e);
+    this.enemies.onBossCall = (e) => this._onBossCall(e);
     this.doors.onRefused = (door) => this._onDoorRefused(door);
     this.wallet.onChange = (wallet, tier) => this._onCardTaken(wallet, tier);
     this.destruction.onPowerCut = (entry, point) => this._onPowerCut(point);
@@ -229,6 +232,42 @@ export class Game {
       this.player.object.position.x, this.player.object.position.z);
     this.applyAlarm(response);
     this.netplay?.announceAlarm(response);
+  }
+
+  /**
+   * The Manager, at half health, calls two guards up from below. The alarm's own
+   * machinery with a fixed headcount and nothing else — no office emptied, no
+   * floor roused — so it goes down the wire the same way and a joiner builds the
+   * same two men. It only ever runs on the host: health is the host's.
+   */
+  _onBossCall(boss) {
+    const response = this.enemies.alarm(boss.x, boss.z, { guards: 2 });
+    this.shooting.addHittables(response.meshes);
+    this.bossCallSignal(response.spawned.length);
+    this.netplay?.announceAlarm(response, true);
+  }
+
+  bossCallSignal(coming) {
+    this.audio.alarm();
+    this.hud.message('THE MANAGER CALLS SECURITY', 1700,
+      coming ? { text: `${coming} COMING FOR YOU`, ms: 2300 } : null);
+    this._syncObjective();
+  }
+
+  /**
+   * The boss bar: the Manager's health across the top of the screen while he is
+   * your problem — hurt, or close by and after you. Null hides it.
+   */
+  _bossBar() {
+    const p = this.player.object.position;
+    let shown = null;
+    for (const e of this.enemies.items) {
+      if (!e.alive || !e.type.boss) continue;
+      const near = Math.hypot(e.x - p.x, e.z - p.z) < BOSS_BAR_RANGE;
+      const engaged = e.health < e.maxHealth || e.state === 'chase' || e.state === 'fight';
+      if (near && engaged) { shown = e; break; }
+    }
+    this.hud.setBoss(shown ? shown.type.name : null, shown ? shown.health / shown.maxHealth : 0);
   }
 
   /** What a floor does about an alarm, whichever browser raised it. */
@@ -812,6 +851,7 @@ export class Game {
       this.cameras.update(dt, this.player);
       this.hud.setWatch(this.cameras.watch);
       this.hud.setUnseen(this.player.hidden);
+      this._bossBar();
       this.conveyors.update(dt);
       // After the enemies, because a run is walked out of `enemies.update` via
       // the `jobTick` hook — this call only decides whether to START one, and a

@@ -867,12 +867,17 @@ export const rosterMethods = {
      * the floor when it was generated.
      */,
 
-    alarm(px, pz) {
+    // `opts.guards` sends exactly that many up and nothing else: no office, no
+    // klaxon for the rest of the floor to hear. That is the Manager on his radio
+    // at half health (see `onBossCall`), which is a call for two men, not an alarm.
+    alarm(px, pz, opts = {}) {
       if (!this.nav || !this.rng) return { spawned: [], meshes: [], roused: 0, heard: 0 };
+      const only = opts.guards ?? null;
 
       // The office. Guards specifically: the janitors on their break are behind a
       // door too and an alarm is not their problem.
-      const held = this.items.filter((e) => e.alive && e.behindLock && e.type.guard);
+      const held = only !== null ? []
+        : this.items.filter((e) => e.alive && e.behindLock && e.type.guard);
       for (const e of held) {
         this._keyed(e);
         // They are not men behind a lock any more, and that is not bookkeeping:
@@ -883,7 +888,7 @@ export const rosterMethods = {
         this._rouse(e, px, pz);
       }
 
-      const wanted = held.length ? RESPONSE_HELD : RESPONSE;
+      const wanted = only ?? (held.length ? RESPONSE_HELD : RESPONSE);
       const spawned = [];
       const meshes = [];
       for (const spot of this._responseSpots(px, pz, wanted)) {
@@ -913,7 +918,7 @@ export const rosterMethods = {
       // already coming for you does not need telling twice, and a klaxon is not a
       // reason for a man in a firefight to go and look somewhere else.
       let heard = 0;
-      for (const e of this.items) {
+      for (const e of only !== null ? [] : this.items) {
         if (!e.alive || e.neutral || e.state !== 'idle') continue;
         const along = this.nav.pathDistance(e.x, e.z, e.layer);
         if (along < 0 || along > ALARM_HEARING) continue;

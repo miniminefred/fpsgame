@@ -294,10 +294,10 @@ export class NetPlay {
   }
 
   /** The host has raised one. Tell the joiner who turned up. */
-  announceAlarm(response) {
+  announceAlarm(response, boss = false) {
     if (!this.online || !this.net.isHost) return;
     this.send({
-      t: 'al', n: this.game.floor,
+      t: 'al', n: this.game.floor, b: boss ? 1 : 0,
       list: response.spawned.map((e) => e.netSpawn).filter(Boolean),
       c: response.spawned.length + response.roused + response.heard,
     });
@@ -446,7 +446,8 @@ export class NetPlay {
       }
       case 'al':
         g.shooting.addHittables(g.enemies.addResponders(msg.list));
-        g.alarmSignal(msg.c ?? 0);
+        if (msg.b) g.bossCallSignal(msg.c ?? 0);
+        else g.alarmSignal(msg.c ?? 0);
         break;
 
       // --- the floor ------------------------------------------------------

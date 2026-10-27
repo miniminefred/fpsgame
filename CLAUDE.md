@@ -4143,6 +4143,15 @@ is inside the housing.
 building has to know it before the floor's colliders go to the solver. It is still the first
 draw off the floor's rng, exactly where it was, so nothing after it moved.
 
+### The Manager is a boss fight (`boss` on the type, `onBossCall` in game.js)
+Five times an Office Worker's health, a bar of his own across the top of the screen
+(`#boss`, `setBoss` in hud.js) while he is hurt or after you within
+`BOSS_BAR_RANGE`, and at half health he gets on the radio: two guards come up from
+below. That call is `enemies.alarm` with `{ guards: 2 }` — the alarm's own spawn
+and its own co-op message (`b` on the `'al'` packet), with no office emptied and no
+floor roused — and it only ever happens on the host, because health is the host's.
+One sniper headshot takes him to 40% rather than killing him.
+
 ### A drone's rotors (`_loseRotor` in enemies.js)
 The Survey Drone's two ducted rotors are hit zones of their own (`ROTOR_HIT`, 2x).
 A round in one knocks it off — gone from the model and from the hit boxes, so the

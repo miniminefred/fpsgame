@@ -519,6 +519,12 @@ export class Enemies {
   _damage(e, damage, hit = null) {
     if (!e.alive) return null;
     e.health -= damage;
+    // The Manager is a boss fight, and halfway through it he gets on the radio.
+    // Once, and only while he is still standing to do it.
+    if (e.type.boss && !e.calledHelp && e.health > 0 && e.health <= e.maxHealth / 2) {
+      e.calledHelp = true;
+      this.onBossCall?.(e);
+    }
     e.hitFlash = HIT_FLASH;
     // Lunch is over. This is what keeps the visor honest: a body on its break is
     // out of the state machine entirely, and the frame that stops being true is

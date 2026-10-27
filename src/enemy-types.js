@@ -115,6 +115,10 @@ export const TYPES = {
   },
   manager: {
     // Slow, tanky, accurate at range. Deal with it or leave the floor.
+    // A boss fight now (`boss`): five times an Office Worker's health, a bar of
+    // his own across the top of the screen while he is fighting you, and two
+    // guards called up at half health. See `onBossCall` in game.js.
+    boss: true,
     name: 'Manager', hp: 5.0, speed: 0.82, damage: 1.9, rate: 1.6, spread: 0.55,
     range: 21, melee: false, scale: 1.14,
     // The tightest cone on the floor gets the second-quickest draw to go with it:

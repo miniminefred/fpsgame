@@ -50,6 +50,11 @@ export class Hud {
     this.unseenEl = $('unseen');
     this._unseen = null;   // last value written; see setUnseen
 
+    this.bossEl = $('boss');
+    this.bossNameEl = $('boss-name');
+    this.bossFillEl = $('boss-fill');
+    this._boss = null;   // last name and width written, so a still frame writes nothing
+
     this.watchEl = $('watch');
     this.watchFillEl = $('watch-fill');
     this.alarmEl = $('alarm-flash');
@@ -163,6 +168,17 @@ export class Hud {
     if (on === this._unseen) return;
     this._unseen = on;
     this.unseenEl?.classList.toggle('visible', on);
+  }
+
+  /** The boss bar: a name and his health 0..1, or a null name to hide it. */
+  setBoss(name, fraction) {
+    const key = name ? `${name}:${Math.round(clamp01(fraction) * 200)}` : null;
+    if (key === this._boss) return;
+    this._boss = key;
+    this.bossEl?.classList.toggle('show', !!name);
+    if (!name) return;
+    if (this.bossNameEl) this.bossNameEl.textContent = name;
+    if (this.bossFillEl) this.bossFillEl.style.width = `${clamp01(fraction) * 100}%`;
   }
 
   setWatch(fraction) {
