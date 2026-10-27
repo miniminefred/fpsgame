@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { getFx } from './fx-textures.js';
+import { cuesBetween, poseAt } from './reloads.js';
 
 // Classic FPS loadout, light -> heavy. Number keys 1..5 select these in order.
 //
@@ -12,6 +13,12 @@ import { getFx } from './fx-textures.js';
 // projectile, `pellets` projectiles per shot, `spread` cone half-angle in
 // radians, `kick` view recoil per shot in radians, `mag`/`reload` ammo handling,
 // `sound` the clip in the sound library this gun fires (see audio.js).
+//
+// How each one is reloaded — the hands and the sounds — is reloads.js's, keyed by
+// `name`; `reload` here is the time for every gun but the shotgun, which loads a
+// shell at a time and takes as long as it is empty. The sniper alone has three
+// more: `cycle` (the bolt is worked after every shot), `scope` (how far the scope
+// zooms, see scope.js) and `headshot: 'kill'` (see `hit` in enemies.js).
 //
 // `throwMul`/`throwTo` are how hard a KILLING shot throws the body, and over
 // what range that survives — the point-blank multiplier on the gun's `punch`,
@@ -55,7 +62,8 @@ const WEAPONS = [
   {
     name: 'Sniper Rifle', file: 'models/5_sniper.glb', length: 0.80, flip: false, yaw: 0,
     rpm: 48, auto: false, damage: 130, pellets: 1, spread: 0.0008,
-    kick: 0.06, punch: 1.4, throwMul: 2.0, throwTo: 34, mag: 5, reload: 2.8, range: 500,
+    kick: 0.06, punch: 1.4, throwMul: 2.0, throwTo: 34, mag: 5, reload: 5.0, range: 500,
+    cycle: true, scope: 4, headshot: 'kill',
     sound: 'sniper-fire',
   },
 ];
@@ -90,8 +98,16 @@ export class Weapons {
     this.handX = this._computeX();
     this.recoil = 0;               // 0..RECOIL_MAX, decays every frame
     this.flash = 0;                // remaining muzzle-flash time
-    this.reloadTime = 0;
-    this.reloadLeft = 0;
+    // What the hands are doing: a reload or the sniper's bolt, from reloads.js,
+    // and how far through it they are. Null is the rest pose.
+    this.anim = null;
+    this.animT = 0;
+    this._pose = {};
+    // Set by shooting.js: a sound the hands make, as the animation passes it.
+    this.onCue = null;
+    // Looking down the scope (scope.js): the gun is not drawn, and nor is a
+    // muzzle flash hanging in front of the lens.
+    this.scoped = false;
 
     this._muzzle = new THREE.Vector3();
     this._buildMuzzleFlash();
@@ -168,7 +184,10 @@ export class Weapons {
   // Horizontal offset as a fraction of the frustum half-width at the gun's
   // depth, capped so widescreen keeps its placement and narrow views pull in.
   _computeX() {
-    const vFov = THREE.MathUtils.degToRad(this.camera.fov);
+    // The UNZOOMED view: the scope changes the camera's fov, and a resize taken
+    // down the scope would otherwise park the gun for the zoomed one.
+    this.baseFov ??= this.camera.fov;
+    const vFov = THREE.MathUtils.degToRad(this.baseFov);
     const halfWidth = Math.abs(HAND_Z) * Math.tan(vFov / 2) * this.camera.aspect;
     return Math.min(X_FRAC * halfWidth, X_MAX);
   }
@@ -184,7 +203,7 @@ export class Weapons {
     this.active = index;
     this.rigs.forEach((rig, i) => { if (rig) rig.visible = i === index; });
     this.recoil = 0;
-    this.reloadLeft = 0;           // switching cancels an in-progress reload
+    this.anim = null;              // switching cancels an in-progress reload
     this._resetRig(this.rigs[index]);
     this.onChange?.(index, WEAPONS[index].name);
   }
@@ -224,7 +243,7 @@ export class Weapons {
     const scale = 0.7 + this.stats.punch * 0.6;
     this.flashGroup.scale.setScalar(scale * (0.9 + Math.random() * 0.2));
     this.flashPlume.rotation.z = Math.random() * Math.PI * 2;
-    this.flashGroup.visible = true;
+    this.flashGroup.visible = !this.scoped;
 
     this.flashLight.position.copy(p);
     this.flashLight.intensity = 6 * this.stats.punch;
@@ -239,10 +258,11 @@ export class Weapons {
     this.flashLight.position.copy(this.flashGroup.position);
   }
 
-  // Plays the reload as a full roll of the gun out of and back into view.
-  startReload(duration) {
-    this.reloadTime = duration;
-    this.reloadLeft = duration;
+  // Plays a reload, or the bolt being worked, from reloads.js. Null stands the
+  // hands down to rest — a new floor arriving mid-reload, say.
+  play(anim) {
+    this.anim = anim;
+    this.animT = 0;
   }
 
   update(dt) {
@@ -274,30 +294,31 @@ export class Weapons {
       }
     }
 
-    if (this.reloadLeft > 0) this.reloadLeft = Math.max(0, this.reloadLeft - dt);
+    if (this.anim) {
+      const t0 = this.animT;
+      this.animT = Math.min(1, t0 + dt / this.anim.duration);
+      for (const c of cuesBetween(this.anim, t0, this.animT)) this.onCue?.(c.name, c.opts);
+      if (this.animT >= 1) this.anim = null;
+    }
 
     const rig = this.rigs[this.active];
     if (!rig) return;
-
-    // Reload dips the gun down and rolls it; 0 at both ends of the animation.
-    let dip = 0;
-    let roll = 0;
-    if (this.reloadLeft > 0) {
-      const k = Math.sin(Math.PI * (1 - this.reloadLeft / this.reloadTime));
-      dip = k * 0.22;
-      roll = k * 0.9;
+    for (let i = 0; i < this.rigs.length; i++) {
+      if (this.rigs[i]) this.rigs[i].visible = i === this.active && !this.scoped;
     }
+    if (this.scoped) { this.flashGroup.visible = false; }
 
-    rig.position.set(this.handX, HAND_Y - dip, HAND_Z + this.recoil * RECOIL_BACK);
-    rig.rotation.x = -this.recoil * RECOIL_PITCH;
-    rig.rotation.z = roll;
+    const p = poseAt(this.anim, this.animT, this._pose);
+    rig.position.set(this.handX + p.x, HAND_Y + p.y, HAND_Z + p.z + this.recoil * RECOIL_BACK);
+    rig.rotation.x = p.rx - this.recoil * RECOIL_PITCH;
+    rig.rotation.y = p.ry;
+    rig.rotation.z = p.rz;
   }
 
   _resetRig(rig) {
     if (!rig) return;
     rig.position.set(this.handX, HAND_Y, HAND_Z);
-    rig.rotation.x = 0;
-    rig.rotation.z = 0;
+    rig.rotation.set(0, 0, 0);
   }
 }
 

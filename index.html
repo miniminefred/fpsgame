@@ -72,6 +72,7 @@
         <span><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> move</span>
         <span><kbd>Space</kbd> jump</span>
         <span><kbd>Mouse</kbd> look</span>
+        <span><kbd>Right click</kbd> scope</span>
         <span><kbd>Esc</kbd> release</span>
       </div>
       <div class="row">
@@ -87,6 +88,7 @@
     <div class="keys touch-keys">
       <div class="row"><span>Left thumb walks</span><span>Right thumb looks</span></div>
       <div class="row"><span>Buttons: fire, jump, reload</span><span>1–5 switch weapon</span></div>
+      <div class="row"><span>Tap 5 again on the sniper: scope</span></div>
     </div>
   </div>
 
@@ -95,6 +97,9 @@
        can never swallow the click that grabs pointer lock.
        ============================================================ -->
   <div id="hud">
+    <!-- Down the sniper's scope (scope.js): black round a round lens, with a fine
+         crosshair. First in the HUD so health and ammo still draw over it. -->
+    <div id="scope"></div>
     <div id="vignette"></div>
 
     <!-- Which way the last few hits came from. A fixed pool of wedges swung

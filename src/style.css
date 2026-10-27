@@ -179,6 +179,39 @@ body.dead #overlay ~ #hud, body.dead #hud { opacity: 0; }
   opacity: 0; transition: opacity 0.18s ease;
 }
 #crosshair.visible { opacity: 0.9; }
+/* The scope has a crosshair of its own. */
+body.scoped #crosshair { opacity: 0; transition: none; }
+
+/* Down the scope (scope.js). The lens is a hole in a black sheet, sized off the
+   short edge so it is round and whole whichever way the screen is held; the
+   reticle is two hairlines through the middle, which the sheet hides everywhere
+   but inside the lens. */
+#scope {
+  position: fixed; inset: 0; pointer-events: none; display: none;
+  --lens: 44vmin;
+  background:
+    radial-gradient(circle at 50% 50%,
+      transparent 0, transparent calc(var(--lens) - 2px),
+      rgba(0, 0, 0, 0.9) calc(var(--lens) - 1px), #000 calc(var(--lens) + 3px));
+}
+#scope.on { display: block; }
+#scope::before, #scope::after {
+  content: ""; position: absolute; left: 50%; top: 50%;
+}
+#scope::before {
+  width: calc(var(--lens) * 2); height: 1px;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(to right,
+    #000 0 30%, rgba(0, 0, 0, 0.85) 30% 70%, #000 70% 100%);
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.4);
+}
+#scope::after {
+  height: calc(var(--lens) * 2); width: 1px;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(to bottom,
+    #000 0 30%, rgba(0, 0, 0, 0.85) 30% 70%, #000 70% 100%);
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.4);
+}
 #crosshair::before, #crosshair::after {
   content: ""; position: absolute;
   filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.85));

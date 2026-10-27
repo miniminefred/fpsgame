@@ -270,7 +270,9 @@ src/
   touch.js        The on-screen controls, and deciding whether a finger is driving
   player.js       Movement, AABB collision against an indexed floor, health
   shooting.js     Hitscan: fire rate, ammo, spread, recoil, damage, prop impulses
-  weapons.js      Five GLB viewmodels, recoil/reload animation, per-gun combat stats
+  weapons.js      Five GLB viewmodels, recoil, per-gun combat stats
+  reloads.js      How each gun is reloaded: the hands, and the sounds as they pass
+  scope.js        Down the sniper's scope: the zoom, the look speed, the black lens
   extinguishers.js  The secondary: a thrown cylinder, its gas, and what it sets off
   spills.js       Water on the floor: what comes out of a shot cooler, and its noise
   effects.js      Pooled tracers, impact flashes, bullet decals
@@ -372,6 +374,7 @@ leave the build green and the harness silently broken.
 | Shift | Sprint |
 | Space | Jump |
 | Left click | Shoot |
+| Right mouse (hold) | Look down the sniper's scope |
 | R | Reload |
 | 1 - 5 | Switch weapon (light to heavy) |
 | E | Pick up a coin / buy a drink at a machine |
@@ -387,7 +390,7 @@ On a touch device the same actions are on screen instead — see below.
 | Left thumb, lower half | Virtual stick: walk, and sprint at full deflection |
 | Right thumb, anywhere free | Drag to look |
 | FIRE / JUMP / RELOAD | Bottom right, under the right thumb |
-| 1 - 5 | Weapon chips above the buttons |
+| 1 - 5 | Weapon chips above the buttons; tap the sniper's again to scope |
 | Top-centre button | Fullscreen |
 
 ### Unseen (T) — a workbench, not a control
@@ -4139,6 +4142,44 @@ is inside the housing.
 **The shift is now rolled in `game.js`** rather than inside `enemies.spawn`, because the
 building has to know it before the floor's colliders go to the solver. It is still the first
 draw off the floor's rng, exactly where it was, so nothing after it moved.
+
+### Five reloads, a bolt and a scope (`reloads.js`, `scope.js`)
+Every gun has its own reload, and you can hear which: the pistol drops its magazine
+and racks the slide, the SMG and rifle tip over for a magazine and yank the charging
+handle (the rifle slower and heavier), the shotgun rolls over and takes a shell at a
+time before one pump, and the sniper works its bolt either side of a five-second
+magazine change. An animation is KEYS (a fraction of the way through, and the rig's
+offset from rest) eased with smoothstep, plus CUES — the sounds — at fractions of
+their own. Two things in it are decisions:
+
+- **Cues fire as the animation PASSES them, not scheduled with a delay.** The old
+  reload played `mag-in` on a 0.55-of-the-way delay, so a reload cut short by a
+  weapon switch went on clicking a magazine into a gun that had been put away.
+- **The shotgun's reload is as long as it is empty** (`shotgun(missing)`): 1.7 s
+  with four shells left, 3.2 s from empty. Every other gun's is fixed.
+
+The sniper works its bolt after every shot it has a round for (`cycle`,
+`BOLT_CYCLE`), and the wait for the next shot is at least that long — it is what
+its fire rate was always standing in for. Its magazine change is 5 s, which is the
+price of the rule below.
+
+**One headshot from the sniper kills anybody but the Manager** (`headshot: 'kill'`
+on the gun, `MANAGER_HEADSHOT` in enemies.js). The kill is sent as a damage of twice
+the body's STARTING health rather than its current one, because on a co-op joiner
+the current health is the host's from a moment ago and the number crosses the wire
+as the damage. The Manager takes 60% of his start instead — he is the last beat of a
+floor, and one lucky round from across the building does not end it. Measured on
+all 24 types at floor 12: 23 killed outright, the Manager left on 40%, body shots
+and every other gun's headshots unchanged.
+
+**The scope** is right mouse held (or the sniper's chip tapped again on a phone —
+`aimLatched`, in `selectWeapon`). Three things move together and have to: the fov
+(worked in tangents, since 4x zoom is a quarter of tan(fov/2), not of the angle),
+the look speed (scaled by that same ratio, on both PointerLockControls'
+`pointerSpeed` and `applyLook`'s `lookScale`, or the scope is too twitchy to hold on
+a head), and the black lens with the gun hidden — SNAPPED on most of the way in
+rather than faded, because half a gun through half a mask is the picture nobody
+wants. A reload drops you out of it; the bolt between shots does not.
 
 ### Hit direction (`hud.js` + `#hitdirs`)
 Taking damage puts a red chevron on a ring around the crosshair pointing at whoever landed

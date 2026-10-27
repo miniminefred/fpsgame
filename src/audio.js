@@ -42,6 +42,13 @@ const LIBRARY = {
   'mag-out':  { variants: 2, gain: 0.45, pitch: 0.07 },
   'mag-in':   { variants: 2, gain: 0.50, pitch: 0.07 },
   'dry-fire': { variants: 2, gain: 0.40, pitch: 0.08 },
+  // The rest of a reload, each gun its own — see reloads.js for when each plays.
+  'pistol-slide':    { variants: 3, gain: 0.50, pitch: 0.06 },
+  'charging-handle': { variants: 3, gain: 0.50, pitch: 0.06 },
+  'shell-insert':    { variants: 4, gain: 0.45, pitch: 0.08 },
+  'shotgun-pump':    { variants: 3, gain: 0.60, pitch: 0.05 },
+  'bolt-open':       { variants: 3, gain: 0.50, pitch: 0.05 },
+  'bolt-close':      { variants: 3, gain: 0.55, pitch: 0.05 },
 
   // A floor holds up to 28 of these, and on a bad one they all shoot at once.
   'enemy-fire':  { variants: 3, gain: 0.75, pitch: 0.09 },
@@ -429,10 +436,13 @@ export class GameAudio {
     this.sfx.play('dry-fire');
   }
 
-  /** Magazine out now, magazine in near the end of the animation. */
-  reload(duration) {
-    this.sfx.play('mag-out');
-    this.sfx.play('mag-in', { delay: duration * 0.55 });
+  /**
+   * A sound the hands make while reloading or working a bolt, played at the
+   * moment the animation reaches it (reloads.js) rather than scheduled ahead —
+   * a reload cut short must not go on clicking.
+   */
+  gunCue(name, opts) {
+    this.sfx.play(name, opts);
   }
 
   weaponSwitch() {

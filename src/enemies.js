@@ -126,6 +126,12 @@ const BLAST_PUNCH = 3.5;
 // geometry the player could not have controlled.
 const HIT_ZONES = { head: 1.12, torso: 1, limb: 0.92 };
 
+// A gun that kills with a headshot (`headshot: 'kill'` on the sniper) kills
+// anybody it hits in the head — except the Manager, who is the last beat of a
+// floor and is not ended by one lucky round from across the building. He takes
+// this share of what he started with instead, which is a heavy hit.
+const MANAGER_HEADSHOT = 0.6;
+
 // The response was sent, and it has no desk to go back to. GIVE_UP is a clerk
 // who heard a bang two rooms away and is entitled to decide he imagined it;
 // these men were told over the radio, and a response that turns round after
@@ -321,6 +327,7 @@ export class Enemies {
       x, z,
       yaw: group.rotation.y,
       health: tuning.health * type.hp,
+      maxHealth: tuning.health * type.hp,
       alive: true,
       state: 'idle',
       timer: rng.range(0, 1),
@@ -418,6 +425,7 @@ export class Enemies {
       if (!mesh) continue;              // a rat has a body and a head and that is all
       mesh.userData.enemy = enemy;
       mesh.userData.hitScale = scale;
+      mesh.userData.head = mesh === head;
       mesh.userData.isEnemyPart = true;
       enemy.hitboxes.push(mesh);
       this.meshes.push(mesh);
@@ -437,10 +445,18 @@ export class Enemies {
    * the gun that fired it. A body that folds straight down whatever hit it is a
    * body that died of natural causes.
    */
-  hit(mesh, damage, dir = null, point = null, punch = 1) {
+  hit(mesh, damage, dir = null, point = null, punch = 1, headshotKills = false) {
     const e = mesh.userData?.enemy;
     if (!e || !e.alive) return null;
-    const dealt = damage * (mesh.userData.hitScale ?? 1);
+    let dealt = damage * (mesh.userData.hitScale ?? 1);
+    if (headshotKills && mesh.userData.head) {
+      // Enough to finish anybody outright, worked out against what they STARTED
+      // with rather than what is left: a joiner's copy of their health is the
+      // host's from a moment ago, and this number crosses the wire as the damage.
+      dealt = e.type.name === 'Manager'
+        ? Math.max(dealt, e.maxHealth * MANAGER_HEADSHOT)
+        : Math.max(dealt, e.maxHealth * 2);
+    }
     const shot = dir ? { dir, point, mesh, punch } : null;
 
     // Not our call. The shot is real and the feedback is immediate — the flash,

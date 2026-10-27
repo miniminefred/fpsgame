@@ -15,6 +15,7 @@ import { GameAudio } from './audio.js';
 import { Hud } from './hud.js';
 import { Minimap } from './minimap.js';
 import { Shooting } from './shooting.js';
+import { Scope } from './scope.js';
 import { Physics } from './physics.js';
 import { Destruction } from './destruction.js';
 import { Extinguishers } from './extinguishers.js';
@@ -67,6 +68,7 @@ const casings = new Casings(scene, physics);
 const shooting = new Shooting({
   camera, controls: player.controls, keys, weapons, effects, enemies, hud, audio, physics, casings,
 });
+const scope = new Scope({ camera, weapons, shooting, controls: player.controls, keys });
 
 const spills = new Spills({ scene, audio });
 const destruction = new Destruction({ scene, physics, effects, audio, shooting, lighting, spills });
@@ -125,8 +127,15 @@ const netplay = new NetPlay({ net, game, scene, menu: coopMenu });
 game.netplay = netplay;
 
 // One way to change weapon, whether it came from a number key or a thumb.
+// Choosing the gun you are already holding toggles its scope, if it has one —
+// which is how a thumb scopes in, there being no right mouse button on a phone.
 function selectWeapon(n) {
-  if (n >= weapons.count || n === weapons.active) return;
+  if (n >= weapons.count) return;
+  if (n === weapons.active) {
+    if (weapons.stats.scope) keys.aimLatched = !keys.aimLatched;
+    return;
+  }
+  keys.aimLatched = false;
   weapons.select(n);
   shooting.onWeaponChange();
 }
@@ -256,6 +265,8 @@ function tick(render) {
 
   player.update(dt, camera);
   lighting.update(dt, camera.position);
+  // Before the weapons, because whether the gun is drawn at all is the scope's.
+  scope.update(dt, game.state === 'playing' && player.controls.engaged && !player.dead);
   weapons.update(dt);
   audio.update(dt, camera);   // before anything plays, so this frame pans right
 

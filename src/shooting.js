@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { clamp, clamp01 } from './util.js';
 // Recoil moves the same camera the mouse does, so it obeys the same ceiling.
 import { PITCH_LIMIT } from './input.js';
+import { BOLT_CYCLE, reloadFor } from './reloads.js';
 
 // --- the cone a shot goes into ----------------------------------------------
 
@@ -70,6 +71,9 @@ export class Shooting {
     this.enemies = enemies;
     this.hud = hud;
     this.audio = audio;
+    // The hands make their own noise — a magazine, a slide, a shell, a bolt —
+    // at the moment the animation reaches it (reloads.js).
+    weapons.onCue = (name, opts) => audio.gunCue(name, opts);
     this.physics = physics;
     this.casings = casings;
 
@@ -136,7 +140,7 @@ export class Shooting {
   refill() {
     for (let i = 0; i < this.mags.length; i++) this.mags[i] = this.weapons.statsAt(i).mag;
     this.reloadLeft = 0;
-    this.weapons.startReload(0);
+    this.weapons.play(null);
     this._syncHud();
   }
 
@@ -205,9 +209,11 @@ export class Shooting {
   reload() {
     const stats = this.weapons.stats;
     if (this.reloading || this.mag >= stats.mag) return;
-    this.reloadLeft = stats.reload;
-    this.weapons.startReload(stats.reload);
-    this.audio.reload(stats.reload);
+    // How long is the animation's, because the shotgun's depends on how many
+    // shells it is short — see reloads.js.
+    const anim = reloadFor(stats, stats.mag - this.mag);
+    this.reloadLeft = anim.duration;
+    this.weapons.play(anim);
     this._syncHud();
   }
 
@@ -226,6 +232,13 @@ export class Shooting {
     this.noise = 1.5;
 
     this.weapons.fired();
+    // A bolt-action works its bolt after every shot it has a round left for. The
+    // wait for the next shot is at least as long as that takes, so the gun cannot
+    // fire with the bolt still open.
+    if (stats.cycle && this.mag > 0) {
+      this.weapons.play(BOLT_CYCLE);
+      this.cooldown = Math.max(this.cooldown, BOLT_CYCLE.duration);
+    }
     this.weapons.muzzleWorld(this._muzzle);
     this.audio.playerShot(stats);
     this.casings?.eject(this.camera, this._muzzle);
@@ -297,7 +310,7 @@ export class Shooting {
         // the damage: if this is the shot that kills them, it is all of what the
         // ragdoll is thrown by.
         const outcome = this.enemies.hit(hit.object, damage, dir, hit.point,
-          throwPunch(stats, hit.distance));
+          throwPunch(stats, hit.distance), stats.headshot === 'kill');
         this.effects.impact(hit.point, this._normal, HIT_COLOR);
         this.audio.bulletHitFlesh(hit.point);
         // The vocal is played from here rather than from enemies.hit, because

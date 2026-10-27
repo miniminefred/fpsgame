@@ -19,6 +19,8 @@ export function createInput() {
     reload: false,
     fire: false,        // trigger held — automatic weapons read this
     firePressed: false, // trigger edge — semi-auto weapons consume this
+    aim: false,         // right mouse held — down the scope, on a gun that has one
+    aimLatched: false,  // ...or toggled on, for a thumb (see selectWeapon in main.js)
   };
 
   addEventListener('keydown', (e) => { if (!typing(e)) setKey(keys, e.code, true); });
@@ -28,18 +30,28 @@ export function createInput() {
   addEventListener('keyup', (e) => setKey(keys, e.code, false));
 
   addEventListener('mousedown', (e) => {
-    if (touchMode || e.button !== 0) return;
+    if (touchMode) return;
+    if (e.button === 2) { keys.aim = true; return; }
+    if (e.button !== 0) return;
     keys.fire = true;
     keys.firePressed = true;
   });
   addEventListener('mouseup', (e) => {
     if (e.button === 0) keys.fire = false;
+    if (e.button === 2) keys.aim = false;
+  });
+  // The right button is the scope, so the browser's own menu must not open on it
+  // — except over the co-op code box, the one place a right click (paste) is
+  // worth having.
+  addEventListener('contextmenu', (e) => {
+    if (!typing(e)) e.preventDefault();
   });
 
   // Losing focus (alt-tab mid-burst) must not leave the trigger stuck down.
   addEventListener('blur', () => {
     keys.forward = keys.back = keys.left = keys.right = false;
     keys.jump = keys.sprint = keys.reload = keys.fire = keys.firePressed = false;
+    keys.aim = false;
   });
 
   return keys;
@@ -122,7 +134,15 @@ export const PITCH_LIMIT = Math.PI / 2 - 0.02;
 // scratch Euler is safe here where a shared Vector3 would not be, because
 // setFromQuaternion overwrites all three components before anything reads them.
 const lookEuler = new Euler(0, 0, 0, 'YXZ');
+// How much of a look delta lands. 1 normally; the scope turns it down while it is
+// zoomed (scope.js), because a pixel of mouse is four times the angle on screen at
+// four times the zoom. PointerLockControls has its own copy (`pointerSpeed`),
+// which the scope sets alongside this.
+let lookScale = 1;
+export function setLookScale(k) { lookScale = k; }
 export function applyLook(camera, dYaw, dPitch) {
+  dYaw *= lookScale;
+  dPitch *= lookScale;
   lookEuler.setFromQuaternion(camera.quaternion);
   lookEuler.y -= dYaw;
   lookEuler.x -= dPitch;
