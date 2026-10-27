@@ -23,8 +23,8 @@ import { CORRIDOR, DOOR, ROOM, SOLID, slidePocketSide } from './tiles.js';
 import { DOOR_W } from './carve.js';
 import { doorsOnRoom } from './locks.js';
 
-// TEST: 1.0 while garage floors are being looked at. The design value is 0.1.
-export const GARAGE_CHANCE = 1.0;
+// One floor in ten is a car park.
+export const GARAGE_CHANCE = 0.1;
 
 /**
  * Whether this floor is a car park. Its own stream, mixed with the floor number,

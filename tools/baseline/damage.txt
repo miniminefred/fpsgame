@@ -1,306 +1,291 @@
-damage s1000/f7 296d344e
-  statics=2053 loose=13 colliders=1194 walk=171575
-  wreck -
-  s#0 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#68 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#136 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#204 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#272 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#340 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#408 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#476 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#544 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#612 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#680 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#748 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#816 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#884 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#952 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+50 statics=1 spill=-
-  s#1020 prop broke=1 frags=3 mass=40.8 big=0.72 cans=0 nav=+2 statics=1 spill=-
-  s#1088 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1156 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1224 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1292 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1360 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1428 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1496 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1564 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1632 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1700 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1768 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1836 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1904 prop broke=1 frags=2 mass=1.764 big=4.9 cans=0 nav=+0 statics=0 spill=-
-  s#1972 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#2040 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  l#0 wood broke=1 frags=6 mass=3.5909 big=1.04 cans=0 nav=+0 statics=0 spill=-
-  l#1 cardboard broke=1 frags=3 mass=2.9301 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#2 cardboard broke=1 frags=2 mass=2.5604 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#3 cardboard broke=1 frags=3 mass=2.9306 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#4 cardboard broke=1 frags=2 mass=2.5507 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#5 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#6 cardboard broke=1 frags=3 mass=2.9352 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#7 plastic broke=1 frags=3 mass=3.3467 big=0.56 cans=0 nav=+0 statics=0 spill=-
-  l#8 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#9 cardboard broke=1 frags=3 mass=2.9372 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#10 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
-  l#11 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
-  l#12 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
-  blackout frags=902 mass=1616.4 big=1.24 fixtures=451 live=120 pending=0
-damage s16838/f1 07328f9d
-  statics=1293 loose=16 colliders=739 walk=102643
-  wreck -
-  s#0 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#43 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#86 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#129 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#172 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#215 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#258 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#301 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#344 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#387 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#430 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#473 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#516 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#559 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#602 prop broke=1 frags=2 mass=1.764 big=4.9 cans=0 nav=+0 statics=0 spill=-
-  s#645 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+50 statics=1 spill=-
-  s#688 prop broke=1 frags=2 mass=1.764 big=4.9 cans=0 nav=+0 statics=0 spill=-
-  s#731 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#774 prop broke=1 frags=2 mass=1.764 big=4.9 cans=0 nav=+0 statics=0 spill=-
-  s#817 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#860 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#903 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#946 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#989 prop broke=1 frags=2 mass=1.764 big=4.9 cans=0 nav=+0 statics=0 spill=-
-  s#1032 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1075 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1118 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1161 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1204 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1247 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1290 prop broke=1 frags=2 mass=1.764 big=4.9 cans=0 nav=+0 statics=0 spill=-
-  l#0 cardboard broke=1 frags=3 mass=2.9309 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#1 cardboard broke=1 frags=3 mass=2.9313 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#2 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#3 plastic broke=1 frags=3 mass=3.3467 big=0.56 cans=0 nav=+0 statics=0 spill=-
-  l#4 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#5 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#6 plastic broke=1 frags=3 mass=3.3467 big=0.56 cans=0 nav=+0 statics=0 spill=-
-  l#7 cardboard broke=1 frags=3 mass=2.9354 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#8 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#9 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#10 plastic broke=1 frags=2 mass=3.4561 big=0.56 cans=0 nav=+0 statics=0 spill=-
-  l#11 cardboard broke=1 frags=3 mass=2.9367 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#12 cardboard broke=1 frags=3 mass=2.9318 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#13 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
-  l#14 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
-  l#15 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
-  blackout frags=588 mass=1061.5104 big=1.24 fixtures=294 live=120 pending=0
-damage s103947/f3 00d53b2a
-  statics=1437 loose=17 colliders=831 walk=125092
-  wreck -
-  s#0 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#47 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#94 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#141 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#188 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#235 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#282 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#329 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+damage s1000/f7 5d38311a
+  statics=2222 loose=1025 colliders=2198 walk=46281
+  wreck hulk=#1499 meshes=40 verts=44532 frags=14 mass=560 big=2 arcs=1 nav=108
+  s#0 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
+  s#74 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
+  s#148 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
+  s#222 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
+  s#296 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#370 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#444 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#518 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#592 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#666 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#740 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#814 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#888 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#962 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#1036 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#1110 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#1184 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#1258 prop broke=1 frags=14 mass=71.2698 big=2 cans=0 nav=+2 statics=1 spill=-
+  s#1332 prop broke=1 frags=6 mass=86.168 big=0.84 cans=0 nav=+6 statics=1 spill=-
+  s#1406 prop broke=1 frags=3 mass=54.592 big=1.12 cans=0 nav=+2 statics=1 spill=-
+  s#1480 prop broke=1 frags=9 mass=61.018 big=1.6 cans=0 nav=+4 statics=1 spill=-
+  s#1554 prop broke=1 frags=3 mass=46.048 big=1.6 cans=0 nav=+0 statics=1 spill=-
+  s#1628 prop broke=1 frags=6 mass=51.104 big=1.32 cans=0 nav=+2 statics=1 spill=-
+  s#1702 prop broke=1 frags=11 mass=62.1061 big=1.6 cans=0 nav=+4 statics=1 spill=-
+  s#1776 prop broke=1 frags=11 mass=62.1061 big=1.6 cans=0 nav=+4 statics=1 spill=-
+  s#1850 prop broke=1 frags=14 mass=71.4248 big=2 cans=0 nav=+2 statics=1 spill=-
+  s#1924 prop broke=1 frags=6 mass=86.168 big=0.85 cans=0 nav=+6 statics=1 spill=-
+  s#1998 prop broke=1 frags=10 mass=61.45 big=1.6 cans=0 nav=+6 statics=1 spill=-
+  s#2072 prop broke=1 frags=10 mass=61.6741 big=1.6 cans=0 nav=+8 statics=1 spill=-
+  s#2146 prop broke=1 frags=7 mass=86.568 big=0.84 cans=0 nav=+3 statics=1 spill=-
+  s#2220 prop broke=1 frags=3 mass=63.04 big=0.8 cans=0 nav=+0 statics=1 spill=-
+  l#0 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#85 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#170 cardboard broke=1 frags=3 mass=2.9273 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#255 cardboard broke=1 frags=3 mass=2.9317 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#340 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#425 wood broke=1 frags=6 mass=3.3208 big=1.04 cans=0 nav=+0 statics=0 spill=-
+  l#510 wood broke=1 frags=6 mass=3.5909 big=1.04 cans=0 nav=+0 statics=0 spill=-
+  l#595 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#680 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#765 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#850 cardboard broke=1 frags=3 mass=2.9349 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#935 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#1020 cardboard broke=1 frags=6 mass=4.401 big=0.5996 cans=0 nav=+0 statics=0 spill=-
+  blackout frags=905 mass=1640.0448 big=1.24 fixtures=456 live=120 pending=0
+damage s16838/f1 14a9d47b
+  statics=1417 loose=577 colliders=1369 walk=28200
+  wreck hulk=#919 meshes=40 verts=47604 frags=14 mass=560 big=2 arcs=1 nav=150
+  s#0 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
+  s#47 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
+  s#94 glass broke=1 frags=4 mass=14.5085 big=0.7933 cans=0 nav=+0 statics=0 spill=-
+  s#141 glass broke=1 frags=4 mass=14.5085 big=0.7933 cans=0 nav=+0 statics=0 spill=-
+  s#188 glass broke=1 frags=4 mass=14.0005 big=0.7656 cans=0 nav=+0 statics=0 spill=-
+  s#235 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#282 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#329 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
   s#376 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
   s#423 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
   s#470 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
   s#517 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#564 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#564 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
   s#611 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#658 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+50 statics=1 spill=-
-  s#705 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+50 statics=1 spill=-
-  s#752 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#799 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#846 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#893 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#940 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#987 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1034 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1081 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1128 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1175 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1222 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1269 prop broke=1 frags=2 mass=1.764 big=4.9 cans=0 nav=+0 statics=0 spill=-
-  s#1316 prop broke=1 frags=2 mass=1.764 big=4.9 cans=0 nav=+0 statics=0 spill=-
-  s#1363 prop broke=1 frags=2 mass=1.764 big=4.9 cans=0 nav=+0 statics=0 spill=-
-  s#1410 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  l#0 cardboard broke=1 frags=2 mass=2.5532 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#1 cardboard broke=1 frags=3 mass=2.9344 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#2 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#3 plastic broke=1 frags=3 mass=3.3467 big=0.56 cans=0 nav=+0 statics=0 spill=-
-  l#4 cardboard broke=1 frags=3 mass=2.9311 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#5 cardboard broke=1 frags=3 mass=2.9315 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#6 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#7 cardboard broke=1 frags=3 mass=2.9351 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#8 cardboard broke=1 frags=2 mass=2.5545 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#9 plastic broke=1 frags=3 mass=3.3467 big=0.56 cans=0 nav=+0 statics=0 spill=-
-  l#10 cardboard broke=1 frags=3 mass=2.935 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#11 cardboard broke=1 frags=3 mass=2.9316 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#12 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#13 plastic broke=1 frags=3 mass=3.3467 big=0.56 cans=0 nav=+0 statics=0 spill=-
-  l#14 cardboard broke=1 frags=2 mass=2.5514 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#15 cardboard broke=1 frags=3 mass=2.9334 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#16 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
-  blackout frags=644 mass=1155.7152 big=1.24 fixtures=322 live=120 pending=0
-damage s135623/f9 0d0e6d75
-  statics=2054 loose=23 colliders=1249 walk=183656
-  wreck -
-  s#0 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#68 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#136 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#204 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#272 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#340 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#408 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#476 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#544 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#612 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#680 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#748 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#816 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#884 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+50 statics=1 spill=-
-  s#952 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+50 statics=1 spill=-
-  s#1020 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1088 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1156 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1224 prop broke=1 frags=2 mass=1.764 big=4.9 cans=0 nav=+0 statics=0 spill=-
-  s#1292 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1360 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1428 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1496 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1564 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1632 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1700 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1768 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1836 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1904 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1972 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#2040 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  l#0 cardboard broke=1 frags=3 mass=2.9367 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#1 cardboard broke=1 frags=3 mass=2.9339 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#2 cardboard broke=1 frags=3 mass=2.9377 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#3 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#4 cardboard broke=1 frags=3 mass=2.9341 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#5 cardboard broke=1 frags=2 mass=2.5537 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#6 cardboard broke=1 frags=3 mass=2.9339 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#7 cardboard broke=1 frags=3 mass=2.9312 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#8 cardboard broke=1 frags=2 mass=2.5523 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#9 cardboard broke=1 frags=3 mass=2.9316 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#10 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#11 cardboard broke=1 frags=2 mass=2.555 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#12 cardboard broke=1 frags=3 mass=2.9377 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#13 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#14 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#15 cardboard broke=1 frags=3 mass=2.9271 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#16 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#17 cardboard broke=1 frags=3 mass=2.937 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#18 cardboard broke=1 frags=2 mass=2.5547 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#19 plastic broke=1 frags=2 mass=3.4561 big=0.56 cans=0 nav=+0 statics=0 spill=-
-  l#20 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
-  l#21 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
-  l#22 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
-  blackout frags=866 mass=1546.3296 big=1.24 fixtures=433 live=120 pending=0
-damage s1000/f1 8886e4b4
-  statics=840 loose=14 colliders=526 walk=66852
-  wreck -
-  s#0 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#28 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#56 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#84 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#112 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#140 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#168 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#196 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#224 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#252 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#658 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#705 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#752 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#799 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#846 prop broke=1 frags=3 mass=46.048 big=1.6 cans=0 nav=+0 statics=1 spill=-
+  s#893 prop broke=1 frags=3 mass=46.048 big=1.6 cans=0 nav=+0 statics=1 spill=-
+  s#940 prop broke=1 frags=14 mass=147.3555 big=1.286 cans=0 nav=+6 statics=1 spill=drink!
+  s#987 prop broke=1 frags=5 mass=36.6408 big=0.58 cans=0 nav=+4 statics=1 spill=-
+  s#1034 prop broke=1 frags=10 mass=61.6741 big=1.6 cans=0 nav=+3 statics=1 spill=-
+  s#1081 prop broke=1 frags=10 mass=61.6741 big=1.6 cans=0 nav=+6 statics=1 spill=-
+  s#1128 prop broke=1 frags=13 mass=72.5548 big=2.3 cans=0 nav=+10 statics=1 spill=-
+  s#1175 prop broke=1 frags=8 mass=38.0217 big=0.9478 cans=0 nav=+1 statics=1 spill=-
+  s#1222 prop broke=1 frags=10 mass=61.6741 big=1.6 cans=0 nav=+3 statics=1 spill=-
+  s#1269 prop broke=1 frags=9 mass=61.018 big=1.6 cans=0 nav=+6 statics=1 spill=-
+  s#1316 prop broke=1 frags=3 mass=40.8 big=0.72 cans=0 nav=+2 statics=1 spill=-
+  s#1363 prop broke=1 frags=14 mass=151.1649 big=1.18 cans=0 nav=+0 statics=1 spill=-
+  s#1410 prop broke=1 frags=3 mass=40.8 big=0.72 cans=0 nav=+0 statics=1 spill=-
+  l#0 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#48 cardboard broke=1 frags=3 mass=2.9307 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#96 cardboard broke=1 frags=2 mass=2.5608 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#144 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#192 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#240 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#288 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#336 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#384 cardboard broke=1 frags=3 mass=2.9322 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#432 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#480 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#528 plastic broke=1 frags=7 mass=9.6548 big=0.36 cans=0 nav=+0 statics=0 spill=water!
+  l#576 plastic broke=1 frags=3 mass=3.3467 big=0.56 cans=0 nav=+0 statics=0 spill=-
+  blackout frags=590 mass=1062.864 big=1.24 fixtures=296 live=120 pending=0
+damage s103947/f3 c5668fb5
+  statics=1683 loose=611 colliders=1687 walk=32273
+  wreck hulk=#1359 meshes=39 verts=39972 frags=14 mass=560 big=2 arcs=1 nav=108
+  s#0 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
+  s#56 glass broke=1 frags=4 mass=14.1275 big=0.7725 cans=0 nav=+0 statics=0 spill=-
+  s#112 glass broke=1 frags=4 mass=13.6376 big=0.7457 cans=0 nav=+0 statics=0 spill=-
+  s#168 glass broke=1 frags=4 mass=13.8989 big=0.76 cans=0 nav=+0 statics=0 spill=-
+  s#224 glass broke=1 frags=4 mass=15.2705 big=0.835 cans=0 nav=+0 statics=0 spill=-
   s#280 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#308 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#336 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#364 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+50 statics=1 spill=-
-  s#392 prop broke=1 frags=9 mass=61.018 big=1.6 cans=0 nav=+8 statics=1 spill=-
-  s#420 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#448 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#476 prop broke=1 frags=2 mass=1.764 big=4.9 cans=0 nav=+0 statics=0 spill=-
-  s#504 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#532 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#560 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#588 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#616 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#644 prop broke=1 frags=2 mass=1.764 big=4.9 cans=0 nav=+0 statics=0 spill=-
-  s#672 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#700 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#728 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#756 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#784 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#812 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  l#0 cardboard broke=1 frags=3 mass=2.9326 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#1 cardboard broke=1 frags=3 mass=2.9346 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#2 cardboard broke=1 frags=3 mass=2.9294 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#3 cardboard broke=1 frags=3 mass=2.9303 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#4 cardboard broke=1 frags=2 mass=2.5602 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#5 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#6 cardboard broke=1 frags=3 mass=2.932 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#7 cardboard broke=1 frags=3 mass=2.9349 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#8 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#9 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#10 plastic broke=1 frags=2 mass=3.4561 big=0.56 cans=0 nav=+0 statics=0 spill=-
-  l#11 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
-  l#12 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
-  l#13 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
-  blackout frags=350 mass=630.7488 big=1.24 fixtures=175 live=120 pending=0
-damage s8919/f4 4e2a2237
-  statics=1596 loose=11 colliders=955 walk=128962
+  s#336 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#392 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#448 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#504 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#560 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#616 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#672 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#728 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#784 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#840 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#896 panel broke=1 frags=1 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#952 prop broke=1 frags=6 mass=86.168 big=0.85 cans=0 nav=+6 statics=1 spill=-
+  s#1008 prop broke=1 frags=3 mass=46.048 big=1.6 cans=0 nav=+0 statics=1 spill=-
+  s#1064 prop broke=1 frags=14 mass=168.1753 big=2.1 cans=0 nav=+4 statics=1 spill=-
+  s#1120 prop broke=1 frags=3 mass=46.048 big=1.6 cans=0 nav=+0 statics=1 spill=-
+  s#1176 prop broke=1 frags=14 mass=49.376 big=2.05 cans=0 nav=+3 statics=1 spill=-
+  s#1232 prop broke=1 frags=9 mass=61.018 big=1.6 cans=0 nav=+8 statics=1 spill=-
+  s#1288 prop broke=1 frags=11 mass=62.1061 big=1.6 cans=0 nav=+4 statics=1 spill=-
+  s#1344 prop broke=1 frags=3 mass=46.048 big=1.6 cans=0 nav=+0 statics=1 spill=-
+  s#1400 prop broke=1 frags=10 mass=61.45 big=1.6 cans=0 nav=+6 statics=1 spill=-
+  s#1456 prop broke=1 frags=3 mass=40.8 big=0.72 cans=0 nav=+4 statics=1 spill=-
+  s#1512 prop broke=1 frags=3 mass=46.048 big=1.6 cans=0 nav=+0 statics=1 spill=-
+  s#1568 prop broke=1 frags=7 mass=86.568 big=0.84 cans=0 nav=+6 statics=1 spill=-
+  s#1624 prop broke=1 frags=3 mass=40.8 big=0.72 cans=0 nav=+1 statics=1 spill=-
+  s#1680 prop broke=1 frags=4 mass=63.44 big=0.8 cans=0 nav=+0 statics=1 spill=-
+  l#0 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#50 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#100 cardboard broke=1 frags=3 mass=2.9284 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#150 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#200 cardboard broke=1 frags=2 mass=4.3635 big=0.5434 cans=0 nav=+0 statics=0 spill=-
+  l#250 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#300 cardboard broke=1 frags=3 mass=2.9354 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#350 cardboard broke=1 frags=3 mass=2.9353 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#400 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#450 cardboard broke=1 frags=3 mass=2.9365 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#500 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#550 plastic broke=1 frags=6 mass=2.6563 big=0.58 cans=0 nav=+0 statics=0 spill=-
+  l#600 cardboard broke=1 frags=6 mass=4.5417 big=0.6132 cans=0 nav=+0 statics=0 spill=-
+  blackout frags=662 mass=1200.7872 big=1.3 fixtures=333 live=120 pending=0
+damage s135623/f9 0de7327d
+  statics=2290 loose=810 colliders=2431 walk=45073
+  wreck hulk=#1309 meshes=42 verts=48060 frags=14 mass=560 big=2 arcs=1 nav=150
+  s#0 glass broke=1 frags=4 mass=14.5085 big=0.7933 cans=0 nav=+0 statics=0 spill=-
+  s#76 glass broke=1 frags=4 mass=14.5085 big=0.7933 cans=0 nav=+0 statics=0 spill=-
+  s#152 glass broke=1 frags=4 mass=13.556 big=0.7413 cans=0 nav=+0 statics=0 spill=-
+  s#228 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#304 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#380 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#456 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#532 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#608 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#684 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#760 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#836 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#912 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#988 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#1064 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#1140 prop broke=1 frags=13 mass=61.8152 big=1.6 cans=0 nav=+8 statics=1 spill=-
+  s#1216 prop broke=1 frags=11 mass=62.1061 big=1.6 cans=0 nav=+4 statics=1 spill=-
+  s#1292 prop broke=1 frags=4 mass=50.304 big=0.72 cans=0 nav=+2 statics=1 spill=-
+  s#1368 prop broke=1 frags=3 mass=46.048 big=1.6 cans=0 nav=+0 statics=1 spill=-
+  s#1444 prop broke=1 frags=3 mass=46.048 big=1.6 cans=0 nav=+3 statics=1 spill=-
+  s#1520 prop broke=1 frags=3 mass=46.048 big=1.6 cans=0 nav=+3 statics=1 spill=-
+  s#1596 prop broke=1 frags=10 mass=61.6741 big=1.6 cans=0 nav=+8 statics=1 spill=-
+  s#1672 prop broke=1 frags=3 mass=46.048 big=1.6 cans=0 nav=+0 statics=1 spill=-
+  s#1748 prop broke=1 frags=3 mass=46.048 big=1.6 cans=0 nav=+4 statics=1 spill=-
+  s#1824 prop broke=1 frags=7 mass=86.568 big=0.85 cans=0 nav=+3 statics=1 spill=-
+  s#1900 prop broke=1 frags=3 mass=40.8 big=0.72 cans=0 nav=+2 statics=1 spill=-
+  s#1976 prop broke=1 frags=4 mass=50.304 big=0.72 cans=0 nav=+2 statics=1 spill=-
+  s#2052 prop broke=1 frags=5 mass=55.7696 big=1.12 cans=0 nav=+2 statics=1 spill=-
+  s#2128 prop broke=1 frags=6 mass=86.168 big=0.85 cans=0 nav=+6 statics=1 spill=-
+  s#2204 prop broke=1 frags=4 mass=50.304 big=0.72 cans=0 nav=+1 statics=1 spill=-
+  s#2280 prop broke=1 frags=4 mass=63.44 big=0.8 cans=0 nav=+0 statics=1 spill=-
+  l#0 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#67 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#134 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#201 plastic broke=1 frags=7 mass=9.6548 big=0.36 cans=0 nav=+0 statics=0 spill=water!
+  l#268 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#335 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#402 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#469 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#536 cardboard broke=1 frags=2 mass=2.5605 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#603 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#670 cardboard broke=1 frags=2 mass=2.5536 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#737 cardboard broke=1 frags=3 mass=2.9363 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#804 cardboard broke=1 frags=4 mass=4.3481 big=0.5466 cans=0 nav=+0 statics=0 spill=-
+  blackout frags=873 mass=1577.1168 big=1.24 fixtures=440 live=120 pending=0
+damage s1000/f1 3a93c807
+  statics=951 loose=419 colliders=970 walk=18180
   wreck -
-  s#0 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#53 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#106 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#159 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#212 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#265 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#318 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#371 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#424 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#477 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#530 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#583 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#636 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#689 panel broke=1 frags=2 mass=9.36 big=0.8 cans=0 nav=+0 statics=0 spill=-
-  s#742 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+50 statics=1 spill=-
-  s#795 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#848 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#901 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#954 prop broke=1 frags=2 mass=1.764 big=4.9 cans=0 nav=+0 statics=0 spill=-
-  s#1007 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1060 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1113 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1166 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1219 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1272 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1325 prop broke=1 frags=2 mass=1.764 big=4.9 cans=0 nav=+0 statics=0 spill=-
-  s#1378 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1431 prop broke=1 frags=2 mass=1.764 big=4.9 cans=0 nav=+0 statics=0 spill=-
-  s#1484 prop broke=1 frags=2 mass=1.764 big=4.9 cans=0 nav=+0 statics=0 spill=-
-  s#1537 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1590 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  l#0 wood broke=1 frags=6 mass=3.3208 big=1.04 cans=0 nav=+0 statics=0 spill=-
-  l#1 cardboard broke=1 frags=3 mass=2.9319 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#2 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#3 plastic broke=1 frags=3 mass=3.3467 big=0.56 cans=0 nav=+0 statics=0 spill=-
-  l#4 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#5 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#6 cardboard broke=1 frags=3 mass=2.9373 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#7 plastic broke=1 frags=3 mass=3.3467 big=0.56 cans=0 nav=+0 statics=0 spill=-
-  l#8 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
-  l#9 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
-  l#10 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
-  blackout frags=676 mass=1212.8544 big=1.24 fixtures=338 live=120 pending=0
+  s#0 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
+  s#31 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
+  s#62 glass broke=1 frags=4 mass=14.1275 big=0.7725 cans=0 nav=+0 statics=0 spill=-
+  s#93 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
+  s#124 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
+  s#155 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
+  s#186 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#217 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#248 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#279 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#310 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#341 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#372 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#403 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#434 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#465 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#496 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#527 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#558 prop broke=1 frags=11 mass=62.1061 big=1.6 cans=0 nav=+8 statics=1 spill=-
+  s#589 prop broke=1 frags=9 mass=61.018 big=1.6 cans=0 nav=+8 statics=1 spill=-
+  s#620 prop broke=1 frags=3 mass=46.048 big=1.6 cans=0 nav=+0 statics=1 spill=-
+  s#651 prop broke=1 frags=9 mass=61.018 big=1.6 cans=0 nav=+4 statics=1 spill=-
+  s#682 prop broke=1 frags=10 mass=61.6741 big=1.6 cans=0 nav=+4 statics=1 spill=-
+  s#713 prop broke=1 frags=5 mass=26.4272 big=0.8224 cans=0 nav=+1 statics=1 spill=-
+  s#744 prop broke=1 frags=6 mass=86.2344 big=2.2 cans=0 nav=+8 statics=1 spill=-
+  s#775 prop broke=1 frags=6 mass=28.5872 big=0.8452 cans=0 nav=+1 statics=1 spill=-
+  s#806 prop broke=1 frags=5 mass=110.6848 big=1 cans=0 nav=+6 statics=1 spill=-
+  s#837 prop broke=1 frags=6 mass=51.104 big=1.32 cans=0 nav=+1 statics=1 spill=-
+  s#868 prop broke=1 frags=3 mass=63.04 big=0.8 cans=0 nav=+0 statics=1 spill=-
+  s#899 prop broke=1 frags=4 mass=63.44 big=0.8 cans=0 nav=+0 statics=1 spill=-
+  s#930 prop broke=1 frags=4 mass=5.2824 big=0.42 cans=0 nav=+0 statics=1 spill=-
+  l#0 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#34 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#68 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#102 cardboard broke=1 frags=2 mass=2.5505 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#136 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#170 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#204 cardboard broke=1 frags=2 mass=4.3666 big=0.5933 cans=0 nav=+0 statics=0 spill=-
+  l#238 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#272 cardboard broke=1 frags=3 mass=2.9329 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#306 cardboard broke=1 frags=3 mass=2.9379 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#340 plastic broke=1 frags=7 mass=9.6548 big=0.36 cans=0 nav=+0 statics=0 spill=water!
+  l#374 plastic broke=1 frags=3 mass=3.3467 big=0.56 cans=0 nav=+0 statics=0 spill=-
+  l#408 cardboard broke=1 frags=4 mass=3.9883 big=0.6163 cans=0 nav=+0 statics=0 spill=-
+  blackout frags=356 mass=647.2512 big=1.24 fixtures=178 live=120 pending=0
+damage s8919/f4 a590e188
+  statics=1666 loose=722 colliders=1600 walk=33325
+  wreck -
+  s#0 glass broke=1 frags=4 mass=14.5085 big=0.7933 cans=0 nav=+0 statics=0 spill=-
+  s#55 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
+  s#110 glass broke=1 frags=4 mass=13.4417 big=0.735 cans=0 nav=+0 statics=0 spill=-
+  s#165 glass broke=1 frags=4 mass=13.3362 big=0.7292 cans=0 nav=+0 statics=0 spill=-
+  s#220 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
+  s#275 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#330 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#385 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#440 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#495 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#550 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#605 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#660 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#715 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#770 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#825 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#880 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#935 prop broke=1 frags=14 mass=68.9521 big=2 cans=0 nav=+2 statics=1 spill=-
+  s#990 prop broke=1 frags=3 mass=40.8 big=0.72 cans=0 nav=+2 statics=1 spill=-
+  s#1045 prop broke=1 frags=5 mass=24.0493 big=0.7296 cans=0 nav=+1 statics=1 spill=-
+  s#1100 prop broke=1 frags=7 mass=86.568 big=0.84 cans=0 nav=+6 statics=1 spill=-
+  s#1155 prop broke=1 frags=3 mass=46.048 big=1.6 cans=0 nav=+3 statics=1 spill=-
+  s#1210 prop broke=1 frags=14 mass=71.3968 big=2 cans=0 nav=+2 statics=1 spill=-
+  s#1265 prop broke=1 frags=10 mass=61.45 big=1.6 cans=0 nav=+8 statics=1 spill=-
+  s#1320 prop broke=1 frags=9 mass=61.018 big=1.6 cans=0 nav=+4 statics=1 spill=-
+  s#1375 prop broke=1 frags=4 mass=5.2824 big=0.42 cans=0 nav=+0 statics=1 spill=-
+  s#1430 prop broke=1 frags=14 mass=65.0408 big=1.6 cans=0 nav=+6 statics=1 spill=-
+  s#1485 prop broke=1 frags=14 mass=49.376 big=2.05 cans=0 nav=+4 statics=1 spill=-
+  s#1540 prop broke=1 frags=10 mass=61.6741 big=1.6 cans=0 nav=+8 statics=1 spill=-
+  s#1595 prop broke=1 frags=5 mass=110.6848 big=1 cans=0 nav=+6 statics=1 spill=-
+  s#1650 prop broke=1 frags=3 mass=40.8 big=0.72 cans=0 nav=+0 statics=1 spill=-
+  l#0 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#60 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#120 wood broke=1 frags=6 mass=3.5909 big=1.04 cans=0 nav=+0 statics=0 spill=-
+  l#180 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#240 cardboard broke=1 frags=3 mass=2.938 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#300 cardboard broke=1 frags=3 mass=2.9344 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#360 cardboard broke=1 frags=3 mass=2.9312 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#420 cardboard broke=1 frags=3 mass=2.9368 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#480 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#540 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#600 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#660 plastic broke=1 frags=7 mass=9.6548 big=0.36 cans=0 nav=+0 statics=0 spill=water!
+  l#720 plastic broke=1 frags=3 mass=3.3467 big=0.56 cans=0 nav=+0 statics=0 spill=-
+  blackout frags=686 mass=1224.9216 big=1.24 fixtures=343 live=120 pending=0
 damage s16838/f9 2e5f1378
   statics=1440 loose=16 colliders=830 walk=115848
   wreck -
@@ -351,52 +336,51 @@ damage s16838/f9 2e5f1378
   l#14 cardboard broke=1 frags=3 mass=2.9324 big=0.42 cans=0 nav=+0 statics=0 spill=-
   l#15 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
   blackout frags=648 mass=1162.8576 big=1.24 fixtures=324 live=120 pending=0
-damage s24757/f2 cad32b36
-  statics=1321 loose=14 colliders=766 walk=114655
+damage s24757/f2 e5ce8e26
+  statics=1512 loose=580 colliders=1491 walk=30618
   wreck -
-  s#0 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#44 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#88 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#132 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#176 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#220 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#264 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#308 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#352 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#396 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#440 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#484 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#528 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
-  s#572 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#616 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
-  s#660 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+50 statics=1 spill=-
-  s#704 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#748 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#792 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#836 prop broke=1 frags=2 mass=1.764 big=4.9 cans=0 nav=+0 statics=0 spill=-
-  s#880 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#924 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#968 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1012 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1056 prop broke=1 frags=14 mass=224.0984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1100 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1144 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1188 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1232 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1276 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  s#1320 prop broke=1 frags=14 mass=219.2984 big=4.9 cans=0 nav=+0 statics=1 spill=-
-  l#0 cardboard broke=1 frags=3 mass=2.931 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#1 cardboard broke=1 frags=3 mass=2.9333 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#2 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#3 plastic broke=1 frags=2 mass=3.4561 big=0.56 cans=0 nav=+0 statics=0 spill=-
-  l#4 cardboard broke=1 frags=3 mass=2.9373 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#5 cardboard broke=1 frags=3 mass=2.9344 big=0.42 cans=0 nav=+0 statics=0 spill=-
-  l#6 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#7 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#8 plastic broke=1 frags=3 mass=3.3467 big=0.56 cans=0 nav=+0 statics=0 spill=-
-  l#9 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
-  l#10 plastic broke=1 frags=2 mass=3.4561 big=0.56 cans=0 nav=+0 statics=0 spill=-
-  l#11 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
-  l#12 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
-  l#13 metal broke=1 frags=9 mass=64.9002 big=0.86 cans=0 nav=+0 statics=0 spill=water!
-  blackout frags=616 mass=1105.7184 big=1.24 fixtures=308 live=120 pending=0
+  s#0 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
+  s#50 glass broke=1 frags=4 mass=14.5085 big=0.7933 cans=0 nav=+0 statics=0 spill=-
+  s#100 glass broke=1 frags=4 mass=14.5085 big=0.7933 cans=0 nav=+0 statics=0 spill=-
+  s#150 glass broke=1 frags=4 mass=13.8989 big=0.76 cans=0 nav=+0 statics=0 spill=-
+  s#200 glass broke=1 frags=4 mass=12.9845 big=0.71 cans=0 nav=+0 statics=0 spill=-
+  s#250 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#300 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#350 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#400 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#450 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#500 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#550 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#600 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#650 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#700 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#750 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#800 panel broke=1 frags=2 mass=3.5712 big=0.62 cans=0 nav=+0 statics=0 spill=-
+  s#850 panel broke=1 frags=2 mass=3.5712 big=1.24 cans=0 nav=+0 statics=0 spill=-
+  s#900 prop broke=1 frags=3 mass=46.048 big=1.6 cans=0 nav=+0 statics=1 spill=-
+  s#950 prop broke=1 frags=14 mass=262.0987 big=15.66 cans=0 nav=+64 statics=1 spill=-
+  s#1000 prop broke=1 frags=6 mass=26.8336 big=0.807 cans=0 nav=+1 statics=1 spill=-
+  s#1050 prop broke=1 frags=3 mass=46.048 big=1.6 cans=0 nav=+0 statics=1 spill=-
+  s#1100 prop broke=1 frags=8 mass=37.8832 big=1.92 cans=0 nav=+4 statics=1 spill=-
+  s#1150 prop broke=1 frags=4 mass=50.304 big=0.72 cans=0 nav=+2 statics=1 spill=-
+  s#1200 prop broke=1 frags=5 mass=138.6992 big=1.8 cans=0 nav=+8 statics=1 spill=-
+  s#1250 prop broke=1 frags=10 mass=61.45 big=1.6 cans=0 nav=+6 statics=1 spill=-
+  s#1300 prop broke=1 frags=14 mass=151.266 big=2.1 cans=0 nav=+8 statics=1 spill=-
+  s#1350 prop broke=1 frags=7 mass=86.568 big=0.84 cans=0 nav=+3 statics=1 spill=-
+  s#1400 prop broke=1 frags=14 mass=49.376 big=2.05 cans=0 nav=+3 statics=1 spill=-
+  s#1450 prop broke=1 frags=14 mass=139.6611 big=2.1 cans=0 nav=+6 statics=1 spill=-
+  s#1500 prop broke=1 frags=9 mass=131.8044 big=0.9 cans=0 nav=+0 statics=1 spill=-
+  l#0 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#48 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#96 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#144 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#192 cardboard broke=1 frags=3 mass=2.9291 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#240 cardboard broke=1 frags=3 mass=2.9376 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#288 cardboard broke=1 frags=3 mass=2.9377 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#336 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#384 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#432 plastic broke=1 frags=4 mass=2.4628 big=0.52 cans=0 nav=+0 statics=0 spill=-
+  l#480 cardboard broke=1 frags=3 mass=2.9372 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#528 cardboard broke=1 frags=2 mass=2.5531 big=0.42 cans=0 nav=+0 statics=0 spill=-
+  l#576 cardboard broke=1 frags=4 mass=4.2216 big=0.5521 cans=0 nav=+0 statics=0 spill=-
+  blackout frags=626 mass=1123.5744 big=1.24 fixtures=313 live=120 pending=0

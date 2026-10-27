@@ -4642,8 +4642,7 @@ and the cans at 30, so what the floor is left with is the brown patch with the d
 it. Descending a floor clears the pool (16 on the next floor's machine, not 13+16).
 
 ### A floor that is a car park (`gen/garage.js`)
-`GARAGE_CHANCE` of floors (design value **0.1**; it is **1.0** while being tested, and the
-committed baselines were written at 1.0 — put it back and `npm run baseline`) are a car
+One floor in ten (`GARAGE_CHANCE`, 0.1, on a stream of its own) is a car
 park: **three decks** of open concrete in a solid concrete box with no windows, columns on
 a regular grid, rows of parked cars, a switchback ramp in the middle joining the decks, and
 one small corner of rooms by the lifts — the lift lobby and the security office. On the
