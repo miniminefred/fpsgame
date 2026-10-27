@@ -224,7 +224,17 @@ export class Cameras {
       const run = this._run(layout, from.x, from.z, dx, dy, laser ? BEAM_MAX : WATCH_RANGE);
       if (!best || run > best.run) best = { dx, dy, run, from };
     }
-    if (best && laser) best.run = this._beamRun(best.from.x, best.from.z, best.dx, best.dy, best.run);
+    // A beam spans clear floor, wall to wall, or the site is refused. Ending it on
+    // whatever is in the way was tried and is wrong twice over: the receiver is
+    // then bolted to the side of a parked car, and when the car is shot apart it
+    // is left hanging in the air with a beam running into it.
+    // ...and it ENDS on a wall, because the receiver at the far end is bolted to
+    // one. In an office there is always a wall inside BEAM_MAX; across the open
+    // deck of a car park there usually is not, and the beam stopped fourteen
+    // metres out with its receiver hanging in the air. A doorway is no better —
+    // the receiver would be standing in the opening.
+    if (best && laser && !this._wallAt(layout, best.from.x, best.from.z, best.dx, best.dy, best.run)) return null;
+    if (best && laser && this._beamRun(best.from.x, best.from.z, best.dx, best.dy, best.run) < best.run) return null;
     if (!best || best.run < (laser ? BEAM_MIN : MIN_VIEW)) return null;
     // Not buried behind a filing cabinet. Only the first stride is tested: the
     // run itself is measured against the shell, because a beam at hip height
@@ -259,11 +269,19 @@ export class Cameras {
     return max;
   }
 
-  // How far a beam at hip height gets before something standing in it ends it —
-  // a car, a cabinet, a tread of the ramp. Furniture lower than the beam (a desk)
-  // it passes over, as it always did. A beam ENDS on what it hits rather than the
-  // unit being refused, so a tripwire across a car park lane still lands between
-  // two parked cars.
+  // How far a beam at hip height gets before something standing in it — a car, a
+  // cabinet, a tread of the ramp. Furniture lower than the beam (a desk) it passes
+  // over, as it always did.
+  // Whether the tile just past the end of a run is solid wall.
+  _wallAt(layout, x, z, dx, dz, run) {
+    const { W, H, tiles, TILE, ox, oz } = layout;
+    const d = run + TILE * 0.5;
+    const tx = Math.floor((x + dx * d - ox) / TILE);
+    const ty = Math.floor((z + dz * d - oz) / TILE);
+    if (tx < 0 || ty < 0 || tx >= W || ty >= H) return false;
+    return tiles[ty * W + tx] === SOLID;
+  }
+
   _beamRun(x, z, dx, dz, run) {
     const r = 0.06;
     for (const c of this.blockers) {
