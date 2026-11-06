@@ -113,6 +113,19 @@
       "influence": 0.6
     },
     {
+      "name": "car-engine",
+      "text": "car engine running steadily at medium revs inside a concrete multi-storey car park, continuous, full intensity from the very first instant with no fade in, no music, no voices",
+      "duration": 8.0,
+      "loop": true
+    },
+    {
+      "name": "car-horn",
+      "text": "single short angry car horn blast, close mic, dry, no reverb, no music",
+      "duration": 0.8,
+      "influence": 0.7,
+      "variants": 2
+    },
+    {
       "name": "charging-handle",
       "text": "assault rifle charging handle pulled back and released, sharp metallic clack, close mic, dry, no reverb, no music",
       "duration": 0.7,
@@ -1189,6 +1202,13 @@
       "duration": 1.2,
       "influence": 0.7,
       "variants": 2
+    },
+    {
+      "name": "tyre-screech",
+      "text": "single short car tyre screech on smooth concrete, sharp turn, close mic, dry, no reverb, no music",
+      "duration": 1.2,
+      "influence": 0.7,
+      "variants": 3
     },
     {
       "name": "washer-burst",
