@@ -97,7 +97,7 @@ export class Game {
    * `physics` is the exception and stays guarded, because the solver really can
    * be absent and the game is meant to keep running without it.
    */
-  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, spills, doors, casings, keycards, wallet, ragdolls, cameras, conveyors, jobs, chores, panels, washers, vending, coins }) {
+  constructor({ scene, camera, player, weapons, shooting, enemies, effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, spills, doors, casings, keycards, wallet, ragdolls, cameras, conveyors, jobs, chores, panels, washers, vending, coins, drivers }) {
     this.player = player;
     this.weapons = weapons;
     this.shooting = shooting;
@@ -117,6 +117,7 @@ export class Game {
     this.wallet = wallet;
     this.ragdolls = ragdolls;
     this.cameras = cameras;
+    this.drivers = drivers;
     this.conveyors = conveyors;
     this.jobs = jobs;
     this.chores = chores;
@@ -201,6 +202,10 @@ export class Game {
     this.cameras.onAlarm = () => this._onAlarm();
     this.shooting.onCameraHit = (cam, damage, point, normal) =>
       this.cameras.damage(cam, damage, point, normal);
+    this.shooting.onVehicleHit = (car, damage, point, normal) =>
+      this.drivers?.hit(car, damage, point, normal);
+    // A co-op joiner told that the host's driver got out of his wrecked car.
+    this.enemies.onDriverOut = (e) => this.drivers?.netOut(e);
     // A parcel on a belt, which is the only thing on a conveyor a round can
     // take off it — the line itself is building services, like the ceiling.
     this.shooting.onParcelHit = (parcel, point) => this.conveyors.hit(parcel, point);
@@ -593,6 +598,12 @@ export class Game {
     // curve is per typical floor and the slab that turned up scales it.
     this.enemies.spawn(level.layout, level.nav, rng,
       tuningFor(this.floor, level.layout.areaRatio), level.workstations, theme);
+    // The cars on a car park that are being driven — after the roster, because
+    // their drivers join the end of it (off the floor's seed, so both ends of a
+    // co-op session deal the same men), and onto the same moving-collider list
+    // the loose furniture is on, because a car is solid and it moves.
+    this.drivers?.spawn(level, level.nav,
+      tuningFor(this.floor, level.layout.areaRatio), this.pushColliders);
     // After the staff, because the cameras are watching the floor rather than
     // watching them — nothing about where one goes depends on who is standing
     // where, and taking the roster's dice first keeps enemy placement reading
@@ -638,6 +649,7 @@ export class Game {
     this.shooting.setHittables([
       ...level.meshes, ...level.doorMeshes, ...this.enemies.meshes,
       ...this.cameras.meshes, ...this.conveyors.meshes, ...this.panels.meshes,
+      ...(this.drivers?.meshes ?? []),
     ]);
     // Scorch marks are clipped to the building only — an enemy standing against
     // a wall is not part of that wall, however flush he is with it.
@@ -836,12 +848,15 @@ export class Game {
     // full of statues. Everything BELOW this is about the player at this
     // keyboard, and stays behind the ordinary check.
     if (this.state === 'playing' || this.netplay?.simulating) {
+      const targets = this.netplay ? this.netplay.targets() : [this._soloTarget()];
       this.enemies.update(dt, {
-        targets: this.netplay ? this.netplay.targets() : [this._soloTarget()],
+        targets,
         effects: this.effects,
         audio: this.audio,
         noise: this.shooting.noise,
       });
+      // After the roster, which is what put every target on its layer this frame.
+      this.drivers?.update(dt, targets, this.shooting.noise);
     }
 
     if (this.state === 'playing') {

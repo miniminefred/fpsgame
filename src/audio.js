@@ -223,6 +223,11 @@ const LIBRARY = {
   // positional with a 4 m refDistance (see sfx.js), so standing anywhere near it
   // — which is the only way to ever hear it — was full volume, for as long as it
   // stayed in the room, which a one-shot sound never has to survive.
+  // A car on a car park being driven at you (drivers.js): its engine as a
+  // positional bed that follows it, and the screech and the horn as one-shots.
+  'car-engine':   { gain: 0.6, pitch: 0, bed: true },
+  'tyre-screech': { variants: 3, gain: 0.7, pitch: 0.08 },
+  'car-horn':     { variants: 2, gain: 0.75, pitch: 0.04 },
   roomba: { gain: 0.28, pitch: 0, bed: true },
 
   // A parcel line running on a corridor wall (see conveyors.js). Mixed to sit
@@ -359,6 +364,8 @@ const MOUTH_HEIGHT = 1.35;
 // closely enough that the walk round the corner and the walk across the room are
 // paid for at the same rate.
 const DETOUR_REFERENCE = 5;
+// How far a driven car's engine carries (see startEngine).
+const ENGINE_AUDIBLE = 24;
 
 // The alarm klaxon (see `alarm`). A minor sixth apart, which is the interval
 // every emergency two-tone in the world is built on and the reason one is
@@ -566,6 +573,16 @@ export class GameAudio {
   }
 
   moveMotor(handle, x, y, z) { this.sfx.moveLoop(handle, x, y, z); }
+
+  // A driven car (drivers.js). The engine is a motor like the floor cleaner's —
+  // follows the car, stopped with stopMotor — and carries a little further,
+  // because a car coming is worth hearing before it is in the aisle with you.
+  startEngine(x, y, z) {
+    if (!this.sfx.ready) return null;
+    return this.sfx.loopAt('car-engine', { gain: 0.9, x, y, z, range: ENGINE_AUDIBLE });
+  }
+  carScreech(point) { this._placed('tyre-screech', point); }
+  carHorn(point) { this._placed('car-horn', point); }
   stopMotor(handle) { this.sfx.stopLoop(handle); }
 
   /**

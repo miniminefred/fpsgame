@@ -439,7 +439,9 @@ export function standPillars(tiles, W, H, deck, kept, doors, ramps, rooms = [], 
 
 const BAY_W = 2.5;        // one bay across, which is the `car` prop's footprint
 const BAY_D = 5.0;        // ...and one bay deep
-const LANE = 3.2;         // the drive aisle in front of a row
+const LANE = 6.0;         // the drive aisle in front of a row: a real one, which a car
+                          // can turn in. It was 3.2, a walkway, and a driven car
+                          // (drivers.js) could creep along it and never turn round
 const STRIP = 0.8;        // between two rows parked back to back
 const GANG = 1.2;         // clear at both ends of every row, so no row is a wall
 // ...and across it every so often. A row parked the length of a whole deck is a

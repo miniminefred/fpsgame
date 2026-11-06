@@ -56,6 +56,12 @@ const SNAP_BREAK = 16;
 // body, and the body is already being sent.
 const SNAP_GONE = 512;
 
+// ...and whether this body is still at the wheel of a car (drivers.js). Both ends
+// deal the drivers with the floor and seat them, so the only news is the host's
+// car being wrecked and its driver getting out — and the car on the joiner's end
+// is wherever the driver's body is, so it has to know he left it.
+const SNAP_DRIVING = 1024;
+
 // How far from either player a body has to be before it is worth sending. Well
 // beyond SIGHT, because the joiner can watch somebody walk up a corridor long
 // before that body could see them back, and a body that pops into motion at 22 m
@@ -158,7 +164,8 @@ export const netMethods = {
           + (e.seat ? SNAP_SEAT : 0)
           + (e.break ? SNAP_BREAK : 0)
           + packHeld(e)
-          + (e.gone ? SNAP_GONE : 0);
+          + (e.gone ? SNAP_GONE : 0)
+          + (e.driving ? SNAP_DRIVING : 0);
       }
 
       this._snapCursor = i;
@@ -213,6 +220,7 @@ export const netMethods = {
         applyHeld(e, packed, e.index + 1);
         // One way only, and deliberately: nothing brings somebody back.
         if ((packed & SNAP_GONE) && !e.gone) this.showOut(e);
+        if (e.driving && !(packed & SNAP_DRIVING)) this.onDriverOut?.(e);
         e.state = SNAP_STATES[packed & 7] ?? 'idle';
       }
     }

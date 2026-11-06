@@ -36,6 +36,7 @@ import { NetPlay } from './netplay.js';
 import { loadModels } from './gen/models.js';
 import { modelKeysUsed } from './gen/props.js';
 import { Game } from './game.js';
+import { Drivers } from './drivers.js';
 
 const renderer = createRenderer();
 const scene = createScene();
@@ -86,6 +87,7 @@ enemies.ragdolls = ragdolls;
 const wallet = new Wallet();
 const keycards = new Keycards({ scene, audio, wallet });
 const cameras = new Cameras({ scene, audio, effects });
+const drivers = new Drivers({ scene, enemies, audio, effects });
 const conveyors = new Conveyors({ scene, audio });
 // The building's own errands. Built after the enemies because it wires two hooks
 // onto them in its constructor (see jobs.js), and it needs the pooled flash and
@@ -110,7 +112,7 @@ const game = new Game({
   scene, camera, player, weapons, shooting, enemies,
   effects, audio, hud, minimap, lighting, physics, destruction, extinguishers, spills, doors, casings,
   keycards, wallet, ragdolls, cameras, conveyors, jobs, chores, panels, washers,
-  vending, coins,
+  vending, coins, drivers,
 });
 
 // E to pick up and to buy, F to drink. Not dev-only: these are the game's.

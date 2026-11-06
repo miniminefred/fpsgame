@@ -327,6 +327,10 @@ export class Shooting {
       // is.
       const cctv = hit.object.userData.cctv;
       if (cctv && this.onCameraHit?.(cctv, damage, hit.point, this._normal)) return 'hit';
+      // A driven car's bodywork (drivers.js). Its glass is not a hit box, so a
+      // round through the windscreen goes on to the driver behind it.
+      const vehicle = hit.object.userData.vehicle;
+      if (vehicle) { this.onVehicleHit?.(vehicle, damage, hit.point, this._normal); return 'hit'; }
 
       // A parcel on a belt. Same shape as a camera and for the same reason:
       // either this took it off the line, which earns the marker, or it is

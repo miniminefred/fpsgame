@@ -770,6 +770,9 @@ export class Enemies {
       // the floor invisibly for the rest of it, which is the sort of thing that
       // costs nothing and shows up two features later as a body opening doors.
       if (e.gone) continue;
+      // At the wheel of a car on a car park: drivers.js drives the car and puts
+      // him in his seat; nothing in the state machine may move him out of it.
+      if (e.driving) { animate(e, dt, audio); continue; }
       // Whatever they were sitting on can be shot apart or shoved out from under
       // them, and until this was here neither stood anybody up. See _seatGone.
       if (e.seat) this._seatGone(e);

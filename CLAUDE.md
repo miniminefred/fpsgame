@@ -284,6 +284,7 @@ src/
   keycards.js     Card catalogue, the wallet, and the cards on the carpet
   doors.js        Sliding panels, proximity sensors, and the badged ones
   cameras.js      Wall cameras and laser tripwires, and the alarm they raise
+  drivers.js      Cars on a car park being driven at you, and the men driving them
   conveyors.js    Parcel lines on the corridor walls, and the stock on them
   panels.js       Service openings: a hole in a corridor wall with the wiring out
   tech-textures.js  The finish on things that are made rather than fitted
@@ -4792,6 +4793,44 @@ pass.
 `MAX_PROP_SIDE` in `validate-props.mjs` went from 4.0 to 4.8 for the car, which is
 4.56 m nose to tail: that cap catches a prop that has become a building, and a car
 is not one.
+
+### Cars being driven at you (`drivers.js`)
+A few cars on every car park deck are moving — about what a real car park has moving
+for what it has parked (`MOVING_SHARE`, one to four a deck). Each idles in an aisle
+with its lights on until its driver notices you (sight on the same deck, a gunshot,
+or being shot at), then HUNTS: off the aisles, round the columns, up and down the
+ramps to your deck, at about a sprint. A hit is `HIT_DAMAGE` (60); anybody else in
+the way is run over. Engine loop, tyre screech, horn.
+
+**The driver is a real member of staff sitting in the car**, and that is the design.
+Shoot him through the glass (the glass is not a hit box) and he dies like anybody,
+and the car rolls to a stop; he shouts like an employee because he is one; and he is
+ON THE ROSTER, dealt after the floor's own staff off the floor's SEED, so a co-op
+joiner has the same men in the same cars and the car is simply wherever his body is.
+One snapshot bit (`SNAP_DRIVING`) says he got out. Shoot the CAR instead (`CAR_HP`,
+the parked car's own) and it wrecks: engine off, lights out, and he climbs out and
+comes for you on foot. Wrecks are the host's; a joiner's round on the bodywork is a
+flash and nothing more.
+
+Five things were learned by driving them headlessly at a fixed 1/60:
+
+- **It routes on its own field over floor eroded to a car's width** (`CAR_CLEAR`),
+  flooded from you, so where a car can go is a fact about the floor.
+- **The aisles had to be real aisles** (`LANE` in gen/garage.js, 3.2 → 6.0 m). At
+  3.2 a car could creep along one and never turn round in it: 90% of its frames were
+  nosed into something.
+- **The pose is never changed to one that does not fit** (`_move`: turn-and-roll,
+  roll, then turn on the spot, first that fits). Steering first and testing after
+  turned cars into the sides of columns, and every move from there was refused.
+- **Its deck is whichever deck's floor is nearest its height** (`_settle`), not the
+  route's say. Read off the route, a car reaching the top of a ramp drove on onto
+  the GROUND under the deck — that is floor too — and dropped back down.
+- **A wedged car is freed** (`_unstick`): no movement for `STUCK` seconds and it is
+  put on the nearest spot it fits, facing where it wants to go.
+
+Measured: 6 of 6 cars set after a target on the deck above drove up the ramp and hit
+it (6 to 78 s); 3 of 3 on the same deck reached and hit. A loop is not routed between
+storeys, so an engine only runs while somebody is on its deck.
 
 ### The window is the stock (`vending.js` + `coins.js` + `restock` in `chores.js`)
 A machine's window used to be scenery: somebody bought a can and the facing they bought
