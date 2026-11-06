@@ -59,6 +59,16 @@ const HAIRLINE = 0.01;     // 1 cm — the "small epsilon" for overlap tests
 const REACH_SHARE = 0.25;  // a room must expose at least this share of itself
 const GEOM_SOFT = 0.75;    // ... and losing a quarter of it to furniture is bad
 const CLEAR_R = 1.5;       // metres of clearance owed to spawn and exit
+// Whether a collider stands inside a car park's office block — the one part of
+// that floor that is rooms (gen/garage.js).
+function inOffice(layout, c) {
+  const r = layout.office?.rect;
+  if (!r) return false;
+  const tx = (((c.minX + c.maxX) / 2) - layout.ox) / layout.TILE;
+  const ty = (((c.minZ + c.maxZ) / 2) - layout.oz) / layout.TILE;
+  return tx >= r.x0 && tx < r.x1 && ty >= r.y0 && ty < r.y1;
+}
+
 // A parked car (`car` in gen/props.js, on a garage floor) is 4.56 m nose to tail,
 // which is the longest honest prop there is. The cap is for catching a prop that
 // has accidentally become a BUILDING, and a car is not that.
@@ -679,9 +689,10 @@ function validate(seed, floorNumber) {
   // ---- 9. props inside their room ---------------------------------------
   let spans = 0, escaped = 0, insetBreak = 0;
   for (const c of furn) {
-    // A car park's decks are parked over the whole floor, so a car up there stands
-    // over whatever room or lane is under it — it belongs to the deck, not to them.
-    if (layout.garage && (c.base ?? 0) > 1) continue;
+    // A car park's decks are parked over the whole floor, so a car stands over
+    // whatever room or lane is under it — it belongs to the deck, not to them.
+    // Every deck, the ground included: only the office block is rooms.
+    if (layout.garage && !inOffice(layout, c)) continue;
     const r = tileRange(c, HAIRLINE);
     const owners = new Set();
     let sawCorridor = false, sawDoor = false;
@@ -781,7 +792,11 @@ function validate(seed, floorNumber) {
     return false;
   };
 
-  const cutOff = rooms.filter((r) => !inside(reach, r)).map((r, i) => `${r.role}#${i}`);
+  // A car park's parking "rooms" are what the BSP cut the deck into before its
+  // walls came down, and a small one can be parked over completely: no floor left
+  // in it is not floor cut off. The deck's own test is 5.walk-orphan above.
+  const counts = (r) => !layout.garage || r.role !== 'parking' || inside(open, r);
+  const cutOff = rooms.filter((r) => counts(r) && !inside(reach, r)).map((r, i) => `${r.role}#${i}`);
   if (cutOff.length) {
     check('5.connected').fail(id, `${cutOff.length} rooms unreachable from spawn: ${cutOff.slice(0, 3).join(',')}`);
   }
@@ -815,6 +830,16 @@ function validate(seed, floorNumber) {
     }
   }
   const gReach = floodWalk(pass, GW, geom.GH, gSpawn);
+  // Whether a body could stand anywhere in a room at all (see `counts`).
+  const roomHasPass = (r) => {
+    if (!layout.garage || r.role !== 'parking') return true;
+    for (let ty = r.y0; ty < r.y1; ty++) for (let tx = r.x0; tx < r.x1; tx++) {
+      for (let gy = ty * SUB; gy < (ty + 1) * SUB; gy++) {
+        for (let gx = tx * SUB; gx < (tx + 1) * SUB; gx++) if (pass[gIdx(gx, gy)]) return true;
+      }
+    }
+    return false;
+  };
   const geomCutOff = [];
   rooms.forEach((r, ri) => {
     let any = false;
@@ -825,7 +850,7 @@ function validate(seed, floorNumber) {
         }
       }
     }
-    if (!any) geomCutOff.push(`${r.role}#${ri}@${r.x0},${r.y0}`);
+    if (!any && counts(r) && roomHasPass(r)) geomCutOff.push(`${r.role}#${ri}@${r.x0},${r.y0}`);
   });
   if (geomCutOff.length) {
     check('5.geom-connected').fail(id, `${geomCutOff.length} rooms physically unreachable: ${geomCutOff.slice(0, 3).join(',')}`);

@@ -23,6 +23,7 @@ import {
   worldZ,
 } from './layout.js';
 import { approachRect } from './stairs.js';
+import { parkingDeck } from './garage.js';
 
 // Re-exported rather than declared: it moved to gen/tiles.js when
 // gen/placement.js needed it too, because importing it from here would have
@@ -31,6 +32,12 @@ export { SKIRT };
 
 export function furnishRooms(layout, sink, rng, workstations, theme) {
   for (const room of layout.rooms) {
+    // A car park's deck is parked as ONE car park, below the loop, not room by
+    // room: what the BSP cut it into is invisible once the walls are down, and
+    // most of those rooms were too small or too oddly shaped for a row and its
+    // lane, so the ground deck came out nearly empty while the decks above —
+    // parked whole — were full.
+    if (layout.garage && room.role === 'parking') continue;
     // Keep furniture off the walls so nothing clips into the skirting.
     const bounds = {
       x0: worldX(layout, room.x0) + SKIRT,
@@ -47,6 +54,13 @@ export function furnishRooms(layout, sink, rng, workstations, theme) {
     // decided per room (see `_spawnPoints` in enemies.js), so this is the one
     // fact about a desk that the placement needs and the placer cannot give.
     for (let i = before; i < workstations.length; i++) workstations[i].room = room;
+  }
+  if (layout.garage && layout.deck) {
+    const d = layout.deck;
+    parkingDeck(sink, {
+      x0: worldX(layout, d.x0) + SKIRT, z0: worldZ(layout, d.y0) + SKIRT,
+      x1: worldX(layout, d.x1) - SKIRT, z1: worldZ(layout, d.y1) - SKIRT,
+    }, rng);
   }
 }
 

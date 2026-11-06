@@ -276,6 +276,52 @@ const CAR_PAINTS = [
 // A desk is heavy office furniture bolted to nothing but still doesn't skid when
 // you walk into it, so it is static-with-hp; a chair is both.
 
+// A parked car in its bay. Shared by `car`, which leaves one bay in ten empty,
+// and `carParked`, which never does — see frontOpen in gen/garage.js.
+function buildCar(p, rng, mayBeEmpty) {
+  // The bay: a line down each side, and the kerb stop at the back of it.
+  for (const sx of [-1, 1]) p.box('linePaint', sx * 1.24 - 0.05, 0, -2.45, sx * 1.24 + 0.05, 0.006, 2.45);
+  // Drawn either way, so a bay that must have a car rolls the same stream as one
+  // that may not, and nothing after it on the floor moves.
+  const empty = rng.chance(0.1);
+  if (empty && mayBeEmpty) return;
+
+  const paint = rng.pick(CAR_PAINTS);
+  // A saloon, or a hatchback whose roof runs further back: the one
+  // silhouette choice, and it is the cabin's length rather than its height,
+  // because a bonnet and a boot either side of the glass is what reads as a
+  // car rather than as a van.
+  const hatch = rng.chance(0.35);
+  const roof = 1.42;
+  const L = 2.2, W = 0.88;
+  const cf = -0.75, cb = hatch ? 1.55 : 1.05;           // cabin front / back
+  p.box(paint, -W, 0.3, -L, W, 0.86, L);                  // body
+  p.box(paint, -W + 0.08, 0.86, cf, W - 0.08, roof, cb); // cabin
+  // Glass: windscreen, rear window, and a window down each side, all a hair
+  // proud of the paint.
+  p.box('carGlass', -W + 0.14, 0.92, cf - 0.04, W - 0.14, roof - 0.07, cf + 0.02);
+  p.box('carGlass', -W + 0.14, 0.92, cb - 0.02, W - 0.14, roof - 0.07, cb + 0.04);
+  for (const sx of [-1, 1]) {
+    p.box('carGlass', sx * (W - 0.08) - 0.02, 0.94, cf + 0.12,
+      sx * (W - 0.08) + 0.02, roof - 0.08, cb - 0.12);
+  }
+  // Wheels, a little proud of the body and mostly under it, and bumpers.
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1.4, 1.4]) {
+      p.box('tyre', sx * W - 0.1, 0, sz - 0.3, sx * W + 0.1, 0.56, sz + 0.3);
+    }
+  }
+  p.box('plastic', -W - 0.02, 0.28, -L - 0.08, W + 0.02, 0.5, -L);
+  p.box('plastic', -W - 0.02, 0.28, L, W + 0.02, 0.5, L + 0.08);
+  // Lights: white at the nose, red at the tail. Unlit, so a dark deck still
+  // has cars in it you can see the shape of.
+  for (const sx of [-1, 1]) {
+    p.box('headlight', sx * 0.66 - 0.16, 0.64, -L - 0.02, sx * 0.66 + 0.16, 0.76, -L + 0.01);
+    p.box('taillight', sx * 0.66 - 0.16, 0.66, L - 0.01, sx * 0.66 + 0.16, 0.78, L + 0.02);
+  }
+  p.obstacle(-W - 0.12, -L - 0.08, W + 0.12, L + 0.08, roof);
+}
+
 export const PROPS = {
   desk: {
     // Drawn as a model, but `build` is still authored and still matters twice
@@ -1282,51 +1328,18 @@ export const PROPS = {
   //
   // Authored facing -Z like everything else: the nose is at -z.
   //
-  // One bay in five is empty, which is what a car park at work looks like — and
-  // it is the only thing standing between a full deck and a solid block of metal
-  // the player can see nothing past.
+  // One bay in ten is empty, which is what a busy car park looks like. It was one
+  // in five, back when that was the only gap in a row; the walkways across every
+  // row (CROSS_EVERY in gen/garage.js) are what keep a full deck open now.
   car: {
     w: 2.49, d: 4.99, hp: 260, substance: 'metal',
-    build(p, rng) {
-      // The bay: a line down each side, and the kerb stop at the back of it.
-      for (const sx of [-1, 1]) p.box('linePaint', sx * 1.24 - 0.05, 0, -2.45, sx * 1.24 + 0.05, 0.006, 2.45);
-      if (rng.chance(0.2)) return;
-
-      const paint = rng.pick(CAR_PAINTS);
-      // A saloon, or a hatchback whose roof runs further back: the one
-      // silhouette choice, and it is the cabin's length rather than its height,
-      // because a bonnet and a boot either side of the glass is what reads as a
-      // car rather than as a van.
-      const hatch = rng.chance(0.35);
-      const roof = 1.42;
-      const L = 2.2, W = 0.88;
-      const cf = -0.75, cb = hatch ? 1.55 : 1.05;           // cabin front / back
-      p.box(paint, -W, 0.3, -L, W, 0.86, L);                  // body
-      p.box(paint, -W + 0.08, 0.86, cf, W - 0.08, roof, cb); // cabin
-      // Glass: windscreen, rear window, and a window down each side, all a hair
-      // proud of the paint.
-      p.box('carGlass', -W + 0.14, 0.92, cf - 0.04, W - 0.14, roof - 0.07, cf + 0.02);
-      p.box('carGlass', -W + 0.14, 0.92, cb - 0.02, W - 0.14, roof - 0.07, cb + 0.04);
-      for (const sx of [-1, 1]) {
-        p.box('carGlass', sx * (W - 0.08) - 0.02, 0.94, cf + 0.12,
-          sx * (W - 0.08) + 0.02, roof - 0.08, cb - 0.12);
-      }
-      // Wheels, a little proud of the body and mostly under it, and bumpers.
-      for (const sx of [-1, 1]) {
-        for (const sz of [-1.4, 1.4]) {
-          p.box('tyre', sx * W - 0.1, 0, sz - 0.3, sx * W + 0.1, 0.56, sz + 0.3);
-        }
-      }
-      p.box('plastic', -W - 0.02, 0.28, -L - 0.08, W + 0.02, 0.5, -L);
-      p.box('plastic', -W - 0.02, 0.28, L, W + 0.02, 0.5, L + 0.08);
-      // Lights: white at the nose, red at the tail. Unlit, so a dark deck still
-      // has cars in it you can see the shape of.
-      for (const sx of [-1, 1]) {
-        p.box('headlight', sx * 0.66 - 0.16, 0.64, -L - 0.02, sx * 0.66 + 0.16, 0.76, -L + 0.01);
-        p.box('taillight', sx * 0.66 - 0.16, 0.66, L - 0.01, sx * 0.66 + 0.16, 0.78, L + 0.02);
-      }
-      p.obstacle(-W - 0.12, -L - 0.08, W + 0.12, L + 0.08, roof);
-    },
+    build(p, rng) { buildCar(p, rng, true); },
+  },
+  // The same car in a bay that may not be left empty: one whose front is blocked,
+  // so an empty bay there would be a pocket nobody could walk into.
+  carParked: {
+    w: 2.49, d: 4.99, hp: 260, substance: 'metal',
+    build(p, rng) { buildCar(p, rng, false); },
   },
 
   // A car park's column, on the strip between two rows parked back to back.

@@ -442,6 +442,11 @@ const BAY_D = 5.0;        // ...and one bay deep
 const LANE = 3.2;         // the drive aisle in front of a row
 const STRIP = 0.8;        // between two rows parked back to back
 const GANG = 1.2;         // clear at both ends of every row, so no row is a wall
+// ...and across it every so often. A row parked the length of a whole deck is a
+// wall sixty metres long; a real car park breaks its rows with a walkway, and
+// that is also what lets anybody — on foot or at the wheel — cross between lanes.
+const CROSS_EVERY = 10;   // bays between walkways
+const CROSS_BAYS = 2;     // ...and how many bays wide a walkway is (5 m)
 
 /**
  * Rows of bays across the room's short side with a lane in front of each, the
@@ -483,7 +488,11 @@ export function parkingDeck(sink, bounds, rng) {
 
   const first = snapA(a0 + GANG + BAY_W / 2);
   const bays = [];
-  for (let a = first; a + BAY_W / 2 <= a1 - GANG + 1e-6; a += BAY_W) bays.push(a);
+  let n = 0;
+  for (let a = first; a + BAY_W / 2 <= a1 - GANG + 1e-6; a += BAY_W, n++) {
+    if (n % (CROSS_EVERY + CROSS_BAYS) >= CROSS_EVERY) continue;
+    bays.push(a);
+  }
 
   const [, , , bEnd] = alongX ? [x0, x1, z0, z1] : [z0, z1, x0, x1];
   for (const row of rows) {
@@ -495,11 +504,39 @@ export function parkingDeck(sink, bounds, rng) {
     // A prop is authored facing -Z, so a car on the x axis nosing toward +z is a
     // half turn, and one on the z axis nosing toward +x is a quarter turn.
     const rot = alongX ? (row.face > 0 ? 2 : 0) : (row.face > 0 ? 3 : 1);
+    // A bay is only ever left EMPTY if you could walk into it. Its front is the
+    // only way in — cars either side, the row behind or the wall at its back — so
+    // with a column or a free-standing wall across that front an empty bay is a
+    // pocket nobody can reach. Those get a car. And when even that will not go in
+    // (the wall is standing IN the bay), the bays after it are left empty until
+    // one opens onto the lane, which is the gap's way out.
+    let sealed = false;
     for (const a of bays) {
       const [cx, cz] = alongX ? [a, b] : [b, a];
-      tryPlace(sink, 'car', cx, cz, rot, rng);
+      const front = frontOpen(sink, cx, cz, rot);
+      if (sealed) { if (front) sealed = false; continue; }
+      const placed = tryPlace(sink, front ? 'car' : 'carParked', cx, cz, rot, rng);
+      if (!placed && !front) sealed = true;
     }
   }
+}
+
+// Whether a body could walk out of a bay onto its lane: from the middle of the bay,
+// out past its nose and a couple of metres on, across the bay's width. That is the
+// only way into an empty bay — cars either side, the row behind or the wall at its
+// back — and a column or free-standing wall anywhere along it, inside the bay or
+// across its front, closes it. A prop's front is -Z as authored, turned toward +X
+// by each quarter turn.
+const FRONT = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+function frontOpen(sink, cx, cz, rot) {
+  if (!sink.standsAt) return true;
+  const [fx, fz] = FRONT[rot & 3];
+  for (let d = 0; d <= BAY_D / 2 + 1.8; d += 0.5) {
+    for (const across of [-0.7, 0, 0.7]) {
+      if (!sink.standsAt(cx + fx * d - fz * across, cz + fz * d + fx * across)) return false;
+    }
+  }
+  return true;
 }
 
 /**
