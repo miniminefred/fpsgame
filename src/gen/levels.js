@@ -7,8 +7,7 @@
 import { LAMP_COLD } from '../textures.js';
 import { applyWorldUVs, boxBetween, slab } from './geom.js';
 import { footprintOf, tryPlace } from './props.js';
-import { CEIL_H, CORRIDOR, ROOM, TILE } from './layout.js';
-import { maskToRects } from './rects.js';
+import { CEIL_H, ROOM, TILE } from './layout.js';
 import {
   approachTiles,
   footLayer,
@@ -181,30 +180,8 @@ function drawPart(batcher, materials, b, layout = null) {
   const lift = layout?.garage ? DECK_LIFT : 0;
   batcher.add(floor, materials[floor], applyWorldUVs(
     boxBetween(b.minX, b.y1 - TREAD_SKIN, b.minZ, b.maxX, b.y1 + lift, b.maxZ)));
-  // ...and the lanes painted on in asphalt, exactly over the ground floor's own, so
-  // every deck reads as the same floor as the one you arrived on.
-  if (layout?.garage) {
-    for (const r of laneRects(layout)) {
-      const x0 = Math.max(b.minX, r.x0), x1 = Math.min(b.maxX, r.x1);
-      const z0 = Math.max(b.minZ, r.z0), z1 = Math.min(b.maxZ, r.z1);
-      if (x1 - x0 < 1e-3 || z1 - z0 < 1e-3) continue;
-      batcher.add('asphalt', materials.asphalt, applyWorldUVs(
-        boxBetween(x0, b.y1 + DECK_LIFT, z0, x1, b.y1 + DECK_LIFT + 0.004, z1)), { castShadow: false });
-    }
-  }
-}
-
-// The ground floor's lanes as world rects, worked out once per floor.
-const LANES = new WeakMap();
-function laneRects(layout) {
-  if (!LANES.has(layout)) {
-    LANES.set(layout, maskToRects(layout.tiles, layout.W, layout.H, (t) => t === CORRIDOR)
-      .map((r) => ({
-        x0: layout.ox + r.x0 * TILE, x1: layout.ox + r.x1 * TILE,
-        z0: layout.oz + r.y0 * TILE, z1: layout.oz + r.y1 * TILE,
-      })));
-  }
-  return LANES.get(layout);
+  // The aisles are painted in asphalt by parkingDeck itself, off the rows it
+  // actually parked, so every deck's lanes are where its cars left room to drive.
 }
 
 // A sealed level has no window and a lid of its own, so without this it is a black

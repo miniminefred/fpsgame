@@ -10,7 +10,7 @@
 // difference.
 
 import * as THREE from 'three';
-import { boxBetween } from './geom.js';
+import { applyWorldUVs, boxBetween } from './geom.js';
 import { modelInfo, paintDebris, stampModel } from './models.js';
 import { isOpen, TILE } from './layout.js';
 
@@ -30,6 +30,9 @@ import { isOpen, TILE } from './layout.js';
 // in the shadow frustum's reach at once (see `car` in gen/props.js).
 const NO_SHADOW = new Set(['linePaint', 'headlight', 'taillight', 'carGlass']);
 const NO_CAST = { castShadow: false };
+// How far a painted strip (`paint`) stands over the floor it is laid on: clear of
+// a car park deck's skin (DECK_LIFT, 12 mm) so the two never fight for a pixel.
+const PAINT_LIFT = 0.016;
 
 export function makeSink(layout, batcher, materials, masks) {
   const { W, H } = layout;
@@ -246,6 +249,14 @@ export function makeSink(layout, batcher, materials, masks) {
      * lists directly.
      */
     placed() { return lastObstacle; },
+
+    // A strip of floor finish laid on whatever this sink stands on — a parking
+    // aisle's asphalt. Not a prop: nothing to collide with, nothing to break.
+    // `PAINT_LIFT` clears a car park deck's own skin, which stands DECK_LIFT proud.
+    paint(key, x0, z0, x1, z1) {
+      const y = level + PAINT_LIFT;
+      batcher.add(key, materials[key], applyWorldUVs(boxBetween(x0, y, z0, x1, y + 0.003, z1)), NO_CAST);
+    },
 
     box(key, x0, y0, z0, x1, y1, z1) {
       const b = { key, x0, y0: y0 + level, z0, x1, y1: y1 + level, z1 };

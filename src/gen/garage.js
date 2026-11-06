@@ -495,12 +495,14 @@ export function parkingDeck(sink, bounds, rng) {
   }
 
   const [, , , bEnd] = alongX ? [x0, x1, z0, z1] : [z0, z1, x0, x1];
+  const centres = [];
   for (const row of rows) {
     // Snapping rounds DOWN, which near the room's first edge pushes the row out
     // of the room and half a metre into the lane beyond it. Walked back in.
     let b = snapB(row.c + 0.25);
     while (b - BAY_D / 2 < b0 - 1e-6) b += 0.5;
     while (b + BAY_D / 2 > bEnd + 1e-6) b -= 0.5;
+    centres.push(b);
     // A prop is authored facing -Z, so a car on the x axis nosing toward +z is a
     // half turn, and one on the z axis nosing toward +x is a quarter turn.
     const rot = alongX ? (row.face > 0 ? 2 : 0) : (row.face > 0 ? 3 : 1);
@@ -518,6 +520,19 @@ export function parkingDeck(sink, bounds, rng) {
       const placed = tryPlace(sink, front ? 'car' : 'carParked', cx, cz, rot, rng);
       if (!placed && !front) sealed = true;
     }
+  }
+
+  // The aisles, in asphalt: the strip in front of every row facing +b, out to the
+  // row facing it or the edge of the deck. Worked out off the rows as they were
+  // actually snapped, so the lane is exactly the gap the cars left.
+  if (!sink.paint) return;
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i].face < 0) continue;
+    const from = centres[i] + BAY_D / 2;
+    const to = i + 1 < rows.length && rows[i + 1].face < 0 ? centres[i + 1] - BAY_D / 2 : bEnd;
+    if (to - from < 0.5) continue;
+    if (alongX) sink.paint('asphalt', a0, from, a1, to);
+    else sink.paint('asphalt', from, a0, to, a1);
   }
 }
 
@@ -574,7 +589,10 @@ function planDeck({ x0, z0, x1, z1 }, alongX) {
 const GARAGE_MATERIAL = {
   wall: 'concreteWall',
   carpet: 'concrete',
-  vinyl: 'asphalt',
+  // Not asphalt: the corridors the deck was planned round are invisible once it
+  // is parked as one car park, and cars stood across their lanes. The asphalt is
+  // painted along the real aisles instead (`paint` in parkingDeck).
+  vinyl: 'concrete',
   ceiling: 'soffit',
 };
 
