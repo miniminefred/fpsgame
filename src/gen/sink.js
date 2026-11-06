@@ -32,7 +32,10 @@ const NO_SHADOW = new Set(['linePaint', 'headlight', 'taillight', 'carGlass']);
 const NO_CAST = { castShadow: false };
 
 export function makeSink(layout, batcher, materials, masks) {
-  const { W, H, tiles } = layout;
+  const { W, H } = layout;
+  // The plan the placer reads for what is floor. A car park's deck passes its own,
+  // open wall to wall — see openDeck in gen/levels.js.
+  const tiles = masks.tiles ?? layout.tiles;
   const { blocked, occupied, reserved, colliders, dynamics, destructibles } = masks;
   const level = masks.level ?? 0;
 

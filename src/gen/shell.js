@@ -316,7 +316,13 @@ function drawWalls(layout, tiles, batcher, materials, colliders, wallH, building
     // turns every 3.2 m wall in the building into a knee-high ledge the moment a
     // body's feet are within STEP_EPS of its top — which a staircase, an attic
     // deck and the mezzanine all put them, legitimately. See _moveHorizontal.
-    const collider = { minX: x0, maxX: x1, minZ: z0, maxZ: z1, top: wallH, barrier: true };
+    //
+    // ...except on a car park, where the top of every ground wall IS a floor: deck
+    // 1 covers the whole slab at exactly WALL_H, so a barrier there is a wall to
+    // everybody standing on the deck above it — the basement's bug again (see
+    // buildStairs). It showed as invisible barriers on the decks wherever nothing
+    // was drawn over a ground column or the office corner's walls.
+    const collider = { minX: x0, maxX: x1, minZ: z0, maxZ: z1, top: wallH, barrier: !layout.garage };
     if (building) collider.building = true;
     colliders.push(collider);
   }

@@ -7,7 +7,7 @@
 import { LAMP_COLD } from '../textures.js';
 import { applyWorldUVs, boxBetween, slab } from './geom.js';
 import { footprintOf, tryPlace } from './props.js';
-import { CEIL_H, CORRIDOR, TILE } from './layout.js';
+import { CEIL_H, CORRIDOR, ROOM, TILE } from './layout.js';
 import { maskToRects } from './rects.js';
 import {
   approachTiles,
@@ -261,6 +261,12 @@ export function furnishLevels(layout, batcher, materials, shared, rng) {
       .map((k) => layout.stairs.filter((p) => levelLayer(p) === k))
     : [1, -1].map((dir) => layout.stairs.filter((p) => p.dir === dir && !p.level));
 
+  // A car park's deck is floor from wall to wall, whatever stands under it. The
+  // ground's own plan has its columns and free-standing walls as SOLID tiles, and
+  // the placer refuses a SOLID tile — so the column a deck stands on the same spot
+  // could never go in, the decks came out with no columns at all, and the ground
+  // column under each spot poked up through the deck as an invisible barrier.
+  const deckTiles = layout.garage && layout.deck ? openDeck(layout) : null;
   for (const plans of groups) {
     if (!plans.length) continue;
     const layerK = levelLayer(plans[0]);
@@ -293,6 +299,7 @@ export function furnishLevels(layout, batcher, materials, shared, rng) {
 
     const sink = makeSink(layout, batcher, materials, {
       level: levelY(plans[0]),
+      tiles: deckTiles ?? undefined,
       // A level's own furniture DOES block its own nav layer — it is the floor those
       // props are standing on. One mask per LAYER: every attic and basement shares
       // layer 1 because no two of them share a tile, and each stacked deck of a car
@@ -307,6 +314,16 @@ export function furnishLevels(layout, batcher, materials, shared, rng) {
 
     for (const plan of plans) dressLevel(layout, plan, sink, rng);
   }
+}
+
+// The ground's tile plan with the whole deck rectangle made floor (see above).
+function openDeck(layout) {
+  const { W, deck } = layout;
+  const tiles = layout.tiles.slice();
+  for (let ty = deck.y0; ty < deck.y1; ty++) {
+    for (let tx = deck.x0; tx < deck.x1; tx++) tiles[ty * W + tx] = ROOM;
+  }
+  return tiles;
 }
 
 function dressLevel(layout, plan, sink, rng) {

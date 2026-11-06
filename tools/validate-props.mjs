@@ -485,6 +485,11 @@ function validate(seed, floorNumber) {
   // ---- 1. furniture inside walls -----------------------------------------
   let inWall = 0, inWallHair = 0, worstDepth = 0, worstKind = '';
   for (const c of furn) {
+    // A car park's deck is floor wall to wall (openDeck in gen/levels.js): a
+    // column up there stands over the column below on purpose, and a car over the
+    // office corner's walls is on the deck, not in them. Its own outer wall is
+    // what fences it, and that is a collider rather than a tile.
+    if (layout.garage && (c.base ?? 0) > 1) continue;
     const r = tileRange(c, EPS);
     let depth = 0;
     for (let ty = r.ty0; ty <= r.ty1; ty++) {
